@@ -1,1 +1,454 @@
-git push --force-with-lease origin init-argocd
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../scripts/devvpc/dockers/apache/
+[sikaj01@ip-10-56-112-33 apache]$ ll
+total 40
+-rw-r-----. 1 sikaj01 users  786 Oct 17 16:18 00-optional.conf
+-rw-r-----. 1 sikaj01 users 1424 Oct 17 16:18 10-auth_openidc.conf
+-rw-r-----. 1 sikaj01 users  939 Nov  3 15:55 Dockerfile
+drwxr-x---. 7 sikaj01 users 6144 Oct 17 16:18 conexus-ui-public
+-rw-r-----. 1 sikaj01 users 5656 Oct 17 16:18 conexus_vhost.conf
+drwxr-x---. 4 sikaj01 users 6144 Oct 17 16:18 html
+-rw-r-----. 1 sikaj01 users 3936 Nov  3 15:55 httpd.conf
+-rw-r-----. 1 sikaj01 users  963 Oct 17 16:18 maintenance.html
+-rw-r-----. 1 sikaj01 users    1 Oct 17 16:18 ssl.conf
+[sikaj01@ip-10-56-112-33 apache]$ cat *
+#
+# This file lists modules included with the Apache HTTP Server
+# which are not enabled by default.
+# 
+
+#LoadModule asis_module modules/mod_asis.so
+#LoadModule buffer_module modules/mod_buffer.so
+#LoadModule heartbeat_module modules/mod_heartbeat.so
+#LoadModule heartmonitor_module modules/mod_heartmonitor.so
+LoadModule usertrack_module modules/mod_usertrack.so
+#LoadModule dialup_module modules/mod_dialup.so
+#LoadModule charset_lite_module modules/mod_charset_lite.so
+#LoadModule log_debug_module modules/mod_log_debug.so
+#LoadModule log_forensic_module modules/mod_log_forensic.so
+#LoadModule ratelimit_module modules/mod_ratelimit.so
+#LoadModule reflector_module modules/mod_reflector.so
+#LoadModule sed_module modules/mod_sed.so
+#LoadModule speling_module modules/mod_speling.so
+LoadModule auth_openidc_module modules/mod_auth_openidc.so
+
+OIDCProviderMetadataURL ${OIDC_PROVIDER_URL}
+OIDCClientID ${OIDC_CLIENT_ID}
+OIDCClientSecret ${OIDC_CLIENT_SECRET}
+
+OIDCRedirectURI ${OIDC_REDIRECT_URI}
+OIDCCryptoPassphrase ${OIDC_PASS}
+OIDCDefaultLoggedOutURL ${OIDC_LOGGEDOUT_URL}
+OIDCDefaultURL ${OIDC_DEFAULT_URL}
+
+OIDCSessionInactivityTimeout 900
+OIDCStateMaxNumberOfCookies 7 true
+OIDCCookiePath "/secure"
+#OIDCHTMLErrorTemplate /var/www/html/errors/oidc_error.html
+
+### Discontinued... using shm now
+#OIDCCacheType file
+#OIDCCacheDir /var/cache/httpd/mod_auth_openidc/cache
+###########
+
+
+OIDCCacheType shm
+
+# No need to increase state timeout
+#OIDCStateTimeout Defaults to 300
+#OIDCStateTimeout 600
+
+# Currently needed for the module to parse the JWT properly.  Do not remove
+OIDCUserInfoSignedResponseAlg "RS512"
+OIDCScope "openid phone profile email name email_verified phone_numer phone_number_verified given_name family_name usda_credential_data usda_position_data usda_agency_code"
+
+<LocationMatch "/secure/rest/.*">
+    ErrorDocument 401 /errors/empty.json
+</LocationMatch>
+
+<LocationMatch "/secure/.*\.(js|css|png)">
+    AuthType openid-connect
+    Require valid-user
+    OIDCUnAuthAction 401
+</LocationMatch>
+
+<Location /secure/>
+  AuthType openid-connect
+  <LimitExcept OPTIONS>
+    AuthType openid-connect
+    Require valid-user
+  </LimitExcept>
+  Require valid-user
+  LogLevel debug
+</Location>
+
+FROM fedora:42
+USER root
+RUN dnf update -y
+RUN dnf install -y httpd mod_auth_openidc mod_ssl less which net-tools procps-ng mod_session mod_proxy_html mod_security curl 
+RUN dnf clean all
+
+
+RUN mkdir -p /app/conexus-ui-public /app/conexus-help
+RUN chown -R apache:apache /app
+COPY ./conexus_vhost.conf /etc/httpd/conf.d/conexus_vhost.conf
+COPY ./10-auth_openidc.conf /etc/httpd/conf.modules.d/10-auth_openidc.conf
+COPY ./httpd.conf /etc/httpd/conf/httpd.conf
+COPY ./00-optional.conf /etc/httpd/conf.modules.d/00-optional.conf
+COPY ./ssl.conf /etc/httpd/conf.d/ssl.conf
+COPY ./maintenance.html /var/www/html/errors/maintenance.html
+RUN rm -f /etc/httpd/conf.d/mod_security.conf
+
+#RUN touch /var/www/html/maintenance/maintenance.enable
+
+#RUN systemctl enable httpd
+
+ADD html /var/www/html/                   
+ADD conexus-ui-public /app/conexus-ui-public
+
+EXPOSE 80
+USER apache
+CMD ["/bin/bash"]
+#CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
+
+cat: conexus-ui-public: Is a directory
+<VirtualHost *:80>
+    ServerName https://${SERVER_NAME}
+    ServerAdmin Conexus.help@gsa.gov
+    UseCanonicalName On
+    SetEnv proxy-nokeepalive 1    
+    
+    ErrorDocument 404 /errors/404.html
+    ErrorDocument 500 /errors/50x.html
+    ErrorDocument 502 /errors/50x.html
+    ErrorDocument 503 /errors/50x.html
+    ErrorDocument 504 /errors/50x.html
+    
+    DocumentRoot /var/www/html
+    ProxyPass /errors !
+    RewriteEngine on
+    # Disable TRACE and TRACK
+    RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK|OPTIONS)
+    RewriteRule .* - [F]
+ 
+    <Files ~ "\.(cgi|shtml|phtml|php3?)$">
+      SSLOptions +StdEnvVars
+    </Files>
+    <Directory "/var/www/cgi-bin">
+      SSLOptions +StdEnvVars
+    </Directory>
+ 
+#    ProxyPass /wiki/ !
+#    Alias "/wiki/" "/app/conexus-wiki/"
+#    <Directory "/app/conexus-wiki">
+#      Require all granted
+#      <LimitExcept POST GET>
+#        Require all granted
+#      </LimitExcept>
+#      <IfVersion >= 2.4>
+#        # Forward PHP requests to FPM
+#        SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+#        <FilesMatch "\.php$">
+#            SetHandler "proxy:fcgi://127.0.0.1:9000"
+#            ErrorDocument 503 /errors/50x.html
+#        </FilesMatch>
+#      </IfVersion>
+#    </Directory>
+    
+    ProxyPass /help !
+    Alias "/help" "/app/conexus-help/"
+    <Directory "/app/conexus-help">
+      Require all granted
+      <LimitExcept POST GET>
+        Require all granted
+      </LimitExcept>
+    </Directory>
+    
+    ProxyPass /refdata/ !
+    Alias "/refdata/" "/app/conexus/attachments/refdata/current/"
+    <Directory "/app/conexus/attachments/refdata/current/">
+      Require all granted
+      <LimitExcept GET>
+        Require all granted
+      </LimitExcept>
+    </Directory>
+    
+    # Redirect to maint. page if maintenane.enable file is present
+    RewriteCond %{DOCUMENT_ROOT}/maintenance/maintenance.enable -f
+    # Allow IP address ranges in during maintenance
+    #RewriteCond %{REMOTE_ADDR} !149.101.*
+    # Allow content from the /errors/ directory
+    RewriteCond %{THE_REQUEST} !/errors/maintenance.html [NC]
+    RewriteRule ^.* /errors/maintenance.html [L]
+
+    # Redirect maint. page to landing page
+    RewriteCond %{DOCUMENT_ROOT}/maintenance/maintenance.enable !-f
+    RewriteCond %{THE_REQUEST} /errors/maintenance.html$ [NC]
+    RewriteRule .* https://%{HTTP_HOST}/ [L]
+
+    # Prevent ErrorDocuments from being redirected to landing page
+    RewriteCond %{ENV:REDIRECT_STATUS} 200}
+    RewriteCond %{REQUEST_URI} /errors/.* [NC]
+    RewriteRule .* https://%{HTTP_HOST}/ [L]
+
+    # Prevent 404 Not Found for javascript/css source maps
+    RewriteCond %{REQUEST_URI}  (\.map)$
+    RewriteRule (.*)  /errors/404.map [QSA]
+
+    Protocols h2
+    H2Upgrade on
+ 
+    #ErrorLog logs/ssl_error_log
+    #CustomLog logs/access_log splunk_kv env=!dontlog
+    #CustomLog logs/ssl_request_log "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"
+    #CustomLog "logs/ssl_request_log" request_log  env=!dontlog
+
+    <Directory "/var/www/html/errors/">
+        Options -Indexes
+        Require all granted
+        AllowOverride None
+    </Directory>
+
+    ProxyRequests Off
+    ProxyPreserveHost On
+    ProxyErrorOverride Off
+
+    TraceEnable off
+
+    ######### IAA Attachments #########
+    # Proxy to the AntiVirus host
+    ProxyPassMatch ^/(secure/rest/agencies/\d+/interAgencyAgreements/\d+/attachments/file)$ http://${AVSERVER}/$1 
+
+    ######### Order Attachments #########
+    # Proxy to the AntiVirus host
+    ProxyPassMatch ^/(secure/rest/orders/\d+/attachments/file)$ http://${AVSERVER}/$1 
+
+    ######### Reporting #########
+    # Proxy to the Jboss Reporting host
+    ProxyPass /secure/rest/reporting/ http://reporting:8080/secure/rest/reporting/ 
+
+    ######### Rest backend #########
+    # Proxy to the Jboss Portal host
+    ProxyPass        /secure/    http://portal:8080/secure/
+    ProxyPassReverse /secure/    http://portal:8080/secure/
+    # Handle the occassion where the UI requests /secure
+    ProxyPass        /secure     http://portal:8080/secure/
+    ProxyPassReverse /secure     http://portal:8080/secure/
+
+    # Used for the local ui public content
+    Alias "/" "/app/conexus-ui-public/"
+    <Directory "/app/conexus-ui-public/">
+      Options -Indexes -MultiViews +FollowSymlinks
+      AllowOverride None
+      Require all granted
+    </Directory>
+    
+    # Restrict viewing of subdirectories
+    <DirectoryMatch "^/app/conexus-ui-public/(.+)/">
+      Options -Indexes 
+      Order Deny,Allow
+      Allow From All
+    </DirectoryMatch>
+
+    # HSTS (mod_headers is required) (31536000 seconds = 1 year)
+   # Header always set Strict-Transport-Security "max-age=31536000; includeSubdomains; preload"
+   # RequestHeader set x-request-id %{UNIQUE_ID}e
+    
+    # User Tracking
+    #CookieDomain .gsa.gov
+    #CookieName LkgAk9XB9h5D8tPX
+    #CookieTracking on
+    CookieHTTPOnly on
+    CookieSecure on
+    
+    # Set Expiration times to 0
+    ExpiresActive On
+    ExpiresDefault "now"
+    
+    # Cookie over SSL
+    Header edit Set-Cookie ^(.*)$ $1;HttpOnly;Secure
+    
+    # X-Frame protection
+    Header always set X-Frame-Options SAMEORIGIN
+    
+    # X-XSS protection
+    Header set X-XSS-Protection "1; mode=block"
+    
+    # X-Content-Type-Options
+    Header set X-Content-Type-Options nosniff
+    
+    # Hide X-Powered-By and Server headers, sent by downstream application servers:
+    # Note you need both below as the "always" one doesn't work with Jboss for some reason
+    Header always unset "X-Powered-By"
+    Header unset "X-Powered-By"
+
+    #Header set Cache-Control no-store
+    Header set Access-Control-Allow-Origin conexus.gsa.gov
+</VirtualHost>
+
+cat: html: Is a directory
+ServerRoot "/etc/httpd"
+
+Listen 80
+
+Include conf.modules.d/*.conf
+TimeOut 300
+KeepAlive On
+MaxKeepAliveRequests 500
+KeepAliveTimeout 15
+
+User apache
+Group apache
+
+ServerAdmin Conexus.help@gsa.gov
+ServerName ${SERVER_NAME}                 
+
+#Remove the footer from error pages, which details the version numbers:
+ServerSignature Off
+ServerTokens ProductOnly
+
+Protocols h2
+H2Upgrade on
+
+<Directory />
+    AllowOverride none
+    Require all denied
+</Directory>
+
+DocumentRoot "/var/www/html"
+
+<Directory "/var/www">
+    AllowOverride None
+    Require all granted
+</Directory>
+
+<Directory "/var/www/html">
+    Options -Indexes +FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+
+<IfModule dir_module>
+    DirectoryIndex index.html
+</IfModule>
+
+<Files ".ht*">
+    Require all denied
+</Files>
+
+#ErrorLog "logs/error_log"
+ErrorLog /proc/1/fd/2
+
+LogLevel warn
+
+<IfModule log_config_module>
+    # Don't log Dynatrace rb_* javascript
+    SetEnvIf Request_URI "^/rb_.*" dontlog
+
+    #
+    # The following directives define some format nicknames for use with
+    # a CustomLog directive (see below).
+    #
+    LogFormat "%h %l %u %t \"%r\" %>s %b" common
+    <IfModule logio_module>
+    # You need to enable mod_logio.c to use %I and %O
+    LogFormat "time=%t, bytes_in=%I, bytes_out=%O, server=%v, dest_port=%p, http_content_type=\"%{Content-type}i\", http_method=\"%m\", http_referrer=\"%{Referer}i\", http_user_agent=\"%{User-agent}i\", ident=\"%l\", response_time_microseconds=%D, client=%h, status=%>s, uri_path=\"%U\", uri_query=\"%q\", user=\"%u\", USEREMAIL=\"%{OIDC_CLAIM_email}i\", ssl_protocol=\"%{SSL_PROTOCOL}x\", ssl_cipher=\"%{SSL_CIPHER}x\", x-request-id=\"%{x-request-id}i\"" splunk_kv
+    </IfModule>
+    #
+    # The location and format of the access logfile (Common Logfile Format).
+    # If you do not define any access logfiles within a <VirtualHost>
+    # container, they will be logged here.  Contrariwise, if you *do*
+    # define per-<VirtualHost> access logfiles, transactions will be
+    # logged therein and *not* in this file.
+    #
+    # CustomLog "logs/access_log" common
+    #
+    # If you prefer a logfile with access, agent, and referer information
+    # (Combined Logfile Format) you can use the following directive.
+    #
+    #CustomLog "logs/access_log" splunk_kv env=!dontlog
+    CustomLog /proc/1/fd/1 splunk_kv env=!dontlog
+    #CustomLog "logs/access_log" splunk_json
+    
+    # Old logging format
+    #LogFormat "%h %v %l %u %{local}p %t \"%r\" \"%q\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O %D" combined
+    #LogFormat "%h %l %u %t \"%r\" %>s %b" common
+    #<IfModule logio_module>
+    #  LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O" combinedio
+    #</IfModule>
+    #CustomLog "logs/access_log" combined env=!dontlog
+    #LogFormat "%t message=\"%m %H %U%q %s\" client=\"%a\" port=\"%p\" ssl_protocol=\"%{SSL_PROTOCOL}x\" ssl_cipher=\"%{SSL_CIPHER}x\" duration_usec=%D status=%s request=\"%r\" method=\"%m\" protocol=\"%H\" referrer=\"%{Referer}i\" user-agent=\"%{User-agent}i\" bytes-sent=%O bytes-received=%I x-request-id=\"%{x-request-id}i\" USEREMAIL=\"%{OIDC_CLAIM_email}i\"" request_log
+</IfModule>
+
+<IfModule alias_module>
+    ScriptAlias /cgi-bin/ "/var/www/cgi-bin/"
+</IfModule>
+
+<Directory "/var/www/cgi-bin">
+    AllowOverride None
+    Options None
+    Require all granted
+</Directory>
+
+<IfModule mime_module>
+    TypesConfig /etc/mime.types
+    AddType application/x-compress .Z
+    AddType application/x-gzip .gz .tgz
+    AddType text/html .shtml
+    AddOutputFilter INCLUDES .shtml
+</IfModule>
+
+AddDefaultCharset UTF-8
+
+<IfModule mime_magic_module>
+    MIMEMagicFile conf/magic
+</IfModule>
+EnableSendfile on
+
+# Extra settings for compliance
+TraceEnable off
+
+# To address CVE-2003-1418
+FileETag None
+
+# OIDC sometimes requires a larger header size than the default
+LimitRequestFieldSize 16384
+
+IncludeOptional conf.d/*.conf
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Conexus - Maintenance</title>
+    <meta charset="ISO-8859-1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            color: #212121;
+            font-family: "Roboto","Helvetica","Arial",sans-serif;
+            font-weight: 400;
+            line-height: 1.4;
+            font-size: 16px;
+        }
+        #wrapper {
+            margin: 60px auto;
+            max-width: 600px;
+            min-width: 200px;
+            text-align: center;
+            border: 1px solid #cacaca;
+            border-radius: 2px;
+            padding: 20px;
+        }
+        p {
+            margin-top: 50px;
+        }
+    </style>
+</head>
+
+<body>
+<div id="wrapper">
+    <p>The Conexus Application is currently unavailable for scheduled maintenance . Please check back at a later time.</p>
+</div>
+</body>
+</html
