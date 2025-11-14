@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Build service images from downloaded JBoss artifacts using a STAGING context.
-# Usage: ./builder.sh -s portal|jms|webservice|brms|reporting|all
+# Usage: ./builder.sh -s portal|jms|webservice|brms|reporting|apache|all
 set -euo pipefail
 
-usage(){ echo "Usage: $0 -s portal|jms|webservice|brms|reporting|all" >&2; exit 1; }
+usage(){ echo "Usage: $0 -s portal|jms|webservice|brms|reporting|apache|all" >&2; exit 1; }
 
 # ---- Args ----
 s=""
 while getopts ":s:" opt; do case "$opt" in s) s="$OPTARG";; *) usage;; esac; done
 shift $((OPTIND-1))
 [[ -z "${s}" ]] && usage
-case "$s" in portal|jms|webservice|brms|reporting|all) ;; *) usage;; esac
+case "$s" in portal|jms|webservice|brms|reporting|apache|all) ;; *) usage;; esac
 
 # ---- Paths & config ----
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
@@ -30,6 +30,9 @@ LOCAL_REPO="${LOCAL_REPO:-conexus-jboss}"  # canonical local repo tag (CI will r
 ECR_ACCOUNT="${ECR_ACCOUNT:-339713019047}"
 ECR_REGION="${ECR_REGION:-us-east-1}"
 LEGACY_BASE="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/conexus-jboss" # compat tag
+# Apache repos
+LOCAL_APACHE_REPO="${LOCAL_APACHE_REPO:-conexus-apache}"
+APACHE_ECR_REPO="${APACHE_ECR_REPO:-conexus-apache}"
 
 echo "ARTIFACTS_DIR: $ARTIFACTS_DIR"
 [[ -d "$ARTIFACTS_DIR" ]] || { echo "ERROR: artifacts dir not found ($ARTIFACTS_DIR)"; exit 1; }
@@ -174,8 +177,52 @@ build_reporting(){
   echo "  Built: $tag"; echo "  Legacy tag: $legacy"
 }
 
+build_apache(){
+  echo "==> SERVICE: apache"
+  # Source lives in the 'scripts' repo:
+  local SRC="${SCRIPT_DIR}/../scripts/devvpc/dockers/apache"
+  [[ -d "$SRC" ]] || { echo "  ✖ Apache source not found: $SRC"; return 4; }
+
+  # Derive a reproducible release tag:
+  # - parse Fedora base from Dockerfile (e.g., fedora:42)
+  # - hash the contents of configs + html + ui to reflect changes
+  local fedver hash release tag ecrtag stage
+  fedver="$(sed -nE 's/^FROM[[:space:]]+fedora:([0-9]+).*/\1/p' "$SRC/Dockerfile" | head -1 || true)"
+  fedver="${fedver:-42}"
+  hash="$(
+    ( cd "$SRC" && \
+      { find . -maxdepth 1 -type f -print0 2>/dev/null; \
+        find html -type f -print0 2>/dev/null; \
+        find conexus-ui-public -type f -print0 2>/dev/null; } \
+      | xargs -0 sha1sum ) | sha1sum | cut -c1-7
+  )"
+  release="httpd${fedver}-${hash}"
+  tag="${LOCAL_APACHE_REPO}:${release}"
+  ecrtag="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/${APACHE_ECR_REPO}:${release}"
+
+  # Stage a tight build context
+  stage="$SCRIPT_DIR/.build/apache"
+  rm -rf "$stage"; mkdir -p "$stage"
+  cp "$SRC/Dockerfile" "$stage/Dockerfile"
+  # config files
+  cp "$SRC"/*.conf "$stage"/
+  # static content
+  if [[ -d "$SRC/html" ]]; then cp -a "$SRC/html" "$stage/html"; fi
+  if [[ -d "$SRC/conexus-ui-public" ]]; then cp -a "$SRC/conexus-ui-public" "$stage/conexus-ui-public"; fi
+  # maintenance page
+  if [[ -f "$SRC/maintenance.html" ]]; then cp "$SRC/maintenance.html" "$stage/maintenance.html"; fi
+  printf '%s\n' '*.git' '*.tmp' > "$stage/.dockerignore"
+
+  echo "    staged files (context: $stage):"; (cd "$stage" && ls -la)
+  docker build -t "$tag" -f Dockerfile "$stage"
+  docker tag "$tag" "$ecrtag" >/dev/null 2>&1 || true
+  echo "$release" > "$SCRIPT_DIR/.release.apache"
+  echo "  Built: $tag"
+  echo "  ECR tag (local retag): $ecrtag"
+}
+
 # ---- Orchestration ----
-services=( "$s" ); [[ "$s" == "all" ]] && services=( portal jms webservice brms reporting )
+services=( "$s" ); [[ "$s" == "all" ]] && services=( portal jms webservice brms reporting apache )
 overall_rc=0; built=()
 
 for svc in "${services[@]}"; do
@@ -186,6 +233,7 @@ for svc in "${services[@]}"; do
     webservice)  build_webservice  || rc=$? ;;
     brms)        build_brms        || rc=$? ;;
     reporting)   build_reporting   || rc=$? ;;
+    apache)      build_apache      || rc=$? ;;
   esac
   if [[ $rc -eq 0 ]]; then
     [[ -f ".release.$svc" ]] && built+=( "$svc" )
