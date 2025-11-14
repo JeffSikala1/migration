@@ -1,0 +1,225 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: UIPUBPACK
+  name: UI Public - Package
+
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+  - clean
+
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout bamboo-deployment
+
+  # Optional cache hygiene
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
+      description: Remove existing cnxs maven repo directory
+
+  # Pin bamboo-deployment to develop (or BAMBOO_DEPLOYMENT_BRANCH if set)
+  - script:
+      interpreter: SHELL
+      working-dir: bamboo-deployment
+      scripts:
+      - |
+        set -euo pipefail
+        TARGET_BRANCH="${BAMBOO_DEPLOYMENT_BRANCH:-develop}"
+        echo "Target branch: ${TARGET_BRANCH}"
+
+        if ! git show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
+          git fetch --prune origin "refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" || {
+            echo "ERROR: could not fetch origin/${TARGET_BRANCH}"; git ls-remote --heads origin || true; exit 3; }
+        fi
+
+        git checkout -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
+        test -f build-determination-migration.sh || { echo "build-determination-migration.sh not found"; ls -la; exit 4; }
+        chmod +x build-determination-migration.sh
+      description: Ensure bamboo-deployment@develop branch + script present
+
+  # Discover endpoints (runs inside bamboo-deployment/)
+  - script:
+      interpreter: SHELL
+      working-dir: bamboo-deployment
+      file: build-determination-migration.sh
+      description: Determine parent branch and pass correct variables
+
+  # Export the generated files to the job root for downstream tasks
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        cp bamboo-deployment/file.properties . || { echo "Missing bamboo-deployment/file.properties"; ls -la bamboo-deployment; exit 5; }
+        cp -f bamboo-deployment/settings-ca.xml . || { echo "Missing bamboo-deployment/settings-ca.xml"; ls -la bamboo-deployment; exit 6; }
+        ls -la file.properties settings-ca.xml
+      description: Export properties & settings to workspace root
+
+  # Make endpoints available to later tasks
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+
+  # Build with Maven using normalized settings + live CA token
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+
+        # Fresh short-lived token
+        export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+          --domain cnxsartifact --query authorizationToken --output text --region us-east-1)"
+
+        # Use injected endpoint for mirror URL (underscore env form from 'inject' namespace)
+        REPO_URL="${bamboo_inject_resolveRepositoryUrl:?missing resolveRepositoryUrl}"
+
+        # Normalize settings so mirror id == server id == 'codeartifact'
+        cat > settings-ca.xml <<'XML'
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+          <mirrors>
+            <mirror>
+              <id>codeartifact</id>
+              <mirrorOf>*</mirrorOf>
+              <url>__REPO_URL__</url>
+            </mirror>
+          </mirrors>
+          <servers>
+            <server>
+              <id>codeartifact</id>
+              <username>aws</username>
+              <password>${env.CODEARTIFACT_AUTH_TOKEN}</password>
+            </server>
+          </servers>
+        </settings>
+        XML
+        # inject the runtime URL
+        sed -i "s|__REPO_URL__|${REPO_URL}|" settings-ca.xml
+
+        # Pull friendly vars for -D props (underscore env forms from inject step)
+        BRANCH_NAME="${bamboo_inject_BranchName:-develop}"
+        MFE_URL="${bamboo_inject_mavenFeatureRepositoryUrl:?missing mavenFeatureRepositoryUrl}"
+        PLUG_URL="${bamboo_inject_pluginRepositoryUrl:?missing pluginRepositoryUrl}"
+
+        mvn -s settings-ca.xml \
+          clean verify -B -U \
+          "-Dbamboo.inject.BranchName=${BRANCH_NAME}" \
+          "-Dbamboo.inject.mavenFeatureRepositoryUrl=${MFE_URL}" \
+          "-Dbamboo.inject.pluginRepositoryUrl=${PLUG_URL}" \
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      description: Build (Maven via CodeArtifact)
+
+  # Scripted Maven version extraction (plugin-free, robust)
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+          --domain cnxsartifact --query authorizationToken --output text --region us-east-1)"
+
+        # Try fully qualified help:evaluate first
+        if ! VER="$(mvn -q -s settings-ca.xml -DskipTests -Dexec.skip=true \
+          org.apache.maven.plugins:maven-help-plugin:3.4.1:evaluate \
+          -Dexpression=project.version -DforceStdout)"; then
+          echo "maven-help (fq) failed; trying help:evaluate with -Dplugin"
+          VER="$(mvn -q -s settings-ca.xml -DskipTests -Dexec.skip=true \
+            help:evaluate -Dplugin=org.apache.maven.plugins:maven-help-plugin:3.4.1 \
+            -Dexpression=project.version -DforceStdout || true)"
+        fi
+
+        # Fallback: parse top-level pom if needed
+        if [ -z "${VER:-}" ]; then
+          echo "help:evaluate failed; falling back to parsing POM"
+          VER="$(awk 'BEGIN{RS="</project>";FS="\n"}{for(i=1;i<=NF;i++) if ($i ~ /<version>/){gsub(/^.*<version>|<\/version>.*$/,"",$i); print $i; exit}}' pom.xml)"
+        fi
+
+        [ -n "${VER:-}" ] || { echo "ERROR: could not determine Maven version"; exit 2; }
+        printf 'mavenVersion=%s\n' "$VER" > maven-version.properties
+        echo "Extracted mavenVersion=$VER"
+      description: Extract Maven version
+
+  # Persist mavenVersion for downstream (RESULT scope)
+  - inject-variables:
+      file: maven-version.properties
+      scope: RESULT
+      namespace: inject
+      description: Inject mavenVersion (RESULT)
+
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+
+  # Deploy to CodeArtifact if needed (script handles its own token)
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+      environment: >-
+        buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+        buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+        mavenVersion=${bamboo.inject.mavenVersion}
+      description: Deploy to CodeArtifact if needed
+
+  # Persist info for downstream
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+      description: Persist endpoints to RESULT
+
+variables:
+  buildVersionQueryArtifact: ui-public
+  buildVersionQueryGroup: gov.gsa.cnxs.ui-public
+  # Optional: override which branch of bamboo-deployment to pin
+  # BAMBOO_DEPLOYMENT_BRANCH: develop
+
+repositories:
+- UI-Public:
+    scope: global
+- bamboo-deployment:
+    scope: global
+
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - UI-Public
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+- events: [plan-completed]
+  recipients: [watchers]
+- events: [plan-failed]
+  recipients: [responsible, committers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

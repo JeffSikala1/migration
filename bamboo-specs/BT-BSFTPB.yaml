@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="BT" buildKey="BSFTPB"><code>---
+version: 2
+plan:
+  project-key: BT
+  key: BSFTPB
+  name: Billing SFTP - Build
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: clean verify -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
+      description: Build and Verify
+  - any-task:
+      plugin-key: com.davidehringer.atlassian.bamboo.maven.maven-pom-parser-plugin:maven-pom-parser-plugin
+      configuration:
+        gavOrCustom: '0'
+        variableType: '2'
+        prefixOption: '1'
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
+      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.maven.version}
+      description: Deploy to Artifactory if needed
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+      description: Inject the build information to be used in Bamboo Deploy
+  artifact-subscriptions: []
+variables:
+  buildVersionQueryArtifact: billing-sftp
+  buildVersionQueryGroup: gov.gsa.cnxs.billingsftp
+repositories:
+- billingsftp:
+    scope: global
+- bamboo-deployment:
+    scope: global
+triggers:
+- bitbucket-server-trigger
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+notifications:
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+---
+version: 2
+plan:
+  key: BT-BSFTPB
+plan-permissions:
+- groups:
+  - nsfs_developers
+  - NSFS_Developers
+  permissions:
+  - view
+  - build
+- users:
+  - madhav.kundala@usda.gov
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration  - create-plan-branch
+...
+</code></spec></specs>

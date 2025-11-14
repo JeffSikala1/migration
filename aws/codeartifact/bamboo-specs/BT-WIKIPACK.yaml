@@ -1,0 +1,119 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: WIKIPACK
+  name: Wiki Package
+
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+  - clean
+
+  - checkout:
+      path: wiki
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -Eeuo pipefail
+
+        # Create package
+        echo "Creating package"
+        datetime="$(date +%Y%m%d%H%M%S)"
+        pkg="wiki-${datetime}.tgz"
+        tar --exclude='.git' --exclude='.gitignore' --exclude='.editorconfig' -zcf "${pkg}" wiki/
+
+        # ===== Publish to AWS CodeArtifact (maven format) =====
+        CA_REGION="${CA_REGION:-us-east-1}"
+        CA_DOMAIN="${CA_DOMAIN:-cnxsartifact}"
+        CA_REPO="${CA_REPO:-conexus-release-local}"   # set to the maven repo you publish releases to
+
+        GROUP_ID="gov.gsa.cnxs.wiki"
+        ARTIFACT_ID="wiki"
+        VERSION="${datetime}"
+
+        # Get repository endpoint
+        CA_EP="$(aws --region "$CA_REGION" codeartifact get-repository-endpoint \
+          --domain "$CA_DOMAIN" --repository "$CA_REPO" --format maven \
+          --query repositoryEndpoint --output text)"
+
+        # Short-lived auth token (kept out of logs)
+        set +x
+        export CODEARTIFACT_AUTH_TOKEN="$(aws --region "$CA_REGION" codeartifact get-authorization-token \
+          --domain "$CA_DOMAIN" --query authorizationToken --output text)"
+        set -x
+
+        # Minimal Maven settings using the token
+        cat > settings-ca.xml <<'XML'
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+          <servers>
+            <server>
+              <id>codeartifact</id>
+              <username>aws</username>
+              <password>${env.CODEARTIFACT_AUTH_TOKEN}</password>
+            </server>
+          </servers>
+        </settings>
+        XML
+
+        echo "Publishing ${pkg} to CodeArtifact repo ${CA_REPO}"
+        mvn -B -s settings-ca.xml deploy:deploy-file \
+          -Durl="${CA_EP}" \
+          -DrepositoryId=codeartifact \
+          -DgroupId="${GROUP_ID}" \
+          -DartifactId="${ARTIFACT_ID}" \
+          -Dversion="${VERSION}" \
+          -Dpackaging=tgz \
+          -Dfile="${pkg}"
+
+        # Cleanup local package and write latestVersion for downstream
+        rm -f "${pkg}"
+        echo "latestVersion=${datetime}" > file.properties
+      description: Package and publish to CodeArtifact
+
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+
+repositories:
+- bsstwiki:
+    scope: global
+
+triggers:
+- bitbucket-server-trigger
+
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+
+notifications:
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

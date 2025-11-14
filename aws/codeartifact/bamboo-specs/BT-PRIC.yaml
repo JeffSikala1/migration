@@ -1,0 +1,318 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: PRIC
+  name: Pricing - Build
+
+stages:
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+    - clean
+
+    # Checkout repos
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
+    - checkout:
+        repository: bamboo-deployment
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout Default Repository
+
+    # Ensure bamboo-deployment is on develop branch
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+            cd bamboo-deployment
+            git fetch --all --prune
+            git checkout -B develop origin/develop || git checkout -B develop
+            git log -1 --oneline
+        description: Ensure bamboo-deployment@develop branch
+
+    # Remove only SNAPSHOT folders from local CNXS cache
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            dirName=~/.m2/repository/gov/gsa/
+            if [ -d "$dirName" ]; then
+              echo "Removing SNAPSHOT folders from $dirName"
+              find "$dirName" -type d -name '*SNAPSHOT' -exec rm -rf {} +
+            fi
+        description: Remove CNXS SNAPSHOT folders
+
+    # Writes file.properties + settings-ca.xml (points Maven at CodeArtifact)
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/build-determination-migration.sh
+        description: Determine parent/target repos and write properties
+
+    # Ensure external connection for both repos once
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+            for REPO in conexus-plugin-repository conexus-dependencies; do
+              echo "Associating public:maven-central with $REPO"
+              aws codeartifact associate-external-connection \
+                --domain cnxsartifact --domain-owner 339713019047 \
+                --repository "$REPO" --external-connection public:maven-central \
+                --region us-east-1 >/dev/null 2>&1 || true
+            done
+        description: Ensure external connection to Maven Central (plugin + deps)
+
+    # Fetch a short-lived CodeArtifact token for the build (LOCAL scope)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set +x
+            echo "caToken.password=$(aws codeartifact get-authorization-token \
+              --domain cnxsartifact --query authorizationToken --output text --region us-east-1)" > ca-token.properties
+        description: Fetch CodeArtifact token (local, masked)
+
+    # Inject endpoints (from file.properties)
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject values
+
+    # Inject token as a Bamboo variable (variable dump task removed for security)
+    - inject-variables:
+        file: ca-token.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject CodeArtifact token (masked)
+
+    # Normalize property variables (avoid dotted names in shell; POSIX compliant)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+
+            echo "Normalizing variables from file.properties"
+
+            # Export KEY=VAL from file.properties as upper-cased, dot-free env vars.
+            # - ignore blank lines and comments
+            # - strip trailing CRs without bashisms
+            # - KEY: dots -> underscores; non [A-Za-z0-9_] -> underscores; upper-case
+            while IFS='=' read -r k v; do
+              [ -n "$k" ] || continue
+              case "$k" in \#*) continue;; esac
+              v=$(printf '%s' "$v" | tr -d '\r')
+              clean_key=$(printf '%s' "$k" | tr '.' '_' | sed -E 's/[^A-Za-z0-9_]/_/g')
+              upper_key=$(printf '%s' "$clean_key" | awk '{print toupper($0)}')
+              # Escape value for safe eval (handles quotes/spaces)
+              v_esc=$(printf %s "$v" | sed "s/'/'\\\\''/g")
+              eval "export ${upper_key}='${v_esc}'"
+            done < file.properties
+
+            # Derive branch name (do not rely on Bamboo-provided vars)
+            BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+            export BRANCH_NAME
+
+            # Resolve the CodeArtifact token WITHOUT dotted Bamboo vars
+            TOKEN_VAL="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties 2>/dev/null | tr -d '\r\n')"
+            : "${TOKEN_VAL:=${bamboo_inject_caToken_password:-}}"
+
+            if [ -z "$TOKEN_VAL" ]; then
+              echo "ERROR: CodeArtifact token not found (ca-token.properties missing or injector fallback empty)."
+              exit 1
+            fi
+            export CODEARTIFACT_AUTH_TOKEN="$TOKEN_VAL"
+
+            echo "Prepared environment variables for Maven"
+        description: Normalize variables (no dotted usage, POSIX)
+
+    # Write final Maven settings for CodeArtifact (both repos) – resolve + deps ONLY
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            set -e
+            TOKEN_VAL="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties 2>/dev/null | tr -d '\r\n')"
+            : "${TOKEN_VAL:=${bamboo_inject_caToken_password:-}}"
+            [ -n "$TOKEN_VAL" ] || { echo "ERROR: CodeArtifact token missing"; exit 1; }
+            export CODEARTIFACT_AUTH_TOKEN="$TOKEN_VAL"
+
+            RESOLVE_REPO="$(awk -F= '/^resolveRepositoryUrl=/{print $2}' file.properties | tr -d '\r' | sed 's#/*$##')"
+            DEPS_REPO_ENDPOINT="$(aws codeartifact get-repository-endpoint \
+              --domain cnxsartifact --domain-owner 339713019047 \
+              --repository conexus-dependencies --format maven \
+              --region us-east-1 --query repositoryEndpoint --output text 2>/dev/null || true)"
+            [ -n "$DEPS_REPO_ENDPOINT" ] || DEPS_REPO_ENDPOINT="${RESOLVE_REPO%conexus-plugin-repository}/conexus-dependencies"
+            DEPS_REPO_ENDPOINT="${DEPS_REPO_ENDPOINT%/}"
+
+            # Persist endpoints for later steps to avoid recomputing
+            printf "RESOLVE_REPO='%s'\nDEPS_REPO_ENDPOINT='%s'\n" \
+              "${RESOLVE_REPO%/}" "${DEPS_REPO_ENDPOINT%/}" > endpoints.env
+
+            cat > settings-final.xml <<'EOF'
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <servers>
+                <server><id>ca-resolve</id><username>aws</username><password>${env.CODEARTIFACT_AUTH_TOKEN}</password></server>
+                <server><id>ca-deps</id><username>aws</username><password>${env.CODEARTIFACT_AUTH_TOKEN}</password></server>
+              </servers>
+              <profiles>
+                <profile>
+                  <id>codeartifact</id>
+                  <repositories>
+                    <repository>
+                      <id>ca-resolve</id>
+                      <url>__RESOLVE__</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+                    </repository>
+                    <repository>
+                      <id>ca-deps</id>
+                      <url>__DEPS__</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>ca-resolve-plugins</id>
+                      <url>__RESOLVE__</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles><activeProfile>codeartifact</activeProfile></activeProfiles>
+            </settings>
+            EOF
+
+            sed -i "s#__RESOLVE__#${RESOLVE_REPO%/}#g" settings-final.xml
+            sed -i "s#__DEPS__#${DEPS_REPO_ENDPOINT%/}#g" settings-final.xml
+            echo "Wrote settings-final.xml (resolve=${RESOLVE_REPO%/} deps=${DEPS_REPO_ENDPOINT})"
+        description: Write final Maven settings for CodeArtifact (both repos)
+
+    # Pre-resolve parent BOM (uses newly written settings-final.xml)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            set -e
+            TOKEN_VAL="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties 2>/dev/null | tr -d '\r\n')"
+            : "${TOKEN_VAL:=${bamboo_inject_caToken_password:-}}"
+            [ -n "$TOKEN_VAL" ] || { echo "ERROR: CodeArtifact token missing"; exit 1; }
+            export CODEARTIFACT_AUTH_TOKEN="$TOKEN_VAL"
+
+            # Reuse previously persisted endpoints to avoid recomputing
+            [ -f endpoints.env ] || { echo "ERROR: endpoints.env missing"; exit 1; }
+            . ./endpoints.env
+
+            BOM_GAV="gov.gsa.cnxs.bom:env:01.00.000.161.100-SNAPSHOT"
+            echo "Pre-resolving BOM (pom packaging) from resolve/deps only: $BOM_GAV"
+            mvn -U -B -s settings-final.xml \
+              org.apache.maven.plugins:maven-dependency-plugin:3.8.0:get \
+              -Dartifact="$BOM_GAV" \
+              -Dpackaging=pom \
+              -Dtransitive=false \
+              "-DremoteRepositories=ca-resolve::default::${RESOLVE_REPO},ca-deps::default::${DEPS_REPO_ENDPOINT}"
+        description: Pre-resolve parent BOM (fail fast if missing)
+
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            set -e
+            # Rehydrate token & branch
+            TOKEN_VAL="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties 2>/dev/null | tr -d '\r\n')"
+            : "${TOKEN_VAL:=${bamboo_inject_caToken_password:-}}"
+            [ -n "$TOKEN_VAL" ] || { echo "ERR: CA token missing"; exit 1; }
+            export CODEARTIFACT_AUTH_TOKEN="$TOKEN_VAL"
+
+            BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+            export MAVEN_OPTS="-Xms512m -Xmx1024m"
+
+            FEATURE_URL="$(awk -F= '/^mavenFeatureRepositoryUrl=/{print $2}' file.properties | tr -d '\r')"
+            PLUGIN_URL="$(awk -F= '/^pluginRepositoryUrl=/{print $2}' file.properties | tr -d '\r')"
+
+            echo "Running Maven build (branch=${BRANCH_NAME})"
+            mvn -s settings-final.xml -B -U clean verify \
+              -DskipITs=true -Ddocker.skip=true \
+              -DbranchName="$BRANCH_NAME" \
+              -DfeatureRepoUrl="$FEATURE_URL" \
+              -DpluginRepoUrl="$PLUGIN_URL" \
+              -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        description: Build and Verify (CodeArtifact, settings-final.xml)
+
+    # Parse Surefire & Failsafe results
+    - test-parser:
+        type: junit
+        ignore-time: false
+        test-results: "**/target/surefire-reports/*.xml"
+        description: surefire reports
+    - test-parser:
+        type: junit
+        ignore-time: false
+        test-results: "**/target/failsafe-reports/*.xml"
+        description: failsafe reports
+
+    # Deploy with migrated script (skip bamboo version)
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
+        description: Determine if deploy to CodeArtifact is needed
+
+    # Cleanup token file
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            rm -f ca-token.properties || true
+        description: Cleanup token file
+
+repositories:
+  - Pricing:
+      scope: global
+  - bamboo-deployment:
+      scope: global
+
+triggers:
+  - bitbucket-server-trigger:
+      repositories:
+        - Pricing
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+  - events: [plan-failed]
+    recipients: [responsible, committers]
+  - events: [plan-completed]
+    recipients: [watchers]
+  - events: [plan-failed]
+    recipients: [responsible, committers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans:
+    - BT-REC
+    - BT-REST

@@ -1,0 +1,307 @@
+version: 2
+plan:
+  project-key: BT
+  key: ENV
+  name: Env - Build
+
+stages:
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Default Job
+
+Default Job:
+  key: JOB1
+  requirements:
+    - "system.builder.mvn3.Maven 3"
+    - "system.jdk.JDK 17"
+  tasks:
+    - clean
+
+    # Repos
+    - checkout:
+        repository: Env
+        force-clean-build: true
+        description: Checkout Default Repository (Env)
+
+    - checkout:
+        repository: bamboo-deployment
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout bamboo-deployment repository
+
+    # Ensure bamboo-deployment develop
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Ensure bamboo-deployment branch (develop)
+        scripts:
+          - |
+            set -eu
+            git fetch --all --prune
+            git checkout -B develop origin/develop || git checkout develop
+            git reset --hard origin/develop || true
+            git --no-pager log -1 --oneline
+
+    # Hygiene
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Remove gov/gsa cache (jq optional)
+        scripts:
+          - |
+            set -eu
+            rm -rf "$HOME/.m2/repository/gov/gsa" || true
+            command -v jq >/dev/null 2>&1 || echo "jq not found on agent; continuing"
+
+    # Discover CA endpoints & write properties
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Determine parent/target repos and write properties
+        scripts:
+          - |
+            set -eu
+            WRITE_MAVEN_SETTINGS=0 bash ./build-determination-migration.sh
+
+    # Export properties (and any pre-existing settings-ca.xml)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Export properties & (placeholder) settings to root
+        scripts:
+          - |
+            set -eu
+            SRC=bamboo-deployment
+            [ -f "$SRC/file.properties" ] || SRC="."
+            cp -f "$SRC"/file.properties ./
+            cp -f "$SRC"/settings-ca.xml ./ 2>/dev/null || true
+            ls -la file.properties settings-ca.xml || true
+
+    # Inject variables from file.properties
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject values
+
+    # Best-effort: ensure repo links public maven-central (ignore auth errors)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Ensure CodeArtifact has Maven Central external connection
+        scripts:
+          - |
+            set -eu
+            DOMAIN="cnxsartifact"
+            REPO="conexus-plugin-repository"
+            REGION="us-east-1"
+            aws codeartifact associate-external-connection \
+              --domain "$DOMAIN" --repository "$REPO" \
+              --external-connection public:maven-central \
+              --region "$REGION" >/dev/null 2>&1 || true
+            echo "Ensured external connection public:maven-central for $REPO (best-effort)"
+
+    # Debug dump of variables
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+        configuration: {}
+        description: Dump variables to log
+
+    # Write settings-ca.xml with TWO CA repos (no mirrors): plugin repo first, maven-central-store second
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Write settings-ca.xml (two CA repos for deps/plugins)
+        scripts:
+          - |
+            set -eu
+            BASE_PLUGIN="$(grep -E '^resolveRepositoryUrl=' file.properties | cut -d= -f2- | tr -d '\r')"
+            case "$BASE_PLUGIN" in */) : ;; *) BASE_PLUGIN="$BASE_PLUGIN/";; esac
+            BASE_CENTRAL="$(printf '%s\n' "$BASE_PLUGIN" | sed 's#/maven/[^/]\+/#/maven/maven-central-store/#')"
+
+            {
+              echo '<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">'
+              echo '  <servers>'
+              echo '    <server><id>conexus-plugin-repository</id><username>aws</username><password>${env.CODEARTIFACT_AUTH_TOKEN}</password></server>'
+              echo '    <server><id>maven-central-store</id><username>aws</username><password>${env.CODEARTIFACT_AUTH_TOKEN}</password></server>'
+              echo '  </servers>'
+              echo '  <profiles>'
+              echo '    <profile>'
+              echo '      <id>ca</id>'
+              echo '      <repositories>'
+              echo '        <repository><id>conexus-plugin-repository</id><url>'"$BASE_PLUGIN"'</url><releases><enabled>true</enabled><updatePolicy>always</updatePolicy></releases><snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots></repository>'
+              echo '        <repository><id>maven-central-store</id><url>'"$BASE_CENTRAL"'</url><releases><enabled>true</enabled><updatePolicy>always</updatePolicy></releases><snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots></repository>'
+              echo '      </repositories>'
+              echo '      <pluginRepositories>'
+              echo '        <pluginRepository><id>conexus-plugin-repository</id><url>'"$BASE_PLUGIN"'</url><releases><enabled>true</enabled><updatePolicy>always</updatePolicy></releases><snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots></pluginRepository>'
+              echo '        <pluginRepository><id>maven-central-store</id><url>'"$BASE_CENTRAL"'</url><releases><enabled>true</enabled><updatePolicy>always</updatePolicy></releases><snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots></pluginRepository>'
+              echo '      </pluginRepositories>'
+              echo '    </profile>'
+              echo '  </profiles>'
+              echo '  <activeProfiles><activeProfile>ca</activeProfile></activeProfiles>'
+              echo '</settings>'
+            } > settings-ca.xml
+
+            echo "Wrote settings-ca.xml with repos:"
+            echo "  1) $BASE_PLUGIN"
+            echo "  2) $BASE_CENTRAL"
+
+    # Prefer 8.0.8, fallback to 8.0.6
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Preflight – verify EAP with-tools BOM POM exists in CodeArtifact
+        scripts:
+          - |
+            set -eu
+            DOMAIN="cnxsartifact"; OWNER="339713019047"; REGION="us-east-1"
+            TOKEN="$(aws codeartifact get-authorization-token --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" --query authorizationToken --output text)"
+            BASE="$(grep -E '^resolveRepositoryUrl=' file.properties | cut -d= -f2- | tr -d '\r')"
+            case "$BASE" in */) : ;; *) BASE="$BASE/";; esac
+            check() { curl -fsS -I -u "aws:${TOKEN}" "$BASE$1" >/dev/null; }
+            P808="org/jboss/bom/jboss-eap-ee-with-tools/8.0.8.GA-redhat-00006/jboss-eap-ee-with-tools-8.0.8.GA-redhat-00006.pom"
+            P806="org/jboss/bom/jboss-eap-ee-with-tools/8.0.6.GA-redhat-00010/jboss-eap-ee-with-tools-8.0.6.GA-redhat-00010.pom"
+            if check "$P808"; then echo "Preflight OK: 8.0.8.GA-redhat-00006"
+            elif check "$P806"; then echo "Preflight OK: 8.0.6.GA-redhat-00010"
+            else echo "ERROR: Neither 8.0.8 nor 8.0.6 with-tools BOM found at ${BASE}"; exit 2; fi
+
+    # Build via CodeArtifact (Maven sees both repos now)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Build BOM via CodeArtifact (no external GA)
+        scripts:
+          - |
+            set -eu
+            DOMAIN="cnxsartifact"; OWNER="339713019047"; REGION="us-east-1"
+            export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+              --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
+              --query authorizationToken --output text)"
+            printf '%s\n' '<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"/>' > settings-empty.xml
+            BUILD_M2="$(mktemp -d)"
+            echo "Building ENV BOM against CodeArtifact…"
+            mvn -gs "$(pwd)/settings-empty.xml" \
+                -s  "$(pwd)/settings-ca.xml" \
+                -Dmaven.repo.local="$BUILD_M2" \
+                -B -U \
+                -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+                clean verify
+
+    # Deploy only on long-lived branches
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Deploy to CodeArtifact iff on long-lived branch
+        scripts:
+          - |
+            set -eu
+
+            # Read isLongLived and deploy URL from file.properties (POSIX-safe lowercase)
+            IS_LL="$(awk -F= '/^isLongLived[[:space:]]*=/{print $2}' file.properties \
+              | tr -d '\r[:space:]' | tr '[:upper:]' '[:lower:]' || true)"
+            DEPLOY_URL="$(awk -F= '/^pluginRepositoryUrl[[:space:]]*=/{print $2}' file.properties | tr -d '\r[:space:]' || true)"
+
+            if [ "${IS_LL:-false}" != "true" ]; then
+              echo "isLongLived=false — skipping deploy."
+              exit 0
+            fi
+            if [ -z "${DEPLOY_URL:-}" ]; then
+              echo "ERROR: pluginRepositoryUrl missing in file.properties"
+              exit 1
+            fi
+
+            echo "isLongLived=true — deploying to ${DEPLOY_URL}"
+
+            DOMAIN="cnxsartifact"; OWNER="339713019047"; REGION="us-east-1"
+            export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+              --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
+              --query authorizationToken --output text)"
+
+            # Use the same server id as in settings-ca.xml: 'conexus-plugin-repository'
+            mvn -s settings-ca.xml -B -DskipTests \
+              -DaltDeploymentRepository="conexus-plugin-repository::default::${DEPLOY_URL%/}" \
+              deploy
+
+    # Promote BOM SNAPSHOTs from long-lived repo to virtual aggregator
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Promote BOM SNAPSHOTs from long-lived repo to virtual aggregator
+        scripts:
+          - |
+            set -eu
+
+            # Read flags/URLs from file.properties
+            IS_LL="$(awk -F= '/^isLongLived[[:space:]]*=/{print $2}' file.properties \
+              | tr -d '\r[:space:]' | tr '[:upper:]' '[:lower:]' || true)"
+            SRC_URL="$(awk -F= '/^pluginRepositoryUrl[[:space:]]*=/{print $2}' file.properties \
+              | tr -d '\r[:space:]' || true)"
+
+            if [ "${IS_LL:-false}" != "true" ]; then
+              echo "isLongLived=false — skipping promotion."
+              exit 0
+            fi
+
+            # Derive source repo name from the URL (segment after /maven/)
+            SRC_REPO="$(printf '%s\n' "${SRC_URL%/}" | awk -F'/maven/' '{print $2}')"
+            if [ -z "${SRC_REPO:-}" ]; then
+              echo "ERROR: could not derive source repo from pluginRepositoryUrl=${SRC_URL}"
+              exit 1
+            fi
+
+            DEST_REPO="conexus-plugin-repository"
+            DOMAIN="cnxsartifact"
+            OWNER="339713019047"
+            REGION="us-east-1"
+
+            export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+              --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
+              --query authorizationToken --output text)"
+
+            # Obtain project.version via Maven (no regex parsing)
+            VERSION="$(mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' \
+              --non-recursive org.codehaus.mojo:exec-maven-plugin:3.5.0:exec | tail -n1 | tr -d '\r')"
+            if [ -z "${VERSION:-}" ]; then
+              echo "ERROR: Could not determine project.version"
+              exit 1
+            fi
+            echo "Promoting version ${VERSION} from ${SRC_REPO} -> ${DEST_REPO}"
+
+            copy_pkg () {
+              ns="$1"; pkg="$2"
+              echo "Copy ${ns}:${pkg}:${VERSION}"
+              aws codeartifact copy-package-versions \
+                --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
+                --format maven \
+                --source-repository "$SRC_REPO" --destination-repository "$DEST_REPO" \
+                --namespace "$ns" --package "$pkg" --versions "$VERSION" \
+                --allow-overwrite >/dev/null
+            }
+
+            # Promote the three BOMs
+            copy_pkg "gov.gsa.cnxs.bom" "build-tools"
+            copy_pkg "gov.gsa.cnxs.bom" "env-base"
+            copy_pkg "gov.gsa.cnxs.bom" "env"
+
+            echo "Promotion complete."
+
+repositories:
+  - Env:
+      scope: global
+  - bamboo-deployment:
+      scope: global
+
+triggers:
+  - bitbucket-server-trigger:
+      repositories:
+        - Env
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+# Notifications intentionally omitted to keep YAML strict/clean.
+
+dependencies:
+  require-all-stages-passing: true
+  enabled-for-branches: true
+  block-strategy: block_if_parent_in_progress
+  plans:
+    - BT-COMB

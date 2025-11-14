@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: reporting
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: reporting
+    spec:
+      containers:
+      - name: conexus-reporting
+        image: 957770628377.dkr.ecr.us-east-1.amazonaws.com/sandbox-jboss-reporting:0.4
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: apache-config
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - mountPath: /NSFS_NAS/database
+          name: database-volume
+        - mountPath: /app/conexus/attachments
+          name: attachments-volume
+        - mountPath: /app/conexus/reports
+          name: reports-volume
+      volumes:
+        - name: database-volume
+          persistentVolumeClaim:
+            claimName: efs-database-volume-claim
+        - name: attachments-volume
+          persistentVolumeClaim:
+            claimName: efs-attachments-volume-claim
+        - name: reports-volume
+          persistentVolumeClaim:
+            claimName: efs-reports-volume-claim
+
+

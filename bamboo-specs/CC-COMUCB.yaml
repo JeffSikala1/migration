@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="CC" buildKey="COMUCB"><code>---
+version: 2
+plan:
+  project-key: CC
+  key: COMUCB
+  name: Common - Unified Clover Build
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  other:
+    clean-working-dir: true
+    all-other-apps:
+      custom:
+        auto: {}
+        buildHangingConfig.enabled: 'false'
+        clover:
+          path: target/site/clover/**/clover.xml
+          integration: auto
+          exists: 'true'
+          historical: 'true'
+          tool: openclover
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: SHELL
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: clean verify -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dmaven.clover.repositoryPollutionProtection=false
+      tests: 'true'
+      description: Common Build and Verify
+  artifacts:
+  - name: Clover Report (System)
+    location: target/site/clover
+    pattern: '**/*.*'
+    shared: false
+    required: false
+  artifact-subscriptions: []
+repositories:
+- Common:
+    scope: global
+- bamboo-deployment:
+    scope: global
+triggers:
+- cron:
+    expression: 0 0 1 ? * 2
+branches:
+  create: manually
+  delete:
+    after-deleted-days: 60
+    after-inactive-days: 30
+  link-to-jira: true
+notifications: []
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+---
+version: 2
+plan:
+  key: CC-COMUCB
+plan-permissions:
+- users:
+  - simon.branton-housley@usda.gov
+  groups:
+  - nsfs_devops
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+...
+</code></spec></specs>

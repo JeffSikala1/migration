@@ -1,0 +1,319 @@
+---
+version: 2
+deployment:
+  name: JBoss Services - Deploy to DEV EKS
+  # Use your build plan that produced the images/artifacts:
+  source-plan: AWS-JBOSS
+
+release-naming:
+  next-version-name: ${bamboo.inject.release_name}
+  applies-to-branches: false
+  auto-increment: false
+  auto-increment-variables: []
+
+environments:
+  - DEV-EKS
+
+DEV-EKS:
+  description: Deploy JBoss services (portal, jms, webservice, brms, reporting) to the DEV EKS cluster
+  release-approval-prerequisite: none
+  triggers: []
+  tasks:
+    - clean
+
+    # 0) Checkout ArgoCD repo here (uses the “argocd” linked repo)
+    - checkout:
+        repository: argocd
+        path: argocd-repo
+        force-clean-build: true
+        description: Checkout ArgoCD repo
+
+    # Show checked-out branch/head
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Show checked-out branch/head
+        scripts:
+          - |
+            set -eu
+            cd "${bamboo.build.working.directory}/argocd-repo"
+            git rev-parse --abbrev-ref HEAD
+            git log -1 --oneline
+
+    # 1) Pull the 'releases' artifact from the build
+    - artifact-download:
+        artifacts:
+          - name: releases
+
+    # Sanity – SSH key for push is present
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Sanity – SSH key for push is present
+        scripts:
+          - |
+            [ -s /home/bamboo/.ssh/id_argcdbb ] || { echo "ERROR: /home/bamboo/.ssh/id_argcdbb missing"; exit 1; }
+
+    # GitOps: update ArgoCD kustomization (DEV) using the local checkout
+    - script:
+        description: GitOps - update ArgoCD kustomization (DEV) via checked-out repo
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            set -eu
+            ( set -o pipefail ) 2>/dev/null || true
+
+            WORKDIR="${bamboo.build.working.directory}/argocd-repo"
+            OVERLAY_DIR="jboss-manifests/env/dev"
+
+            AWS_REGION="${bamboo.AWS_REGION}"
+            AWS_ACCOUNT_ID="${bamboo.AWS_ACCOUNT_ID}"
+            ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+            # tags from artifacts downloaded earlier
+            read_tag() { [ -f "bamboo-deployment/.release.$1" ] && sed -n '1p' "bamboo-deployment/.release.$1" || echo ""; }
+            TAG_PORTAL="$(read_tag portal)"
+            TAG_JMS="$(read_tag jms)"
+            TAG_WEBSVC="$(read_tag webservice)"
+            TAG_BRMS="$(read_tag brms)"
+            TAG_REPO="$(read_tag reporting)"
+            [ -n "$TAG_PORTAL$TAG_JMS$TAG_WEBSVC$TAG_BRMS$TAG_REPO" ] || { echo "ERROR: No .release.* files found"; exit 3; }
+
+            # --- dot-safe release name ---
+            RELEASE_NAME="$(printf %s "$TAG_PORTAL" | sed '1q')"
+            [ -n "$RELEASE_NAME" ] || RELEASE_NAME="${bamboo_deployment_version_name:-release}"
+
+            cd "$WORKDIR"
+
+            # Prefer namespace from existing overlay, if present
+            KUST_NS="$(awk '/^namespace:/ {print $2; exit}' "${OVERLAY_DIR}/kustomization.yaml" 2>/dev/null || true)"
+            [ -n "$KUST_NS" ] && echo "[overlay] namespace=${KUST_NS}"
+
+            mkdir -p "$OVERLAY_DIR"
+
+            # Build the would-be kustomization file, then only replace on change
+            new_kust="$(mktemp)"
+            cat > "$new_kust" <<EOF
+            apiVersion: kustomize.config.k8s.io/v1beta1
+            kind: Kustomization
+            namespace: ingress-nginx
+            resources:
+              - ../../base
+            images:
+              - name: ${ECR}/conexus-jboss-portal
+                newTag: ${TAG_PORTAL:-dev-latest}
+              - name: ${ECR}/conexus-jboss-jms
+                newTag: ${TAG_JMS:-dev-latest}
+              - name: ${ECR}/conexus-jboss-webservice
+                newTag: ${TAG_WEBSVC:-dev-latest}
+              - name: ${ECR}/conexus-jboss-brms
+                newTag: ${TAG_BRMS:-dev-latest}
+              - name: ${ECR}/conexus-jboss-reporting
+                newTag: ${TAG_REPO:-dev-latest}
+            EOF
+
+            # Only replace if content differs
+            if ! cmp -s "$new_kust" "$OVERLAY_DIR/kustomization.yaml" 2>/dev/null; then
+              mv "$new_kust" "$OVERLAY_DIR/kustomization.yaml"
+            else
+              rm -f "$new_kust"
+            fi
+
+            # Write release metadata (note: includes timestamp; consider cmp trick if you want to avoid commits)
+            ts="$(date -u +%FT%TZ)"
+            cat > "$OVERLAY_DIR/release-meta.yaml" <<EOF
+            release: "$RELEASE_NAME"
+            publishedAt: "$ts"
+            services:
+              portal:     "conexus-jboss-portal:${TAG_PORTAL:-dev-latest}"
+              jms:        "conexus-jboss-jms:${TAG_JMS:-dev-latest}"
+              webservice: "conexus-jboss-webservice:${TAG_WEBSVC:-dev-latest}"
+              brms:       "conexus-jboss-brms:${TAG_BRMS:-dev-latest}"
+              reporting:  "conexus-jboss-reporting:${TAG_REPO:-dev-latest}"
+            EOF
+
+            # push using the mounted key and the REAL remote (not Bamboo’s cache)
+            export GIT_SSH_COMMAND='ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+
+            # Use your known remote/branch explicitly (avoids Bamboo variable quirks)
+            REAL_REMOTE="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/argocd.git"
+            REAL_BRANCH="main"
+
+            git -c user.name="bamboo" -c user.email="bamboo@local" add "$OVERLAY_DIR/kustomization.yaml" "$OVERLAY_DIR/release-meta.yaml"
+
+            # If nothing changed, bail out quietly
+            if git diff --cached --quiet; then
+              echo "No changes to commit"
+              exit 0
+            fi
+
+            git -c user.name="bamboo" -c user.email="bamboo@local" commit -m "DEV: $RELEASE_NAME / portal=$TAG_PORTAL jms=$TAG_JMS ws=$TAG_WEBSVC brms=$TAG_BRMS reporting=$TAG_REPO"
+
+            # Make sure we are on the real remote/branch — not Bamboo’s file:// cache
+            git remote remove origin >/dev/null 2>&1 || true
+            git remote add origin "$REAL_REMOTE"
+            git fetch origin "$REAL_BRANCH" || true
+            git checkout -B "$REAL_BRANCH" || true
+
+            git push origin HEAD:"$REAL_BRANCH"
+
+            # Debug: prove we pushed to the right place
+            git remote -v
+            git ls-remote origin "$REAL_BRANCH" | head -1
+
+    # Post-push sanity: show remote head after push
+    - script:
+        description: Show remote head
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: argocd-repo
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            git remote -v
+            git ls-remote origin main | head -1 || echo "[warn] ls-remote failed"
+
+    # Assume DEV, write kubeconfig, then patch images
+    - script:
+        description: Assume DEV, write kubeconfig, then patch images
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            set -eu
+            ( set -o pipefail ) 2>/dev/null || true
+
+            # Skip this step unless explicitly requested (set RUN_PATCH=true to enable)
+            if [ "${RUN_PATCH:-false}" != "true" ]; then
+              echo "[patch] Skipping kubectl rollout (waiting for Argo to sync the overlay)."
+              exit 0
+            fi
+
+            AWS_REGION="${bamboo.AWS_REGION}"
+            AWS_ACCOUNT_ID="${bamboo.AWS_ACCOUNT_ID}"
+            KUBE_CONTEXT="${bamboo.KUBE_CONTEXT}"
+            NAMESPACE="${bamboo.KUBE_NAMESPACE}"
+            TARGET_ROLE_ARN="${bamboo.TARGET_ROLE_ARN}"
+            REG_BASE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+            FLOAT_TAG="${bamboo.FLOAT_TAG}"
+            OVERRIDE_TAG="${bamboo.DEPLOY_VERSION}"
+            REL_BASE="./bamboo-deployment"
+            CLUSTER_NAME="${bamboo.EKS_CLUSTER_NAME}"
+
+            command -v aws >/dev/null 2>&1 || { echo "aws CLI not found"; exit 1; }
+            command -v jq  >/dev/null 2>&1 || { echo "jq not found"; exit 1; }
+            command -v kubectl >/dev/null 2>&1 || { echo "kubectl not found"; exit 1; }
+
+            echo "[assume] assuming role: ${TARGET_ROLE_ARN}"
+            ASSUME_JSON="$(aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name "bambooDeploy-$(date +%s)")"
+            export AWS_ACCESS_KEY_ID="$(echo "$ASSUME_JSON" | jq -r '.Credentials.AccessKeyId')"
+            export AWS_SECRET_ACCESS_KEY="$(echo "$ASSUME_JSON" | jq -r '.Credentials.SecretAccessKey')"
+            export AWS_SESSION_TOKEN="$(echo "$ASSUME_JSON" | jq -r '.Credentials.SessionToken')"
+            export AWS_DEFAULT_REGION="${AWS_REGION}"
+
+            aws eks update-kubeconfig \
+              --region "${AWS_REGION}" \
+              --name "${CLUSTER_NAME}" \
+              --alias "${KUBE_CONTEXT}"
+
+            kubectl --context="${KUBE_CONTEXT}" -n "${NAMESPACE}" get deploy >/dev/null
+
+            dep_name() {
+              case "$1" in
+                portal)     echo "${bamboo.DEPLOY_PORTAL}" ;;
+                jms)        echo "${bamboo.DEPLOY_JMS}" ;;
+                webservice) echo "${bamboo.DEPLOY_WEBSVC}" ;;
+                brms)       echo "${bamboo.DEPLOY_BRMS}" ;;
+                reporting)  echo "${bamboo.DEPLOY_REPORTING}" ;;
+              esac
+            }
+            ctr_name() {
+              case "$1" in
+                portal)     echo "${bamboo.CTR_PORTAL}" ;;
+                jms)        echo "${bamboo.CTR_JMS}" ;;
+                webservice) echo "${bamboo.CTR_WEBSVC}" ;;
+                brms)       echo "${bamboo.CTR_BRMS}" ;;
+                reporting)  echo "${bamboo.CTR_REPORTING}" ;;
+              esac
+            }
+
+            found_any=0
+
+            for svc in portal jms webservice brms reporting; do
+              rel_file="${REL_BASE}/.release.${svc}"
+              tag_src=""; tag=""
+
+              if [ -f "$rel_file" ]; then
+                tag="$(cat "$rel_file")"; tag_src="release-file"
+              elif [ -n "${FLOAT_TAG}" ]; then
+                tag="${FLOAT_TAG}"; tag_src="FLOAT_TAG"
+              elif [ -n "${OVERRIDE_TAG}" ]; then
+                tag="${OVERRIDE_TAG}"; tag_src="DEPLOY_VERSION"
+              else
+                echo "WARN: no tag for ${svc}; skipping"; continue
+              fi
+
+              dname="$(dep_name "$svc")"
+              cname="$(ctr_name "$svc")"
+              nspace="${NAMESPACE}"
+
+              if ! kubectl --context="${KUBE_CONTEXT}" -n "${nspace}" get deploy "${dname}" >/dev/null 2>&1; then
+                found="$(kubectl --context="${KUBE_CONTEXT}" get deploy -A \
+                  -l "app.kubernetes.io/name=${svc}" \
+                  -o jsonpath='{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)"
+
+                if [ -n "$found" ]; then
+                  nspace="$(echo "$found" | head -n1 | cut -d'|' -f1)"
+                  dname="$(echo  "$found" | head -n1 | cut -d'|' -f2)"
+                  echo "[discover] ${svc} -> ${nspace}/${dname} (via label app.kubernetes.io/name=${svc})"
+                else
+                  echo "WARN: ${svc} not found by name (${NAMESPACE}/${dname}) or label; skipping"
+                  continue
+                fi
+              fi
+
+              repo="conexus-jboss-${svc}"
+              image="${REG_BASE}/${repo}:${tag}"
+              echo "[deploy] ${svc}: tag='${tag}' (${tag_src}) -> ${image}  at ${nspace}/${dname} (container=${cname})"
+
+              kubectl --context="${KUBE_CONTEXT}" -n "${nspace}" set image "deployment/${dname}" "${cname}=${image}" --record
+              kubectl --context="${KUBE_CONTEXT}" -n "${nspace}" rollout status "deployment/${dname}" --timeout=10m
+
+              found_any=$((found_any+1))
+            done
+
+            if [ "$found_any" -eq 0 ]; then
+              echo "ERROR: No target JBoss Deployments found. Nothing was patched."
+              echo "Hint: create/deploy the workloads, or ensure the names/labels/namespace match."
+              exit 3
+            fi
+  final-tasks: []
+  variables:
+    AWS_REGION: us-east-1
+    AWS_ACCOUNT_ID: "339713019047"
+    KUBE_CONTEXT: dev-eks
+    KUBE_NAMESPACE: ingress-nginx
+    EKS_CLUSTER_NAME: cnxsdev-selfmanaged
+    EKS_CLUSTER_ARN: arn:aws:eks:us-east-1:471112718870:cluster/cnxsdev-selfmanaged
+    TARGET_ROLE_ARN: arn:aws:iam::471112718870:role/eks-deployer
+
+    # floating tag & manual override (optional)
+    FLOAT_TAG: dev-latest
+    DEPLOY_VERSION: ""
+    RUN_PATCH: "false"
+
+    # --- correct K8s Deployment names ---
+    DEPLOY_PORTAL: portal
+    DEPLOY_JMS: jms
+    DEPLOY_WEBSVC: webservice
+    DEPLOY_BRMS: brms
+    DEPLOY_REPORTING: reporting
+
+    # --- correct container names ---
+    CTR_PORTAL: conexus-portal
+    CTR_JMS: conexus-jms
+    CTR_WEBSVC: conexus-webservice
+    CTR_BRMS: conexus-brms
+    CTR_REPORTING: conexus-reporting
+
+  requirements: []
+  notifications: []

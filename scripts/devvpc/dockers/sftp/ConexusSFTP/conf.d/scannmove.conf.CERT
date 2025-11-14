@@ -1,0 +1,43 @@
+#!/bin/bash
+
+lockfile="/tmp/ConexusSFTP.lock";
+sqlite="/usr/bin/sqlite3";
+apppath="/app/ConexusSFTP";
+dbname="pathways.db.CERT";
+db="${apppath}/maps/${dbname}";
+#Main
+selqry="select rowid,src from srcdest group by src order by rowid";
+#Copied files query - Files that are copied need to be moved at the end of a complete run
+copiedqry="select srcfile from copiedfiles";
+
+#Give some Time for file transfers to complete
+timeold="+5"; #pickup files older than 5 mins
+
+#Anti Virus
+avprog="/usr/bin/clamscan"
+avdat=""
+infdest=" --move=/NSFS_NAS/fail_scan"
+miscopts=" --quiet"
+
+
+#Email
+mailx="/bin/mailx";
+frommail="madhav.kundala@ocio.usda.gov"
+tomail="simon.branton-housley@usda.gov, madhav.kundala@usda.gov, John.Murzyn@usda.gov"
+#tomail="OCIO-EAS-CONEXUS-SYSTEMS@ocio.usda.gov"
+vamailsubj="ConexusSFTP - CERT Environment"
+vamailtext="Files available for pickup at the following location "
+
+#Log Tags
+transfertag="ConexusSFTP_Transfer";
+avtag="ConexusSFTP_AVScan";
+
+#File Types as per /etc/mime.types 
+allowedmimetypes=(text/plain application/xml application/octet-stream application/msword application/vnd.openxmlformats-officedocument application/vnd.oasis.opendocument application/vnd.ms-excel application/vnd.ms-powerpoint application/vnd.visio application/vnd.ms-project application/pdf image/png image/jpeg image/gif image/tiff application/zip application/gzip application/x-gzip application/rar)
+
+filerenametypes=(text/plain application/zip application/gzip application/x-gzip application/rar)
+
+#Copied temp Archive
+cparchive="/NSFS_NAS/database/cparchive"
+
+

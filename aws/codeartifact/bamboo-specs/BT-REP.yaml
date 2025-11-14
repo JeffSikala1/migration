@@ -1,0 +1,323 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: REP
+  name: Reporting - Build
+
+stages:
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+    - clean
+
+    # Checkout repos
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
+    - checkout:
+        repository: bamboo-deployment
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout bamboo-deployment repository
+
+    # Ensure log artifact directory/files exist so publishing never fails
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            mkdir -p integration/target
+            : > integration/target/jboss.log
+            : > integration/target/oracle.log
+        description: Ensure log artifact directory/files exist (early)
+
+    # Use migrated scripts @develop
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+            cd bamboo-deployment
+            git fetch --all --prune
+            git checkout -B develop origin/develop || git checkout -B develop
+            git log -1 --oneline
+        description: Ensure bamboo-deployment@develop branch
+
+    # Optional local cache hygiene
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            dir="$HOME/.m2/repository/gov/gsa/"
+            [ -d "$dir" ] && { echo "Removing SNAPSHOT folders under $dir"; find "$dir" -type d -name '*SNAPSHOT' -exec rm -rf {} +; } || true
+        description: Remove CNXS SNAPSHOT folders
+
+    # Discover endpoints & write settings-ca.xml + file.properties
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/build-determination-migration.sh
+        description: Determine parent/target repos and write properties
+
+    # One-time safety: ensure external connection to Maven Central (resolve + deps)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+            for REPO in conexus-plugin-repository conexus-dependencies; do
+              echo "Associating public:maven-central with $REPO"
+              aws codeartifact associate-external-connection \
+                --domain cnxsartifact --domain-owner 339713019047 \
+                --repository "$REPO" --external-connection public:maven-central \
+                --region us-east-1 >/dev/null 2>&1 || true
+            done
+        description: Ensure external connection to Maven Central (plugin + deps)
+
+    # Fetch a short-lived CodeArtifact token (keep it out of Bamboo vars)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set +x
+            echo "caToken.password=$(aws codeartifact get-authorization-token \
+              --domain cnxsartifact --query authorizationToken --output text --region us-east-1)" > ca-token.properties
+        description: Fetch CodeArtifact token (local file only)
+
+    # Inject endpoints (from file.properties)
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject values
+
+    # Write final Maven settings (resolve + deps) using local token (no var leak)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            set -e
+            TOKEN_VAL="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties | tr -d '\r\n')"
+            [ -n "$TOKEN_VAL" ] || { echo "ERROR: CodeArtifact token missing"; exit 1; }
+            export CODEARTIFACT_AUTH_TOKEN="$TOKEN_VAL"
+
+            RESOLVE_REPO="$(awk -F= '/^resolveRepositoryUrl=/{print $2}' file.properties | tr -d '\r' | sed 's#/*$##')"
+            DEPS_REPO_ENDPOINT="$(aws codeartifact get-repository-endpoint \
+              --domain cnxsartifact --domain-owner 339713019047 \
+              --repository conexus-dependencies --format maven \
+              --region us-east-1 --query repositoryEndpoint --output text 2>/dev/null || true)"
+            [ -n "$DEPS_REPO_ENDPOINT" ] || DEPS_REPO_ENDPOINT="${RESOLVE_REPO%conexus-plugin-repository}/conexus-dependencies"
+            DEPS_REPO_ENDPOINT="${DEPS_REPO_ENDPOINT%/}"
+
+            printf "RESOLVE_REPO='%s'\nDEPS_REPO_ENDPOINT='%s'\n" "${RESOLVE_REPO%/}" "${DEPS_REPO_ENDPOINT%/}" > endpoints.env
+
+            cat > settings-final.xml <<'EOF'
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <servers>
+                <server><id>ca-resolve</id><username>aws</username><password>${env.CODEARTIFACT_AUTH_TOKEN}</password></server>
+                <server><id>ca-deps</id><username>aws</username><password>${env.CODEARTIFACT_AUTH_TOKEN}</password></server>
+              </servers>
+              <profiles>
+                <profile>
+                  <id>codeartifact</id>
+                  <repositories>
+                    <repository>
+                      <id>ca-resolve</id>
+                      <url>__RESOLVE__</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+                    </repository>
+                    <repository>
+                      <id>ca-deps</id>
+                      <url>__DEPS__</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>ca-resolve-plugins</id>
+                      <url>__RESOLVE__</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles><activeProfile>codeartifact</activeProfile></activeProfiles>
+            </settings>
+            EOF
+            sed -i "s#__RESOLVE__#${RESOLVE_REPO%/}#g" settings-final.xml
+            sed -i "s#__DEPS__#${DEPS_REPO_ENDPOINT%/}#g" settings-final.xml
+            echo "Wrote settings-final.xml (resolve=${RESOLVE_REPO%/} deps=${DEPS_REPO_ENDPOINT})"
+        description: Write final Maven settings (resolve + deps)
+
+    # Pre-resolve parent BOM (fail fast, isolated)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            set -e
+            # Token -> env var for settings-final.xml ${env.CODEARTIFACT_AUTH_TOKEN}
+            TOKEN_VAL="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties | tr -d '\r\n')"
+            [ -n "$TOKEN_VAL" ] || { echo "ERROR: CodeArtifact token missing"; exit 1; }
+            export CODEARTIFACT_AUTH_TOKEN="$TOKEN_VAL"
+
+            SETTINGS_PATH="$(pwd -P)/settings-final.xml"
+            [ -f "$SETTINGS_PATH" ] || { echo "ERROR: $SETTINGS_PATH not found"; exit 1; }
+
+            echo "Pre-resolving BOM with explicit GAV:"
+            echo "  g=gov.gsa.cnxs.bom a=env v=01.00.000.161.100-SNAPSHOT p=pom"
+
+            tmp="$(mktemp -d)"
+            ( cd "$tmp" && mvn -B -U -s "$SETTINGS_PATH" \
+                org.apache.maven.plugins:maven-dependency-plugin:3.8.0:get \
+                -DgroupId=gov.gsa.cnxs.bom \
+                -DartifactId=env \
+                -Dversion=01.00.000.161.100-SNAPSHOT \
+                -Dpackaging=pom \
+                -Dtransitive=false )
+        description: Pre-resolve parent BOM (fail fast, isolated)
+
+    # Build via Script (use settings-final.xml, token from file; skip docker)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+            export CODEARTIFACT_AUTH_TOKEN="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties | tr -d '\r\n')"
+
+            BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+            FEATURE_URL="$(awk -F= '/^mavenFeatureRepositoryUrl=/{print $2}' file.properties | tr -d '\r')"
+            PLUGIN_URL="$(awk -F= '/^pluginRepositoryUrl=/{print $2}' file.properties | tr -d '\r')"
+
+            mvn -s settings-final.xml -B -U clean verify \
+              -Ddocker.skip=true -DskipITs=false \
+              -DbranchName="$BRANCH_NAME" \
+              -DfeatureRepoUrl="$FEATURE_URL" \
+              -DpluginRepoUrl="$PLUGIN_URL" \
+              -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        description: Build and Verify (CodeArtifact)
+
+    # Parse test results
+    - test-parser:
+        type: junit
+        ignore-time: false
+        test-results: "**/target/surefire-reports/*.xml"
+        description: surefire reports
+    - test-parser:
+        type: junit
+        ignore-time: false
+        test-results: "**/target/failsafe-reports/*.xml"
+        description: failsafe reports
+
+    # Capture mavenVersion (robust across multi-module)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            set -e
+            VER="$(mvn -q -N -s settings-final.xml -DforceStdout help:evaluate -Dexpression=project.version || true)"
+            [ -n "$VER" ] || VER="$(awk -F'[<>]' '/<version>/{print $3; exit}' pom.xml)"
+            echo "mavenVersion=${VER}" > maven-version.properties
+        description: Capture Maven version
+    - inject-variables:
+        file: maven-version.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject mavenVersion
+
+    # Deploy to CodeArtifact if needed (script reads token internally)
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+        environment: >-
+          buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+          buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+          mavenVersion=${bamboo.inject.mavenVersion}
+        description: Deploy to CodeArtifact if needed
+
+    # Persist info for downstream plans (Deploy stage)
+    - inject-variables:
+        file: file.properties
+        scope: RESULT
+        namespace: inject
+        description: Inject the build information to be used in Bamboo Deploy
+
+    # Ensure empty log artifacts exist (in case tests moved dirs)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            mkdir -p integration/target
+            : > integration/target/jboss.log
+            : > integration/target/oracle.log
+        description: Ensure empty log artifacts exist
+
+    # Cleanup token file
+    - script:
+        interpreter: SHELL
+        scripts:
+          - rm -f ca-token.properties || true
+        description: Cleanup token file
+
+  artifacts:
+    - name: Jboss Log
+      location: integration/target/
+      pattern: jboss.log
+      shared: false
+      required: false
+    - name: Oracle Log
+      location: integration/target/
+      pattern: oracle.log
+      shared: false
+      required: false
+
+variables:
+  buildVersionQueryArtifact: reporting-war
+  buildVersionQueryGroup: gov.gsa.cnxs.reporting
+
+repositories:
+  - Reporting:
+      scope: global
+  - bamboo-deployment:
+      scope: global
+
+triggers:
+  - bitbucket-server-trigger:
+      repositories:
+        - Reporting
+
+branches:
+  create:
+    for-new-branch: ^((?!release).)*$
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+  - events: [job-hung]
+    recipients:
+      - groups: [bamboo-admin]
+  - events: [plan-failed]
+    recipients: [responsible, committers]
+  - events: [plan-completed]
+    recipients: [watchers]
+  - events: [plan-failed]
+    recipients: [responsible, committers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: block_if_parent_in_progress
+  plans: []

@@ -1,0 +1,75 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: BWS
+  name: BSST Wiki Sync
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        # Perform sync from remote repo to local repo
+        git remote add upstream https://github.com/JPIDEV/bsstwiki.git
+        git fetch upstream
+        git checkout master
+        git merge upstream/master
+
+        # Check if a sync is needed
+        UPSTREAM=${1:-'@{u}'}
+        LOCAL=$(git rev-parse @)
+        REMOTE=$(git rev-parse "$UPSTREAM")
+        BASE=$(git merge-base @ "$UPSTREAM")
+
+        if [ $LOCAL = $REMOTE ]; then
+            echo "Up-to-date"
+        elif [ $LOCAL = $BASE ]; then
+            echo "Need to pull"
+            git pull
+            git push
+        elif [ $REMOTE = $BASE ]; then
+            echo "Need to push"
+            git push
+        else
+            echo "Diverged"
+        fi
+      description: Sync with remote repo
+  artifact-subscriptions: []
+repositories:
+- bsstwiki:
+    scope: global
+triggers:
+# Trigger type TriggerProperties{name='Single daily build', description='Daily Sync', conditions=[], enabled=true} is not supported yet
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+notifications:
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

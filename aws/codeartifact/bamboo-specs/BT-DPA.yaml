@@ -1,0 +1,178 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: DPA
+  name: DPA - Build
+
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+  - clean
+
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout bamboo-deployment repository
+
+  # Ensure bamboo-deployment is on the migration branch with updated scripts
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        cd bamboo-deployment
+        git fetch --all --prune
+        git checkout -B CNXS-62536 origin/CNXS-62536 || git checkout -B CNXS-62536
+        git log -1 --oneline
+      description: Ensure bamboo-deployment@CNXS-62536 branch
+
+  # Optional local cache hygiene
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/
+      description: Remove existing cnxs maven repo directory
+
+  # Writes file.properties + settings-ca.xml (points Maven at CodeArtifact)
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination-migration.sh
+      description: Determine parent/target repos and write properties
+
+  # Fetch a short-lived CodeArtifact token for the build
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set +x
+        echo "caToken=$(aws codeartifact get-authorization-token \
+          --domain cnxsartifact --query authorizationToken --output text --region us-east-1)" > ca-token.properties
+      description: Fetch CodeArtifact token (local)
+
+  # Inject endpoints (from file.properties)
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+
+  # Inject token as a Bamboo variable
+  - inject-variables:
+      file: ca-token.properties
+      scope: LOCAL
+      description: Inject CodeArtifact token
+
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+
+  # Build via Script so we can export the token and use settings-ca.xml
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        export CODEARTIFACT_AUTH_TOKEN="${bamboo.caToken}"
+        mvn -s settings-ca.xml \
+          clean verify -B -U -P integration-test \
+          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} \
+          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} \
+          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} \
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      description: Build and Verify (CodeArtifact)
+
+  # Parse Surefire & Failsafe results
+  - test-parser:
+      type: junit
+      ignore-time: false
+      test-results: "**/target/surefire-reports/*.xml"
+      description: surefire reports
+  - test-parser:
+      type: junit
+      ignore-time: false
+      test-results: "**/target/failsafe-reports/*.xml"
+      description: failsafe reports
+
+  # Capture maven.version if your downstream relies on it
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
+      configuration:
+        variable: maven.version
+        variableScope: RESULT
+
+  # Deploy to CodeArtifact if needed (script handles its own token)
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+      environment: >-
+        buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+        buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+        mavenVersion=${bamboo.maven.version}
+      description: Deploy to CodeArtifact if needed
+
+  # Persist build info for downstream plans
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+      description: Inject the build information to be used in Bamboo Deploy
+
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+
+  # Cleanup token file
+  - script:
+      interpreter: SHELL
+      scripts:
+      - rm -f ca-token.properties
+      description: Cleanup token file
+
+variables:
+  buildVersionQueryArtifact: dpa-ear
+  buildVersionQueryGroup: gov.gsa.cnxs.dpa
+
+repositories:
+- DPA:
+    scope: global
+- bamboo-deployment:
+    scope: global
+
+triggers:
+- bitbucket-server-trigger
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+- events: [plan-failed]
+  recipients: [responsible, committers]
+- events: [plan-completed]
+  recipients: [watchers]
+- events: [plan-failed]
+  recipients: [responsible, committers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

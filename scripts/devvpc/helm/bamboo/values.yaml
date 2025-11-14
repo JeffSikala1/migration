@@ -1,0 +1,97 @@
+#################################
+# Minimal, “demo-friendly” spec #
+#################################
+
+replicaCount: 1                        # active/passive model – 1 is recommended
+
+image:
+  repository: atlassian/bamboo
+  tag: 9.6.0                      # ← keep in sync with chart “appVersion”
+  pullPolicy: IfNotPresent
+
+########################
+# REQUIRED  Database  #
+########################
+database:
+  # For a quick PoC we’ll use the embedded H2 DB (Atlassian do NOT recommend it
+  # for production – switch to an external Postgres later).
+  type: h2
+  embedded: true
+
+########################
+# REQUIRED ➋ Volumes   #
+########################
+volumes:
+  localHome:                     # data that is node-local only
+    persistentVolumeClaim:
+      create: false              # <== use emptyDir (ephemeral) for now
+  sharedHome:                    # data shared across future cluster nodes
+    persistentVolumeClaim:
+      create: false              # <== also emptyDir for now
+    nfsPermissionFixer:
+      enabled: false             # nothing to fix when you use emptyDir
+
+#####################################
+# Expose it through the existing LB #
+#####################################
+ingress:
+  create: true
+  className: nginx
+  nginx: true                    # we already run the ingress-nginx controller
+  https: true
+  host: bamboo.conexus-dev-sandbox.org
+  annotations:
+    # keep the same size/time-outs you used for Bitbucket if desired
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+  tlsSecretName: let-encrypt-ssl-secret
+
+#############################
+# JVM + container resources #
+#############################
+bamboo:
+  # 1 GiB heap → fits easily on your t3.large “workload” nodes
+  resources:
+    jvm:
+      maxHeap: "1024m"
+      minHeap: "512m"
+    container:
+      requests:
+        cpu: "250m"
+        memory: "1.5Gi"
+      limits:
+        cpu: "500m"
+        memory: "2Gi"
+
+  # run the pod only on the general-purpose node-group
+  nodeSelector:
+    role: workload
+  tolerations: []                # no argocd taint
+
+  # allow image to start briefly as root (same trick as with Bitbucket)
+  securityContextEnabled: true
+  securityContext:
+    fsGroup: 2005
+  containerSecurityContext:
+    runAsUser: 0
+    runAsNonRoot: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+
+##########################################
+# At-install automation / unattended set-up
+##########################################
+bamboo:
+  unattendedSetup: true          # already default in chart 1.17.x
+
+  license:                       # use the secret we will create below
+    secretName: bamboo-license
+    secretKey: license.txt
+
+  sysadminCredentials:           # first admin user (also in same secret)
+    secretName: bamboo-license
+    usernameSecretKey: username
+    passwordSecretKey: password
+    displayNameSecretKey: displayName
+    emailAddressSecretKey: emailAddress

@@ -1,0 +1,317 @@
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml
+
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: my-gateway
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - protocol: HTTP
+      port: 80
+      name: web-gw
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: http-app-1
+spec:
+  parentRefs:
+    - name: my-gateway
+      namespace: default
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /details
+      backendRefs:
+        - name: details
+          port: 9080
+    - matches:
+        - headers:
+            - type: Exact
+              name: magic
+              value: foo
+          queryParams:
+            - type: Exact
+              name: great
+              value: example
+          path:
+            type: PathPrefix
+            value: /
+          method: GET
+      backendRefs:
+        - name: productpage
+          port: 9080
+
+GATEWAY=$(kubectl get gateway my-gateway -o jsonpath='{.status.addresses[0].value}')
+echo $GATEWAY
+
+root@server:~# cat basic-https.yaml 
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: tls-gateway
+spec:
+  gatewayClassName: cilium
+  listeners:
+  - name: https-1
+    protocol: HTTPS
+    port: 443
+    hostname: "bookinfo.cilium.rocks"
+    tls:
+      certificateRefs:
+      - kind: Secret
+        name: demo-cert
+  - name: https-2
+    protocol: HTTPS
+    port: 443
+    hostname: "hipstershop.cilium.rocks"
+    tls:
+      certificateRefs:
+      - kind: Secret
+        name: demo-cert
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: https-app-route-1
+spec:
+  parentRefs:
+  - name: tls-gateway
+  hostnames:
+  - "bookinfo.cilium.rocks"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /details
+    backendRefs:
+    - name: details
+      port: 9080
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: https-app-route-2
+spec:
+  parentRefs:
+  - name: tls-gateway
+  hostnames:
+  - "hipstershop.cilium.rocks"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: productpage
+      port: 9080
+root@server:~#
+root@server:~# yq tls-service.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nginx
+  labels:
+    run: my-nginx
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+  selector:
+    run: my-nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-nginx
+spec:
+  selector:
+    matchLabels:
+      run: my-nginx
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: my-nginx
+    spec:
+      containers:
+        - name: my-nginx
+          image: nginx
+          ports:
+            - containerPort: 443
+          volumeMounts:
+            - name: nginx-index-file
+              mountPath: /usr/share/nginx/html/
+            - name: nginx-config
+              mountPath: /etc/nginx
+              readOnly: true
+            - name: nginx-server-certs
+              mountPath: /etc/nginx-server-certs
+              readOnly: true
+      volumes:
+        - name: nginx-index-file
+          configMap:
+            name: index-html-configmap
+        - name: nginx-config
+          configMap:
+            name: nginx-configmap
+        - name: nginx-server-certs
+          secret:
+            secretName: demo-cert
+root@server:~#
+curl -v \
+  --resolve "nginx.cilium.rocks:443:$GATEWAY" \
+  "https://nginx.cilium.rocks:443"
+
+
+------Traffic splitting -------
+
+root@server:~# yq echo-servers.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: echo-1
+  name: echo-1
+spec:
+  ports:
+    - port: 8080
+      name: high
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: echo-1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: echo-1
+  name: echo-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo-1
+  template:
+    metadata:
+      labels:
+        app: echo-1
+    spec:
+      containers:
+        - image: gcr.io/kubernetes-e2e-test-images/echoserver:2.2
+          name: echo-1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: echo-2
+  name: echo-2
+spec:
+  ports:
+    - port: 8090
+      name: high
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: echo-2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: echo-2
+  name: echo-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo-2
+  template:
+    metadata:
+      labels:
+        app: echo-2
+    spec:
+      containers:
+        - image: gcr.io/kubernetes-e2e-test-images/echoserver:2.2
+          name: echo-2
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+root@server:~#
+
+----------
+
+root@server:~# yq load-balancing-http-route.yaml
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: load-balancing-route
+spec:
+  parentRefs:
+    - name: my-gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /echo
+      backendRefs:
+        - kind: Service
+          name: echo-1
+          port: 8080
+          weight: 50
+        - kind: Service
+          name: echo-2
+          port: 8090
+          weight: 50
+
+

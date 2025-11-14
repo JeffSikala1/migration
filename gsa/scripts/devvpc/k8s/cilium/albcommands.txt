@@ -1,0 +1,172 @@
+wget https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.13.0/v2_13_0_full.yaml
+curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.13.0/docs/install/iam_policy.json
+aws iam create-policy \
+    --policy-name AWSLoadBalancerControllerIAMPolicy \
+    --policy-document file://iam-policy.json
+eksctl create iamserviceaccount --cluster=cnxsdev-selfmanaged --namespace=kube-system \
+--name=aws-load-balancer-controller \
+--attach-policy-arn=arn:aws:iam::471112718870:policy/AWSLoadBalancerControllerIAMPolicy \
+--override-existing-serviceaccounts \
+--region us-east-1 \
+--approve
+
+eksctl utils associate-iam-oidc-provider --region=us-east-1 --cluster=cnxsdev-selfmanaged --approve
+
+
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n kube-system \
+  --set clusterName=cnxsdev-selfmanaged \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=aws-load-balancer-controller \
+  --set region=us-east-1 \
+  --set vpcId=vpc-0cb2efc594903069d \
+  --version 2.13.3 \
+  
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/alb (feature/DevVPC2.0.2)$ kubectl apply -f cert-manager.yaml 
+namespace/cert-manager created
+customresourcedefinition.apiextensions.k8s.io/certificaterequests.cert-manager.io created
+customresourcedefinition.apiextensions.k8s.io/certificates.cert-manager.io created
+customresourcedefinition.apiextensions.k8s.io/challenges.acme.cert-manager.io created
+customresourcedefinition.apiextensions.k8s.io/clusterissuers.cert-manager.io created
+customresourcedefinition.apiextensions.k8s.io/issuers.cert-manager.io created
+customresourcedefinition.apiextensions.k8s.io/orders.acme.cert-manager.io created
+serviceaccount/cert-manager-cainjector created
+serviceaccount/cert-manager created
+serviceaccount/cert-manager-webhook created
+configmap/cert-manager-webhook created
+clusterrole.rbac.authorization.k8s.io/cert-manager-cainjector created
+clusterrole.rbac.authorization.k8s.io/cert-manager-controller-issuers created
+clusterrole.rbac.authorization.k8s.io/cert-manager-controller-clusterissuers created
+clusterrole.rbac.authorization.k8s.io/cert-manager-controller-certificates created
+clusterrole.rbac.authorization.k8s.io/cert-manager-controller-orders created
+clusterrole.rbac.authorization.k8s.io/cert-manager-controller-challenges created
+clusterrole.rbac.authorization.k8s.io/cert-manager-controller-ingress-shim created
+clusterrole.rbac.authorization.k8s.io/cert-manager-view created
+clusterrole.rbac.authorization.k8s.io/cert-manager-edit created
+clusterrole.rbac.authorization.k8s.io/cert-manager-controller-approve:cert-manager-io created
+clusterrole.rbac.authorization.k8s.io/cert-manager-controller-certificatesigningrequests created
+clusterrole.rbac.authorization.k8s.io/cert-manager-webhook:subjectaccessreviews created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-cainjector created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-controller-issuers created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-controller-clusterissuers created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-controller-certificates created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-controller-orders created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-controller-challenges created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-controller-ingress-shim created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-controller-approve:cert-manager-io created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-controller-certificatesigningrequests created
+clusterrolebinding.rbac.authorization.k8s.io/cert-manager-webhook:subjectaccessreviews created
+role.rbac.authorization.k8s.io/cert-manager-cainjector:leaderelection created
+role.rbac.authorization.k8s.io/cert-manager:leaderelection created
+role.rbac.authorization.k8s.io/cert-manager-webhook:dynamic-serving created
+rolebinding.rbac.authorization.k8s.io/cert-manager-cainjector:leaderelection created
+rolebinding.rbac.authorization.k8s.io/cert-manager:leaderelection created
+rolebinding.rbac.authorization.k8s.io/cert-manager-webhook:dynamic-serving created
+service/cert-manager created
+service/cert-manager-webhook created
+deployment.apps/cert-manager-cainjector created
+deployment.apps/cert-manager created
+deployment.apps/cert-manager-webhook created
+mutatingwebhookconfiguration.admissionregistration.k8s.io/cert-manager-webhook created
+validatingwebhookconfiguration.admissionregistration.k8s.io/cert-manager-webhook created
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/alb (feature/DevVPC2.0.2)$ 
+
+wget https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.13.0/v2_13_0_full.yaml
+
+change port to 10260 from 10250 at two places in cert-manager.yaml
+add hostNetwork=true at 
+# Source: cert-manager/templates/webhook-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cert-manager-webhook
+  namespace: cert-manager
+  labels:
+    app: webhook
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/instance: cert-manager
+    app.kubernetes.io/component: "webhook"
+    app.kubernetes.io/version: "v1.12.3"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webhook
+      app.kubernetes.io/instance: cert-manager
+      app.kubernetes.io/component: "webhook"
+  template:
+    metadata:
+      labels:
+        app: webhook
+        app.kubernetes.io/name: webhook
+        app.kubernetes.io/instance: cert-manager
+        app.kubernetes.io/component: "webhook"
+        app.kubernetes.io/version: "v1.12.3"
+    spec:
+      hostNetwork: true
+      serviceAccountName: cert-manager-webhook
+      securityContext:
+        runAsNonRoot: true
+
+
+-- Cilium Service Mess attempt ----
+
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/terraform (feature/DevVPC2.0.2)$ helm upgrade cilium cilium/cilium --version 1.17.5 \
+    --namespace kube-system \
+    --reuse-values \
+    --set ingressController.enabled=true \
+    --set ingressController.loadbalancerMode=dedicated
+Release "cilium" has been upgraded. Happy Helming!
+NAME: cilium
+LAST DEPLOYED: Wed Jul  2 22:11:42 2025
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 5
+TEST SUITE: None
+NOTES:
+You have successfully installed Cilium with Hubble.
+
+Your release version is 1.17.5.
+
+For any further help, visit https://docs.cilium.io/en/v1.17/gettinghelp
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/terraform (feature/DevVPC2.0.2)$ 
+
+-- Updates applied during trouble shooting --
+
+helm upgrade cilium cilium/cilium --version 1.17.5 \
+   --namespace kube-system \
+   --reuse-values \
+   --set hubble.relay.enabled=true \
+   --set hubble.ui.enabled=true
+
+
+helm upgrade cilium cilium/cilium --version 1.17.5 \
+  --namespace kube-system \
+  --reuse-values \
+  --set localRedirectPolicy=true
+
+
+
+$ wget https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-local-dns.yaml
+
+$ kubedns=$(kubectl get svc kube-dns -n kube-system -o jsonpath={.spec.clusterIP}) && sed -i "s/__PILLAR__DNS__SERVER__/$kubedns/g;" node-local-dns.yaml
+
+$ kubectl apply -f node-local-dns.yaml
+
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ wget https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-local-dns.yaml
+Saving 'node-local-dns.yaml'
+HTTP response 200  [https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-localnode-local-dns.yaml  100% [=====================================================================>]    1.05K    --.-KB/s
+                          [Files: 1  Bytes: 1.05K [1.34KB/s] Redirects: 0  Todo: 0  Errors: 0    ]
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ kubedns=$(kubectl get svc kube-dns -n kube-system -o jsonpath={.spec.clusterIP}) && sed -i "s/__PILLAR__DNS__SERVER__/$kubedns/g;" node-local-dns.yaml
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ kubectl apply -f node-local-dns.yaml
+serviceaccount/node-local-dns created
+service/kube-dns-upstream created
+configmap/node-local-dns created
+daemonset.apps/node-local-dns created
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ 
+
+
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ kubectl apply -f https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-local-dns-lrp.yaml
+
+ciliumlocalredirectpolicy.cilium.io/nodelocaldns created
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ 

@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jboss-dev
+  namespace: argocd              # Argo’s control plane namespace
+spec:
+  project: default
+  source:
+    repoURL: ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/argocd.git
+    targetRevision: main
+    path: jboss-manifests/env/dev               # the overlay Bamboo updates
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress-nginx
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false

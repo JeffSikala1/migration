@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conexus-wso2mi
+  namespace: wso2mi
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: conexus-wso2mi
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: conexus-wso2mi
+    spec:
+      containers:
+      - name: conexus-wso2mi
+        image: 957770628377.dkr.ecr.us-east-1.amazonaws.com/wso2mi:4.2.0-alpine
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: micro-integrator-config
+        volumeMounts:
+        - mountPath: /home/wso2carbon/wso2mi-4.2.0/repository/deployment/server/carbonapps
+          name: persistent-storage
+        ports:
+        - containerPort: 8253
+        - containerPort: 8290
+        - containerPort: 9201
+        - containerPort: 9164
+        args: [/bin/sh, -c, 'i=0; while true; do echo "$i: $(date)"; i=$((i+1)); sleep 1; done']
+      - name: conexus-wso2mi-dashboard
+        image: 957770628377.dkr.ecr.us-east-1.amazonaws.com/wso2mi-dashboard:4.2.0-alpine
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: micro-integrator-config
+        ports:
+        - containerPort: 9743
+        args: [/bin/sh, -c, 'i=0; while true; do echo "$i: $(date)"; i=$((i+1)); sleep 1; done']
+      volumes:
+        - name: persistent-storage
+          persistentVolumeClaim:
+            claimName: efs-mi-volume-claim

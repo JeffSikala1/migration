@@ -1,0 +1,201 @@
+# Retrieve the secret value from AWS Secrets Manager
+data "aws_secretsmanager_secret" "aurora_secret" {
+  arn = var.secret_arn
+}
+
+data "aws_secretsmanager_secret_version" "aurora_secret_version" {
+  secret_id = data.aws_secretsmanager_secret.aurora_secret.id
+}
+
+# Parse the username and password from the secret
+locals {
+  secret_data = jsondecode(data.aws_secretsmanager_secret_version.aurora_secret_version.secret_string)
+}
+
+
+# Look up the VPC ID using the VPC name
+# data "aws_vpc" "selected_vpc" {
+#   filter {
+#     name   = "tag:Name"
+#     values = [var.vpc_name]
+#   }
+# }
+
+# Security Group for the Aurora Cluster
+resource "aws_security_group" "aurora_sg" {
+  name        = "${var.db_cluster_name}-sg"
+  description = "Security group for the Aurora PostgreSQL cluster"
+#  vpc_id      = data.aws_vpc.selected_vpc.id
+   vpc_id      = var.vpc_id
+
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+#   cidr_blocks = var.allowed_cidr_blocks
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = var.tags
+}
+
+# DB Subnet Group
+resource "aws_db_subnet_group" "aurora_subnet_group" {
+  name       = "${var.db_cluster_name}-subnet-group"
+  subnet_ids = var.db_subnet_ids
+
+  tags = var.tags
+}
+
+# KMS Key for Aurora encryption
+resource "aws_kms_key" "aurora_kms" {
+  description             = "KMS key for encrypting Aurora PostgreSQL serverless cluster"
+  deletion_window_in_days = 30
+
+  tags = var.tags
+}
+
+resource "aws_kms_alias" "aurora_kms_alias" {
+  name          = "alias/${var.db_cluster_name}-aurora-kms-key"
+  target_key_id = aws_kms_key.aurora_kms.key_id
+}
+
+
+# DB Cluster Parameter Group
+resource "aws_rds_cluster_parameter_group" "aurora_cluster_param_group" {
+  name        = "${var.db_cluster_name}-cluster-param-group"
+  family      = "aurora-postgresql16"
+  description = "Custom parameter group for Aurora PostgreSQL 16 cluster"
+
+  # You can set custom cluster-level parameters here
+  # parameter {
+  #   name  = "example_parameter"
+  #   value = "example_value"
+  # }
+
+  tags = var.tags
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
+# DB Parameter Group
+resource "aws_db_parameter_group" "aurora_db_param_group" {
+  name        = "${var.db_cluster_name}-db-param-group"
+  family      = "aurora-postgresql16"
+  description = "Custom parameter group for Aurora PostgreSQL 16 instance"
+
+  # You can set custom DB-level parameters here
+  # parameter {
+  #   name  = "example_parameter"
+  #   value = "example_value"
+  # }
+
+  tags = var.tags
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
+
+# Aurora PostgreSQL Cluster
+resource "aws_rds_cluster" "aurora_cluster" {
+  cluster_identifier      = var.db_cluster_name
+  engine                  = "aurora-postgresql"
+  engine_version          = var.engine_version
+  master_username         = local.secret_data.username
+  master_password         = local.secret_data.password
+  db_subnet_group_name    = aws_db_subnet_group.aurora_subnet_group.name
+  vpc_security_group_ids  = [aws_security_group.aurora_sg.id]
+  backup_retention_period = var.backup_retention_period
+  preferred_backup_window = var.preferred_backup_window
+  skip_final_snapshot     = true
+
+  # Parameter groups
+  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.aurora_cluster_param_group.name
+  
+  
+##  # Serverless specific configuration
+  serverlessv2_scaling_configuration {
+    min_capacity = var.serverless_min_capacity
+    max_capacity = var.serverless_max_capacity
+  }
+
+  # Initial database name
+  database_name = var.initial_database_name
+  
+# Optional monitoring settings
+#  monitoring_interval = var.monitoring_interval
+#  monitoring_role_arn = aws_iam_role.enhanced_monitoring_role.arn
+
+  tags = var.tags
+
+  lifecycle {
+    ignore_changes = all
+  }
+    
+}
+
+resource "aws_rds_cluster_instance" "aurora_serverless_instance" {
+  count                    = var.serverless_instance_count
+#  identifier              = "${var.db_cluster_name}-instance-${count.index}"
+  identifier               = var.serverless_instance_name  # Custom name for the serverless instance
+  cluster_identifier       = aws_rds_cluster.aurora_cluster.id
+#  instance_class          = var.instance_class
+  instance_class           =   "db.serverless" 
+  engine                   = "aurora-postgresql"
+  engine_version           = var.engine_version
+  
+  # Serverless v2 specific configuration
+#  serverlessv2_scaling_configuration {
+#    min_capacity = var.serverless_min_capacity
+#    max_capacity = var.serverless_max_capacity
+#  }  
+
+  # Enable Performance Insights
+  performance_insights_enabled = true
+  performance_insights_retention_period = var.performance_insights_retention_period
+
+  # KMS key for Performance Insights encryption
+  performance_insights_kms_key_id   = aws_kms_key.aurora_kms.arn
+
+  db_subnet_group_name     = aws_db_subnet_group.aurora_subnet_group.name
+  publicly_accessible      = false
+  apply_immediately        = true
+  tags                     = var.tags
+
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
+
+resource "aws_rds_cluster_instance" "aurora_provisioned_instance" {
+  count              = var.create_provisioned_instance ? 1 : 0
+  cluster_identifier = aws_rds_cluster.aurora_cluster.id   # Attach to the Aurora cluster
+  instance_class     = var.instance_class                  # Use the instance class for the provisioned instance
+  engine             = "aurora-postgresql"                 # Specify the engine as aurora-postgresql
+  engine_version     = var.engine_version                  # Specify the engine version
+  identifier         = var.provisioned_instance_name  # Custom name for the provisioned instance
+  # Optionally enable performance insights for the provisioned instance
+  performance_insights_enabled      = true
+  performance_insights_retention_period = var.performance_insights_retention_period
+   performance_insights_kms_key_id   = aws_kms_key.aurora_kms.arn
+
+  # Monitoring options
+#  monitoring_interval = var.monitoring_interval
+
+  publicly_accessible = false    # Set this based on your security requirements
+
+  tags = var.tags                # Add any tags for the provisioned instance
+  lifecycle {
+    ignore_changes = all
+  }
+}

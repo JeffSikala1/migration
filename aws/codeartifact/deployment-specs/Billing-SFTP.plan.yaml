@@ -1,0 +1,267 @@
+---
+version: 2
+deployment:
+  name: Billing SFTP - Deploy to EFS
+  source-plan: BT-BSFTPB2
+release-naming:
+  next-version-name: release-1
+  applies-to-branches: false
+  auto-increment: true
+  auto-increment-variables: []
+environments:
+  - DEV-EKS
+DEV-EKS:
+  description: Deploy Billing-SFTP tar from CodeArtifact to EFS PVC (/NSFS_NAS/chroot/billing-sftp) in the DEV EKS cluster (ingress-nginx)
+  release-approval-prerequisite: none
+  triggers: []
+  tasks:
+    - clean
+
+    # Render & apply the Kubernetes Job
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
+        description: Render and apply Job
+        configuration:
+          scriptLocation: INLINE
+          interpreter: SHELL
+          scriptBody: |-
+            #!/bin/bash
+            set -euo pipefail
+
+            JOBNAME="billing-sftp-expand-$(date +%s)"
+            NAMESPACE="${bamboo.KUBE_NAMESPACE}"
+            SA="${bamboo.SERVICE_ACCOUNT}"
+            PVC="${bamboo.PVC_NAME}"
+            MOUNT_PATH="${bamboo.MOUNT_PATH}"
+            INNER_DIR="${bamboo.INNER_DIR:-}"
+            DEPLOY_VERSION="${bamboo.DEPLOY_VERSION:-}"
+            TARGET_ROLE_ARN="${bamboo.TARGET_ROLE_ARN}"
+
+            # --- preflight: env and cluster identity checks ---
+            [[ -n "$NAMESPACE"       ]] || { echo "KUBE_NAMESPACE unset"; exit 1; }
+            [[ -n "$SA"              ]] || { echo "SERVICE_ACCOUNT unset"; exit 1; }
+            [[ -n "$PVC"             ]] || { echo "PVC_NAME unset"; exit 1; }
+            [[ -n "$MOUNT_PATH"      ]] || { echo "MOUNT_PATH unset"; exit 1; }
+            [[ -n "$TARGET_ROLE_ARN" ]] || { echo "TARGET_ROLE_ARN unset"; exit 1; }
+
+            echo "[ctx] expecting context: $bamboo.KUBE_CONTEXT  name: $bamboo.EKS_CLUSTER_NAME"
+            kubectl --context="$bamboo.KUBE_CONTEXT" version --short >/dev/null
+
+            KCFG_CLUSTER_NAME="$(kubectl config view --flatten -o jsonpath='{.contexts[?(@.name=="'"$bamboo.KUBE_CONTEXT"'")].context.cluster}')"
+            API_FROM_KUBECONFIG="$(kubectl config view --flatten -o jsonpath='{.clusters[?(@.name=="'"$KCFG_CLUSTER_NAME"'")].cluster.server}')"
+            echo "[ctx] kubeconfig cluster-id: ${KCFG_CLUSTER_NAME}  api: ${API_FROM_KUBECONFIG}"
+
+            ACTUAL_ARN="$(aws eks describe-cluster --name "$bamboo.EKS_CLUSTER_NAME" --region "$bamboo.AWS_REGION" --query 'cluster.arn' --output text)"
+            ACTUAL_API="$(aws eks describe-cluster --name "$bamboo.EKS_CLUSTER_NAME" --region "$bamboo.AWS_REGION" --query 'cluster.endpoint' --output text)"
+            echo "[ctx] aws eks arn: ${ACTUAL_ARN}"
+            echo "[ctx] aws eks api: ${ACTUAL_API}"
+
+            if [[ "$ACTUAL_ARN" != "$bamboo.EKS_CLUSTER_ARN" ]]; then
+              echo "FATAL: EKS ARN mismatch. Expected: $bamboo.EKS_CLUSTER_ARN  Got: $ACTUAL_ARN"
+              exit 1
+            fi
+            if [[ "$API_FROM_KUBECONFIG" != "$ACTUAL_API" ]]; then
+              echo "FATAL: kubecontext server ($API_FROM_KUBECONFIG) != EKS endpoint ($ACTUAL_API)"
+              exit 1
+            fi
+
+            echo "[ctx] SUCCESS, Context and EKS ARN/endpoint verified for DEV."
+
+            cat > job.yaml <<'EOF'
+            apiVersion: batch/v1
+            kind: Job
+            metadata:
+              name: __JOBNAME__
+              namespace: __NAMESPACE__
+            spec:
+              ttlSecondsAfterFinished: 600
+              backoffLimit: 0
+              template:
+                spec:
+                  serviceAccountName: __SERVICE_ACCOUNT__
+                  restartPolicy: Never
+                  volumes:
+                    - name: target-efs
+                      persistentVolumeClaim:
+                        claimName: __PVC__
+                  containers:
+                    - name: expander
+                      image: public.ecr.aws/amazonlinux/amazonlinux:2023
+                      volumeMounts:
+                        - name: target-efs
+                          mountPath: /target
+                      env:
+                        - name: AWS_REGION         ; value: "__AWS_REGION__"
+                        - name: CA_DOMAIN          ; value: "__CA_DOMAIN__"
+                        - name: CA_OWNER           ; value: "__CA_OWNER__"
+                        - name: GROUP_ID           ; value: "__GROUP_ID__"
+                        - name: ARTIFACT_ID        ; value: "__ARTIFACT_ID__"
+                        - name: CLASSIFIER         ; value: "__CLASSIFIER__"
+                        - name: PACKAGING          ; value: "__PACKAGING__"
+                        - name: TARGET_ROOT        ; value: "__MOUNT_PATH__"
+                        - name: INNER_DIR          ; value: "__INNER_DIR__"
+                        - name: VERSION            ; value: "__DEPLOY_VERSION__"
+                        - name: TARGET_ROLE_ARN    ; value: "__TARGET_ROLE_ARN__"
+                      command: ["/bin/sh","-lc"]
+                      args:
+                        - |
+                          set -eu
+                          (set -o pipefail) 2>/dev/null || true
+
+                          echo "[setup] installing tools..."
+                          dnf -y install awscli jq tar gzip which maven >/dev/null
+
+                          echo "[assume] switching to management role: $TARGET_ROLE_ARN"
+                          ASSUME_JSON="$(aws sts assume-role --role-arn "$TARGET_ROLE_ARN" --role-session-name caFetch-$(date +%s))"
+                          export AWS_ACCESS_KEY_ID="$(echo "$ASSUME_JSON" | jq -r .Credentials.AccessKeyId)"
+                          export AWS_SECRET_ACCESS_KEY="$(echo "$ASSUME_JSON" | jq -r .Credentials.SecretAccessKey)"
+                          export AWS_SESSION_TOKEN="$(echo "$ASSUME_JSON" | jq -r .Credentials.SessionToken)"
+
+                          echo "[ca] fetching token + endpoints..."
+                          export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+                            --domain "$CA_DOMAIN" --domain-owner "$CA_OWNER" --query authorizationToken --output text)"
+                          PLUGIN_URL="$(aws codeartifact get-repository-endpoint \
+                            --domain "$CA_DOMAIN" --domain-owner "$CA_OWNER" \
+                            --repository conexus-plugin-repository --format maven \
+                            --query repositoryEndpoint --output text)"
+                          CENTRAL_URL="$(aws codeartifact get-repository-endpoint \
+                            --domain "$CA_DOMAIN" --domain-owner "$CA_OWNER" \
+                            --repository maven-central-store  --format maven \
+                            --query repositoryEndpoint --output text)"
+
+                          echo "[mvn] writing settings.xml"
+                          mkdir -p /root/.m2
+                          cat > /root/.m2/settings.xml <<XML
+                          <settings>
+                            <servers>
+                              <server><id>conexus-plugin-repository</id><username>aws</username><password>${CODEARTIFACT_AUTH_TOKEN}</password></server>
+                              <server><id>maven-central-store</id><username>aws</username><password>${CODEARTIFACT_AUTH_TOKEN}</password></server>
+                            </servers>
+                            <profiles>
+                              <profile>
+                                <id>codeartifact</id>
+                                <repositories>
+                                  <repository><id>conexus-plugin-repository</id><url>${PLUGIN_URL}</url><releases><enabled>true</enabled></releases><snapshots><enabled>true</enabled></snapshots></repository>
+                                  <repository><id>maven-central-store</id><url>${CENTRAL_URL}</url><releases><enabled>true</enabled></releases><snapshots><enabled>true</enabled></snapshots></repository>
+                                </repositories>
+                                <pluginRepositories>
+                                  <pluginRepository><id>conexus-plugin-repository</id><url>${PLUGIN_URL}</url><releases><enabled>true</enabled></releases><snapshots><enabled>true</enabled></snapshots></pluginRepository>
+                                  <pluginRepository><id>maven-central-store</id><url>${CENTRAL_URL}</url><releases><enabled>true</enabled></releases><snapshots><enabled>true</enabled></snapshots></pluginRepository>
+                                </pluginRepositories>
+                              </profile>
+                            </profiles>
+                            <activeProfiles><activeProfile>codeartifact</activeProfile></activeProfiles>
+                          </settings>
+            XML
+
+                          ART="${GROUP_ID}:${ARTIFACT_ID}:${PACKAGING}:${CLASSIFIER}"
+
+                          if [ -n "${VERSION:-}" ]; then
+                            echo "[resolve] using VERSION=${VERSION}"
+                            mvn -s /root/.m2/settings.xml -B -q dependency:get -Dtransitive=false \
+                              -Dartifact="${GROUP_ID}:${ARTIFACT_ID}:${VERSION}:${PACKAGING}:${CLASSIFIER}"
+                            BASE="/root/.m2/repository/$(echo "$GROUP_ID" | tr '.' '/')/${ARTIFACT_ID}/${VERSION}"
+                            FILE="$(ls -1t ${BASE}/${ARTIFACT_ID}-*-${CLASSIFIER}.${PACKAGING} | head -n1)"
+                          else
+                            echo "[resolve] using latest snapshot from metadata..."
+                            mvn -s /root/.m2/settings.xml -B -q dependency:get -Dtransitive=false \
+                              -Dartifact="${GROUP_ID}:${ARTIFACT_ID}:LATEST:${PACKAGING}:${CLASSIFIER}"
+                            BASE="/root/.m2/repository/$(echo "$GROUP_ID" | tr '.' '/')/${ARTIFACT_ID}"
+                            FILE="$(ls -1t ${BASE}/*/${ARTIFACT_ID}-*-${CLASSIFIER}.${PACKAGING} | head -n1)"
+                            VERSION="$(basename "$FILE" | sed -E "s/^${ARTIFACT_ID}-([^-]+).*$/\1/")"
+                          fi
+                          test -f "$FILE" || { echo "Artifact not found"; exit 1; }
+                          echo "[file] $FILE"
+                          echo "[version] $VERSION"
+
+                          mkdir -p "/target${TARGET_ROOT}/releases"
+                          RELEASE_DIR="/target${TARGET_ROOT}/releases/${ARTIFACT_ID}-${VERSION}"
+                          mkdir -p "$RELEASE_DIR"
+                          tar -xf "$FILE" -C "$RELEASE_DIR"
+
+                          if [ -n "${INNER_DIR:-}" ]; then
+                            if [ -d "${RELEASE_DIR}/${INNER_DIR}" ]; then
+                              mv "${RELEASE_DIR}/${INNER_DIR}" "${RELEASE_DIR}/payload"
+                              find "${RELEASE_DIR}" -mindepth 1 -maxdepth 1 ! -name 'payload' -exec rm -rf {} +
+                            else
+                              ROOTS="$(find "${RELEASE_DIR}" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+                              if [ "$ROOTS" = "1" ]; then
+                                ONLY="$(find "${RELEASE_DIR}" -mindepth 1 -maxdepth 1 -type d)"
+                                mv "${ONLY}" "${RELEASE_DIR}/payload"
+                                find "${RELEASE_DIR}" -mindepth 1 -maxdepth 1 ! -name 'payload' -exec rm -rf {} +
+                              else
+                                echo "WARN: INNER_DIR not found and multiple roots; leaving full contents."
+                              fi
+                            fi
+                          fi
+
+                          ln -sfn "${RELEASE_DIR}" "/target${TARGET_ROOT}/current"
+                          chmod -R g+rwX "$RELEASE_DIR"
+                          echo "[done] current -> ${RELEASE_DIR}"
+            EOF
+
+            # token substitution
+            sed -i "s/__JOBNAME__/${JOBNAME}/g"            job.yaml
+            sed -i "s/__NAMESPACE__/${NAMESPACE}/g"        job.yaml
+            sed -i "s/__SERVICE_ACCOUNT__/${SA}/g"         job.yaml
+            sed -i "s/__PVC__/${PVC}/g"                    job.yaml
+            sed -i "s#__MOUNT_PATH__#${MOUNT_PATH}#g"      job.yaml
+            sed -i "s/__INNER_DIR__/${INNER_DIR}/g"        job.yaml
+            sed -i "s/__DEPLOY_VERSION__/${DEPLOY_VERSION}/g" job.yaml
+            sed -i "s/__TARGET_ROLE_ARN__/${TARGET_ROLE_ARN}/g" job.yaml
+            sed -i "s/__AWS_REGION__/${bamboo.AWS_REGION}/g"   job.yaml
+            sed -i "s/__CA_DOMAIN__/${bamboo.CA_DOMAIN}/g"     job.yaml
+            sed -i "s/__CA_OWNER__/${bamboo.CA_OWNER}/g"       job.yaml
+            sed -i "s#__GROUP_ID__#${bamboo.GROUP_ID}#g"       job.yaml
+            sed -i "s#__ARTIFACT_ID__#${bamboo.ARTIFACT_ID}#g" job.yaml
+            sed -i "s#__CLASSIFIER__#${bamboo.CLASSIFIER}#g"   job.yaml
+            sed -i "s#__PACKAGING__#${bamboo.PACKAGING}#g"     job.yaml
+
+            kubectl --context="$bamboo.KUBE_CONTEXT" -n "${NAMESPACE}" apply -f job.yaml
+            echo "${JOBNAME}" > .jobname
+            echo "Created Job ${JOBNAME}"
+      description: Render and apply Job
+
+    # Wait & tail logs
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
+        description: Wait and show logs
+        configuration:
+          scriptLocation: INLINE
+          interpreter: SHELL
+          scriptBody: |-
+            #!/bin/bash
+            set -euo pipefail
+            NAMESPACE="${bamboo.KUBE_NAMESPACE}"
+            JOBNAME="$(cat .jobname)"
+
+            kubectl --context="$bamboo.KUBE_CONTEXT" -n "$NAMESPACE" \
+              wait --for=condition=complete "job/${JOBNAME}" --timeout=15m || {
+                echo "Job did not complete; showing logs…"
+                POD="$(kubectl --context="$bamboo.KUBE_CONTEXT" -n "$NAMESPACE" get pods -l job-name=${JOBNAME} -o jsonpath='{.items[0].metadata.name}')"
+                kubectl --context="$bamboo.KUBE_CONTEXT" -n "$NAMESPACE" logs "$POD" || true
+                exit 1
+              }
+
+            POD="$(kubectl --context="$bamboo.KUBE_CONTEXT" -n "$NAMESPACE" get pods -l job-name=${JOBNAME} -o jsonpath='{.items[0].metadata.name}')"
+            kubectl --context="$bamboo.KUBE_CONTEXT" -n "$NAMESPACE" logs "$POD"
+      description: Wait and show logs
+  final-tasks: []
+  variables:
+    ARTIFACT_ID: billing-sftp
+    AWS_REGION: us-east-1
+    CA_DOMAIN: cnxsartifact
+    CA_OWNER: "339713019047"
+    CLASSIFIER: deployment-tar
+    GROUP_ID: gov.gsa.cnxs.billingsftp
+    KUBE_NAMESPACE: ingress-nginx
+    MOUNT_PATH: /NSFS_NAS/chroot/billing-sftp
+    PACKAGING: tar
+    PVC_NAME: efs-data-volume-claim
+    SERVICE_ACCOUNT: codeartifact-deployer
+    TARGET_ROLE_ARN: arn:aws:iam::339713019047:role/ca-read-from-eks
+    KUBE_CONTEXT: dev-eks
+    EKS_CLUSTER_NAME: cnxsdev-selfmanaged
+    EKS_CLUSTER_ARN: arn:aws:eks:us-east-1:471112718870:cluster/cnxsdev-selfmanaged
+  requirements: []
+  notifications: []

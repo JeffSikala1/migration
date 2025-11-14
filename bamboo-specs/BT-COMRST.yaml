@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="BT" buildKey="COMRST"><code>---
+version: 2
+plan:
+  project-key: BT
+  key: COMRST
+  name: CommonRest - Build
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: clean verify -B -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      tests: 'true'
+      description: Common Build and Verify
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version.sh
+      description: Determine if deploy to Artifactory is needed
+# com.atlassian.bamboo.warnings.atlassian-bamboo-warnings:task.warnings.parser is disabled. This state is not supported at YAML
+  artifact-subscriptions: []
+repositories:
+- CommonRest:
+    type: bitbucket-server
+    server: Conexus Bitbucket
+    project: CNXS
+    slug: common-rest
+    clone-url: ssh://git@conexus-bitbucket.edc.ds1.usda.gov:7999/cnxs/common-rest.git
+    public-key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCfo5KpoXaK6GjfYq3ax/+gDyR5yHYA07Wfpg8NnLz9yfc4n9MlCgZqMxltIzpKnkisGYRCniXViB8qjpjQu8vx7vpRGao2Skilx4cHHQWLa8twbBjW1rLe7qJCBMGiKYPQfg4Hgt6BibssoY+DFTYu98qV5RhliK5b5RFzYuUnPrBgvxJBG0PpExxLaJW33mBPBOYHgPePvDky+dYZhPJP21eVSLXLxMTdGgw2ts6CfeCl71D09vUudh3OdUuOxxJg4N0EC2lHCzttbnwV0hLiuPS0K9rG+vsIaS6JoshhacHjR7WjXZhzboW5gDhXQWoTV81q5UrKjpcSnuiOcX1J https://conexus-bamboo-cert.edc.ds1.usda.gov
+    private-key: BAMSCRT@0@0@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
+    branch: develop
+    command-timeout-minutes: '180'
+    use-shallow-clones: true
+    cache-on-agents: true
+    submodules: false
+    ssh-key-applies-to-submodules: false
+    verbose-logs: false
+    fetch-all: false
+    lfs: false
+    viewer:
+      com.atlassian.bamboo.plugins.stash.atlassian-bamboo-plugin-stash:bbServerViewer: {}
+- bamboo-deployment:
+    scope: global
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - CommonRest
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+notifications:
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-status-changed
+  recipients:
+  - committers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans:
+  - BT-DPA
+  - BT-REP
+  - BT-REST
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+---
+version: 2
+plan:
+  key: BT-COMRST
+plan-permissions:
+- users:
+  - simon.branton-housley@usda.gov
+  groups:
+  - nsfs_devops
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+...
+</code></spec></specs>

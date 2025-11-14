@@ -1,0 +1,342 @@
+version: 2
+plan:
+  project-key: BT
+  key: WS
+  name: WS - Build
+
+stages:
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+    - clean
+
+    # Repositories
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
+    - checkout:
+        repository: bamboo-deployment
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout bamboo-deployment
+
+    # Optional cache hygiene
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - rm -rf ~/.m2/repository/gov/gsa/
+        description: Remove existing cnxs maven repo directory
+
+    # Ensure bamboo-deployment branch + script present (bash-safe, with fallback)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            /usr/bin/env bash <<'BASH'
+            set -euo pipefail
+            cd bamboo-deployment
+            git fetch --all --prune
+            if git ls-remote --exit-code --heads origin CNXS-62536 >/dev/null 2>&1; then
+              TARGET=CNXS-62536
+            else
+              TARGET=develop
+            fi
+            echo "Using bamboo-deployment branch: ${TARGET}"
+            git checkout -B "${TARGET}" "origin/${TARGET}"
+            test -f build-determination-migration.sh || { echo "build-determination-migration.sh not found"; ls -la; exit 4; }
+            chmod +x build-determination-migration.sh
+            BASH
+        description: Ensure bamboo-deployment branch + script present
+
+    # Discover endpoints; produces file.properties + (optionally) settings-ca.xml
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/build-determination-migration.sh
+        description: Determine parent/target repos and write properties
+
+    # Export generated files to workspace root (handle both locations)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+            # file.properties
+            if [ -f bamboo-deployment/file.properties ]; then
+              cp -f bamboo-deployment/file.properties .
+            elif [ -f file.properties ]; then
+              echo "file.properties already in workspace"
+            else
+              echo "ERROR: file.properties not found"; ls -la; exit 5
+            fi
+            # settings-ca.xml (optional seed)
+            if [ -f bamboo-deployment/settings-ca.xml ]; then
+              cp -f bamboo-deployment/settings-ca.xml ./settings-ca.xml
+            elif [ -f settings-ca.xml ]; then
+              echo "settings-ca.xml already in workspace"
+            else
+              echo "NOTE: settings-ca.xml not present; we'll create settings-final.xml"
+            fi
+            ls -la file.properties settings-ca.xml || true
+        description: Export properties & settings
+
+    # Make endpoints available to later tasks
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject values
+
+    # (Optional) dump for troubleshooting
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+        configuration: {}
+
+    # Fetch a short-lived CodeArtifact token to a local file (no Bamboo var leak)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+            TOKEN="$(aws codeartifact get-authorization-token \
+              --domain cnxsartifact --query authorizationToken --output text --region us-east-1)"
+            [ -n "$TOKEN" ] || { echo "ERROR: empty CodeArtifact token"; exit 1; }
+            printf 'caToken.password=%s\n' "$TOKEN" > ca-token.properties
+            chmod 600 ca-token.properties
+            echo "Wrote ca-token.properties"
+        description: Fetch CodeArtifact token (local file only)
+
+    # Write final Maven settings that point to resolve + deps with env-token expansion
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            set -e
+            export CODEARTIFACT_AUTH_TOKEN="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties | tr -d '\r\n')"
+            [ -n "${CODEARTIFACT_AUTH_TOKEN:-}" ] || { echo "ERROR: CodeArtifact token missing"; exit 1; }
+
+            RESOLVE_URL="${bamboo_inject_resolveRepositoryUrl:?missing resolveRepositoryUrl}"
+            DEPS_URL="$(printf '%s' "$RESOLVE_URL" | sed -E 's#/maven/[^/]+/#/maven/conexus-dependencies/#')"
+
+            cat > settings-final.xml <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <servers>
+                <server><id>ca-resolve</id><username>aws</username><password>\${env.CODEARTIFACT_AUTH_TOKEN}</password></server>
+                <server><id>ca-deps</id><username>aws</username><password>\${env.CODEARTIFACT_AUTH_TOKEN}</password></server>
+              </servers>
+              <profiles>
+                <profile>
+                  <id>codeartifact</id>
+                  <repositories>
+                    <repository><id>ca-resolve</id><url>${RESOLVE_URL}</url><releases><enabled>true</enabled></releases><snapshots><enabled>true</enabled></snapshots></repository>
+                    <repository><id>ca-deps</id><url>${DEPS_URL}</url><releases><enabled>true</enabled></releases><snapshots><enabled>true</enabled></snapshots></repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository><id>ca-resolve</id><url>${RESOLVE_URL}</url><releases><enabled>true</enabled></releases><snapshots><enabled>true</enabled></snapshots></pluginRepository>
+                    <pluginRepository><id>ca-deps</id><url>${DEPS_URL}</url><releases><enabled>true</enabled></releases><snapshots><enabled>true</enabled></snapshots></pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles><activeProfile>codeartifact</activeProfile></activeProfiles>
+            </settings>
+            XML
+            echo "Wrote settings-final.xml (resolve=${RESOLVE_URL} deps=${DEPS_URL})"
+        description: Write final Maven settings (resolve + deps)
+
+    # Fail fast if the parent BOM is not present in CodeArtifact
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            set -e
+            export CODEARTIFACT_AUTH_TOKEN="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties | tr -d '\r\n')"
+            SETTINGS_PATH="$(pwd -P)/settings-final.xml"
+            [ -f "$SETTINGS_PATH" ] || { echo "ERROR: $SETTINGS_PATH not found"; exit 1; }
+
+            RESOLVE_URL="${bamboo_inject_resolveRepositoryUrl:?missing resolveRepositoryUrl}"
+            DEPS_URL="$(printf '%s' "$RESOLVE_URL" | sed -E 's#/maven/[^/]+/#/maven/conexus-dependencies/#')"
+
+            PARENT_BLOCK="$(awk 'BEGIN{RS="</parent>";FS=RS} /<parent>/{print; exit}' pom.xml || true)"
+            PARENT_G="$(printf '%s' "$PARENT_BLOCK" | awk -F'[<>]' '/<groupId>/{print $3; exit}' || true)"
+            PARENT_A="$(printf '%s' "$PARENT_BLOCK" | awk -F'[<>]' '/<artifactId>/{print $3; exit}' || true)"
+            PARENT_V="$(printf '%s' "$PARENT_BLOCK" | awk -F'[<>]' '/<version>/{print $3; exit}' || true)"
+
+            if [ -n "${PARENT_G:-}" ] && [ -n "${PARENT_A:-}" ] && [ -n "${PARENT_V:-}" ]; then
+              echo "Preflight: checking parent POM ${PARENT_G}:${PARENT_A}:${PARENT_V} in CodeArtifact…"
+              tmp="$(mktemp -d)"
+              ( cd "$tmp" && mvn -q -B -U -s "$SETTINGS_PATH" \
+                  org.apache.maven.plugins:maven-dependency-plugin:3.8.0:get \
+                  -DgroupId="${PARENT_G}" -DartifactId="${PARENT_A}" -Dversion="${PARENT_V}" \
+                  -Dpackaging=pom -Dtransitive=false \
+                  "-DremoteRepositories=ca-resolve::default::${RESOLVE_URL},ca-deps::default::${DEPS_URL}" ) \
+              || { echo "Parent POM missing; stop."; exit 7; }
+              echo "Preflight OK: parent POM present."
+            else
+              echo "WARNING: Could not parse <parent> from pom.xml; continuing."
+            fi
+        description: "Preflight: verify parent BOM is present in CodeArtifact"
+
+    # Branch-aware build: run ITs only on long-lived branches when Docker is available
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+            export CODEARTIFACT_AUTH_TOKEN="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties | tr -d '\r\n')"
+            [ -n "${CODEARTIFACT_AUTH_TOKEN:-}" ] || { echo "ERROR: CodeArtifact token missing"; exit 1; }
+            export MAVEN_OPTS="-Xms512m -Xmx1024m -Dorg.slf4j.simpleLogger.defaultLogLevel=warn"
+
+            BRANCH_NAME="${bamboo_inject_BranchName:-develop}"
+            MFE_URL="${bamboo_inject_mavenFeatureRepositoryUrl:?missing mavenFeatureRepositoryUrl}"
+            PLUG_URL="${bamboo_inject_pluginRepositoryUrl:?missing pluginRepositoryUrl}"
+            IS_LL="${bamboo_inject_isLongLived:-false}"
+
+            echo "isLongLived=${IS_LL}"
+
+            docker_ok=true
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Docker not found on agent; will skip integration tests."
+              docker_ok=false
+            elif ! docker info >/dev/null 2>&1; then
+              echo "Docker present but not usable (no daemon / perms); will skip integration tests."
+              docker_ok=false
+            fi
+
+            if [ "${IS_LL}" = "true" ] && [ "${docker_ok}" = "true" ]; then
+              echo "Running full build with integration tests."
+              mvn -s settings-final.xml -B -U clean verify \
+                -P integration-test \
+                "-Dbamboo.inject.BranchName=${BRANCH_NAME}" \
+                "-Dbamboo.inject.mavenFeatureRepositoryUrl=${MFE_URL}" \
+                "-Dbamboo.inject.pluginRepositoryUrl=${PLUG_URL}" \
+                -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+            else
+              echo "Skipping integration tests (isLongLived=${IS_LL}, docker_ok=${docker_ok})."
+              mvn -s settings-final.xml -B -U clean verify \
+                "-Dbamboo.inject.BranchName=${BRANCH_NAME}" \
+                "-Dbamboo.inject.mavenFeatureRepositoryUrl=${MFE_URL}" \
+                "-Dbamboo.inject.pluginRepositoryUrl=${PLUG_URL}" \
+                -DskipITs=true -Dfailsafe.skipITs=true -DfailIfNoTests=false \
+                -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+            fi
+        description: Build and Verify (CodeArtifact)
+
+    # Test parsers
+    - test-parser:
+        type: junit
+        ignore-time: false
+        test-results: "**/target/surefire-reports/*.xml"
+        description: surefire reports
+    - test-parser:
+        type: junit
+        ignore-time: false
+        test-results: "**/target/failsafe-reports/*.xml"
+        description: failsafe reports
+
+    # Scripted Maven version extraction
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -e
+            export CODEARTIFACT_AUTH_TOKEN="$(awk -F= '/^caToken[.]password=/{print $2}' ca-token.properties | tr -d '\r\n')"
+            VER="$(mvn -q -s settings-final.xml -DskipTests -Dexec.skip=true \
+                  org.apache.maven.plugins:maven-help-plugin:3.4.1:evaluate \
+                  -Dexpression=project.version -DforceStdout || true)"
+            if [ -z "${VER:-}" ]; then
+              VER="$(awk 'BEGIN{RS="</project>";FS="\n"}{for(i=1;i<=NF;i++) if ($i ~ /<version>/){gsub(/^.*<version>|<\/version>.*$/,"",$i); print $i; exit}}' pom.xml)"
+            fi
+            [ -n "${VER:-}" ] || { echo "ERROR: could not determine Maven version"; exit 2; }
+            printf 'mavenVersion=%s\n' "$VER" > maven-version.properties
+            echo "Extracted mavenVersion=$VER"
+        description: Extract Maven version
+
+    - inject-variables:
+        file: maven-version.properties
+        scope: RESULT
+        namespace: inject
+        description: Inject mavenVersion (RESULT)
+
+    # Deploy to CodeArtifact if needed (script handles its own token)
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+        environment: >-
+          buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+          buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+          mavenVersion=${bamboo.inject.mavenVersion}
+        description: Deploy to CodeArtifact if needed
+
+    # Persist for downstream
+    - inject-variables:
+        file: file.properties
+        scope: RESULT
+        namespace: inject
+        description: Inject the build information to be used in Bamboo Deploy
+
+    # Create empty logs if ITs were skipped so artifact publication doesn't fail
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            mkdir -p integration/integration-test/target
+            : > integration/integration-test/target/jboss.log
+            : > integration/integration-test/target/oracle.log
+        description: Ensure artifact placeholders exist (when ITs are skipped)
+
+  # Artifacts (keep WS module paths)
+  artifacts:
+    - name: Jboss Log
+      location: integration/integration-test/target/
+      pattern: jboss.log
+      shared: false
+      required: false
+    - name: Oracle Log
+      location: integration/integration-test/target/
+      pattern: oracle.log
+      shared: false
+      required: false
+
+variables:
+  buildVersionQueryArtifact: ws-services-ear
+  buildVersionQueryGroup: gov.gsa.cnxs.ws
+
+repositories:
+  - WS:
+      scope: global
+  - bamboo-deployment:
+      scope: global
+
+triggers:
+  - bitbucket-server-trigger:
+      repositories:
+        - WS
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+  - events: [plan-failed]
+    recipients: [responsible, committers]
+  - events: [plan-completed]
+    recipients: [watchers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans:
+    - BT-REC

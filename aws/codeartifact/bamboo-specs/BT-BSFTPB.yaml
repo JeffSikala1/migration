@@ -1,0 +1,308 @@
+version: 2
+plan:
+  project-key: BT
+  key: BSFTPB
+  name: Billing SFTP - Build
+
+stages:
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Default Job
+
+Default Job:
+  key: JOB1
+  requirements:
+    - "system.builder.mvn3.Maven 3"
+    - "system.jdk.JDK 17"
+
+  tasks:
+    # Checkout repos
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
+    - checkout:
+        repository: bamboo-deployment
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout bamboo-deployment repository
+
+    # Ensure bamboo-deployment branch (CNXS-62536 if present; otherwise create local work branch)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Ensure bamboo-deployment@CNXS-62536 branch
+        scripts:
+          - |
+            set -eu
+            git fetch --all --prune
+            git checkout -B CNXS-62536 origin/CNXS-62536 || git checkout -B CNXS-62536
+            git --no-pager log -1 --oneline
+
+    # Hygiene
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Remove existing cnxs maven repo directory
+        scripts:
+          - |
+            set -eu
+            rm -rf "$HOME/.m2/repository/gov/gsa" || true
+            command -v jq >/dev/null 2>&1 || echo "jq not found on agent; continuing"
+
+    # Resolve target endpoints & write file.properties (repo script)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Determine parent/target repos and write properties
+        scripts:
+          - |
+            set -eu
+            WRITE_MAVEN_SETTINGS=0 bash ./build-determination-migration.sh
+
+    # Export file.properties (settings-ca.xml from repo is optional)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Export properties & settings to root
+        scripts:
+          - |
+            set -eu
+            SRC=bamboo-deployment
+            [ -f "$SRC/file.properties" ] || SRC="."
+            cp -f "$SRC"/file.properties ./
+            cp -f "$SRC"/settings-ca.xml ./ 2>/dev/null || true
+            ls -la file.properties settings-ca.xml || true
+
+    # Inject variables from file.properties (for Bamboo-side usage if needed)
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject values
+
+    # Debug: Dump injected variables after property injection for troubleshooting variable propagation issues
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+        configuration: {}
+        description: Dump variables to log
+
+    # Ensure CodeArtifact repo has external connection to Maven Central (idempotent)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Ensure CodeArtifact has Maven Central external connection
+        scripts:
+          - |
+            set -eu
+            DOMAIN="cnxsartifact"
+            REPO="conexus-plugin-repository"
+            REGION="us-east-1"
+            aws codeartifact associate-external-connection \
+              --domain "$DOMAIN" --repository "$REPO" \
+              --external-connection public:maven-central \
+              --region "$REGION" >/dev/null 2>&1 || true
+            echo "Ensured external connection public:maven-central for $REPO"
+
+    # Write a concrete ~/.m2/settings.xml with BOTH repos (plugin first, central-store fallback)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Configure Maven settings.xml for CodeArtifact (plugin + central-store)
+        scripts:
+          - |
+            set -eu
+
+            DOMAIN="cnxsartifact"
+            OWNER="339713019047"
+            REGION="us-east-1"
+
+            # Short-lived CA token
+            CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+              --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
+              --query authorizationToken --output text)"
+
+            # Endpoints: primary from injected props, fallback fetched directly
+            PLUGIN_URL="${bamboo.inject.pluginRepositoryUrl}"
+            if [ -z "${PLUGIN_URL:-}" ]; then
+              PLUGIN_URL="$(aws codeartifact get-repository-endpoint \
+                --domain "$DOMAIN" --domain-owner "$OWNER" --repository conexus-plugin-repository \
+                --format maven --region "$REGION" --query repositoryEndpoint --output text)"
+            fi
+            CENTRAL_URL="$(aws codeartifact get-repository-endpoint \
+              --domain "$DOMAIN" --domain-owner "$OWNER" --repository maven-central-store \
+              --format maven --region "$REGION" --query repositoryEndpoint --output text)"
+
+            case "$PLUGIN_URL"  in */) : ;; *) PLUGIN_URL="${PLUGIN_URL}/";; esac
+            case "$CENTRAL_URL" in */) : ;; *) CENTRAL_URL="${CENTRAL_URL}/";; esac
+
+            mkdir -p "$HOME/.m2"
+            cat > "$HOME/.m2/settings.xml" <<EOF
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <servers>
+                <server>
+                  <id>conexus-plugin-repository</id>
+                  <username>aws</username>
+                  <password>${CODEARTIFACT_AUTH_TOKEN}</password>
+                </server>
+                <server>
+                  <id>maven-central-store</id>
+                  <username>aws</username>
+                  <password>${CODEARTIFACT_AUTH_TOKEN}</password>
+                </server>
+              </servers>
+
+              <profiles>
+                <profile>
+                  <id>codeartifact</id>
+
+                  <repositories>
+                    <repository>
+                      <id>conexus-plugin-repository</id>
+                      <url>${PLUGIN_URL}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                    <repository>
+                      <id>maven-central-store</id>
+                      <url>${CENTRAL_URL}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>conexus-plugin-repository</id>
+                      <url>${PLUGIN_URL}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                    <pluginRepository>
+                      <id>maven-central-store</id>
+                      <url>${CENTRAL_URL}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+
+              <activeProfiles>
+                <activeProfile>codeartifact</activeProfile>
+              </activeProfiles>
+            </settings>
+            EOF
+            echo "Wrote ~/.m2/settings.xml"
+
+    # Debug dump after settings
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+        configuration: {}
+        description: Dump variables to log (post settings)
+
+    # Build — use safe env var for branch & parse URLs from file.properties (avoid ${bamboo.*} in /bin/sh)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Build and Verify (CodeArtifact)
+        scripts:
+          - |
+            set -eu
+            BRANCH="${bamboo_planRepository_branch:-}"
+            MFR="$(grep -E '^mavenFeatureRepositoryUrl=' file.properties | cut -d= -f2- | tr -d '\r' || true)"
+            PR="$(grep -E '^pluginRepositoryUrl='        file.properties | cut -d= -f2- | tr -d '\r' || true)"
+            mvn -s "$HOME/.m2/settings.xml" -B -U clean verify \
+              -Dbamboo.inject.BranchName="$BRANCH" \
+              -Dbamboo.inject.mavenFeatureRepositoryUrl="$MFR" \
+              -Dbamboo.inject.pluginRepositoryUrl="$PR"
+
+    # Deploy only on long-lived branches
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Deploy to CodeArtifact iff on long-lived branch
+        scripts:
+          - |
+            set -eu
+            IS_LL="$(awk -F= '/^isLongLived[[:space:]]*=/{print $2}' file.properties | tr -d '\r[:space:]' | tr '[:upper:]' '[:lower:]' || true)"
+            DEPLOY_URL="$(awk -F= '/^pluginRepositoryUrl[[:space:]]*=/{print $2}' file.properties | tr -d '\r[:space:]' || true)"
+            if [ "${IS_LL:-false}" != "true" ]; then
+              echo "isLongLived=false — skipping deploy."
+              exit 0
+            fi
+            [ -n "${DEPLOY_URL:-}" ] || { echo "ERROR: pluginRepositoryUrl missing"; exit 1; }
+
+            DOMAIN="cnxsartifact"; OWNER="339713019047"; REGION="us-east-1"
+            export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+              --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
+              --query authorizationToken --output text)"
+
+            mvn -s "$HOME/.m2/settings.xml" -B -DskipTests \
+              -DaltDeploymentRepository="conexus-plugin-repository::default::${DEPLOY_URL%/}" \
+              deploy
+
+    # Promote from long-lived repo to aggregator
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Promote package from branch repo to aggregator
+        scripts:
+          - |
+            set -eu
+            IS_LL="$(awk -F= '/^isLongLived[[:space:]]*=/{print $2}' file.properties | tr -d '\r[:space:]' | tr '[:upper:]' '[:lower:]' || true)"
+            SRC_URL="$(awk -F= '/^pluginRepositoryUrl[[:space:]]*=/{print $2}' file.properties | tr -d '\r[:space:]' || true)"
+            [ "${IS_LL:-false}" = "true" ] || { echo "isLongLived=false — skipping promotion."; exit 0; }
+
+            SRC_REPO="$(printf '%s\n' "${SRC_URL%/}" | awk -F'/maven/' '{print $2}')"
+            [ -n "${SRC_REPO:-}" ] || { echo "ERROR: cannot derive source repo from ${SRC_URL}"; exit 1; }
+
+            DOMAIN="cnxsartifact"; OWNER="339713019047"; REGION="us-east-1"
+            export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+              --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
+              --query authorizationToken --output text)"
+
+            VERSION="$(mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' \
+              --non-recursive org.codehaus.mojo:exec-maven-plugin:3.5.0:exec | tail -n1 | tr -d '\r')"
+            [ -n "${VERSION:-}" ] || { echo "ERROR: Could not determine project.version"; exit 1; }
+
+            echo "Promoting ${VERSION} gov.gsa.cnxs.billingsftp:billing-sftp from ${SRC_REPO} -> conexus-plugin-repository"
+            aws codeartifact copy-package-versions \
+              --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
+              --format maven \
+              --source-repository "$SRC_REPO" --destination-repository "conexus-plugin-repository" \
+              --namespace "gov.gsa.cnxs.billingsftp" --package "billing-sftp" --versions "$VERSION" \
+              --allow-overwrite >/dev/null
+            echo "Promotion complete."
+
+variables:
+  buildVersionQueryArtifact: billing-sftp
+  buildVersionQueryGroup: gov.gsa.cnxs.billingsftp
+
+repositories:
+  - billingsftp:
+      scope: global
+  - bamboo-deployment:
+      scope: global
+
+triggers:
+  - bitbucket-server-trigger:
+      repositories:
+        - billingsftp
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+  - events: [plan-completed]
+    recipients: [watchers]
+  - events: [plan-failed]
+    recipients: [responsible, committers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

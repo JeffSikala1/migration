@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: avapache
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: avapache
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+        retry.linkerd.io/http: 504,503,502,500
+      labels:
+        app.kubernetes.io/name: avapache
+    spec:
+      containers:
+      - name: avapache
+        image:  339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-avapache:0.5
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: avapache-config
+        ports:
+        - containerPort: 80
+        args: [/bin/sh, -c, 'i=0; /usr/sbin/httpd -t; /usr/sbin/httpd -k start; while true; do echo "$i: $(date)"; i=$((i+1)); sleep 10; done']

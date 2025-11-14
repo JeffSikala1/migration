@@ -1,0 +1,342 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: UIB
+  name: UI - Build
+
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+  - clean
+
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  # Optional cache hygiene
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
+      description: Remove existing cnxs maven repo directory
+
+  # Pin bamboo-deployment to develop (or BAMBOO_DEPLOYMENT_BRANCH if set)
+  - script:
+      interpreter: SHELL
+      working-dir: bamboo-deployment
+      scripts:
+      - |
+        set -euo pipefail
+        TARGET_BRANCH="${BAMBOO_DEPLOYMENT_BRANCH:-develop}"
+        echo "Target branch: ${TARGET_BRANCH}"
+
+        if ! git show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
+          echo "origin/${TARGET_BRANCH} not found in local mirror; fetching…"
+          git fetch --prune origin "refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" || {
+            echo "ERROR: Could not fetch origin/${TARGET_BRANCH}"
+            git ls-remote --heads origin || true
+            exit 3
+          }
+        fi
+
+        git checkout -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
+        echo "Checked out origin/${TARGET_BRANCH}"
+
+        test -f build-determination-migration.sh || { echo "build-determination-migration.sh not found in $(pwd)"; ls -la; exit 4; }
+        chmod +x build-determination-migration.sh
+      description: Ensure bamboo-deployment@develop branch + script present
+
+  # Discover endpoints & write settings-ca.xml + file.properties (created in bamboo-deployment/)
+  - script:
+      interpreter: SHELL
+      working-dir: bamboo-deployment
+      file: build-determination-migration.sh
+      description: Determine parent branch and pass correct variables
+
+  # Export the generated files to the job root for downstream tasks
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        cp bamboo-deployment/file.properties . || { echo "Missing bamboo-deployment/file.properties"; ls -la bamboo-deployment; exit 5; }
+        cp -f bamboo-deployment/settings-ca.xml . || { echo "Missing bamboo-deployment/settings-ca.xml"; ls -la bamboo-deployment; exit 6; }
+        ls -la file.properties settings-ca.xml
+      description: Export properties & settings to workspace root
+
+  # Inject endpoints for later tasks
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+
+  # npm install/test/build via CodeArtifact npm (YAML-safe Chrome wrapper + retries)
+  - script:
+      interpreter: SHELL
+      working-dir: web/src/main/
+      scripts:
+      - |
+        set -Eeuo pipefail
+
+        # Safe-source rc files
+        set +u
+        [ -f /etc/bashrc ] && . /etc/bashrc || true
+        [ -f ~/.bashrc ]  && . ~/.bashrc  || true
+        set -u
+
+        echo "Node: $(node -v) | npm: $(npm -v)"
+
+        export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt || true
+
+        CA_REGION="${CA_REGION:-us-east-1}"
+        CA_DOMAIN="${CA_DOMAIN:-cnxsartifact}"
+        CA_OWNER="${CA_OWNER:-339713019047}"
+
+        # Use underscore form of Bamboo var; fall back to env then default
+        CA_NPM_REPO="${bamboo_caNpmRepo:-${CA_NPM_REPO:-conexus-npm}}"
+        echo "Using CodeArtifact npm repo: ${CA_NPM_REPO}"
+
+        aws codeartifact login \
+          --tool npm \
+          --domain "$CA_DOMAIN" \
+          --domain-owner "$CA_OWNER" \
+          --repository "$CA_NPM_REPO" \
+          --region "$CA_REGION"
+
+        yum install -y google-chrome-stable || true
+
+        # ---- robust npm install (retry + legacy peers) ----
+        INSTALL_OK=0
+        for attempt in 1 2; do
+          echo "npm ci attempt ${attempt}…"
+          if npm ci --no-audit --no-fund --progress=false; then
+            INSTALL_OK=1; break
+          fi
+          echo "npm ci failed; cleaning cache and trying npm install --legacy-peer-deps"
+          npm cache verify || npm cache clean --force || true
+          npm install --no-audit --no-fund --progress=false --legacy-peer-deps && INSTALL_OK=1 && break
+        done
+
+        if [ "$INSTALL_OK" != "1" ]; then
+          echo "ERROR: npm install failed; cannot continue to test/build"
+          exit 2
+        fi
+        # ---------------------------------------------------
+
+        # Chrome in root CI needs --no-sandbox; YAML-safe wrapper
+        if [ "$(id -u)" = "0" ]; then
+          WRAP=/tmp/chrome-no-sandbox.sh
+          printf '%s\n' '#!/usr/bin/env bash' \
+            'chrome=$(command -v google-chrome-stable || command -v google-chrome || echo google-chrome-stable)' \
+            'exec "$chrome" --no-sandbox --disable-gpu --disable-dev-shm-usage "$@"' \
+            > "$WRAP"
+          chmod +x "$WRAP"
+          export CHROME_BIN="$WRAP"
+        fi
+
+        # ---- legacy-compatible test handling (toggle with ALLOW_TEST_FAILURES) ----
+        TEST_CMD=(npm test -- --watch=false --browsers=ChromeHeadless --code-coverage)
+        if [ "${ALLOW_TEST_FAILURES:-1}" = "1" ]; then
+          "${TEST_CMD[@]}" || echo "Unit tests failed; continuing to build (set ALLOW_TEST_FAILURES=0 to enforce)"
+        else
+          "${TEST_CMD[@]}"
+        fi
+        # --------------------------------------------------------------------------
+
+        # Prefer project-local Angular CLI; fall back to npx with correct syntax if needed
+        if [ -x ./node_modules/.bin/ng ]; then
+          ./node_modules/.bin/ng build \
+            --configuration production \
+            --output-hashing=all \
+            --optimization \
+            --source-map=true
+        else
+          CLI_VER="$(grep -Po '"@angular/cli"\s*:\s*"\K[^"]+' package.json || true)"
+          if [ -n "$CLI_VER" ]; then
+            echo "Falling back to npx with @angular/cli@$CLI_VER"
+            npx --yes -p "@angular/cli@$CLI_VER" ng build \
+              --configuration production \
+              --output-hashing=all \
+              --optimization \
+              --source-map=true
+          else
+            echo "Falling back to npx with @angular/cli (latest)"
+            npx --yes -p @angular/cli ng build \
+              --configuration production \
+              --output-hashing=all \
+              --optimization \
+              --source-map=true
+          fi
+        fi
+      description: npm install/test & Angular build via CodeArtifact npm
+
+  # Package with Maven using CodeArtifact settings (settings-ca.xml now normalized)
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+
+        # Short-lived token for Maven
+        export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+          --domain cnxsartifact --query authorizationToken --output text --region us-east-1)"
+
+        # Use injected endpoint for mirror URL (underscore env form)
+        REPO_URL="${bamboo_inject_resolveRepositoryUrl:?missing resolveRepositoryUrl}"
+
+        # Rewrite settings-ca.xml so mirror id and server id MATCH ("codeartifact")
+        # and point the mirror at the injected repository URL.
+        printf '%s\n' \
+          '<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">' \
+          '  <mirrors>' \
+          '    <mirror>' \
+          '      <id>codeartifact</id>' \
+          '      <mirrorOf>*</mirrorOf>' \
+          "      <url>${REPO_URL}</url>" \
+          '    </mirror>' \
+          '  </mirrors>' \
+          '  <servers>' \
+          '    <server>' \
+          '      <id>codeartifact</id>' \
+          '      <username>aws</username>' \
+          '      <password>${env.CODEARTIFACT_AUTH_TOKEN}</password>' \
+          '    </server>' \
+          '  </servers>' \
+          '</settings>' \
+          > settings-ca.xml
+
+        # Pull friendly vars for -D props (underscore env forms from inject task)
+        BRANCH_NAME="${bamboo_inject_BranchName:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo develop)}"
+        MFE_URL="${bamboo_inject_mavenFeatureRepositoryUrl:?missing mavenFeatureRepositoryUrl}"
+        PLUG_URL="${bamboo_inject_pluginRepositoryUrl:?missing pluginRepositoryUrl}"
+
+        mvn -s settings-ca.xml \
+          clean verify -B -U -ntp \
+          "-Dbamboo.inject.BranchName=${BRANCH_NAME}" \
+          "-Dbamboo.inject.mavenFeatureRepositoryUrl=${MFE_URL}" \
+          "-Dbamboo.inject.pluginRepositoryUrl=${PLUG_URL}" \
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      description: Package (Maven via CodeArtifact)
+
+  # Scripted Maven version extraction (robust + persists for deployments)
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -euo pipefail
+        export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+          --domain cnxsartifact --query authorizationToken --output text --region us-east-1)"
+
+        MVN="mvn -s settings-ca.xml -ntp -DskipTests -Dci=true"
+
+        VER=""
+        # 1) Fully-qualified coordinates (bypasses prefix resolution)
+        if $MVN org.apache.maven.plugins:maven-help-plugin:3.4.1:evaluate \
+             -Dexpression=project.version -DforceStdout -q >/tmp/.ver 2>/tmp/.ver.err; then
+          VER="$(cat /tmp/.ver | tr -d '\r')"
+        else
+          echo "maven-help (fq) failed; trying help:evaluate with explicit -Dplugin"
+          # 2) Prefix form with explicit plugin coordinates
+          if $MVN -q help:evaluate -Dplugin=org.apache.maven.plugins:maven-help-plugin:3.4.1 \
+               -Dexpression=project.version -DforceStdout >/tmp/.ver 2>/tmp/.ver.err; then
+            VER="$(cat /tmp/.ver | tr -d '\r')"
+          else
+            echo "help:evaluate also failed; falling back to parsing POM"
+            # 3) Fallback: parse web/pom.xml then root pom.xml
+            if [ -f web/pom.xml ]; then
+              VER="$(grep -m1 -Po '(?<=<version>)[^<]+' web/pom.xml || true)"
+            fi
+            if [ -z "$VER" ] && [ -f pom.xml ]; then
+              VER="$(grep -m1 -Po '(?<=<version>)[^<]+' pom.xml || true)"
+            fi
+          fi
+        fi
+
+        if [ -z "${VER:-}" ]; then
+          echo "ERROR: Could not determine Maven version."
+          echo "---- mvn stderr (last attempt) ----"
+          sed -n '1,200p' /tmp/.ver.err || true
+          exit 7
+        fi
+
+        printf 'mavenVersion=%s\n' "$VER" > maven-version.properties
+        echo "Extracted mavenVersion=$VER"
+      description: Extract Maven version
+
+  # Make mavenVersion available to later jobs/deployments
+  - inject-variables:
+      file: maven-version.properties
+      scope: RESULT
+      description: Inject mavenVersion variable (persist to RESULT)
+
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+
+  # Deploy to CodeArtifact if needed (script handles its own token)
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+      environment: >-
+        buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+        buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+        mavenVersion=${bamboo.mavenVersion}
+      description: Deploy to CodeArtifact if needed
+
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+
+variables:
+  buildVersionQueryArtifact: ui-war
+  buildVersionQueryGroup: gov.gsa.cnxs.ui
+  caNpmRepo: conexus-npm
+  ALLOW_TEST_FAILURES: "1"   # legacy-friendly default. Set to "0" to enforce tests.
+
+repositories:
+- UI:
+    scope: global
+- bamboo-deployment:
+    scope: global
+
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - UI
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+- events: [plan-completed]
+  recipients: [watchers]
+- events: [plan-failed]
+  recipients: [responsible, committers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

@@ -1,0 +1,290 @@
+version: 2
+plan:
+  project-key: BT
+  key: SB
+  name: Schema - Build
+
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+
+Default Job:
+  key: JOB1
+  requirements:
+  - 'system.builder.mvn3.Maven 3'
+  - 'system.jdk.JDK 17'
+
+  tasks:
+  - clean
+
+  # Checkouts
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout bamboo-deployment repository
+
+  # Hygiene – remove only CNXS SNAPSHOT cache
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      description: Remove CNXS SNAPSHOT folders
+      scripts:
+      - |
+        set -eu
+        dirName="$HOME/.m2/repository/gov/gsa/cnxs"
+        if [ -d "$dirName" ]; then
+          echo "Removing SNAPSHOT folders from $dirName"
+          find "$dirName" -type d -name '*SNAPSHOT' -exec rm -rf {} + || true
+        fi
+
+  # Track CNXS-62536 if it exists, else develop (portable sh – no pipefail)
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      working-dir: bamboo-deployment
+      description: Ensure bamboo-deployment branch (CNXS-62536 if present)
+      scripts:
+      - |
+        set -eu
+        git fetch --all --prune
+        if git ls-remote --exit-code --heads origin CNXS-62536 >/dev/null 2>&1; then
+          BR="CNXS-62536"
+          git checkout -B "$BR" "origin/$BR" || git checkout "$BR"
+        else
+          BR="develop"
+          git checkout -B "$BR" "origin/$BR" || git checkout "$BR"
+        fi
+        git reset --hard "origin/$BR" || true
+        git --no-pager log -1 --oneline
+
+  # Discover CA endpoints & write file.properties
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      working-dir: bamboo-deployment
+      description: Determine parent/target repos and write properties
+      scripts:
+      - |
+        set -eu
+        bash ./build-determination-migration.sh
+
+  # Export props/settings to repo root
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      description: Export properties & settings to root
+      scripts:
+      - |
+        set -eu
+        SRC=bamboo-deployment
+        [ -f "$SRC/file.properties" ] || SRC="."
+        cp -f "$SRC"/file.properties ./
+        cp -f "$SRC"/settings-ca.xml ./ 2>/dev/null || true
+        ls -la file.properties settings-ca.xml || true
+
+  # Inject vars for debugging
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+      description: Dump variables to log
+
+  # Ensure CodeArtifact proxies Maven Central (idempotent)
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      description: Ensure CodeArtifact has Maven Central external connection
+      scripts:
+      - |
+        set -eu
+        DOMAIN="${bamboo_ca_domain:-cnxsartifact}"
+        REPO="conexus-plugin-repository"
+        REGION="${bamboo_ca_region:-us-east-1}"
+        aws codeartifact associate-external-connection \
+          --domain "$DOMAIN" --repository "$REPO" \
+          --external-connection public:maven-central \
+          --region "$REGION" >/dev/null 2>&1 || true
+        echo "Ensured external connection public:maven-central for $REPO"
+
+  # ~/.m2/settings.xml using BOTH repos (plugin + central-store)
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      description: Configure Maven settings.xml for CodeArtifact (plugin + central-store)
+      scripts:
+      - |
+        set -eu
+        DOMAIN="${bamboo_ca_domain:-cnxsartifact}"
+        OWNER="${bamboo_ca_owner:-339713019047}"
+        REGION="${bamboo_ca_region:-us-east-1}"
+
+        CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+          --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
+          --query authorizationToken --output text)"
+
+        PLUGIN_URL="$(grep -E '^pluginRepositoryUrl=' file.properties | cut -d= -f2- | tr -d '\r' || true)"
+        if [ -z "$PLUGIN_URL" ]; then
+          PLUGIN_URL="$(aws codeartifact get-repository-endpoint \
+            --domain "$DOMAIN" --domain-owner "$OWNER" --repository conexus-plugin-repository \
+            --format maven --region "$REGION" --query repositoryEndpoint --output text)"
+        fi
+        CENTRAL_URL="$(aws codeartifact get-repository-endpoint \
+          --domain "$DOMAIN" --domain-owner "$OWNER" --repository maven-central-store \
+          --format maven --region "$REGION" --query repositoryEndpoint --output text)"
+
+        case "$PLUGIN_URL"  in */) : ;; *) PLUGIN_URL="${PLUGIN_URL}/";; esac
+        case "$CENTRAL_URL" in */) : ;; *) CENTRAL_URL="${CENTRAL_URL}/";; esac
+
+        mkdir -p "$HOME/.m2"
+        cat > "$HOME/.m2/settings.xml" <<EOF
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+          <servers>
+            <server>
+              <id>conexus-plugin-repository</id>
+              <username>aws</username>
+              <password>${CODEARTIFACT_AUTH_TOKEN}</password>
+            </server>
+            <server>
+              <id>maven-central-store</id>
+              <username>aws</username>
+              <password>${CODEARTIFACT_AUTH_TOKEN}</password>
+            </server>
+          </servers>
+          <profiles>
+            <profile>
+              <id>codeartifact</id>
+              <repositories>
+                <repository>
+                  <id>conexus-plugin-repository</id>
+                  <url>${PLUGIN_URL}</url>
+                  <releases><enabled>true</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </repository>
+                <repository>
+                  <id>maven-central-store</id>
+                  <url>${CENTRAL_URL}</url>
+                  <releases><enabled>true</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </repository>
+              </repositories>
+              <pluginRepositories>
+                <pluginRepository>
+                  <id>conexus-plugin-repository</id>
+                  <url>${PLUGIN_URL}</url>
+                  <releases><enabled>true</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                  <id>maven-central-store</id>
+                  <url>${CENTRAL_URL}</url>
+                  <releases><enabled>true</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </pluginRepository>
+              </pluginRepositories>
+            </profile>
+          </profiles>
+          <activeProfiles>
+            <activeProfile>codeartifact</activeProfile>
+          </activeProfiles>
+        </settings>
+        EOF
+        echo "Wrote ~/.m2/settings.xml"
+
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+      description: Dump variables to log (post settings)
+
+  # Build (develop)
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      description: Build and Verify (CodeArtifact)
+      scripts:
+      - |
+        set -eu
+        BRANCH="${bamboo_planRepository_branch:-develop}"
+        MFR="$(grep -E '^mavenFeatureRepositoryUrl=' file.properties | cut -d= -f2- | tr -d '\r' || true)"
+        PR="$(grep -E '^pluginRepositoryUrl='        file.properties | cut -d= -f2- | tr -d '\r' || true)"
+        mvn -s "$HOME/.m2/settings.xml" -B -U clean verify \
+          -Dbamboo.inject.BranchName="$BRANCH" \
+          -Dbamboo.inject.mavenFeatureRepositoryUrl="$MFR" \
+          -Dbamboo.inject.pluginRepositoryUrl="$PR"
+
+  # Resolve version (non-fatal)
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      description: Resolve Maven project.version
+      scripts:
+      - |
+        set +e
+        VERSION="$(mvn -B -s "$HOME/.m2/settings.xml" \
+          org.apache.maven.plugins:maven-help-plugin:3.4.0:evaluate \
+          -Dexpression=project.version -DforceStdout 2>/dev/null | tail -n1)"
+        [ -n "$VERSION" ] || VERSION="$(awk -F'[<>]' '/<project>/,/<\/project>/{if($2=="version"){print $3;exit}}' pom.xml 2>/dev/null)"
+        echo "Resolved project.version=${VERSION:-unknown}"
+        exit 0
+
+  # Deploy directly (fix altDeploymentRepository syntax)
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      description: Conditional deploy to CodeArtifact (develop)
+      scripts:
+      - |
+        set -eu
+        BRANCH="${bamboo_planRepository_branch:-develop}"
+        if [ "$BRANCH" != "develop" ]; then
+          echo "Non-develop ($BRANCH) — skipping deploy."
+          exit 0
+        fi
+
+        PLUGIN_URL="$(grep -E '^pluginRepositoryUrl=' file.properties | cut -d= -f2- | tr -d '\r')"
+        case "$PLUGIN_URL" in */) : ;; *) PLUGIN_URL="${PLUGIN_URL}/";; esac
+
+        ALT="conexus-plugin-repository::default::${PLUGIN_URL}"
+        echo "Deploying with altDeploymentRepository=${ALT}"
+        mvn -s "$HOME/.m2/settings.xml" -B -DskipTests=true \
+          -DaltDeploymentRepository="$ALT" deploy
+
+variables:
+  ca_domain: cnxsartifact
+  ca_owner: 339713019047
+  ca_region: us-east-1
+
+repositories:
+- Schema:
+    scope: global
+- bamboo-deployment:
+    scope: global
+
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - Schema
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 30
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+- events: [plan-completed]
+  recipients: [watchers]
+- events: [plan-failed]
+  recipients: [responsible, committers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: block_if_parent_in_progress
+  plans: []

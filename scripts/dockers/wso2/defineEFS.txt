@@ -1,0 +1,51 @@
+#!/bin/bash
+
+export AWS_PAGER=""
+vpc_id=$(aws eks describe-cluster \
+    --name  conexus-dev-eks-PiXj0AhG \
+    --query "cluster.resourcesVpcConfig.vpcId" \
+    --output text)
+
+cidr_range=$(aws ec2 describe-vpcs \
+    --vpc-ids $vpc_id \
+    --query "Vpcs[].CidrBlock" \
+    --output text \
+    --region us-east-1)
+
+security_group_id=$(aws ec2 create-security-group \
+    --group-name inbountEFSToDevEKS \
+    --description "inbound rule that allows inbound NFS traffic for your Amazon EFS mount points" \
+    --vpc-id $vpc_id \
+    --output text)
+
+#Use cidr_range and security-group-id from above to create an inbound rule for the cidr.
+aws ec2 authorize-security-group-ingress \
+    --group-id $security_group_id \
+    --protocol tcp \
+    --port 2049 \
+    --cidr $cidr_range
+
+echo "Createing EFS file system"
+file_system_id=$(aws efs create-file-system \
+    --region us-east-1 \
+    --performance-mode generalPurpose \
+    --query 'FileSystemId' \
+    --output text)
+
+echo "Node list"
+
+kubectl get nodes
+
+echo "Subnet list"
+
+aws ec2 describe-subnets \
+    --filters "Name=vpc-id,Values=$vpc_id" \
+    --query 'Subnets[*].{SubnetId: SubnetId,AvailabilityZone: AvailabilityZone,CidrBlock: CidrBlock}' \
+    --output table
+
+echo "Run the following mount target command for each subnet where nodes exist in the above output"
+echo "aws efs create-mount-target --file-system-id $file_system_id --subnet-id subnet-EXAMPLE --security-groups $security_group_id"
+sg-01874609215f95130
+fs-0d4f192200ec71e7f
+vpc-06b7b0c3a2762dfc4
+

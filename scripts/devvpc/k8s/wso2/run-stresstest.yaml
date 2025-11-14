@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stresstest
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: stresstest
+  replicas: 100
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app.kubernetes.io/name: stresstest
+    spec:
+      containers:
+      - name: stresstest
+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi:f40debugimage
+        imagePullPolicy: Always
+        env:
+         - name: APP_KEY
+           valueFrom:
+            secretKeyRef:
+              name: cnxsids
+              key: app_key
+         - name: TENANT_KEY
+           valueFrom:
+            secretKeyRef:
+              name: cnxsids
+              key: tenant_key
+         - name: SOCN_PATH
+           valueFrom:
+            configMapKeyRef:
+              name: micro-config2
+              key: socn_path
+        ports:
+        - containerPort: 80
+        args: [/bin/sh, -c, 'i=0; /usr/sbin/httpd -t; /usr/sbin/httpd -k start; while true; do i=$((i+1)); sleep 10; done']
+
+

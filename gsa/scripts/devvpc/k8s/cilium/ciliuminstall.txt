@@ -1,0 +1,61 @@
+-- Cilium Service Mess attempt ----
+
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/terraform (feature/DevVPC2.0.2)$ helm upgrade cilium cilium/cilium --version 1.17.5 \
+    --namespace kube-system \
+    --reuse-values \
+    --set ingressController.enabled=true \
+    --set ingressController.loadbalancerMode=dedicated
+Release "cilium" has been upgraded. Happy Helming!
+NAME: cilium
+LAST DEPLOYED: Wed Jul  2 22:11:42 2025
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 5
+TEST SUITE: None
+NOTES:
+You have successfully installed Cilium with Hubble.
+
+Your release version is 1.17.5.
+
+For any further help, visit https://docs.cilium.io/en/v1.17/gettinghelp
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/terraform (feature/DevVPC2.0.2)$ 
+
+-- Updates applied during trouble shooting --
+
+helm upgrade cilium cilium/cilium --version 1.17.5 \
+   --namespace kube-system \
+   --reuse-values \
+   --set hubble.relay.enabled=true \
+   --set hubble.ui.enabled=true
+
+
+helm upgrade cilium cilium/cilium --version 1.17.5 \
+  --namespace kube-system \
+  --reuse-values \
+  --set localRedirectPolicy=true
+
+
+
+$ wget https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-local-dns.yaml
+
+$ kubedns=$(kubectl get svc kube-dns -n kube-system -o jsonpath={.spec.clusterIP}) && sed -i "s/__PILLAR__DNS__SERVER__/$kubedns/g;" node-local-dns.yaml
+
+$ kubectl apply -f node-local-dns.yaml
+
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ wget https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-local-dns.yaml
+Saving 'node-local-dns.yaml'
+HTTP response 200  [https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-localnode-local-dns.yaml  100% [=====================================================================>]    1.05K    --.-KB/s
+                          [Files: 1  Bytes: 1.05K [1.34KB/s] Redirects: 0  Todo: 0  Errors: 0    ]
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ kubedns=$(kubectl get svc kube-dns -n kube-system -o jsonpath={.spec.clusterIP}) && sed -i "s/__PILLAR__DNS__SERVER__/$kubedns/g;" node-local-dns.yaml
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ kubectl apply -f node-local-dns.yaml
+serviceaccount/node-local-dns created
+service/kube-dns-upstream created
+configmap/node-local-dns created
+daemonset.apps/node-local-dns created
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ 
+
+
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ kubectl apply -f https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-local-dns-lrp.yaml
+
+ciliumlocalredirectpolicy.cilium.io/nodelocaldns created
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ 

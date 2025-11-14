@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brms
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: brms
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+        instrumentation.opentelemetry.io/inject-java: "true"
+      labels:
+        app.kubernetes.io/name: brms
+    spec:
+      containers:
+      - name: conexus-brms
+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss:8.0.3.1-brms-recon135-cmod35
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: jboss-config
+        env:
+          - name: NSFS_APP_PASS
+            valueFrom:
+              secretKeyRef:
+                name: "cnxsids"
+                key: "nsfs_app_pass"
+          - name: CNXS_MOD_APP_PASS
+            valueFrom:
+              secretKeyRef:
+                name: "cnxsids"
+                key: "cnxs_mod_app_pass"
+          - name: tenant_key
+            valueFrom:
+              secretKeyRef:
+                name: "cnxsids"
+                key: "tenant_key"
+          - name: app_key
+            valueFrom:
+              secretKeyRef:
+                name: "cnxsids"
+                key: "app_key"
+        ports:
+        - containerPort: 8080
+        args: [/bin/sh, -c, 'i=0; /app/jboss-eap-8.0/bin/standalone.sh -c standalone-full.xml; while true; do i=$((i+1)); sleep 10; done']
+        volumeMounts:
+        - mountPath: /app/jboss-eap-8.0/standalone/configuration/standalone-full.xml
+          name: standalone-config
+          subPath: standalone-full.xml
+        - mountPath: /NSFS_NAS/database
+          name: database-volume
+        - mountPath: /app/conexus/attachments
+          name: attachments-volume
+        - mountPath: /app/conexus/reports
+          name: reports-volume
+      volumes:
+        - name: standalone-config
+          configMap:
+            name: jboss-brms-config
+        - name: database-volume
+          persistentVolumeClaim:
+            claimName: efs-database-volume-claim
+        - name: attachments-volume
+          persistentVolumeClaim:
+            claimName: efs-attachments-volume-claim
+        - name: reports-volume
+          persistentVolumeClaim:
+            claimName: efs-reports-volume-claim
+

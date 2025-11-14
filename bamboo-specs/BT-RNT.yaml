@@ -1,0 +1,126 @@
+version: 2
+plan:
+  project-key: BT
+  key: RCNT
+  name: Reconciliation - Nightly Testing
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  other:
+    clean-working-dir: true
+    all-other-apps:
+      custom:
+        auto: {}
+        buildHangingConfig.enabled: 'false'
+  tasks:
+# com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli is disabled. This state is not supported at YAML
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: |-
+        clean verify -B -DskipSurefire=true -U -P integration-test,enable-performance-tests
+        -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
+      description: Build and Verify
+  artifacts:
+  - name: Jboss Log
+    location: integration/target/
+    pattern: jboss.log
+    shared: false
+    required: false
+  - name: Oracle Log
+    location: integration/target/
+    pattern: oracle.log
+    shared: false
+    required: false
+  artifact-subscriptions: []
+repositories:
+- Reconciliation:
+    scope: global
+- bamboo-deployment:
+    scope: global
+triggers:
+  - cron:
+      description: daily
+      expression: "0 0 12 ? * *"
+branches:
+  create: manually
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 7
+  link-to-jira: true
+notifications:
+- events:
+  - plan-failed
+  recipients:
+  - users:
+    - jon.french
+  - users:
+    - jeffsikala
+  - watchers
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+  - users:
+    - jon.french
+  - users:
+    - jeffsikala
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+---
+version: 2
+plan:
+  key: BT-RCNT
+plan-permissions:
+- users:
+  - jeffsikala
+  groups:
+  - bamboo-admin
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  

@@ -1,0 +1,61 @@
+apiVersion: v1
+data:
+  default.conf: "\nmap $http_x_amzn_mtls_clientcert_serial_number $usdaeauthid {\n
+    \     default nomatch;\n      40000cf588993acbac2e9c55f00003000cf588 28682016020301294075442;\n}\n\nmap
+    $usdaeauthid $eauthcat {\n    default nomatch;\n    28682016020301294075442 DPA;\n}\n\nserver
+    {\n    resolver 172.20.0.10;\n    server_name api.*;\n    # in k8s the names must
+    be tls.crt and tls.key when mounted via secret volume\n    ssl_certificate /etc/nginx/ssl/tls.crt;\n
+    \   ssl_certificate_key /etc/nginx/ssl/tls.key;\n    listen 80;\n    listen 443
+    ssl;\n    ssl_dhparam /etc/nginx/ssl/diffie-hellman.pem;\n    #ssl_stapling on;\n
+    \   #ssl_stapling_verify on;\n    #add_header Strict-Transport-Security \"max-age=31536000;
+    includeSubdomains;\";\n    ssl_session_timeout 1d;\n    ssl_session_cache shared:MozSSL:10m;
+    \ # about 40000 sessions\n    ssl_session_tickets off;\n    ssl_protocols TLSv1.2
+    TLSv1.3;\n    ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-CCM:ECDHE-ECDSA-AES256-CCM8;\n
+    \   #ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;\n
+    \   ssl_prefer_server_ciphers on;\n    # For cnxs app\n    underscores_in_headers
+    on;  \n    client_max_body_size 20m;\n\n    \n    #include sites.common;\n    location
+    / {\n        resolver kube-dns.kube-system.svc.cluster.local;\n        set $wso2pod
+    http://conexus-wso2mi.ingress-nginx.svc.cluster.local:8290;\n        proxy_pass
+    $wso2pod;\n        proxy_http_version 1.1;\n        proxy_set_header        X-Forwarded-Host
+    $host;\n        proxy_set_header        X-Forwarded-Server $host;\n        proxy_set_header
+    \   X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header    X-Real-IP
+    $remote_addr;\n        proxy_redirect          off;\n        proxy_read_timeout
+    \     2700;\n\tproxy_send_timeout      2700;\n        \n\tproxy_set_header SSL-VENDOR-EAUTHID
+    $usdaeauthid;\n        proxy_set_header SSL-VENDOR-CAT $eauthcat; \n\n\trewrite_log
+    on;\n        rewrite ^/eas/conexus/dpa/contractingOfficers$ /vendor/dpa/contractingOfficers
+    break;\n        rewrite ^/eas/conexus/socn$ /services/SOCNService break;\n        rewrite
+    ^/eas/conexus/socn?wsdl$ /services/SOCNService?wsdl break;\n        rewrite ^/eas/conexus/atax$
+    /services/AllowableTax break;\n        rewrite ^/eas/conexus/atax?wsdl$ /services/AllowableTax?wsdl
+    break;\n        rewrite ^/eas/conexus/dpa/contractingOfficers/(.*) /vendor/dpa/contractingOfficers/$1
+    break;\n        rewrite ^/eas/conexus/dpa/contracts$ /vendor/dpa/contracts break;\n
+    \       rewrite ^/eas/conexus/dpa/contracts/(.*) /vendor/dpa/contracts/$1 break;\n
+    \       rewrite ^/eas/conexus/soa$ /services/SOAService break;\n        rewrite
+    ^/eas/conexus/soa?wsdl$ /services/SOAService?wsdl break;\n        rewrite ^/eas/conexus/soc$
+    /services/SOCService break;\n        rewrite ^/eas/conexus/soc?wsdl$ /services/SOCService?wsdl
+    break;\n        rewrite ^/eas/conexus/soac$ /services/SOACService break;\n        rewrite
+    ^/eas/conexus/soac?wsdl$ /services/SOACService?wsdl break;\n        rewrite ^/eas/conexus/focn$
+    /services/FOCNService break;\n        rewrite ^/eas/conexus/focn?wsdl$ /services/FOCNService?wsdl
+    break;\n        rewrite ^/eas/conexus/sorn$ /services/SORNService break;\n        rewrite
+    ^/eas/conexus/sorn?wsdl$ /services/SORNService?wsdl break;\n        rewrite ^/eas/conexus/sscn$
+    /services/SSCNService break;\n        rewrite ^/eas/conexus/sscn?wsdl$ /services/SSCNService?wsdl
+    break;\n        rewrite ^/eas/conexus/dbas$ /services/DBASService break;\n        rewrite
+    ^/eas/conexus/dbas?wsdl$ /services/DBASService?wsdl break;\n        rewrite ^/eas/conexus/ws/healthcheck$
+    /services/HealthCheckService break;\n        rewrite ^/eas/conexus/focn?wsdl$
+    /services/HealthCheckService?wsdl break;\n\n    }\n\n}\n\n\n"
+  diffie-hellman.pem: |-
+    -----BEGIN DH PARAMETERS-----
+    MIIBCAKCAQEA//////////+t+FRYortKmq/cViAnPTzx2LnFg84tNpWp4TZBFGQz
+    +8yTnc4kmz75fS/jY2MMddj2gbICrsRhetPfHtXV/WVhJDP1H18GbtCFY2VVPe0a
+    87VXE15/V8k1mE8McODmi3fipona8+/och3xWKE2rec1MKzKT0g6eXq8CrGCsyT7
+    YdEIqUuyyOP7uWrat2DX9GgdT0Kj3jlN9K5W7edjcrsZCwenyO4KbXCeAvzhzffi
+    7MA0BM0oNC9hkXL+nOmFg/+OTxIy7vKBg8P+OxtMb61zO7X8vC7CIAXFjvGDfRaD
+    ssbzSibBsu/6iGtCOGEoXJf//////////wIBAg==
+    -----END DH PARAMETERS-----
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"kind":"ConfigMap","apiVersion":"v1","metadata":{"name":"wso2-nginx-config","namespace":"ingress-nginx","creationTimestamp":null},"data":{"default.conf":"\nmap $http_x_amzn_mtls_clientcert_serial_number $usdaeauthid {\n      default nomatch;\n      40000cf588993acbac2e9c55f00003000cf588 28682016020301294075442;\n}\n\nmap $usdaeauthid $eauthcat {\n    default nomatch;\n    28682016020301294075442 DPA;\n}\n\nserver {\n    resolver 172.20.0.10;\n    server_name api.*;\n    # in k8s the names must be tls.crt and tls.key when mounted via secret volume\n    ssl_certificate /etc/nginx/ssl/tls.crt;\n    ssl_certificate_key /etc/nginx/ssl/tls.key;\n    listen 80;\n    listen 443 ssl;\n    ssl_dhparam /etc/nginx/ssl/diffie-hellman.pem;\n    #ssl_stapling on;\n    #ssl_stapling_verify on;\n    #add_header Strict-Transport-Security \"max-age=31536000; includeSubdomains;\";\n    ssl_session_timeout 1d;\n    ssl_session_cache shared:MozSSL:10m;  # about 40000 sessions\n    ssl_session_tickets off;\n    ssl_protocols TLSv1.2 TLSv1.3;\n    ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-CCM:ECDHE-ECDSA-AES256-CCM8;\n    #ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;\n    ssl_prefer_server_ciphers on;\n    # For cnxs app\n    underscores_in_headers on;  \n    client_max_body_size 20m;\n\n    \n    #include sites.common;\n    location / {\n        resolver kube-dns.kube-system.svc.cluster.local;\n        set $wso2pod http://conexus-wso2mi.ingress-nginx.svc.cluster.local:8290;\n        proxy_pass $wso2pod;\n        proxy_http_version 1.1;\n        proxy_set_header        X-Forwarded-Host $host;\n        proxy_set_header        X-Forwarded-Server $host;\n        proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header    X-Real-IP $remote_addr;\n        proxy_redirect          off;\n        proxy_read_timeout      2700;\n\tproxy_send_timeout      2700;\n        \n\tproxy_set_header SSL-VENDOR-EAUTHID $usdaeauthid;\n        proxy_set_header SSL-VENDOR-CAT $eauthcat; \n\n\trewrite_log on;\n        rewrite ^/eas/conexus/dpa/contractingOfficers$ /vendor/dpa/contractingOfficers break;\n        rewrite ^/eas/conexus/socn$ /services/SOCNService break;\n        rewrite ^/eas/conexus/socn?wsdl$ /services/SOCNService?wsdl break;\n        rewrite ^/eas/conexus/atax$ /services/AllowableTax break;\n        rewrite ^/eas/conexus/atax?wsdl$ /services/AllowableTax?wsdl break;\n        rewrite ^/eas/conexus/dpa/contractingOfficers/(.*) /vendor/dpa/contractingOfficers/$1 break;\n        rewrite ^/eas/conexus/dpa/contracts$ /vendor/dpa/contracts break;\n        rewrite ^/eas/conexus/dpa/contracts/(.*) /vendor/dpa/contracts/$1 break;\n        rewrite ^/eas/conexus/soa$ /services/SOAService break;\n        rewrite ^/eas/conexus/soa?wsdl$ /services/SOAService?wsdl break;\n        rewrite ^/eas/conexus/soc$ /services/SOCService break;\n        rewrite ^/eas/conexus/soc?wsdl$ /services/SOCService?wsdl break;\n        rewrite ^/eas/conexus/soac$ /services/SOACService break;\n        rewrite ^/eas/conexus/soac?wsdl$ /services/SOACService?wsdl break;\n        rewrite ^/eas/conexus/focn$ /services/FOCNService break;\n        rewrite ^/eas/conexus/focn?wsdl$ /services/FOCNService?wsdl break;\n        rewrite ^/eas/conexus/sorn$ /services/SORNService break;\n        rewrite ^/eas/conexus/sorn?wsdl$ /services/SORNService?wsdl break;\n        rewrite ^/eas/conexus/sscn$ /services/SSCNService break;\n        rewrite ^/eas/conexus/sscn?wsdl$ /services/SSCNService?wsdl break;\n        rewrite ^/eas/conexus/dbas$ /services/DBASService break;\n        rewrite ^/eas/conexus/dbas?wsdl$ /services/DBASService?wsdl break;\n        rewrite ^/eas/conexus/ws/healthcheck$ /services/HealthCheckService break;\n        rewrite ^/eas/conexus/focn?wsdl$ /services/HealthCheckService?wsdl break;\n\n    }\n\n}\n\n\n","diffie-hellman.pem":"-----BEGIN DH PARAMETERS-----\nMIIBCAKCAQEA//////////+t+FRYortKmq/cViAnPTzx2LnFg84tNpWp4TZBFGQz\n+8yTnc4kmz75fS/jY2MMddj2gbICrsRhetPfHtXV/WVhJDP1H18GbtCFY2VVPe0a\n87VXE15/V8k1mE8McODmi3fipona8+/och3xWKE2rec1MKzKT0g6eXq8CrGCsyT7\nYdEIqUuyyOP7uWrat2DX9GgdT0Kj3jlN9K5W7edjcrsZCwenyO4KbXCeAvzhzffi\n7MA0BM0oNC9hkXL+nOmFg/+OTxIy7vKBg8P+OxtMb61zO7X8vC7CIAXFjvGDfRaD\nssbzSibBsu/6iGtCOGEoXJf//////////wIBAg==\n-----END DH PARAMETERS-----"}}
+  creationTimestamp: null
+  name: wso2-nginx-config
+  namespace: ingress-nginx

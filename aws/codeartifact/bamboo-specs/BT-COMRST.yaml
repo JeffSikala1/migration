@@ -1,0 +1,427 @@
+version: 2
+plan:
+  project-key: BT
+  key: COMRST
+  name: CommonRest - Build
+
+stages:
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Default Job
+
+Default Job:
+  key: JOB1
+  requirements:
+    - "system.jdk.JDK 17"
+    - "system.builder.mvn3.Maven 3"
+
+  artifacts:
+    - name: commonrest-jars
+      pattern: "**/target/*.jar"
+      required: false
+    - name: surefire-xml
+      pattern: "**/target/surefire-reports/*.xml"
+      required: false
+    - name: failsafe-xml
+      pattern: "**/target/failsafe-reports/*.xml"
+      required: false
+
+  tasks:
+    - clean
+
+    # Repos
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
+    - checkout:
+        repository: bamboo-deployment
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout bamboo-deployment repository
+
+    # Ensure bamboo-deployment branch (remote-aware, POSIX /bin/sh)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        scripts:
+          - |
+            #!/bin/sh
+            set -x
+            echo "PWD=$(pwd)"; git --version || true
+            TARGET_BRANCH="${BAMBOO_DEPLOYMENT_BRANCH:-develop}"
+            echo "Target branch: ${TARGET_BRANCH}"
+            [ -d .git ] || { echo "ERROR: .git not found in $(pwd)"; ls -la; exit 4; }
+            git config --global --add safe.directory "$(pwd)" || true
+            git remote -v || true
+            git fetch origin --prune --tags || git fetch --all --prune || true
+            if git ls-remote --exit-code --heads origin "${TARGET_BRANCH}" >/dev/null 2>&1; then
+              git checkout -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}" || git checkout -B "${TARGET_BRANCH}"
+            else
+              echo "WARN: origin/${TARGET_BRANCH} does not exist; staying on $(git rev-parse --abbrev-ref HEAD)"
+            fi
+            git status -sb || true
+            git log -1 --oneline || true
+        description: Ensure bamboo-deployment branch (remote-aware)
+
+    # Hygiene (no sudo; clear local cache; jq optional)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            rm -rf ~/.m2/repository/gov/gsa/ || true
+            if ! command -v jq >/dev/null 2>&1; then
+              echo "WARN: jq not found on agent; continuing without it."
+            fi
+        description: Remove existing cnxs maven repo directory & ensure jq
+
+    # Discover endpoints & write file.properties + settings-ca.xml
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/build-determination-migration.sh
+        description: Determine parent/target repos and write properties
+
+    # Ensure helper files in job root
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            ROOT="$(pwd)"
+            SRC="${ROOT}/bamboo-deployment"
+            need_err=0
+            for f in file.properties settings-ca.xml; do
+              if [ -f "${ROOT}/${f}" ]; then
+                echo "${f} already present"
+              elif [ -f "${SRC}/${f}" ]; then
+                echo "Copying ${f} from ${SRC} -> ${ROOT}"
+                cp -f "${SRC}/${f}" "${ROOT}/"
+              else
+                echo "ERROR: ${f} not found in ${ROOT} or ${SRC}" >&2
+                need_err=1
+              fi
+            done
+            ls -l file.properties settings-ca.xml || true
+            [ "${need_err}" -eq 0 ]
+        description: Ensure file.properties & settings-ca.xml in job root
+
+    # Inject discovered endpoints
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject values
+
+    # Ensure CodeArtifact has Maven Central external connection (non-fatal)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            echo "[ext-conn] Starting (non-fatal)."
+            if ! command -v aws >/dev/null 2>&1; then
+              echo "[ext-conn] WARN: aws CLI not installed; skipping."
+              exit 0
+            fi
+            if ! aws sts get-caller-identity --query Arn --output text >/dev/null 2>&1; then
+              echo "[ext-conn] WARN: No AWS creds; skipping."
+              exit 0
+            fi
+            ensure_ext() {
+              repo="$1"
+              echo "[ext-conn] Ensuring external connection on repo: $repo"
+              if aws codeartifact associate-external-connection \
+                  --domain cnxsartifact \
+                  --domain-owner 339713019047 \
+                  --region us-east-1 \
+                  --repository "$repo" \
+                  --external-connection public:maven-central >/dev/null 2>&1; then
+                echo "[ext-conn] OK: $repo"
+              else
+                echo "[ext-conn] WARN: aws returned $? for $repo (continuing)."
+              fi
+            }
+            ensure_ext "conexus-plugin-repository"
+            ensure_ext "conexus-dependencies"
+            echo "[ext-conn] Done (not blocking build)."
+        description: Ensure CodeArtifact has Maven Central external connection (non-fatal)
+
+    # Fetch CA token (masked) and inject
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            set +x
+            echo "caToken.password=$(aws codeartifact get-authorization-token \
+              --domain cnxsartifact --query authorizationToken --output text --region us-east-1)" > ca-token.properties
+        description: Fetch CodeArtifact token (masked)
+    - inject-variables:
+        file: ca-token.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject CodeArtifact token (masked)
+
+    # Prepare env vars (purely for logging/clarity)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            RESOLVE_URL="$(awk -F= '/^resolveRepositoryUrl=/{print $2}' file.properties | sed 's#/*$##')"
+            PLUGIN_URL="$(awk -F= '/^pluginRepositoryUrl=/{print $2}'  file.properties | sed 's#/*$##')"
+            echo "Resolved RESOLVE_URL=${RESOLVE_URL}"
+            echo "Resolved PLUGIN_URL=${PLUGIN_URL}"
+        description: Prepare env vars from properties
+
+    # Preflight CodeArtifact (non-fatal/tolerant)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            BASE="$(awk -F= '/^resolveRepositoryUrl=/{print $2}' file.properties | sed 's#/*$##')"
+            TRY1="${BASE}/gov/gsa/cnxs/bom/env/maven-metadata.xml"
+            code="$(curl -sS -o /dev/null -w '%{http_code}' -I "$TRY1" || echo 000)"
+            echo "[preflight] HEAD $TRY1 -> $code (tolerating any result)"
+            # Always non-fatal
+            exit 0
+        description: Preflight – verify CodeArtifact reachable (non-fatal / tolerant)
+
+    # Final Maven settings (mirror CA; snapshots allowed)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            set -e
+            export CODEARTIFACT_AUTH_TOKEN="${bamboo.inject.caToken.password}"
+
+            # Primary (plugin) repo from file.properties
+            PLUGIN_REPO="$(awk -F= '/^pluginRepositoryUrl=/{print $2}' file.properties | sed 's#/*$##')"
+            # Derive dependencies repo endpoint via AWS (authoritative)
+            DEPS_REPO_ENDPOINT="$(aws codeartifact get-repository-endpoint \
+              --domain cnxsartifact --domain-owner 339713019047 \
+              --repository conexus-dependencies --format maven \
+              --region us-east-1 --query repositoryEndpoint --output text 2>/dev/null || true)"
+            [ -n "${DEPS_REPO_ENDPOINT}" ] || DEPS_REPO_ENDPOINT="${PLUGIN_REPO%conexus-plugin-repository}conexus-dependencies"
+
+            cat > settings-final.xml <<EOF
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <servers>
+                <server>
+                  <id>ca-plugin</id>
+                  <username>aws</username>
+                  <password>\${env.CODEARTIFACT_AUTH_TOKEN}</password>
+                </server>
+                <server>
+                  <id>ca-deps</id>
+                  <username>aws</username>
+                  <password>\${env.CODEARTIFACT_AUTH_TOKEN}</password>
+                </server>
+                <server>
+                  <id>ca-plugin-plugins</id>
+                  <username>aws</username>
+                  <password>\${env.CODEARTIFACT_AUTH_TOKEN}</password>
+                </server>
+              </servers>
+              <profiles>
+                <profile>
+                  <id>codeartifact</id>
+                  <repositories>
+                    <repository>
+                      <id>ca-plugin</id>
+                      <url>${PLUGIN_REPO}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+                    </repository>
+                    <repository>
+                      <id>ca-deps</id>
+                      <url>${DEPS_REPO_ENDPOINT%/}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>ca-plugin-plugins</id>
+                      <url>${PLUGIN_REPO}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles>
+                <activeProfile>codeartifact</activeProfile>
+              </activeProfiles>
+            </settings>
+            EOF
+            echo "Wrote settings-final.xml (plugin=${PLUGIN_REPO} deps=${DEPS_REPO_ENDPOINT%/})"
+        description: Write final Maven settings for CodeArtifact (both repos)
+
+    # Pre-resolve parent BOM (helps fail fast with clearer message)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            export CODEARTIFACT_AUTH_TOKEN="${bamboo.inject.caToken.password}"
+            POM_COORD="gov.gsa.cnxs.bom:env:pom:01.00.000.161.100-SNAPSHOT"
+            echo "Resolving BOM POM: $POM_COORD"
+            mvn -B -s settings-final.xml dependency:get -Dartifact="$POM_COORD" || echo "BOM POM missing (publish or adjust version)."
+        description: Pre-resolve parent BOM
+
+    # Build & Verify (avoid dotted -D variable names)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            set -e
+            export CODEARTIFACT_AUTH_TOKEN="${bamboo.inject.caToken.password}"
+
+            MVN="$(command -v mvn || echo mvn)"
+            "$MVN" -v || true
+
+            # Derive branch name without using dotted Bamboo vars
+            BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+            FEATURE_URL="$(awk -F= '/^mavenFeatureRepositoryUrl=/{print $2}' file.properties | sed 's#/*$##')"
+            PLUGIN_URL="$(awk -F= '/^pluginRepositoryUrl=/{print $2}' file.properties | sed 's#/*$##')"
+
+            echo "Branch=$BRANCH_NAME"
+            # Normal build (no dependency:get for BOM; rely on parent/import in POM)
+            "$MVN" -s settings-final.xml \
+              -DbranchName="$BRANCH_NAME" \
+              -DfeatureRepoUrl="$FEATURE_URL" \
+              -DpluginRepoUrl="$PLUGIN_URL" \
+              -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+              -U clean verify
+        description: CommonRest Build and Verify (CodeArtifact)
+
+    # Deploy SNAPSHOTs to SEED (conexus-dependencies)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            set -e
+            export CODEARTIFACT_AUTH_TOKEN="${bamboo.inject.caToken.password}"
+            AWS_REGION="us-east-1"; CA_DOMAIN="cnxsartifact"; CA_OWNER="339713019047"
+            SEED_REPO="conexus-dependencies"
+
+            # Resolve the repository endpoint (fallback to static if AWS CLI unavailable)
+            if command -v aws >/dev/null 2>&1; then
+              SEED_URL="$(aws codeartifact get-repository-endpoint \
+            --domain "$CA_DOMAIN" --domain-owner "$CA_OWNER" \
+            --repository "$SEED_REPO" --format maven --region "$AWS_REGION" \
+            --query repositoryEndpoint --output text 2>/dev/null || true)"
+            fi
+            if [ -z "$SEED_URL" ] || [ "$SEED_URL" = "None" ]; then
+              SEED_URL="https://cnxsartifact-${CA_OWNER}.d.codeartifact.${AWS_REGION}.amazonaws.com/maven/${SEED_REPO}"
+              echo "WARN: Using fallback SEED_URL=${SEED_URL}"
+            fi
+
+            echo "Deploying SNAPSHOTs to SEED (ca-deps id): ${SEED_URL%/}"
+            MVN="$(command -v mvn || echo /usr/share/maven/bin/mvn)"
+            "$MVN" -s settings-final.xml -B -DskipTests \
+              -DaltDeploymentRepository="ca-deps::default::${SEED_URL%/}" \
+              deploy
+        description: Deploy SNAPSHOTs to CodeArtifact SEED repo (conexus-dependencies)
+
+    # Copy produced version(s) SEED -> BUILD for downstream consumers (defensive)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            export CODEARTIFACT_AUTH_TOKEN="${bamboo.inject.caToken.password}"
+            AWS_REGION="us-east-1"; CA_DOMAIN="cnxsartifact"; CA_OWNER="339713019047"
+            SEED_REPO="conexus-dependencies"; BUILD_REPO="conexus-plugin-repository"
+
+            MVN="$(command -v mvn || echo /usr/share/maven/bin/mvn)"
+            V="$("$MVN" -s settings-final.xml -q -DskipTests \
+                 -Dexec.executable=echo -Dexec.args='${project.version}' \
+                 --non-recursive org.codehaus.mojo:exec-maven-plugin:3.5.0:exec | tail -n1)"
+            echo "Project version = ${V}"
+
+            exists_in_seed () {
+              ns="$1"; pkg="$2"
+              aws codeartifact list-package-versions \
+                --domain "$CA_DOMAIN" --domain-owner "$CA_OWNER" --region "$AWS_REGION" \
+                --repository "$SEED_REPO" --format maven \
+                --namespace "$ns" --package "$pkg" \
+                --query "versions[?version=='$V'].version | [0]" --output text 2>/dev/null
+            }
+
+            copy_pkg () {
+              ns="$1"; pkg="$2"
+              if [ "$(exists_in_seed "$ns" "$pkg")" != "None" ] && [ -n "$(exists_in_seed "$ns" "$pkg")" ]; then
+                echo "Copy ${ns}:${pkg}:${V} (SEED -> BUILD)"
+                aws codeartifact copy-package-versions \
+                  --domain "$CA_DOMAIN" --domain-owner "$CA_OWNER" --region "$AWS_REGION" \
+                  --format maven \
+                  --source-repository "$SEED_REPO" --destination-repository "$BUILD_REPO" \
+                  --namespace "$ns" --package "$pkg" --versions "$V" --allow-overwrite >/dev/null
+              else
+                echo "Skip ${ns}:${pkg}:${V} — not present in ${SEED_REPO}"
+              fi
+            }
+
+            # Correct artifactIds for CommonRest:
+            copy_pkg "gov.gsa.cnxs.common-rest" "common-rest-test-utils"
+            copy_pkg "gov.gsa.cnxs.common-rest" "common-rest"
+            copy_pkg "gov.gsa.cnxs.common-rest" "common-rest-shiro"
+            echo "SEED -> BUILD copy step complete."
+        description: Copy CommonRest SNAPSHOTs SEED -> BUILD (defensive)
+
+    # Cleanup token file (best-effort)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            rm -f ca-token.properties || true
+        description: Cleanup token file
+
+repositories:
+  - CommonRest:
+      scope: global
+  - bamboo-deployment:
+      scope: global
+
+triggers:
+  - bitbucket-server-trigger:
+      repositories:
+        - CommonRest
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+  - events: [plan-failed]
+    recipients: [responsible, committers]
+  - events: [plan-completed]
+    recipients: [watchers]
+  - events: [plan-status-changed]
+    recipients: [committers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: block_if_parent_in_progress
+  plans:
+    - BT-DOMB
+    - BT-DPA
+    - BT-REP
+    - BT-REST

@@ -1,0 +1,104 @@
+# ─── Chart: atlassian/bitbucket 1.17.0 ──────────────────────────────────────────
+replicaCount: 1
+
+image:
+  repository: atlassian/bitbucket
+  tag: 8.19.4 # or any 8.x you need
+
+###############################################################################
+# Security context ***AT THE ROOT LEVEL***                                    #
+###############################################################################
+securityContextEnabled: true
+securityContext: # podSecurityContext in Kubernetes terms
+  fsGroup: 2003 # matches Atlassian’s default GID
+
+containerSecurityContext: # applies to the main container
+  runAsUser: 2003 # Bitbucket UID inside the image
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+###############################################################################
+# Bitbucket-specific block stays as-is                                        #
+###############################################################################
+bitbucket:
+  license:
+    secretName: bitbucket-license
+    secretKey: license.txt
+
+  database:
+    type: h2
+    embedded: true
+
+  jvm:
+    minHeap: "768m" # Xms
+    maxHeap: "1024m" # Xmx (keep <= ~70% of limit)
+
+  resources:
+    container:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "1"
+        memory: "1536Mi"
+
+  # Probe tuning
+  readinessProbe:
+    path: /status
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 120
+
+  startupProbe:
+    path: /status
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 120
+
+  mesh:
+    enabled: false
+
+###############################################################################
+# Persistent volumes                                                          #
+###############################################################################
+volumes:
+  localHome:
+    persistentVolumeClaim:
+      create: true
+      storageClassName: gp2-csi
+      resources:
+        requests:
+          storage: 10Gi
+  sharedHome:
+    persistentVolumeClaim:
+      create: true
+      storageClassName: efs-sc
+      resources:
+        requests:
+          storage: 20Gi
+    fixedPermissions: false
+
+# ingress configuration
+ingress:
+  create: true
+  className: "nginx"
+  nginx: true # keep the chart’s nginx-specific defaults
+
+  host: bitbucket.conexus-dev-sandbox.org
+  path: / # base path (leave “/” unless you run Bitbucket behind a sub-path)
+
+  https: true # make the Ingress rule use TLS
+  tlsSecretName: let-encrypt-ssl-secret
+
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+global:
+  mesh:
+    enabled: false

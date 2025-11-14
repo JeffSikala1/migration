@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brms
+  labels:
+    app.kubernetes.io/name: brms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: brms
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: brms
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
+        instrumentation.opentelemetry.io/container-names: "conexus-brms"
+    spec:
+      serviceAccountName: ekspodidentity-sa
+      containers:
+        - name: conexus-brms
+          # base holds a placeholder tag; the env overlay sets the real newTag
+          image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-brms:dev-latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "2"
+              memory: "56Gi"
+            limits:
+              cpu: "4"
+              memory: "58Gi"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: JBOSS_JAVA_SIZING
+              value: "-Xms53g -Xmx53g -XX:MetaspaceSize=96m -XX:MaxMetaspaceSize=1303m"
+          envFrom:
+            - configMapRef:
+                name: jboss-config
+            - secretRef:
+                name: cnxsdbids
+            - secretRef:
+                name: cnxsids
+          args:
+            [
+              "/bin/sh",
+              "-c",
+              "i=0; /app/jboss-eap-8.0/bin/standalone.sh -c standalone-full.xml; while true; do i=$((i+1)); sleep 10; done",
+            ]
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - >
+                    ln -sf /mnt/digests/application-roles.properties /app/jboss-eap-8.0/standalone/configuration/;
+                    ln -sf /mnt/digests/application-users.properties /app/jboss-eap-8.0/standalone/configuration/
+          volumeMounts:
+            - name: custom-config
+              mountPath: /app/customconfig.properties
+              subPath: customconfig.properties
+            - name: standalone-config
+              mountPath: /app/jboss-eap-8.0/standalone/configuration/standalone-full.xml
+              subPath: standalone-full.xml
+            - name: digest-secrets-fromasm
+              mountPath: /mnt/digests
+            - name: database-volume
+              mountPath: /NSFS_NAS/database
+            - name: attachments-volume
+              mountPath: /app/conexus/attachments
+            - name: reports-volume
+              mountPath: /app/conexus/reports
+            - name: secrets-from-aws
+              mountPath: /mnt/secrets
+              readOnly: true
+      volumes:
+        - name: custom-config
+          configMap:
+            name: jboss-brms-custom-config
+        - name: standalone-config
+          configMap:
+            name: jboss-brms-config
+        - name: database-volume
+          persistentVolumeClaim:
+            claimName: efs-database-volume-claim
+        - name: attachments-volume
+          persistentVolumeClaim:
+            claimName: efs-attachments-volume-claim
+        - name: reports-volume
+          persistentVolumeClaim:
+            claimName: efs-reports-volume-claim
+        - name: digest-secrets-fromasm
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: digest-secrets-fromasm
+        - name: secrets-from-aws
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: aws-secrets-manager

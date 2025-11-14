@@ -1,0 +1,17 @@
+scripts/devvpc/dockers/jboss $ for i in portal jms brms webservice reporting; do echo --$i--; ./builder.sh -s $i; done
+scripts/devvpc/dockers/jboss $ docker images
+REPOSITORY                                                                 TAG                                       IMAGE ID       CREATED          SIZE
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss                 8.0.3.1-brms-recon136-cmod36              7da9ec9ab92a   49 seconds ago   2.63GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss                 8.0.3.1-reporting-repo102                 5f7f8123fa84   17 minutes ago   2.57GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss                 8.0.3.1-webservice-ws140-cnxs161-dpa119   5f9e442e4a27   17 minutes ago   2.59GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss                 8.0.3.1-jms-task202                       b8bd01724a5d   17 minutes ago   2.55GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss                 8.0.3.1-portal-ui97-rest160               6502f02d5f0b   17 minutes ago   2.56GB
+
+
+# upload to ecr
+# Set your profile to mgmtvpc
+$ export AWS_PROFILE=mgmtvpc
+# Login to ECR
+$ aws ecr get-login-password --region us-east-1|docker login -u AWS --password-stdin https://339713019047.dkr.ecr.us-east-1.amazonaws.com
+$ for i in `docker images|grep conexus-jboss|head -5|awk 'BEGIN { OFS=":"}; {print $1,$2;}'`; do echo $i; docker push $i; done
+

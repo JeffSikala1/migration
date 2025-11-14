@@ -1,0 +1,133 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: HMPKG
+  name: Help+Manual Package
+
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+  - clean
+
+  - checkout:
+      path: help
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -Eeuo pipefail
+
+        # Always package from the default branch (matches legacy behavior)
+        git -C help fetch --all --prune
+        git -C help checkout master
+
+        datetime="$(date +%Y%m%d%H%M%S)"
+        pkg="help-${datetime}.tgz"
+
+        echo "Creating package ${pkg}"
+        tar --exclude='.git' --exclude='.gitignore' --exclude='.editorconfig' -zcf "${pkg}" help/
+
+        # ===== Publish to AWS CodeArtifact (maven-format, releases repo) =====
+        CA_REGION="${CA_REGION:-us-east-1}"
+        CA_DOMAIN="${CA_DOMAIN:-cnxsartifact}"
+        CA_REPO="${CA_REPO:-conexus-release-local}"   # was 'conexus-release-local' in Artifactory path
+        GROUP_ID="gov.gsa.cnxs.help"
+        ARTIFACT_ID="help"
+        VERSION="${datetime}"
+
+        # Get repo endpoint (maven format)
+        CA_EP="$(aws --region "$CA_REGION" codeartifact get-repository-endpoint \
+          --domain "$CA_DOMAIN" --repository "$CA_REPO" --format maven \
+          --query repositoryEndpoint --output text)"
+
+        # Short-lived auth token (keep out of logs)
+        set +x
+        export CODEARTIFACT_AUTH_TOKEN="$(aws --region "$CA_REGION" codeartifact get-authorization-token \
+          --domain "$CA_DOMAIN" --query authorizationToken --output text)"
+        set -x
+
+        # Minimal Maven settings using the token (no mirror needed for a direct deploy)
+        cat > settings-ca.xml <<'XML'
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+          <servers>
+            <server>
+              <id>codeartifact</id>
+              <username>aws</username>
+              <password>${env.CODEARTIFACT_AUTH_TOKEN}</password>
+            </server>
+          </servers>
+        </settings>
+        XML
+
+        echo "Publishing ${pkg} to CodeArtifact repo ${CA_REPO} (${CA_EP})"
+        mvn -B -s settings-ca.xml deploy:deploy-file \
+          -Durl="${CA_EP}" \
+          -DrepositoryId=codeartifact \
+          -DgroupId="${GROUP_ID}" \
+          -DartifactId="${ARTIFACT_ID}" \
+          -Dversion="${VERSION}" \
+          -Dpackaging=tgz \
+          -Dfile="${pkg}"
+
+        echo "Removing local package"
+        rm -f "${pkg}"
+
+        echo "latestVersion=${datetime}" > file.properties
+      description: Package and publish to CodeArtifact
+
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+
+  requirements:
+  - system.jdk.JDK 17
+  - system.builder.mvn3.Maven 3
+
+repositories:
+- Help:
+    scope: global
+
+triggers:
+- bitbucket-server-trigger
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+- events:
+  - plan-completed
+  recipients:
+  - emails:
+    - ocio-eas-conexus-systems@usda.gov
+  - users:
+    - robert.green3@usda.gov
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

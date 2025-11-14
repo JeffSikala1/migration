@@ -1,0 +1,391 @@
+<?php
+//header("Content-type: application/pdf");
+// Author: Madhav.Kundala@usda.gov
+// Date: 09/14/2019
+// 7days report from icinga db
+
+?>
+
+<html>
+<head>
+<style>
+#heading,#downloadLink {
+  background-color:#4CAF50;
+  color: white;
+}
+
+th,#downloadLink {
+  cursor: pointer;
+}
+
+#time {
+  font-size: x-small;
+}
+
+#sm {
+  font-size: small;
+}
+
+
+tr:nth-child(even) {
+  background-color: #f2f2f2
+}
+
+</style>
+<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.js"></script>
+    <script type="text/javascript" src="js/jspdf.js"></script>
+    <script type="text/javascript" src="js/from_html.js"></script>
+    <script type="text/javascript" src="js/split_text_to_size.js"></script>
+    <script type="text/javascript" src="js/standard_fonts_metrics.js"></script>
+    <script type="text/javascript" src="js/cell.js"></script>
+    <script type="text/javascript" src="js/FileSaver.js"></script>
+
+
+    <script type="text/javascript">
+        $(document).ready(function() {
+
+            $("#exportpdf").click(function() {
+                var pdf = new jsPDF('p', 'pt', 'ledger');
+                // source can be HTML-formatted string, or a reference
+                // to an actual DOM element from which the text will be scraped.
+                source = $('#vtable')[0];
+
+                // we support special element handlers. Register them with jQuery-style 
+                // ID selector for either ID or node name. ("#iAmID", "div", "span" etc.)
+                // There is no support for any other type of selectors 
+                // (class, of compound) at this time.
+                specialElementHandlers = {
+                    // element with id of "bypass" - jQuery style selector
+                    '#bypassme' : function(element, renderer) {
+                        // true = "handled elsewhere, bypass text extraction"
+                        return true
+                    }
+                };
+                margins = {
+                    top : 80,
+                    bottom : 60,
+                    left : 60,
+                    width : 522
+                };
+                // all coords and widths are in jsPDF instance's declared units
+                // 'inches' in this case
+                pdf.fromHTML(source, // HTML string or DOM elem ref.
+                margins.left, // x coord
+                margins.top, { // y coord
+                    'width' : margins.width, // max width of content on PDF
+                    'elementHandlers' : specialElementHandlers
+                },
+
+                function(dispose) {
+                    // dispose: object with X, Y of the last line add to the PDF 
+                    //          this allow the insertion of new lines after html
+                    pdf.save('fileNameOfGeneretedPdf.pdf');
+                }, margins);
+            });
+
+        });
+    </script>
+<script>
+function sortTable(n) {
+  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  table = document.getElementById("vtable");
+  switching = true;
+  //Set the sorting direction to ascending:
+  dir = "asc"; 
+  /*Make a loop that will continue until
+  no switching has been done:*/
+  while (switching) {
+    //start by saying: no switching is done:
+    switching = false;
+    rows = table.rows;
+    /*Loop through all table rows (except the
+    first, which contains table headers):*/
+    for (i = 1; i < (rows.length - 1); i++) {
+      //start by saying there should be no switching:
+      shouldSwitch = false;
+      /*Get the two elements you want to compare,
+      one from current row and one from the next:*/
+      x = rows[i].getElementsByTagName("TD")[n];
+      y = rows[i + 1].getElementsByTagName("TD")[n];
+      /*check if the two rows should switch place,
+      based on the direction, asc or desc:*/
+      if (dir == "asc") {
+        if(isNaN(x.innerHTML)){
+          if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+            //if so, mark as a switch and break the loop:
+            shouldSwitch= true;
+            break;
+          }
+	  } else {
+	    if (Number(x.innerHTML) > Number(y.innerHTML)) {
+	        shouldSwitch= true;
+		    break;
+          }
+	  }
+	    
+      } else if (dir == "desc") {
+        if(isNaN(x.innerHTML)){
+          if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+            //if so, mark as a switch and break the loop:
+            shouldSwitch= true;
+	            break;
+          }
+        } else {
+          if (Number(x.innerHTML) < Number(y.innerHTML)) {
+            shouldSwitch= true;
+            break;
+          }
+        }
+
+      }
+    }
+    if (shouldSwitch) {
+      /*If a switch has been marked, make the switch
+      and mark that a switch has been done:*/
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+      //Each time a switch is done, increase this count by 1:
+      switchcount ++;      
+    } else {
+      /*If no switching has been done AND the direction is "asc",
+      set the direction to "desc" and run the while loop again.*/
+      if (switchcount == 0 && dir == "asc") {
+        dir = "desc";
+        switching = true;
+      }
+    }
+  }
+}
+</script>
+</head>
+<body>
+<?php
+include "sladbconfig.php";
+$mycaller = $_SERVER['SCRIPT_FILENAME'];
+$todate = "today";
+$fromdate = "";
+if (preg_match("/last7days/", $mycaller)) { 
+    $fromdate = "7"; 
+} elseif (preg_match("/last30days/", $mycaller)) {
+    $fromdate = "30"; 
+} elseif (preg_match("/last90days/", $mycaller)) {
+    $fromdate = "90";
+} elseif (isset($_POST['fdate']) && isset($_POST['tdate'])) {
+
+    $fromdate = datetopgdate($_POST['fdate']); $todate = datetopgdate($_POST['tdate']);
+
+    if (DateTime::createFromFormat('Y-m-d', $fromdate) == FALSE || DateTime::createFromFormat('Y-m-d', $todate) == FALSE) {
+        echo "Did not receive proper dates, please contact administrator. Dates were ".$fromdate." and ".$todate;
+        exit(1);
+    }
+    if ($fromdate >= $todate) {
+       echo "Did not receive proper dates, please check if from and to dates are correct";
+       exit(1);
+    }
+
+} else {
+    echo "I was not called properly, please contact administrator. My caller was ".$mycaller;
+    exit(1);
+}
+
+
+
+$mycon = getconn();
+$forids = array(303,290,292,304,299,293);
+//$iddisplay = array("Welcome Page", "SFTP", "Web Service","Cert - Welcome Page", "Cert - SFTP", "Cert - Web Service");
+if (isset($_GET{"all"}) || preg_match("/all/",$_POST{"reporttype"}) ) {
+   getslaforall($mycon, $fromdate, $todate);
+} else {
+   getslaforthese($mycon,$fromdate, $todate, $forids);
+}
+
+
+function getslaforthese($mycon,$fromdate, $todate, $forids) { // For some select objects
+
+    $objectsth = getobjectforid($mycon);
+    
+    $theobjects = array();
+
+    printhead($fromdate, $todate);
+    foreach ($forids as $oneid) {
+        if ( $objectsth->execute(array($oneid)) ) {
+            $theobjects[] = $objectsth->fetch(PDO::FETCH_ASSOC);
+            $objectsth->closeCursor();
+        }
+    }
+    //var_dump($theobjects[0]);
+    $detailstr = printslareport($mycon, $theobjects, $fromdate, $todate);
+
+    printfoot();
+    echo " <input type="button" id="exportpdf" value="Download PDF">\n";
+    echo "<p>\n<table id=\"dtable\">\n";
+    echo $detailstr;
+    printfoot();
+}
+
+
+function getslaforall ($mycon, $fromdate, $todate) {
+
+    $objectsth = getobjectids($mycon); //Returns prepared statement handle
+    $serviceobjects = null;
+
+    printhead($fromdate, $todate);
+    if ( $objectsth->execute(array(2)) ) { // 2 = service objects; 1 = host objects
+        $serviceobjects = $objectsth->fetchAll(PDO::FETCH_ASSOC); //Returns Array of hashes
+
+    }
+    $detailstr = printslareport($mycon, $serviceobjects, $fromdate, $todate);
+    printfoot();
+    echo "<p>\n<table id=\"dtable\">\n";
+    echo $detailstr;
+    printfoot();
+
+}
+
+
+///////////////////
+// Sub functions //
+///////////////////
+
+function datetopgdate ($origDate) {
+    $hypendate = str_replace('/', '-', $origDate ); // mm/dd/yyyy to mm-dd-yyyy
+    $myDateTime = DateTime::createFromFormat('m-d-Y', $hypendate);
+    $newDateString = $myDateTime->format('Y-m-d');
+    return $newDateString;
+    
+}
+function printhead ($fromdate, $todate) {
+
+    $dt = new DateTime('NOW'); 
+    print "<p><div id=\"time\">* Report generated at: ";
+    echo $dt->format('Y-m-d h:i:s T');
+    echo " for the period of ";
+    if (DateTime::createFromFormat('Y-m-d', $fromdate)) {
+       echo $fromdate;
+    } else { 
+       echo "past ".$fromdate." days";
+    }
+    echo " to ".$todate;
+    print "</div>";
+    echo "<table id=\"vtable\">\n";
+    echo "<tr id=\"heading\"><th onclick=\"sortTable(0)\">Host Name   &#9653;&#9662;</th><th onclick=\"sortTable(1)\">Service Name   &#9653;&#9662;</th><th>SLA  </th></tr>\n";
+}
+
+function printfoot () {
+    echo "</table>\n";
+}
+function printslareport($mycon, $objects, $fromin, $toin) {
+
+    $detailstr = null;
+    foreach ($objects as $sobject) {
+
+        $sla = getsla($mycon, $sobject{'object_id'}, $fromin, $toin);
+        
+        echo "<tr>\n";
+        //echo "<td>". $sobject{'object_id'}."</td>";
+        echo "<td>". $sobject{'name1'}."</td>";
+        echo "<td>". $sobject{'name2'}."</td>";
+        //echo "<td>". $sla[0]."&#37; </td>";
+        //echo "<td><img src=\"printbar.php?sla=".$sla[0]." title=\"".$sla[0]."\" /><div>".$sla[0]."&#37;</div></td>";
+	echo "<td><img src=\"printbar.php?sla=".$sla[0]."\" title=\"".$sla[0]."\" /></td>";
+        if($sla[0] != 100) {
+            $detailstr .= printdetail ($sobject{'name1'},$sobject{'name2'},$sla[1]);
+        }
+        echo "\n</tr>\n";
+    }
+
+    return $detailstr;
+
+
+}
+
+function printdetail($name1, $name2, $sladetail) {
+
+    $detailstr = null;
+    $detailstr .= "<tr>\n<td>".$name1."</td><td>".$name2."</td><td>Downtime</td><td>Uptime</td><td>Duration</td><td>Message</td></tr>\n";
+    foreach ($sladetail as $detail) {
+        $detailstr .=  "<tr>\n<td></td><td></td><td>";
+        $detailstr .=  $detail{"downtime"};
+        $detailstr .=  "</td><td>";
+        $detailstr .=  $detail{"uptime"};
+        $detailstr .=  "</td><td>";
+        $detailstr .= secondsToTime($detail{"duration"} * 60);
+        $detailstr .=  "</td><td>";
+        $detailstr .=  $detail{"output"};
+        $detailstr .=  "</td></tr>\n";
+
+    }
+    return $detailstr;
+}
+
+function secondsToTime($seconds) {
+    $dtF = new \DateTime('@0');
+    $dtT = new \DateTime("@$seconds");
+    if ($seconds >= 86400) {
+        return $dtF->diff($dtT)->format('%a days, %Hh:%Imin');
+    } else {
+        return $dtF->diff($dtT)->format('%Hh:%Imin');
+    } 
+
+}
+    
+function getsla($mycon, $objectidin, $fromin, $toin) { // parameters are connection, object id, days ago or date, today or date
+    
+    $retarr = array("100","");
+    //echo $objectidin.", ".$fromin.", ".$toin;
+    $pastdate = null;
+    $latestdate = null;
+    if ($toin == "today") {
+        $latestdate = new DateTime("NOW"); 
+    } else {
+        $latestdate = new DateTime($toin);
+    }
+
+
+    if (is_numeric($fromin)) {
+        $pastdate = clone $latestdate;
+        $pastdate->sub(new DateInterval('P'.$fromin.'D'));
+    } else {
+      	//echo "Not a number";
+        $pastdate = new DateTime($fromin);
+    }
+    $objectid = trim($objectidin);
+    $sladowns = null;
+
+    $downtimesth = getdowntimes($mycon);
+    $downtimesth->bindValue(1, $objectid, PDO::PARAM_INT);
+    $downtimesth->bindValue(2, $pastdate->format("Y-m-d"), PDO::PARAM_STR);
+    $downtimesth->bindValue(3, $latestdate->format("Y-m-d"), PDO::PARAM_STR);
+    $downtimesth->execute();
+    $sladowns = $downtimesth->fetchAll(PDO::FETCH_ASSOC);
+
+    //var_dump($sladowns);
+    
+    $totalduration = $latestdate->diff($pastdate)->days * 24 * 60;
+
+    $totaldownduration = 0;
+    $eventarr = array();
+    foreach ($sladowns as $slaobject) {
+        //echo "<td>". $slaobject{object_id}."</td>";
+        //echo "<td>". $slaobject{downtime}."</td>";
+        $eventarr[] = $slaobject;
+
+        //echo "<td>". $slaobject{uptime}."</td>";
+        //echo "<td>". $slaobject{duration}."</td>";
+        //echo "<td>". $slaobject{output}."</td></tr>\n";
+        $totaldownduration += intval($slaobject{"duration"});
+        
+    }
+    if ($totaldownduration > 0) {
+        $slapercent = (($totalduration - $totaldownduration) / $totalduration) * 100;
+        $retarr[0] = sprintf("%.2f",$slapercent);
+    }
+                                                       
+    $retarr[1] = $eventarr;
+    return $retarr;
+}
+$mycon = null;
+
+?>
+</body>
+</html>

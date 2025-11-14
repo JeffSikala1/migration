@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"   # if you use cert-manager
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - app.conexus-dev-sandbox.org
+      secretName: let-encrypt-ssl-secret                  # secret must exist in argocd ns
+  rules:
+    - host: app.conexus-dev-sandbox.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argo-cd-argocd-server               # ClusterIP that already exists
+                port:
+                  number: 443

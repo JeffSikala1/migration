@@ -1,0 +1,48 @@
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$ ./ciliumhelminstall.sh 
+++ kubectl config current-context
++ CURRENT_CONTEXT=arn:aws:eks:us-east-1:471112718870:cluster/cnxsdev-selfmanaged
++ echo 'You are going to make a fundamental or potentially disruptive change. Current kubernet environment is arn:aws:eks:us-east-1:471112718870:cluster/cnxsdev-selfmanaged'
+You are going to make a fundamental or potentially disruptive change. Current kubernet environment is arn:aws:eks:us-east-1:471112718870:cluster/cnxsdev-selfmanaged
++ read -p 'Do you want to proceed? (y/N): ' -n 1 ans
+Do you want to proceed? (y/N): y+ [[ y != [yY] ]]
++ echo
+
++ read -p 'Upgrade(u) or Install(I): ' -n1 uori
+Upgrade(u) or Install(I): 
++ INSTALLTYPE=install
++ [[ '' =~ [uU] ]]
++ helm repo add cilium https://helm.cilium.io/
+"cilium" already exists with the same configuration, skipping
+++ kubectl cluster-info
+++ grep 'control plane'
+++ sed 's/^.*https:\/\/\(.*\)/\1/'
++ API_SERVER_IP=241F915634FAC43D4410946D1B18B107.gr7.us-east-1.eks.amazonaws.com
++ API_SERVER_PORT=443
++ echo 241F915634FAC43D4410946D1B18B107.gr7.us-east-1.eks.amazonaws.com
+241F915634FAC43D4410946D1B18B107.gr7.us-east-1.eks.amazonaws.com
++ helm install cilium cilium/cilium --version 1.17.5 --namespace kube-system --set bpf.masquerade=true --set kubeProxyReplacement=true --set gatewayAPI.enabled=true --set cluster.id=1 --set cluster.name=cnxsdev-selfmanaged --set ipam.mode=cluster-pool --set 'ipam.operator.clusterPoolIPv4PodCIDRList={192.168.0.0/16,172.16.0.0/12}' --set ipMasqAgent.enabled=true --set 'ipMasqAgent.config.nonMasqueradeCIDRs={172.16.0.0/12,192.168.0.0/16}' --set ipMasqAgent.config.masqLinkLocal=false --set ingressController.enabled=true --set ingressController.loadbalancerMode=dedicated --set hubble.relay.enabled=true --set hubble.ui.enabled=true --set localRedirectPolicy=true --set k8sServiceHost=241F915634FAC43D4410946D1B18B107.gr7.us-east-1.eks.amazonaws.com --set k8sServicePort=443
+NAME: cilium
+LAST DEPLOYED: Thu Jul  3 23:32:54 2025
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+You have successfully installed Cilium with Hubble Relay and Hubble UI.
+
+Your release version is 1.17.5.
+
+For any further help, visit https://docs.cilium.io/en/v1.17/gettinghelp
++ wget https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-local-dns.yaml
+Saving 'node-local-dns.yaml.1'
+HTTP response 200  [https://raw.githubusercontent.com/cilium/cilium/1.17.5/examples/kubernetes-local-redirect/node-localnode-local-dns.yaml. 100% [=====================================================================>]    1.05K    --.-KB/s
+                          [Files: 1  Bytes: 1.05K [2.81KB/s] Redirects: 0  Todo: 0  Errors: 0    ]
+++ kubectl get svc kube-dns -n kube-system -o 'jsonpath={.spec.clusterIP}'
++ kubedns=172.20.0.10
++ sed -i 's/__PILLAR__DNS__SERVER__/172.20.0.10/g;' node-local-dns.yaml
++ kubectl apply -f node-local-dns.yaml
+serviceaccount/node-local-dns unchanged
+service/kube-dns-upstream unchanged
+configmap/node-local-dns unchanged
+daemonset.apps/node-local-dns unchanged
+conexus fedora:~/conexus/src-conexus-bitbucket/prod/scripts/devvpc/k8s/cilium (feature/DevVPC2.0.2)$
