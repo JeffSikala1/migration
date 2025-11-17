@@ -34,8 +34,14 @@ LEGACY_BASE="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/conexus-jboss" #
 LOCAL_APACHE_REPO="${LOCAL_APACHE_REPO:-conexus-apache}"
 APACHE_ECR_REPO="${APACHE_ECR_REPO:-conexus-apache}"
 
-echo "ARTIFACTS_DIR: $ARTIFACTS_DIR"
-[[ -d "$ARTIFACTS_DIR" ]] || { echo "ERROR: artifacts dir not found ($ARTIFACTS_DIR)"; exit 1; }
+# Only enforce artifacts dir for services that actually need it
+case "$s" in
+  apache) : ;;  # no artifacts needed
+  *)
+    echo "ARTIFACTS_DIR: $ARTIFACTS_DIR"
+    [[ -d "$ARTIFACTS_DIR" ]] || { echo "ERROR: artifacts dir not found ($ARTIFACTS_DIR)"; exit 1; }
+    ;;
+esac
 
 # ---- Helpers ----
 pick_latest(){ [[ $# -gt 0 ]] || { echo ""; return 0; }; local files=("$@"); [[ ${#files[@]} -gt 0 ]] || { echo ""; return 0; }; ls -1t "${files[@]}" 2>/dev/null | head -n1 || true; }
