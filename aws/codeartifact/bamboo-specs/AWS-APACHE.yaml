@@ -62,18 +62,16 @@ Build_And_Push:
             set -eu
             test -x ./builder.sh || chmod +x ./builder.sh
 
-    # Build Apache image via builder.sh
+    # Build Apache image (staging)
     - script:
-        interpreter: BINSH_OR_CMDEXE
+        executable: /bin/bash # use bash for pipefail support
         working-dir: bamboo-deployment
         description: Build Apache image (staging)
         scripts:
           - |
             set -eu pipefail
-            id; groups; stat -c '%U %G %a %n' /var/run/docker.sock
+            id; groups; stat -c '%U %G %a %n' /var/log 2>/dev/null || true
             docker info >/dev/null
-            export DOCKER_BUILDKIT=0
-            # allow builder to locate scripts/ relative to bamboo-deployment/
             ./builder.sh -s apache
             echo "Built releases:"; ls -1 .release.* || true
 
