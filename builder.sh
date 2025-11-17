@@ -39,8 +39,8 @@ ECR_ACCOUNT="${ECR_ACCOUNT:-339713019047}"
 ECR_REGION="${ECR_REGION:-us-east-1}"
 LEGACY_BASE="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/conexus-jboss" # compat tag
 # Apache repos
-LOCAL_APACHE_REPO="${LOCAL_APACHE_REPO:-conexus-apache}"
-APACHE_ECR_REPO="${APACHE_ECR_REPO:-conexus-apache}"
+LOCAL_APACHE_REPO="${LOCAL_APACHE_REPO:-conexus-apache-oidc}"
+APACHE_ECR_REPO="${APACHE_ECR_REPO:-conexus-apache-oidc}"
 
 # Artifacts: skip only for standalone apache builds
 if [[ "$s" == "apache" ]]; then
