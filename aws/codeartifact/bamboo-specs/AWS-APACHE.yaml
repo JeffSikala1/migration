@@ -52,6 +52,16 @@ Build_And_Push:
             docker --version
             aws --version
 
+    # Make builder.sh executable
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Make builder.sh executable
+        scripts:
+          - |
+            set -eu
+            test -x ./builder.sh || chmod +x ./builder.sh
+
     # Build Apache image via builder.sh
     - script:
         interpreter: BINSH_OR_CMDEXE
@@ -98,32 +108,21 @@ Build_And_Push:
         description: Push Apache image to ECR
         scripts:
           - |
-            set -e
-            AWS_REGION="${AWS_REGION:-us-east-1}"
-            AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-339713019047}"
-            ECR_REPO_BASE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-            APACHE_REPO="${APACHE_ECR_REPO:-conexus-apache}"
+            set -eu
+            AWS_REGION="us-east-1"
+            AWS_ACCOUNT_ID="339713019047"
+            ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+            REL_TAG="$(cat ${bamboo.build.working.directory}/bamboo-deployment/.release.apache)"
+            LOCAL_TAG="conexus-apache:${REL_TAG}"
+            ECR_TAG="${ECR}/conexus-apache:${REL_TAG}"
 
-            if ! aws ecr get-authorization-token --region "$AWS_REGION" >/dev/null 2>&1; then
-              echo "ERROR: missing ecr:GetAuthorizationToken on this role." >&2
-              exit 1
-            fi
-            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ECR_REPO_BASE}"
+            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ECR}"
+            docker tag "$LOCAL_TAG" "$ECR_TAG"
+            docker push "$ECR_TAG"
 
-            : > image-digests.txt
-            if [ -f ".release.apache" ]; then
-              rel="$(cat .release.apache)"
-              local_tag="${LOCAL_APACHE_REPO:-conexus-apache}:${rel}"
-              ecr_tag="${ECR_REPO_BASE}/${APACHE_REPO}:${rel}"
-              echo "→ Pushing apache : ${rel}"
-              docker tag "$local_tag" "$ecr_tag"
-              docker push "$ecr_tag"
-              dig="$(docker inspect --format='{{index .RepoDigests 0}}' "$ecr_tag" 2>/dev/null || true)"
-              [ -n "$dig" ] && echo "apache ${rel} ${dig}" | tee -a image-digests.txt
-            else
-              echo "No .release.apache found; nothing to push."
-              exit 2
-            fi
+            dig="$(docker inspect --format='{{index .RepoDigests 0}}' "$ECR_TAG" 2>/dev/null || true)"
+            : > "${bamboo.build.working.directory}/bamboo-deployment/image-digests.txt"
+            [ -n "$dig" ] && echo "apache ${REL_TAG} ${dig}" | tee -a "${bamboo.build.working.directory}/bamboo-deployment/image-digests.txt"
 
     # Emit image digests
     - script:
