@@ -195,13 +195,32 @@ build_reporting(){
 
 build_apache(){
   echo "==> SERVICE: apache"
-  # Source lives in the bamboo-deployment repo under devvpc/dockers/apache
-  local SRC="${SCRIPT_DIR}/devvpc/dockers/apache"
-  [[ -d "$SRC" ]] || { echo "  ✖ Apache source not found: $SRC"; return 4; }
+
+  # Try both possible locations:
+  # 1) apache inside bamboo-deployment (future/desired)
+  # 2) apache in the scripts repo (current)
+  local CAND1="${SCRIPT_DIR}/devvpc/dockers/apache"
+  local CAND2="${SCRIPT_DIR}/../scripts/devvpc/dockers/apache"
+  local SRC=""
+
+  if [[ -d "$CAND1" ]]; then
+    SRC="$CAND1"
+  elif [[ -d "$CAND2" ]]; then
+    SRC="$CAND2"
+  else
+    echo "  ✖ Apache source not found."
+    echo "    Tried:"
+    echo "      $CAND1"
+    echo "      $CAND2"
+    echo "  Current contents of \$SCRIPT_DIR and ../scripts (if present):"
+    ls -R "$SCRIPT_DIR" 2>/dev/null || true
+    ls -R "${SCRIPT_DIR}/../scripts" 2>/dev/null || true
+    return 4
+  fi
+
+  echo "  [apache] using source dir: $SRC"
 
   # Derive a reproducible release tag:
-  # - parse Fedora base from Dockerfile (e.g., fedora:42)
-  # - hash the contents of configs + html + ui to reflect changes
   local fedver hash release tag ecrtag stage
   fedver="$(sed -nE 's/^FROM[[:space:]]+fedora:([0-9]+).*/\1/p' "$SRC/Dockerfile" | head -1 || true)"
   fedver="${fedver:-42}"
@@ -228,10 +247,7 @@ build_apache(){
   printf '%s\n' '*.git' '*.tmp' > "$stage/.dockerignore"
 
   echo "    staged files (context: $stage):"; (cd "$stage" && ls -la)
-
-  # *** Important: point docker explicitly at the staged Dockerfile ***
   docker build -t "$tag" -f "$stage/Dockerfile" "$stage"
-
   docker tag "$tag" "$ecrtag"
 
   echo "$release" > "$SCRIPT_DIR/.release.apache"
