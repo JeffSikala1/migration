@@ -3,15 +3,23 @@
 # Usage: ./builder.sh -s portal|jms|webservice|brms|reporting|apache|all
 set -euo pipefail
 
-usage(){ echo "Usage: $0 -s portal|jms|webservice|brms|reporting|apache|all" >&2; exit 1; }
+usage() {
+  echo "Usage: $0 -s {portal|jms|webservice|brms|reporting|apache|all}" >&2
+  exit 2
+}
 
 # ---- Args ----
 s=""
-while getopts ":s:" opt; do case "$opt" in s) s="$OPTARG";; *) usage;; esac; done
+while getopts ":s:" opt; do
+  case "$opt" in
+    s) s="$OPTARG" ;;
+    *) usage ;;
+  esac
+done
 shift $((OPTIND-1))
-[[ -z "${s}" ]] && usage
+[[ -z "$s" ]] && usage
 case "$s" in portal|jms|webservice|brms|reporting|apache|all) ;; *) usage;; esac
-
+echo "[builder] target service: $s"
 # ---- Paths & config ----
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 cd "$SCRIPT_DIR"
@@ -35,13 +43,13 @@ LOCAL_APACHE_REPO="${LOCAL_APACHE_REPO:-conexus-apache}"
 APACHE_ECR_REPO="${APACHE_ECR_REPO:-conexus-apache}"
 
 # Only enforce artifacts dir for services that actually need it
-case "$s" in
-  apache) : ;;  # no artifacts needed
-  *)
-    echo "ARTIFACTS_DIR: $ARTIFACTS_DIR"
-    [[ -d "$ARTIFACTS_DIR" ]] || { echo "ERROR: artifacts dir not found ($ARTIFACTS_DIR)"; exit 1; }
-    ;;
-esac
+if [[ "$s" != "apache" && "$s" != "all" ]]; then
+  echo "ARTIFACTS_DIR: $ARTIFACTS_DIR"
+  [[ -d "$ARTIFACTS_DIR" ]] || {
+    echo "ERROR: artifacts dir not found ($ARTIFACTS_DIR)" >&2
+    exit 1
+  }
+fi
 
 # ---- Helpers ----
 pick_latest(){ [[ $# -gt 0 ]] || { echo ""; return 0; }; local files=("$@"); [[ ${#files[@]} -gt 0 ]] || { echo ""; return 0; }; ls -1t "${files[@]}" 2>/dev/null | head -n1 || true; }
@@ -185,15 +193,23 @@ build_reporting(){
 
 build_apache(){
   echo "==> SERVICE: apache"
-  # Source lives in the 'scripts' repo:
-  local SRC="${SCRIPT_DIR}/../scripts/devvpc/dockers/apache"
-  [[ -d "$SRC" ]] || { echo "  ✖ Apache source not found: $SRC"; return 4; }
 
-  # Derive a reproducible release tag:
-  # - parse Fedora base from Dockerfile (e.g., fedora:42)
-  # - hash the contents of configs + html + ui to reflect changes
+  # Prefer the apache context under bamboo-deployment, fallback to scripts if present
+  local SRC=""
+  for cand in \
+    "${SCRIPT_DIR}/devvpc/dockers/apache" \
+    "${SCRIPT_DIR}/dockers/apache" \
+    "${SCRIPT_DIR}/../scripts/devvpc/dockers/apache"
+  do
+    if [ -d "$cand" ]; then SRC="$cand"; break; fi
+  done
+  if [ -z "$SRC" ]; then
+    echo "  ✖ Apache source not found under devvpc/dockers/apache (bamboo-deployment) or scripts"; return 4
+  fi
+
+  # Derive a release from fedora version + content hash
   local fedver hash release tag ecrtag stage
-  fedver="$(sed -nE 's/^FROM[[:space:]]+fedora:([0-9]+).*/\1/p' "$SRC/Dockerfile" | head -1 || true)"
+  fedver="$(sed -nE 's/^[[:space:]]*FROM[[:space:]]+fedora:([0-9]+).*/\1/p' "$SRC/Dockerfile" | head -1 || true)"
   fedver="${fedver:-42}"
   hash="$(
     ( cd "$SRC" && \
@@ -203,20 +219,21 @@ build_apache(){
       | xargs -0 sha1sum ) | sha1sum | cut -c1-7
   )"
   release="httpd${fedver}-${hash}"
+
+  local LOCAL_APACHE_REPO="${LOCAL_APACHE_REPO:-conexus-apache}"
+  local APACHE_ECR_REPO="${APACHE_ECR_REPO:-conexus-apache}"
+
   tag="${LOCAL_APACHE_REPO}:${release}"
   ecrtag="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/${APACHE_ECR_REPO}:${release}"
 
-  # Stage a tight build context
+  # Stage minimal build context and build
   stage="$SCRIPT_DIR/.build/apache"
   rm -rf "$stage"; mkdir -p "$stage"
   cp "$SRC/Dockerfile" "$stage/Dockerfile"
-  # config files
-  cp "$SRC"/*.conf "$stage"/
-  # static content
-  if [[ -d "$SRC/html" ]]; then cp -a "$SRC/html" "$stage/html"; fi
-  if [[ -d "$SRC/conexus-ui-public" ]]; then cp -a "$SRC/conexus-ui-public" "$stage/conexus-ui-public"; fi
-  # maintenance page
-  if [[ -f "$SRC/maintenance.html" ]]; then cp "$SRC/maintenance.html" "$stage/maintenance.html"; fi
+  cp "$SRC"/*.conf "$stage/" 2>/dev/null || true
+  [ -d "$SRC/html" ]              && cp -a "$SRC/html" "$stage/html"
+  [ -d "$SRC/conexus-ui-public" ] && cp -a "$SRC/conexus-ui-public" "$stage/conexus-ui-public"
+  [ -f "$SRC/maintenance.html" ]  && cp "$SRC/maintenance.html" "$stage/maintenance.html"
   printf '%s\n' '*.git' '*.tmp' > "$stage/.dockerignore"
 
   echo "    staged files (context: $stage):"; (cd "$stage" && ls -la)
