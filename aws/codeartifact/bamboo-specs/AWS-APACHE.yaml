@@ -64,15 +64,20 @@ Build_And_Push:
 
     # Build Apache image (staging)
     - script:
-        executable: /bin/bash # use bash for pipefail support
+        interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
         description: Build Apache image (staging)
         scripts:
           - |
-            set -eu pipefail
+            #!/bin/sh
+            set -e
+            ( set -o pipefail ) 2>/dev/null || true
+
             id; groups; stat -c '%U %G %a %n' /var/log 2>/dev/null || true
             docker info >/dev/null
+
             ./builder.sh -s apache
+
             echo "Built releases:"; ls -1 .release.* || true
 
     # Compute release name for deployment visibility (optional but consistent)
