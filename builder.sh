@@ -42,8 +42,10 @@ LEGACY_BASE="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/conexus-jboss" #
 LOCAL_APACHE_REPO="${LOCAL_APACHE_REPO:-conexus-apache}"
 APACHE_ECR_REPO="${APACHE_ECR_REPO:-conexus-apache}"
 
-# Only enforce artifacts dir for services that actually need it
-if [[ "$s" != "apache" && "$s" != "all" ]]; then
+# Artifacts: skip only for standalone apache builds
+if [[ "$s" == "apache" ]]; then
+  :
+else
   echo "ARTIFACTS_DIR: $ARTIFACTS_DIR"
   [[ -d "$ARTIFACTS_DIR" ]] || {
     echo "ERROR: artifacts dir not found ($ARTIFACTS_DIR)" >&2
@@ -193,23 +195,15 @@ build_reporting(){
 
 build_apache(){
   echo "==> SERVICE: apache"
+  # Source lives in the bamboo-deployment repo under devvpc/dockers/apache
+  local SRC="${SCRIPT_DIR}/devvpc/dockers/apache"
+  [[ -d "$SRC" ]] || { echo "  ✖ Apache source not found: $SRC"; return 4; }
 
-  # Prefer the apache context under bamboo-deployment, fallback to scripts if present
-  local SRC=""
-  for cand in \
-    "${SCRIPT_DIR}/devvpc/dockers/apache" \
-    "${SCRIPT_DIR}/dockers/apache" \
-    "${SCRIPT_DIR}/../scripts/devvpc/dockers/apache"
-  do
-    if [ -d "$cand" ]; then SRC="$cand"; break; fi
-  done
-  if [ -z "$SRC" ]; then
-    echo "  ✖ Apache source not found under devvpc/dockers/apache (bamboo-deployment) or scripts"; return 4
-  fi
-
-  # Derive a release from fedora version + content hash
+  # Derive a reproducible release tag:
+  # - parse Fedora base from Dockerfile (e.g., fedora:42)
+  # - hash the contents of configs + html + ui to reflect changes
   local fedver hash release tag ecrtag stage
-  fedver="$(sed -nE 's/^[[:space:]]*FROM[[:space:]]+fedora:([0-9]+).*/\1/p' "$SRC/Dockerfile" | head -1 || true)"
+  fedver="$(sed -nE 's/^FROM[[:space:]]+fedora:([0-9]+).*/\1/p' "$SRC/Dockerfile" | head -1 || true)"
   fedver="${fedver:-42}"
   hash="$(
     ( cd "$SRC" && \
@@ -219,26 +213,27 @@ build_apache(){
       | xargs -0 sha1sum ) | sha1sum | cut -c1-7
   )"
   release="httpd${fedver}-${hash}"
-
-  local LOCAL_APACHE_REPO="${LOCAL_APACHE_REPO:-conexus-apache}"
-  local APACHE_ECR_REPO="${APACHE_ECR_REPO:-conexus-apache}"
-
   tag="${LOCAL_APACHE_REPO}:${release}"
   ecrtag="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/${APACHE_ECR_REPO}:${release}"
 
-  # Stage minimal build context and build
+  # Stage a tight build context
   stage="$SCRIPT_DIR/.build/apache"
   rm -rf "$stage"; mkdir -p "$stage"
+
   cp "$SRC/Dockerfile" "$stage/Dockerfile"
-  cp "$SRC"/*.conf "$stage/" 2>/dev/null || true
-  [ -d "$SRC/html" ]              && cp -a "$SRC/html" "$stage/html"
-  [ -d "$SRC/conexus-ui-public" ] && cp -a "$SRC/conexus-ui-public" "$stage/conexus-ui-public"
-  [ -f "$SRC/maintenance.html" ]  && cp "$SRC/maintenance.html" "$stage/maintenance.html"
+  cp "$SRC"/*.conf "$stage"/
+  if [[ -d "$SRC/html" ]]; then cp -a "$SRC/html" "$stage/html"; fi
+  if [[ -d "$SRC/conexus-ui-public" ]]; then cp -a "$SRC/conexus-ui-public" "$stage/conexus-ui-public"; fi
+  if [[ -f "$SRC/maintenance.html" ]]; then cp "$SRC/maintenance.html" "$stage/maintenance.html"; fi
   printf '%s\n' '*.git' '*.tmp' > "$stage/.dockerignore"
 
   echo "    staged files (context: $stage):"; (cd "$stage" && ls -la)
-  docker build -t "$tag" -f Dockerfile "$stage"
-  docker tag "$tag" "$ecrtag" >/dev/null 2>&1 || true
+
+  # *** Important: point docker explicitly at the staged Dockerfile ***
+  docker build -t "$tag" -f "$stage/Dockerfile" "$stage"
+
+  docker tag "$tag" "$ecrtag"
+
   echo "$release" > "$SCRIPT_DIR/.release.apache"
   echo "  Built: $tag"
   echo "  ECR tag (local retag): $ecrtag"
