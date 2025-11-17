@@ -106,32 +106,39 @@ Build_And_Push:
 
     # Push image to ECR
     - script:
-        description: Push Apache image to ECR
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
+        description: Push Apache image to ECR
         scripts:
           - |
             #!/bin/sh
-            set -e
+            set -eu
+            # optional but nice:
             ( set -o pipefail ) 2>/dev/null || true
 
-            AWS_REGION="${bamboo.AWS_REGION:-us-east-1}"
-            AWS_ACCOUNT_ID="${bamboo.AWS_ACCOUNT_ID:-339713019047}"
-            REL_FILE=".release.apache"
-            [ -s "$REL_FILE" ] || { echo "Missing $REL_FILE"; exit 1; }
-            REL_TAG="$(head -n1 "$REL_FILE")"
+            AWS_REGION="us-east-1"
+            AWS_ACCOUNT_ID="339713019047"
+            ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-            ECR_BASE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+            # We are already in bamboo-deployment/, so just read the local file
+            REL_TAG="$(cat .release.apache)"
+
             LOCAL_TAG="conexus-apache:${REL_TAG}"
-            REMOTE_TAG="${ECR_BASE}/conexus-apache:${REL_TAG}"
+            ECR_TAG="${ECR}/conexus-apache:${REL_TAG}"
 
-            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_BASE"
-            docker tag "$LOCAL_TAG" "$REMOTE_TAG"
-            docker push "$REMOTE_TAG"
+            echo "[push] LOCAL_TAG=${LOCAL_TAG}"
+            echo "[push] ECR_TAG=${ECR_TAG}"
 
-            DIG="$(docker inspect --format='{{index .RepoDigests 0}}' "$REMOTE_TAG" 2>/dev/null || true)"
+            aws ecr get-login-password --region "$AWS_REGION" \
+              | docker login --username AWS --password-stdin "${ECR}"
+
+            docker tag "$LOCAL_TAG" "$ECR_TAG"
+            docker push "$ECR_TAG"
+
+            dig="$(docker inspect --format='{{index .RepoDigests 0}}' "$ECR_TAG" 2>/dev/null || true)"
+
             : > image-digests.txt
-            [ -n "$DIG" ] && printf "apache %s %s\n" "$REL_TAG" "$DIG" | tee -a image-digests.txt
+            [ -n "$dig" ] && echo "apache ${REL_TAG} ${dig}" | tee -a image-digests.txt
 
     # Emit image digests
     - script:
