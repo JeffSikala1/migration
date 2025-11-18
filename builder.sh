@@ -193,36 +193,46 @@ build_reporting(){
   echo "  Built: $tag"; echo "  Legacy tag: $legacy"
 }
 
-build_apache(){
-  echo "==> SERVICE: apache"
+apache_next_numeric_tag() {
+  # Ask ECR for existing tags and pick the next X.Y
+  local repo="${APACHE_ECR_REPO}"
+  local region="${ECR_REGION}"
+  local account="${ECR_ACCOUNT}"
 
-  # Try both possible locations:
-  # 1) apache inside bamboo-deployment (future/desired)
-  # 2) apache in the scripts repo (current)
-  local CAND1="${SCRIPT_DIR}/devvpc/dockers/apache"
-  local CAND2="${SCRIPT_DIR}/../scripts/devvpc/dockers/apache"
-  local SRC=""
+  # Try to list tags; if AWS/ECR access fails, fall back to 1.0
+  local raw_tags max_tag major minor
+  raw_tags="$(aws ecr describe-images \
+      --repository-name "${repo}" \
+      --region "${region}" \
+      --query 'imageDetails[].imageTags[]' \
+      --output text 2>/dev/null || true)"
 
-  if [[ -d "$CAND1" ]]; then
-    SRC="$CAND1"
-  elif [[ -d "$CAND2" ]]; then
-    SRC="$CAND2"
-  else
-    echo "  ✖ Apache source not found."
-    echo "    Tried:"
-    echo "      $CAND1"
-    echo "      $CAND2"
-    echo "  Current contents of \$SCRIPT_DIR and ../scripts (if present):"
-    ls -R "$SCRIPT_DIR" 2>/dev/null || true
-    ls -R "${SCRIPT_DIR}/../scripts" 2>/dev/null || true
-    return 4
+  # Filter tags that look like N.N (e.g. 1.0, 1.1, 0.15)
+  max_tag="$(printf '%s\n' ${raw_tags} \
+      | grep -E '^[0-9]+\.[0-9]+$' \
+      | sort -V \
+      | tail -n1)"
+
+  if [[ -z "${max_tag}" ]]; then
+    # No numeric tags found yet, start at 1.0
+    echo "1.0"
+    return 0
   fi
 
-  echo "  [apache] using source dir: $SRC"
+  IFS='.' read -r major minor <<< "${max_tag}"
+  minor=$((minor + 1))
+  echo "${major}.${minor}"
+}
 
-  # Derive a reproducible release tag:
-  local fedver hash release tag ecrtag stage
-  fedver="$(sed -nE 's/^FROM[[:space:]]+fedora:([0-9]+).*/\1/p' "$SRC/Dockerfile" | head -1 || true)"
+build_apache(){
+  echo "==> SERVICE: apache"
+  # Source lives in the scripts repo:
+  local SRC="${SCRIPT_DIR}/../scripts/devvpc/dockers/apache"
+  [[ -d "$SRC" ]] || { echo "  ✖ Apache source not found: $SRC"; return 4; }
+
+  # Optional: still compute a content signature for logging/debug
+  local fedver hash
+  fedver="$(sed -nE 's/^FROM[[:space:]]+[^:]+:([0-9]+).*/\1/p' "$SRC/Dockerfile" | head -1 || true)"
   fedver="${fedver:-42}"
   hash="$(
     ( cd "$SRC" && \
@@ -231,7 +241,13 @@ build_apache(){
         find conexus-ui-public -type f -print0 2>/dev/null; } \
       | xargs -0 sha1sum ) | sha1sum | cut -c1-7
   )"
-  release="httpd${fedver}-${hash}"
+  echo "  [apache] base sig: httpd${fedver}-${hash}"
+
+  # *** New: numeric tag based on ECR ***
+  local release tag ecrtag stage
+  release="$(apache_next_numeric_tag)"
+  echo "  [apache] computed numeric release tag: ${release}"
+
   tag="${LOCAL_APACHE_REPO}:${release}"
   ecrtag="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/${APACHE_ECR_REPO}:${release}"
 
@@ -247,9 +263,12 @@ build_apache(){
   printf '%s\n' '*.git' '*.tmp' > "$stage/.dockerignore"
 
   echo "    staged files (context: $stage):"; (cd "$stage" && ls -la)
+
+  # Build and tag with the numeric version (e.g. 1.2)
   docker build -t "$tag" -f "$stage/Dockerfile" "$stage"
   docker tag "$tag" "$ecrtag"
 
+  # Record the release tag for Bamboo + Argo
   echo "$release" > "$SCRIPT_DIR/.release.apache"
   echo "  Built: $tag"
   echo "  ECR tag (local retag): $ecrtag"
