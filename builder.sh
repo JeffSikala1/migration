@@ -236,10 +236,10 @@ build_apache(){
   fedver="${fedver:-42}"
   hash="$(
     ( cd "$SRC" && \
-      { find . -maxdepth 1 -type f -print0 2>/dev/null; \
-        find html -type f -print0 2>/dev/null; \
-        find conexus-ui-public -type f -print0 2>/dev/null; } \
-      | xargs -0 sha1sum ) | sha1sum | cut -c1-7
+      { find . -maxdepth 1 -type f -print0 2>/dev/null || true; \
+        find html -type f -print0 2>/dev/null || true; \
+        find conexus-ui-public -type f -print0 2>/dev/null || true; } \
+      | xargs -0 sha1sum 2>/dev/null || true ) | sha1sum | cut -c1-7
   )"
   echo "  [apache] base sig: httpd${fedver}-${hash}"
 
