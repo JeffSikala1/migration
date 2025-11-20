@@ -1,245 +1,3 @@
-[sikaj01@ip-10-56-112-33 apache]$ !893
-kustomize build env/dev | yq '.kind' | head 
-Error: accumulating resources: accumulation err='accumulating resources from '../../': '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache' must resolve to a file': cycle detected: candidate root '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache' contains visited root '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/dev'
-null
-[sikaj01@ip-10-56-112-33 apache]$ ll
-total 28
--rw-r-----. 1 sikaj01 users  348 Oct 17 16:18 apache-config.yaml
--rw-r-----. 1 sikaj01 users  636 Oct 17 16:18 apache-gateway.yaml
-drwxr-x---. 3 sikaj01 users 6144 Nov 20 16:23 env
--rw-r-----. 1 sikaj01 users 1473 Oct 17 16:18 httpd-ingress.yaml
--rw-r-----. 1 sikaj01 users  250 Oct 17 16:18 httpd-svc.yaml
--rwxr-x---. 1 sikaj01 users  305 Oct 17 16:18 kubectlhttpdcert.txt
--rw-r-----. 1 sikaj01 users 1576 Nov 20 16:13 run-httpd.yaml
-[sikaj01@ip-10-56-112-33 apache]$ ll
-total 28
--rw-r-----. 1 sikaj01 users  348 Oct 17 16:18 apache-config.yaml
--rw-r-----. 1 sikaj01 users  636 Oct 17 16:18 apache-gateway.yaml
-drwxr-x---. 3 sikaj01 users 6144 Nov 20 16:23 env
--rw-r-----. 1 sikaj01 users 1473 Oct 17 16:18 httpd-ingress.yaml
--rw-r-----. 1 sikaj01 users  250 Oct 17 16:18 httpd-svc.yaml
--rwxr-x---. 1 sikaj01 users  305 Oct 17 16:18 kubectlhttpdcert.txt
--rw-r-----. 1 sikaj01 users 1576 Nov 20 16:13 run-httpd.yaml
-[sikaj01@ip-10-56-112-33 apache]$ cat run-httpd.yaml 
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: conexus-httpd
-  namespace: ingress-nginx
-spec:
-  selector:
-    matchLabels:
-     app.kubernetes.io/name: conexus-httpd
-  replicas: 1
-  template:
-    metadata:
-      annotations:
-      labels:
-        app.kubernetes.io/name: conexus-httpd
-    spec:
-      serviceAccountName: "ekspodidentity-sa"
-      containers:
-      - name: conexus-httpd
-        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1
-        imagePullPolicy: Always
-        securityContext:
-          runAsUser: 0 
-        envFrom:
-        - configMapRef:
-            name: apache-config
-        - secretRef:
-            name: cnxsoidcids
-        ports:
-        - containerPort: 80
-        args: [/bin/sh, -c, 'i=0; /usr/sbin/httpd -t; /usr/sbin/httpd -k start; while true; do i=$((i+1)); sleep 10; done']
-        volumeMounts:
-        - mountPath: /app/conexus/attachments
-          name: attachments-volume
-        - mountPath: /app/conexus/reports
-          name: reports-volume
-        - name: secrets-from-aws
-          mountPath: "/mnt/secrets"
-          readOnly: true
-      volumes:
-        - name: attachments-volume
-          persistentVolumeClaim:
-            claimName: efs-attachments-volume-claim
-        - name: reports-volume
-          persistentVolumeClaim:
-            claimName: efs-reports-volume-claim
-        - name: secrets-from-aws
-          csi:
-            driver: secrets-store.csi.k8s.io
-            readOnly: true
-            volumeAttributes:
-              secretProviderClass: "aws-secrets-manager"
-
-[sikaj01@ip-10-56-112-33 apache]$ cat *
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: apache-config
-  namespace: ingress-nginx
-data:
-  SERVER_NAME: ${uiurl}
-  AVSERVER: avapache
-  OIDC_PROVIDER_URL: ${oidc_provider_url}
-  OIDC_CLIENT_ID: ${oidc_client_id}
-  OIDC_REDIRECT_URI: ${oidc_redirect_uri}
-  OIDC_LOGGEDOUT_URL: ${oidc_loggedout_url}
-  OIDC_DEFAULT_URL: ${oidc_default_url}
-
- 
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: tls-gateway
-spec:
-  gatewayClassName: cilium
-  listeners:
-  - name: https-1
-    protocol: HTTPS
-    port: 443
-    hostname: "ui.dev.cnxs.vpcaas.fcs.gsa.gov"
-    tls:
-      certificateRefs:
-      - kind: Secret
-        name: devwildcard
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: https-app-route-1
-spec:
-  parentRefs:
-  - name: tls-gateway
-  hostnames:
-  - "ui.dev.cnxs.vpcaas.fcs.gsa.gov"
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: conexus-httpd
-      port: 80
----
-cat: env: Is a directory
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: conexus-httpd-ingress
-  namespace: ingress-nginx
-  annotations:
-    ##nginx.ingress.kubernetes.io/whitelist-source-range: "199.128.0.0/11"
-    #nginx.ingress.kubernetes.io/proxy-read-timeout: "2700"
-    #nginx.ingress.kubernetes.io/proxy-send-timeout: "2700"
-    #nginx.ingress.kubernetes.io/proxy-body-size: 20m
-    #nginx.ingress.kubernetes.io/configuration-snippet: |
-      #more_set_headers "X-Forwarded-For $http_x_forwarded_for" "X-Forwarded-Port 443";
-    #nginx.ingress.kubernetes.io/use-regex: "true"
-    #nginx.ingress.kubernetes.io/proxy-redirect-from: "https://${uiurl}:80/"
-    #nginx.ingress.kubernetes.io/proxy-redirect-to: "https://${uiurl}/"
-    ##cert-manager.io/cluster-issuer: letsencrypt-prod-sandbox
-    service.beta.kubernetes.io/aws-load-balancer-type: "alb"
-    service.beta.kubernetes.io/aws-load-balancer-mode: "shared"
-    service.beta.kubernetes.io/aws-load-balancer-name: "conexus-api-internal-alb"
-    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
-    service.beta.kubernetes.io/aws-load-balancer-subnets: "${intnlb_subnetids}"
-spec:
-  ingressClassName: cilium
-  rules:
-  - host: ${uiurl}
-    http:
-      paths:
-        - path: /
-          pathType: Prefix
-          backend: 
-            service:
-              name: conexus-httpd           
-              port:
-                number: 80
-  tls:
-  - hosts:
-    - "${uiurl}"
-    secretName: ${env}${certname}
-
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: conexus-httpd
-  namespace: ingress-nginx
-  labels:
-    app: conexus-httpd
-spec:
-  ports:
-    - port: 80
-      targetPort: 80
-      protocol: TCP
-  
-  selector:
-    app.kubernetes.io/name: conexus-httpd
-
-#!/usr/bin/bash
-
-export CERT_FILE="/etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem"
-export KEY_FILE="/etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/privkey.pem"
-export CERT_NAME="devwildcard"
-kubectl create secret tls ${CERT_NAME} --key ${KEY_FILE} --cert ${CERT_FILE} -n ingress-nginx
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: conexus-httpd
-  namespace: ingress-nginx
-spec:
-  selector:
-    matchLabels:
-     app.kubernetes.io/name: conexus-httpd
-  replicas: 1
-  template:
-    metadata:
-      annotations:
-      labels:
-        app.kubernetes.io/name: conexus-httpd
-    spec:
-      serviceAccountName: "ekspodidentity-sa"
-      containers:
-      - name: conexus-httpd
-        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1
-        imagePullPolicy: Always
-        securityContext:
-          runAsUser: 0 
-        envFrom:
-        - configMapRef:
-            name: apache-config
-        - secretRef:
-            name: cnxsoidcids
-        ports:
-        - containerPort: 80
-        args: [/bin/sh, -c, 'i=0; /usr/sbin/httpd -t; /usr/sbin/httpd -k start; while true; do i=$((i+1)); sleep 10; done']
-        volumeMounts:
-        - mountPath: /app/conexus/attachments
-          name: attachments-volume
-        - mountPath: /app/conexus/reports
-          name: reports-volume
-        - name: secrets-from-aws
-          mountPath: "/mnt/secrets"
-          readOnly: true
-      volumes:
-        - name: attachments-volume
-          persistentVolumeClaim:
-            claimName: efs-attachments-volume-claim
-        - name: reports-volume
-          persistentVolumeClaim:
-            claimName: efs-reports-volume-claim
-        - name: secrets-from-aws
-          csi:
-            driver: secrets-store.csi.k8s.io
-            readOnly: true
-            volumeAttributes:
-              secretProviderClass: "aws-secrets-manager"
-
 [sikaj01@ip-10-56-112-33 apache]$ cat env/dev/kustomization.yaml 
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -248,6 +6,45 @@ namespace: ingress-nginx
 
 resources:
   - ../../
+
+images:
+  - name: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc
+    newName: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc
+    newTag: "1.3"[sikaj01@ip-10-56-112-33 apache]$ kustomize build env/dev | yq '.kind' | head 
+Error: accumulating resources: accumulation err='accumulating resources from '../run-httpd.yaml': evalsymlink failure on '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/run-httpd.yaml' : lstat /efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/run-httpd.yaml: no such file or directory': must build at directory: not a valid directory: evalsymlink failure on '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/run-httpd.yaml' : lstat /efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/run-httpd.yaml: no such file or directory
+null
+[sikaj01@ip-10-56-112-33 apache]$ kustomize build env/dev | yq '.kind' | sort | uniq -c
+Error: accumulating resources: accumulation err='accumulating resources from '../run-httpd.yaml': evalsymlink failure on '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/run-httpd.yaml' : lstat /efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/run-httpd.yaml: no such file or directory': must build at directory: not a valid directory: evalsymlink failure on '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/run-httpd.yaml' : lstat /efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/run-httpd.yaml: no such file or directory
+      1 null
+[sikaj01@ip-10-56-112-33 apache]$ cat env/dev/kustomization.yaml 
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ingress-nginx
+
+resources:
+  - ../run-httpd.yaml
+
+images:
+  - name: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc
+    newName: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc
+    newTag: "1.3"[sikaj01@ip-10-56-112-33 apache]$ kustomize build env/dev | yq '.kind' | sort | uniq -c
+Error: accumulating resources: accumulation err='accumulating resources from '../../run-httpd.yaml': security; file '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/run-httpd.yaml' is not in or below '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/dev'': must build at directory: '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/run-httpd.yaml': file is not directory
+      1 null
+[sikaj01@ip-10-56-112-33 apache]$ kustomize build env/dev | yq '.kind' | sort | uniq -c
+Error: accumulating resources: accumulation err='accumulating resources from '../../run-httpd.yaml': security; file '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/run-httpd.yaml' is not in or below '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/dev'': must build at directory: '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/run-httpd.yaml': file is not directory
+      1 null
+[sikaj01@ip-10-56-112-33 apache]$ kustomize build env/dev | yq '.kind' | head 
+Error: accumulating resources: accumulation err='accumulating resources from '../../run-httpd.yaml': security; file '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/run-httpd.yaml' is not in or below '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/env/dev'': must build at directory: '/efs/devopsdata/sikaj01/scripts/devvpc/k8s/apache/run-httpd.yaml': file is not directory
+null
+[sikaj01@ip-10-56-112-33 apache]$ cat env/dev/kustomization.yaml 
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ingress-nginx
+
+resources:
+  - ../../run-httpd.yaml
 
 images:
   - name: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc
