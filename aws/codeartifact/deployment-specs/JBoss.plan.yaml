@@ -21,12 +21,12 @@ DEV-EKS:
   tasks:
     - clean
 
-    # 0) Checkout ArgoCD repo here (uses the “argocd” linked repo)
+    # 0) Checkout KH/scripts repo (now holds k8s manifests + kustomize overlays)
     - checkout:
-        repository: argocd
-        path: argocd-repo
+        repository: scripts
+        path: scripts
         force-clean-build: true
-        description: Checkout ArgoCD repo
+        description: Checkout K8/scripts repo
 
     # Show checked-out branch/head
     - script:
@@ -35,7 +35,7 @@ DEV-EKS:
         scripts:
           - |
             set -eu
-            cd "${bamboo.build.working.directory}/argocd-repo"
+            cd "${bamboo.build.working.directory}/scripts"
             git rev-parse --abbrev-ref HEAD
             git log -1 --oneline
 
@@ -52,9 +52,9 @@ DEV-EKS:
           - |
             [ -s /home/bamboo/.ssh/id_argcdbb ] || { echo "ERROR: /home/bamboo/.ssh/id_argcdbb missing"; exit 1; }
 
-    # GitOps: update ArgoCD kustomization (DEV) using the local checkout
+    # GitOps: update JBoss kustomization (DEV) in KH/scripts
     - script:
-        description: GitOps - update ArgoCD kustomization (DEV) via checked-out repo
+        description: GitOps - update JBoss kustomization (DEV) via checked-out K8 repo
         interpreter: BINSH_OR_CMDEXE
         scripts:
           - |
@@ -62,14 +62,15 @@ DEV-EKS:
             set -eu
             ( set -o pipefail ) 2>/dev/null || true
 
-            WORKDIR="${bamboo.build.working.directory}/argocd-repo"
-            OVERLAY_DIR="jboss-manifests/env/dev"
+            WORKDIR="${bamboo.build.working.directory}/scripts"
+            OVERLAY_DIR="devvpc/k8s/jboss-manifests/env/dev"
 
             AWS_REGION="${bamboo.AWS_REGION}"
             AWS_ACCOUNT_ID="${bamboo.AWS_ACCOUNT_ID}"
             ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-            # tags from artifacts downloaded earlier
+            cd "${bamboo.build.working.directory}"
+
             read_tag() { [ -f "bamboo-deployment/.release.$1" ] && sed -n '1p' "bamboo-deployment/.release.$1" || echo ""; }
             TAG_PORTAL="$(read_tag portal)"
             TAG_JMS="$(read_tag jms)"
@@ -78,19 +79,16 @@ DEV-EKS:
             TAG_REPO="$(read_tag reporting)"
             [ -n "$TAG_PORTAL$TAG_JMS$TAG_WEBSVC$TAG_BRMS$TAG_REPO" ] || { echo "ERROR: No .release.* files found"; exit 3; }
 
-            # --- dot-safe release name ---
             RELEASE_NAME="$(printf %s "$TAG_PORTAL" | sed '1q')"
             [ -n "$RELEASE_NAME" ] || RELEASE_NAME="${bamboo_deployment_version_name:-release}"
 
             cd "$WORKDIR"
 
-            # Prefer namespace from existing overlay, if present
             KUST_NS="$(awk '/^namespace:/ {print $2; exit}' "${OVERLAY_DIR}/kustomization.yaml" 2>/dev/null || true)"
             [ -n "$KUST_NS" ] && echo "[overlay] namespace=${KUST_NS}"
 
             mkdir -p "$OVERLAY_DIR"
 
-            # Build the would-be kustomization file, then only replace on change
             new_kust="$(mktemp)"
             cat > "$new_kust" <<EOF
             apiVersion: kustomize.config.k8s.io/v1beta1
@@ -135,10 +133,11 @@ DEV-EKS:
             export GIT_SSH_COMMAND='ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
             # Use your known remote/branch explicitly (avoids Bamboo variable quirks)
-            REAL_REMOTE="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/argocd.git"
-            REAL_BRANCH="main"
+            REAL_REMOTE="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts.git"
+            REAL_BRANCH="develop"
 
-            git -c user.name="bamboo" -c user.email="bamboo@local" add "$OVERLAY_DIR/kustomization.yaml" "$OVERLAY_DIR/release-meta.yaml"
+            git -c user.name="bamboo" -c user.email="bamboo@local" add \
+              "$OVERLAY_DIR/kustomization.yaml" "$OVERLAY_DIR/release-meta.yaml"
 
             # If nothing changed, bail out quietly
             if git diff --cached --quiet; then
@@ -148,7 +147,6 @@ DEV-EKS:
 
             git -c user.name="bamboo" -c user.email="bamboo@local" commit -m "DEV: $RELEASE_NAME / portal=$TAG_PORTAL jms=$TAG_JMS ws=$TAG_WEBSVC brms=$TAG_BRMS reporting=$TAG_REPO"
 
-            # Make sure we are on the real remote/branch — not Bamboo’s file:// cache
             git remote remove origin >/dev/null 2>&1 || true
             git remote add origin "$REAL_REMOTE"
             git fetch origin "$REAL_BRANCH" || true
@@ -160,17 +158,17 @@ DEV-EKS:
             git remote -v
             git ls-remote origin "$REAL_BRANCH" | head -1
 
-    # Post-push sanity: show remote head after push
+    # Post-push sanity: show remote head
     - script:
         description: Show remote head
         interpreter: BINSH_OR_CMDEXE
-        working-dir: argocd-repo
+        working-dir: scripts
         scripts:
           - |
             set -eu
             export GIT_SSH_COMMAND='ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             git remote -v
-            git ls-remote origin main | head -1 || echo "[warn] ls-remote failed"
+            git ls-remote origin develop | head -1 || echo "[warn] ls-remote failed"
 
     # Assume DEV, write kubeconfig, then patch images
     - script:

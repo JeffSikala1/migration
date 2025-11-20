@@ -2,7 +2,6 @@
 version: 2
 deployment:
   name: Apache OIDC - Deploy to DEV EKS
-  # Use your Apache build plan that produced the images/artifacts:
   source-plan: AWS-APACHE
 
 release-naming:
@@ -15,18 +14,18 @@ environments:
   - DEV-EKS
 
 DEV-EKS:
-  description: Deploy Apache OIDC front-end to the DEV EKS cluster via ArgoCD
+  description: Deploy Apache OIDC front-end to the DEV EKS cluster
   release-approval-prerequisite: none
   triggers: []
   tasks:
     - clean
 
-    # 0) Checkout ArgoCD repo here (uses the “argocd” linked repo)
+    # Checkout KH/scripts repo (contains devvpc/k8s/apache)
     - checkout:
-        repository: argocd
-        path: argocd-repo
+        repository: scripts
+        path: scripts
         force-clean-build: true
-        description: Checkout ArgoCD repo
+        description: Checkout KH/scripts repo
 
     # Show checked-out branch/head (sanity)
     - script:
@@ -35,11 +34,11 @@ DEV-EKS:
         scripts:
           - |
             set -eu
-            cd "${bamboo.build.working.directory}/argocd-repo"
+            cd "${bamboo.build.working.directory}/scripts"
             git rev-parse --abbrev-ref HEAD
             git log -1 --oneline
 
-    # 1) Pull the 'releases' artifact from the Apache build
+    # Pull the 'releases' artifact from the Apache build (contains .release.apache)
     - artifact-download:
         artifacts:
           - name: releases
@@ -52,9 +51,9 @@ DEV-EKS:
           - |
             [ -s /home/bamboo/.ssh/id_argcdbb ] || { echo "ERROR: /home/bamboo/.ssh/id_argcdbb missing"; exit 1; }
 
-    # GitOps: update Apache ArgoCD kustomization (DEV)
+    # GitOps: update Apache kustomization (DEV) in KH/scripts
     - script:
-        description: GitOps - update Apache kustomization (DEV) via checked-out repo
+        description: GitOps - update Apache kustomization (DEV) via KH/scripts
         interpreter: BINSH_OR_CMDEXE
         scripts:
           - |
@@ -62,8 +61,8 @@ DEV-EKS:
             set -eu
             ( set -o pipefail ) 2>/dev/null || true
 
-            WORKDIR="${bamboo.build.working.directory}/argocd-repo"
-            OVERLAY_DIR="apache-manifests/env/dev"
+            WORKDIR="${bamboo.build.working.directory}/scripts"
+            OVERLAY_DIR="devvpc/k8s/apache/env/dev"
 
             AWS_REGION="${bamboo.AWS_REGION}"
             AWS_ACCOUNT_ID="${bamboo.AWS_ACCOUNT_ID}"
@@ -71,26 +70,21 @@ DEV-EKS:
 
             cd "${bamboo.build.working.directory}"
 
-            # Apache release tag from build artifact (numeric e.g. 1.3)
             REL_FILE="bamboo-deployment/.release.apache"
             if [ ! -s "$REL_FILE" ]; then
               echo "ERROR: $REL_FILE missing or empty"
               exit 3
             fi
             TAG_APACHE="$(sed -n '1p' "$REL_FILE")"
-
-            # For Bamboo release naming, this is the string you see in the UI
             RELEASE_NAME="${TAG_APACHE}"
 
             cd "$WORKDIR"
 
-            # Try to reuse namespace from existing overlay if present
             KUST_NS="$(awk '/^namespace:/ {print $2; exit}' "${OVERLAY_DIR}/kustomization.yaml" 2>/dev/null || true)"
             [ -n "$KUST_NS" ] && echo "[overlay] namespace=${KUST_NS}"
 
             mkdir -p "$OVERLAY_DIR"
 
-            # Build the would-be kustomization.yaml and only replace on change
             new_kust="$(mktemp)"
             cat > "$new_kust" <<EOF
             apiVersion: kustomize.config.k8s.io/v1beta1
@@ -109,7 +103,6 @@ DEV-EKS:
               rm -f "$new_kust"
             fi
 
-            # Write release-meta.yaml (good for debugging and audits)
             ts="$(date -u +%FT%TZ)"
             cat > "$OVERLAY_DIR/release-meta.yaml" <<EOF
             release: "$RELEASE_NAME"
@@ -118,16 +111,13 @@ DEV-EKS:
               apache: "conexus-apache-oidc:${TAG_APACHE}"
             EOF
 
-            # Push using the mounted key and the REAL remote (not Bamboo’s file:// cache)
             export GIT_SSH_COMMAND='ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-
-            REAL_REMOTE="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/argocd.git"
-            REAL_BRANCH="main"
+            REAL_REMOTE="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts.git"
+            REAL_BRANCH="develop"
 
             git -c user.name="bamboo" -c user.email="bamboo@local" add \
               "$OVERLAY_DIR/kustomization.yaml" "$OVERLAY_DIR/release-meta.yaml"
 
-            # If nothing changed, bail out quietly (avoid noise)
             if git diff --cached --quiet; then
               echo "No changes to commit"
               exit 0
@@ -135,29 +125,26 @@ DEV-EKS:
 
             git -c user.name="bamboo" -c user.email="bamboo@local" commit -m "DEV Apache: ${RELEASE_NAME}"
 
-            # Ensure we are pushing to the real origin/main
             git remote remove origin >/dev/null 2>&1 || true
             git remote add origin "$REAL_REMOTE"
             git fetch origin "$REAL_BRANCH" || true
             git checkout -B "$REAL_BRANCH" || true
-
             git push origin HEAD:"$REAL_BRANCH"
 
-            # Debug: prove we pushed to the right place
             git remote -v
             git ls-remote origin "$REAL_BRANCH" | head -1 || echo "[warn] ls-remote failed"
 
-    # Post-push sanity: show remote head after push
+    # Post-push sanity: show remote head
     - script:
         description: Show remote head
         interpreter: BINSH_OR_CMDEXE
-        working-dir: argocd-repo
+        working-dir: scripts
         scripts:
           - |
             set -eu
             export GIT_SSH_COMMAND='ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             git remote -v
-            git ls-remote origin main | head -1 || echo "[warn] ls-remote failed"
+            git ls-remote origin develop | head -1 || echo "[warn] ls-remote failed"
 
   final-tasks: []
   variables:
