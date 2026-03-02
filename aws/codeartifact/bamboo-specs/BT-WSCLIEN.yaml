@@ -107,16 +107,25 @@ Default Job:
       tests: 'true'
       description: Common Build and Verify
 
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: mavenVersion
-        variableScope: JOB
+  - script:
+      interpreter: SHELL
+      scripts:
+        - |-
+          # Extract project version from Maven (quiet) and write into file.properties
+          MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version)
+          echo "mavenVersion=${MVN_VERSION}" >> file.properties
+          echo "Detected mavenVersion=${MVN_VERSION}"
+      description: Determine Maven version
 
   - script:
       interpreter: SHELL
-      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
-      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
+      scripts:
+        - |-
+          source file.properties
+          export buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+          export buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+          export mavenVersion=${mavenVersion}
+          bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
       description: Deploy to Artifactory if needed
 
   - inject-variables:
