@@ -6,11 +6,11 @@ plan:
   name: WS-Client - Build
 
 stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Default Job
 
 Default Job:
   key: JOB1
@@ -18,132 +18,138 @@ Default Job:
     clean-working-dir: true
 
   tasks:
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
 
-  - checkout:
-      repository: bamboo-deployment
-      path: bamboo-deployment
-      force-clean-build: true
-      description: Checkout Default Repository
+    - checkout:
+        repository: bamboo-deployment
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout Default Repository
 
-  - script:
-      interpreter: BINSH_OR_CMDEXE
-      scripts:
-      - rm -rf ~/.m2/repository/gov/gsa/
-      description: Remove existing cnxs maven repo directory
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - rm -rf ~/.m2/repository/gov/gsa/
+        description: Remove existing cnxs maven repo directory
 
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/build-determination-migration.sh
-      description: Determine parent branch and pass correct variables
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/build-determination-migration.sh
+        description: Determine parent branch and pass correct variables
 
-  - inject-variables:
-      file: file.properties
-      scope: LOCAL
-      namespace: inject
-      description: Inject values
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject values
 
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+        configuration: {}
 
-  - script:
-      interpreter: SHELL
-      scripts:
-        - |-
-          cat > settings-artifactory.xml <<XML
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
-            <mirrors>
-              <mirror>
-                <id>artifactory</id>
-                <mirrorOf>*</mirrorOf>
-                <url>${bamboo.inject.pluginRepositoryUrl}</url>
-              </mirror>
-            </mirrors>
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
+            cat > settings-artifactory.xml <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+              <mirrors>
+                <mirror>
+                  <id>artifactory</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                </mirror>
+              </mirrors>
 
-            <profiles>
-              <profile>
-                <id>use-artifactory</id>
-                <repositories>
-                  <repository>
-                    <id>artifactory</id>
-                    <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                    <releases><enabled>true</enabled></releases>
-                    <snapshots><enabled>true</enabled></snapshots>
-                  </repository>
-                </repositories>
-                <pluginRepositories>
-                  <pluginRepository>
-                    <id>artifactory</id>
-                    <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                    <releases><enabled>true</enabled></releases>
-                    <snapshots><enabled>true</enabled></snapshots>
-                  </pluginRepository>
-                </pluginRepositories>
-              </profile>
-            </profiles>
+              <profiles>
+                <profile>
+                  <id>use-artifactory</id>
+                  <repositories>
+                    <repository>
+                      <id>artifactory</id>
+                      <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>artifactory</id>
+                      <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
 
-            <activeProfiles>
-              <activeProfile>use-artifactory</activeProfile>
-            </activeProfiles>
+              <activeProfiles>
+                <activeProfile>use-artifactory</activeProfile>
+              </activeProfiles>
 
-            <servers>
-              <server>
-                <id>artifactory</id>
-                <username>sa_bamboo</username>
-                <password>${bamboo.artifactory_access_token_secret}</password>
-              </server>
-            </servers>
-          </settings>
-          XML
-      description: Write Artifactory Maven settings
+              <servers>
+                <server>
+                  <id>artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
+        description: Write Artifactory Maven settings
 
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -s settings-artifactory.xml clean verify -B -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-      tests: 'true'
-      description: Common Build and Verify
+    # Get version early so deploy step doesn't need the missing plugin
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
+            MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout -DskipTests help:evaluate -Dexpression=project.version)
+            echo "mavenVersion=${MVN_VERSION}" >> file.properties
+            echo "Detected mavenVersion=${MVN_VERSION}"
+        description: Determine Maven version
 
-  - script:
-      interpreter: SHELL
-      scripts:
-        - |-
-          # Extract project version from Maven (quiet) and write into file.properties
-          MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version)
-          echo "mavenVersion=${MVN_VERSION}" >> file.properties
-          echo "Detected mavenVersion=${MVN_VERSION}"
-      description: Determine Maven version
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject updated values (mavenVersion)
 
-  - script:
-      interpreter: SHELL
-      scripts:
-        - |-
-          source file.properties
-          export buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
-          export buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
-          export mavenVersion=${mavenVersion}
-          bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
-      description: Deploy to Artifactory if needed
+    - maven:
+        executable: Maven 3
+        jdk: JDK 17
+        goal: >-
+          -s settings-artifactory.xml clean verify -B -U
+          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
+          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        tests: 'true'
+        description: Common Build and Verify
 
-  - inject-variables:
-      file: file.properties
-      scope: RESULT
-      namespace: inject
-      description: Inject the build information to be used in Bamboo Deploy
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+        environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.inject.mavenVersion}
+        description: Deploy to Artifactory if needed
+
+    - inject-variables:
+        file: file.properties
+        scope: RESULT
+        namespace: inject
+        description: Inject the build information to be used in Bamboo Deploy
 
 repositories:
-- WS-Client:
-    scope: global
-- bamboo-deployment:
-    scope: global
+  - WS-Client:
+      scope: global
+  - bamboo-deployment:
+      scope: global
 
 triggers:
-- bitbucket-server-trigger:
-    repositories:
-    - WS-Client
+  - bitbucket-server-trigger:
+      repositories:
+        - WS-Client
 
 branches:
   create: for-new-branch
@@ -153,25 +159,25 @@ branches:
   link-to-jira: true
 
 notifications:
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-- events:
-  - plan-completed
-  recipients:
-  - watchers
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
+  - events:
+      - plan-failed
+    recipients:
+      - responsible
+      - committers
+  - events:
+      - plan-completed
+    recipients:
+      - watchers
+  - events:
+      - plan-failed
+    recipients:
+      - responsible
+      - committers
 
 dependencies:
   require-all-stages-passing: false
   enabled-for-branches: true
   block-strategy: block_if_parent_in_progress
   plans:
-  - BT-VE
-  - BT-WEBSV
+    - BT-VE
+    - BT-WEBSV
