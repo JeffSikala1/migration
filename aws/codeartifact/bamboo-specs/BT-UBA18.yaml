@@ -1,0 +1,188 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: UBA18
+  name: UI Build Angular18
+
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+  - clean
+
+  # Checkouts
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  # Optional cache hygiene
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
+      description: Remove existing cnxs maven repo directory
+
+  # Use migrated scripts from CNXS-62536
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        cd bamboo-deployment
+        git fetch --all --prune
+        git checkout -B CNXS-62536 origin/CNXS-62536 || git checkout -B CNXS-62536
+        git log -1 --oneline
+      description: Ensure bamboo-deployment@CNXS-62536 branch
+
+  # Discover endpoints & write settings-ca.xml + file.properties (CodeArtifact)
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination-migration.sh
+      description: Determine parent branch and pass correct variables
+
+  # Make endpoints available to later tasks
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+
+  # Frontend build: login to CodeArtifact npm, install, test, build
+  - script:
+      interpreter: SHELL
+      working-dir: web/src/main/
+      scripts:
+      - |
+        set -Eeuo pipefail
+        source ~/.bashrc || true
+
+        # TLS trust (if your agents need it)
+        export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt || true
+
+        # ---- CodeArtifact npm login ----
+        CA_REGION="${CA_REGION:-us-east-1}"
+        CA_DOMAIN="${CA_DOMAIN:-cnxsartifact}"
+        CA_OWNER="${CA_OWNER:-339713019047}"
+        CA_NPM_REPO="${CA_NPM_REPO:-${bamboo.caNpmRepo:-conexus-npm}}"
+
+        aws codeartifact login \
+          --tool npm \
+          --domain "$CA_DOMAIN" \
+          --domain-owner "$CA_OWNER" \
+          --repository "$CA_NPM_REPO" \
+          --region "$CA_REGION"
+
+        # If your tests need Chrome, try to install it (skip on failure)
+        yum install -y google-chrome-stable || true
+
+        # Prefer reproducible installs
+        npm ci || npm install
+        npm test
+
+        # Angular build (increase heap for source maps if needed)
+        node --max_old_space_size=8192 \
+          node_modules/@angular/cli/bin/ng build \
+          --configuration production \
+          --output-hashing=all \
+          --optimization \
+          --source-map=true
+      description: npm install/test & Angular build via CodeArtifact npm
+
+  # Package with Maven using CodeArtifact settings
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        # Short-lived auth for Maven
+        export CODEARTIFACT_AUTH_TOKEN="$(aws codeartifact get-authorization-token \
+          --domain cnxsartifact --query authorizationToken --output text --region us-east-1)"
+        mvn -s settings-ca.xml \
+          clean verify -B -U \
+          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} \
+          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} \
+          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} \
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      description: Package (Maven via CodeArtifact)
+
+  # Capture Maven version for deploy
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
+      configuration:
+        variable: mavenVersion
+        variableScope: JOB
+
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+
+  # Deploy to CodeArtifact if needed (script handles its own token)
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+      environment: >-
+        buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+        buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+        mavenVersion=${bamboo.mavenVersion}
+      description: Deploy to CodeArtifact if needed
+
+  # Persist info for downstream
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+
+  artifacts:
+    - name: UI dist
+      location: web/src/main/dist/
+      pattern: '**/*'
+      shared: false
+      required: false
+
+variables:
+  buildVersionQueryArtifact: ui-war
+  buildVersionQueryGroup: gov.gsa.cnxs.ui
+  caNpmRepo: conexus-npm   # set to your actual CodeArtifact npm repo name if different
+
+repositories:
+- UIAngular18:
+    scope: global
+- bamboo-deployment:
+    scope: global
+
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - UIAngular18
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+- events: [plan-completed]
+  recipients: [watchers]
+- events: [plan-failed]
+  recipients: [responsible, committers]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

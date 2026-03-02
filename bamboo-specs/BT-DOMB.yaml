@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="BT" buildKey="DOMB"><code>---
+version: 2
+plan:
+  project-key: BT
+  key: DOMB
+  name: Domain - Build
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  other:
+    clean-working-dir: true
+    all-other-apps:
+      custom:
+        auto: {}
+        buildHangingConfig.enabled: 'false'
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - "#rm -rf ~/.m2/repository/gov/gsa/cnxs/\n#Bas: made below change; this only deletes snapshot folders so we don't download\n# the big released datafile artifact each time.\ndirName=~/.m2/repository/gov/gsa/cnxs/\nif [ -d \"$dirName\" ]; then\n\techo \"Removing snapshot folders from $dirName\"\n    find \"$dirName\" -type d -name '*SNAPSHOT' -exec rm -rf {} +\nfi"
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: clean verify -B -U -P integration-test  -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
+      description: Common Build and Verify
+  - test-parser:
+      type: junit
+      ignore-time: false
+      test-results: domain/target/surefire-reports
+      description: domain surefire reports
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version.sh
+      description: Determine if deploy to Artifactory is needed
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  artifacts:
+  - name: Jboss Log
+    location: integration/integration-test/target/
+    pattern: jboss.log
+    shared: false
+    required: false
+  - name: Oracle Log
+    location: integration/integration-test/target/
+    pattern: oracle.log
+    shared: false
+    required: false
+  artifact-subscriptions: []
+repositories:
+- Domain:
+    type: bitbucket-server
+    server: Conexus Bitbucket
+    project: CNXS
+    slug: domain
+    clone-url: ssh://git@conexus-bitbucket.edc.ds1.usda.gov:7999/cnxs/domain.git
+    public-key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDOMG4ZkBZ1JF7LqA7J7xZNfi2BNzrxR4yiKCIsJhEJ8Ey9nescrPkOzHu4VbtvNTIOE5nQfAXMRqzKd4dscuwDkpcSBoixwZI8yATGl9uUFJj60m+INnDx641zqjpm24BP+CpywDAWwcGs3MtI2RcTALA1LIcgAPOrYNNIQCyDBhaqHp07YWSXVUlqBtPk23U7C8nJ7hWkiZinaJG8bdDvK51mW8TkDCPq5dBfmkxo2hVPB/YaqMnHqNMHrbYexwOKundxLFe29SYyBZszZFVkQC5q2GkA/47mYomyZBikvtRom/BsLeg25gHv1iL7kbAQQ6z4YUTveOocuOL676NT https://conexus-bamboo-cert.edc.ds1.usda.gov
+    private-key: BAMSCRT@0@0@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
+    branch: develop
+    command-timeout-minutes: '180'
+    use-shallow-clones: false
+    cache-on-agents: true
+    submodules: false
+    ssh-key-applies-to-submodules: false
+    verbose-logs: false
+    fetch-all: false
+    lfs: false
+    viewer:
+      com.atlassian.bamboo.plugins.stash.atlassian-bamboo-plugin-stash:bbServerViewer: {}
+- bamboo-deployment:
+    scope: global
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - Domain
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 30
+    after-inactive-days: 200
+  link-to-jira: true
+notifications:
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: block_if_parent_in_progress
+  plans:
+  - BT-COMRST
+  - BT-WEBSV
+  - BT-CON
+  - BT-VE
+  - BT-TASK
+  - BT-PRIC
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+  force-stop-build: false
+  all-other-apps:
+    custom.buildExpiryConfig.enabled: 'false'
+---
+version: 2
+plan:
+  key: BT-DOMB
+plan-permissions:
+- users:
+  - simon.branton-housley@usda.gov
+  groups:
+  - nsfs_devops
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+...
+</code></spec></specs>

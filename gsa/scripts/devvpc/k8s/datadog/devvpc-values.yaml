@@ -1,0 +1,99 @@
+datadog:
+  site: "ddog-gov.com"
+  clusterName: "cnxsdev-selfmanaged"
+  apiKeyExistingSecret: "devvpc-ddog"
+  appKeyExistingSecret: "devvpc-ddog"
+  tags:
+    - "env:dev"
+  apm:
+    instrumentation:
+      enabled: true
+      targets:
+        - name: "default-target"
+          ddTraceVersions:
+            java: "1"
+  logs:
+    enabled: true
+    containerCollectAll: true
+    autoMultiLineDetection: true
+  serviceMonitoring:
+    enabled: true
+  networkMonitoring:
+    enabled: true
+  processAgent:
+    enabled: true
+    processCollection: true
+  env:
+    - name: DD_DOGSTATSD_NON_LOCAL_TRAFFIC
+      value: true
+  ## The confd entry configures conexus-sftp transaction log collection for all vendors
+  confd:
+    http_check.yaml: |-
+      init_config:
+      instances:
+        - name: Conexus_devvpc_apache
+          url: https://ui.dev.cnxs.vpcaas.fcs.gsa.gov
+    conexus-sftp.yaml: |-
+      logs:
+        - type: file
+          service: conexus-sftp
+          source: conexus-sftp-att-transaction-log
+          path: /NSFS_NAS/chroot/ATT/transactionlog.txt
+        - type: file
+          service: conexus-sftp
+          source: conexus-sftp-granite-transaction-log
+          path: /NSFS_NAS/chroot/GraniteTelcom/transactionlog.txt
+        - type: file
+          service: conexus-sftp
+          source: conexus-sftp-lumen-transaction-log
+          path: /NSFS_NAS/chroot/Lumen/transactionlog.txt
+        - type: file
+          service: conexus-sftp
+          source: conexus-sftp-btfederal-transaction-log
+          path: /NSFS_NAS/chroot/BTFederal/transactionlog.txt
+        - type: file
+          service: conexus-sftp
+          source: conexus-sftp-coretech-transaction-log
+          path: /NSFS_NAS/chroot/CoreTech/transactionlog.txt
+        - type: file
+          service: conexus-sftp
+          source: conexus-sftp-verizon-transaction-log
+          path: /NSFS_NAS/chroot/Verizon/transactionlog.txt
+        - type: file
+          service: conexus-sftp
+          source: conexus-sftp-harris-transaction-log
+          path: /NSFS_NAS/chroot/HarrisCorp/transactionlog.txt
+        - type: file
+          service: conexus-sftp
+          source: conexus-sftp-mettel-transaction-log
+          path: /NSFS_NAS/chroot/ManhattanTelco/transactionlog.txt
+  databaseMonitoring:
+    autodiscovery:
+      aurora:
+        discoveryInterval: 300
+        enabled: true
+        tags:
+          - datadoghq.com/scrape: true
+agents:
+  image:
+    tagSuffix: jmx
+  volumeMounts:
+    - name: data-volume
+      mountPath: /NSFS_NAS/chroot
+      readOnly: true
+  volumes:
+    - name: data-volume
+      persistentVolumeClaim:
+        claimName: efs-data-volume-claim
+admissionController:
+  enabled: true
+clusterAgent:
+  enabled: true
+  admissionController:
+    enabled: true
+    mutateUnlabelled: true
+    configMode: "socket"
+  metricsProvider:
+    enabled: true
+registry: "public.ecr.aws/datadog"
+useFIPSAgent: true

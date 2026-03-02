@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conexus-swagger-httpd
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: conexus-swagger-httpd
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+      labels:
+        app.kubernetes.io/name: conexus-swagger-httpd
+    spec:
+      serviceAccountName: ekspodidentity-sa
+      containers:
+      - name: conexus-httpd
+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-swagger-proxy:0.1
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: swagger-apache-config
+        - secretRef:
+            name: cnxsswaggeroidcids
+        ports:
+        - containerPort: 80
+        args: [/bin/sh, -c, 'i=0; /usr/sbin/httpd -t; /usr/sbin/httpd -k start; while true; do i=$((i+1)); sleep 10; done']
+        volumeMounts:
+        - mountPath: /app/conexus/attachments
+          name: attachments-volume
+        - mountPath: /app/conexus/reports
+          name: reports-volume
+        - name: secrets-from-aws
+          mountPath: "/mnt/secrets"
+          readOnly: true
+      volumes:
+        - name: attachments-volume
+          persistentVolumeClaim:
+            claimName: efs-attachments-volume-claim
+        - name: reports-volume
+          persistentVolumeClaim:
+            claimName: efs-reports-volume-claim
+        - name: secrets-from-aws
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "aws-secrets-manager"
+

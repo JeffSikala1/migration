@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: conexus-httpd-ingress
+  namespace: ingress-nginx
+  annotations:
+    #ingress.kubernetes.io/rewrite-target: /
+    #kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/whitelist-source-range: "199.128.0.0/11"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "2700"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "2700"
+    nginx.ingress.kubernetes.io/proxy-body-size: 20m
+    #nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    #nginx.ingress.kubernetes.io/rewrite-target: "https://sandbox.conexus-project.org/$1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      #rewrite ^/(.*)$ https://sandbox.conexus-project.org/$1 permanent;
+      #more_set_headers "X-Forwarded-For $http_x_forwarded_for";
+      more_set_headers "X-Forwarded-For $http_x_forwarded_for" "X-Forwarded-Port 443";
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-redirect-from: "https://sandbox.conexus-project.org:80/"
+    nginx.ingress.kubernetes.io/proxy-redirect-to: "https://sandbox.conexus-project.org/"
+    cert-manager.io/cluster-issuer: letsencrypt-prod-sandbox
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: sandbox.conexus-project.org
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend: 
+            service:
+              name: conexus-httpd           
+              port:
+                number: 80
+  tls:
+  - hosts:
+    - sandbox.conexus-project.org
+    secretName: letsencrypt-prod-sandbox
+

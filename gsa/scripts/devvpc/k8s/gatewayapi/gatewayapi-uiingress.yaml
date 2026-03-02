@@ -1,0 +1,86 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.4.0-rc1-8-g312bd89
+  creationTimestamp: null
+  name: uicilium
+  namespace: ingress-nginx
+spec:
+  gatewayClassName: cilium
+  infrastructure:
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      service.beta.kubernetes.io/aws-load-balancer-mode: "shared"
+      service.beta.kubernetes.io/aws-load-balancer-name: "conexus-ui-internal-alb"
+      service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+      service.beta.kubernetes.io/aws-load-balancer-subnets: "${nlb_subnetids}"
+  listeners:
+  - hostname: ${uiurl}
+    name: ui-http
+    port: 80
+    protocol: HTTP
+  - hostname: ${uiurl}
+    name: ui-https
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - group: null
+        kind: null
+        name: ${env}${certname}
+  - name: default-https
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - group: null
+        kind: null
+        name: ${env}${certname}
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.4.0-rc1-8-g312bd89
+  creationTimestamp: null
+  name: conexus-nginx-ingress-ui
+  namespace: ingress-nginx
+spec:
+  hostnames:
+  - ${uiurl}
+  parentRefs:
+  - name: uicilium
+  rules:
+  - backendRefs:
+    - name: conexus-httpd
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.4.0-rc1-8-g312bd89
+  creationTimestamp: null
+  name: conexus-ui-default-health-check
+  namespace: ingress-nginx
+spec:
+  parentRefs:
+  - name: uicilium
+  rules:
+  - backendRefs:
+    - name: conexus-httpd
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []

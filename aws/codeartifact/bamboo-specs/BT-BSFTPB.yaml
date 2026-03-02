@@ -1,0 +1,133 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: BSFTPB
+  name: Billing SFTP - Build
+
+stages:
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Default Job
+
+Default Job:
+  key: JOB1
+
+  tasks:
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
+
+    - checkout:
+        repository: bamboo-deployment
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout Default Repository
+
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - rm -rf ~/.m2/repository/gov/gsa/
+        description: Remove existing cnxs maven repo directory
+
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/build-determination-migration.sh
+        description: Determine parent branch and pass correct variables
+
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject values
+
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+        configuration: {}
+
+    - maven:
+        executable: Maven 3
+        jdk: JDK 17
+        goal: >
+          clean verify -U
+          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
+          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
+        description: Build and Verify
+
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            set -euo pipefail
+            v="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
+            echo "mavenVersion=$v" >> file.properties
+            echo "Resolved mavenVersion=$v"
+        description: Extract mavenVersion from pom.xml
+
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject mavenVersion for downstream tasks
+
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |
+            export buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+            export buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+            export mavenVersion=${bamboo.inject.mavenVersion}
+            bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+        description: Deploy to Artifactory if needed
+
+    - inject-variables:
+        file: file.properties
+        scope: RESULT
+        namespace: inject
+        description: Persist variables for deployment plans
+
+  artifact-subscriptions: []
+
+variables:
+  buildVersionQueryArtifact: billing-sftp
+  buildVersionQueryGroup: gov.gsa.cnxs.billingsftp
+
+repositories:
+  - billingsftp:
+      scope: global
+  - bamboo-deployment:
+      scope: global
+
+triggers:
+  - bitbucket-server-trigger:
+      repositories:
+        - billingsftp
+
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+
+notifications:
+  - events:
+      - plan-completed
+    recipients:
+      - watchers
+  - events:
+      - plan-failed
+    recipients:
+      - responsible
+      - committers
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

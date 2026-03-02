@@ -1,0 +1,68 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: conexus-wso2mi-ingress
+  namespace: wso2mi          
+  annotations:
+    nginx.ingress.kubernetes.io/whitelist-source-range: "199.128.0.0/11, 10.20.0.0/16, 34.201.0.0/16"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "2700"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Forwarded-For $http_x_forwarded_for" "X-Forwarded-Port 443" "usdaeauthid $usdaeauthid" "ssl-vendor-serial $ssl_client_serial";
+      location ^/ {
+         limit_except POST PUT {
+            deny all;
+         }
+      }
+      rewrite ^/eas/conexus/dpa/contractingOfficers$ /vendor/dpa/contractingOfficers break;
+      rewrite ^/eas/conexus/socn$ /services/SOCNService break;
+      rewrite ^/eas/conexus/socn?wsdl$ /services/SOCNService?wsdl break;
+      rewrite ^/eas/conexus/atax$ /services/AllowableTax break;
+      rewrite ^/eas/conexus/atax?wsdl$ /services/AllowableTax?wsdl break;
+      rewrite ^/eas/conexus/dpa/contractingOfficers/(.*) /vendor/dpa/contractingOfficers/$1 break;
+      rewrite ^/eas/conexus/dpa/contracts$ /vendor/dpa/contracts break;
+      rewrite ^/eas/conexus/dpa/contracts/(.*) /vendor/dpa/contracts/$1 break;
+      rewrite ^/eas/conexus/soa$ /services/SOAService break;
+      rewrite ^/eas/conexus/soa?wsdl$ /services/SOAService?wsdl break;
+      rewrite ^/eas/conexus/soc$ /services/SOCService break;
+      rewrite ^/eas/conexus/soc?wsdl$ /services/SOCService?wsdl break;
+      rewrite ^/eas/conexus/soac$ /services/SOACService break;
+      rewrite ^/eas/conexus/soac?wsdl$ /services/SOACService?wsdl break;
+      rewrite ^/eas/conexus/focn$ /services/FOCNService break;
+      rewrite ^/eas/conexus/focn?wsdl$ /services/FOCNService?wsdl break;
+      rewrite ^/eas/conexus/sorn$ /services/SORNService break;
+      rewrite ^/eas/conexus/sorn?wsdl$ /services/SORNService?wsdl break;
+      rewrite ^/eas/conexus/sscn$ /services/SSCNService break;
+      rewrite ^/eas/conexus/sscn?wsdl$ /services/SSCNService?wsdl break;
+      rewrite ^/eas/conexus/dbas$ /services/DBASService break;
+      rewrite ^/eas/conexus/dbas?wsdl$ /services/DBASService?wsdl break;
+      rewrite ^/eas/conexus/ws/healthcheck$ /services/HealthCheckService break;
+      rewrite ^/eas/conexus/focn?wsdl$ /services/HealthCheckService?wsdl break;
+
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/auth-tls-secret: "default/ca-secret"
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "2"
+    #nginx.ingress.kubernetes.io/auth-tls-error-page: "https://www.google.com/error"
+    nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 20m
+    cert-manager.io/cluster-issuer: letsencrypt-prod-mi
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: mi.conexus-project.org
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: conexus-wso2mi
+              port:
+                number: 8290
+  tls:
+  - hosts:
+    - mi.conexus-project.org
+    secretName: letsencrypt-prod-mi

@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#
+# Collect sizes & mtimes for
+#   • JBoss data dirs
+#   • /app/conexus/{attachments,reports,reports/socnfragments,download}
+#   • /app/reconcileRequests  (BRMS hosts)
+# Appends rows to /tmp/app_data_capture.csv  (one file per host)
+#
+# Usage:  sudo /usr/local/bin/get_full_data.sh
+# ------------------------------------------------------------
+
+set -euo pipefail
+OUTFILE="/tmp/app_data_capture.csv"
+
+# Write header once per host
+[[ -f $OUTFILE ]] || echo "host,env_dir,sub_dir,size_mb,mtime" > "$OUTFILE"
+
+################################################################
+# 1.  JBoss   ###################################################
+################################################################
+JPID=$(pgrep -f 'jboss-modules.jar' | head -n1 || true)
+
+if [[ -n "$JPID" ]]; then
+  JBOSS_HOME=$(tr '\0' '\n' < /proc/$JPID/environ |
+               awk -F= '$1=="JBOSS_HOME"{print $2}')
+  [[ -z "$JBOSS_HOME" ]] &&
+      JBOSS_HOME=$(readlink -f "$(dirname "$(cat /proc/$JPID/exe)")/..")
+
+  DATA_DIR=$(tr '\0' '\n' < /proc/$JPID/environ |
+             awk -F= '$1=="jboss.server.data.dir"{print $2}')
+  [[ -z "$DATA_DIR" ]] && {
+      for d in standalone domain; do
+        [[ -d "$JBOSS_HOME/$d/data" ]] && DATA_DIR="$JBOSS_HOME/$d/data"
+      done
+  }
+
+  if [[ -d "$DATA_DIR" ]]; then
+    find "$DATA_DIR" -mindepth 1 -maxdepth 1 -type d -print0 |
+    while IFS= read -r -d '' dir; do
+      sz=$(du -sm "$dir" | cut -f1)
+      mt=$(stat -c %y "$dir" | cut -d'.' -f1)
+      printf '%s,%s,%s,%s,%s\n' \
+        "$(hostname -s)" "jboss_data" "${dir##*/}" "$sz" "$mt" >> "$OUTFILE"
+    done
+  fi
+fi
+
+################################################################
+# 2.  Conexus app data  ########################################
+################################################################
+CONEXUS_ROOT="/app/conexus"
+CONEXUS_SUBPATHS=(attachments reports download reports/socnfragments)
+
+if [[ -d "$CONEXUS_ROOT" ]]; then
+  for rel in "${CONEXUS_SUBPATHS[@]}"; do
+    dir="$CONEXUS_ROOT/$rel"
+    [[ -d "$dir" ]] || continue
+    sz=$(du -sm "$dir" | cut -f1)
+    mt=$(stat -c %y "$dir" | cut -d'.' -f1)
+    printf '%s,%s,%s,%s,%s\n' \
+      "$(hostname -s)" "conexus" "$rel" "$sz" "$mt" >> "$OUTFILE"
+  done
+fi
+
+################################################################
+# 3.  BRMS-specific reconcileRequests  ##########################
+################################################################
+RECON_DIR="/app/reconcileRequests"
+if [[ -d "$RECON_DIR" ]]; then
+  sz=$(du -sm "$RECON_DIR" | cut -f1)
+  mt=$(stat -c %y "$RECON_DIR" | cut -d'.' -f1)
+  printf '%s,%s,%s,%s,%s\n' \
+    "$(hostname -s)" "reconcileRequests" "." "$sz" "$mt" >> "$OUTFILE"
+fi
+
+echo "✔ Data captured on $(hostname -s) → $OUTFILE"

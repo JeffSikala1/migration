@@ -1,0 +1,209 @@
+version: 2
+
+plan:
+  project-key: AWS
+  key: WSO2
+  name: WSO2 Build and Push (AWS)
+
+stages:
+  - Build:
+      jobs:
+        - Build_And_Push
+
+Build_And_Push:
+  key: JOB1
+  requirements:
+    - system.docker.executable
+    - system.builder.command.aws
+
+  tasks:
+    # Repositories
+    - checkout:
+        repository: "bamboo-deployment"
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout bamboo-deployment (contains builder.sh)
+
+    - checkout:
+        repository: "scripts"
+        path: scripts
+        force-clean-build: true
+        description: Checkout scripts (contains wso2 Docker context)
+
+    # Ensure bamboo-deployment is on develop
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Ensure bamboo-deployment branch (develop)
+        scripts:
+          - |
+            set -eu
+            git fetch --all --prune
+            git checkout -B develop origin/develop || git checkout develop
+            git reset --hard origin/develop || true
+            git --no-pager log -1 --oneline
+
+    # Sanity – toolchain present
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Sanity – toolchain present?
+        scripts:
+          - |
+            set -e
+            docker --version
+            aws --version
+
+    # Make builder.sh executable
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Make builder.sh executable
+        scripts:
+          - |
+            set -eu
+            test -x ./builder.sh || chmod +x ./builder.sh
+
+    # Make download_artifacts.sh executable
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Make download_artifacts.sh executable
+        scripts:
+          - |
+            set -eu
+            echo "[fix] marking download_artifacts.sh executable"
+            chmod +x ./download_artifacts.sh || { echo "download_artifacts.sh missing"; exit 1; }
+
+    # Download WSO2 CAR artifacts from CodeArtifact
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Download WSO2 CAR artifacts from CodeArtifact
+        scripts:
+          - |
+            #!/bin/sh
+            set -eu
+            ( set -o pipefail ) 2>/dev/null || true
+
+            export DL_DIR="${bamboo.build.working.directory}/bamboo-deployment/artifacts/wso2"
+            export REGION="us-east-1"
+            export DOMAIN="cnxsartifact"
+            export OWNER="339713019047"
+            export INCLUDE_REPOS="wso2-maven"
+            export NAMESPACE_PREFIX="gov.gsa.conexus.wso2"
+            export INCLUDE_PACKAGES="ATAX,DBAS,FOCN,SOAC,SOA,SOCN,SOC,SORN,SSCN,WSHealthCheck"
+            export PREFERRED_EXTS="car"
+
+            echo "[wso2] downloading CARs into $DL_DIR"
+            ./download_artifacts.sh
+
+    # Build WSO2 image (staging)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Build WSO2 image (staging)
+        scripts:
+          - |
+            #!/bin/sh
+            set -e
+            ( set -o pipefail ) 2>/dev/null || true
+
+            id; groups; stat -c '%U %G %a %n' /var/run/docker.sock 2>/dev/null || true
+            docker info >/dev/null
+
+            # Point builder.sh at the WSO2 CAR artifacts we just downloaded
+            export ARTIFACTS_DIR="${bamboo.build.working.directory}/bamboo-deployment/artifacts/wso2"
+
+            echo "[wso2] using ARTIFACTS_DIR=${ARTIFACTS_DIR}"
+            ls -lh "${ARTIFACTS_DIR}" || true
+
+            ./builder.sh -s wso2
+
+            echo "Built releases:"; ls -1 .release.* || true
+
+    # Compute release name for deployment visibility (numeric tag, e.g. 1.3)
+    - script:
+        description: "Compute release name for Deployment"
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        scripts:
+          - |
+            set -eu
+            REL_FILE=".release.wso2"
+            if [ -s "$REL_FILE" ]; then
+              REL_TAG="$(head -n1 "$REL_FILE")"
+            else
+              echo "No wso2 release tag found, falling back to build number"
+              REL_TAG="wso2-${bamboo.buildNumber}"
+            fi
+            echo "release_name=${REL_TAG}" > "${bamboo.build.working.directory}/inject.properties"
+            echo "Computed release_name=${REL_TAG}"
+
+    - inject-variables:
+        description: "Expose release_name to Deployment"
+        file: "inject.properties"
+        namespace: "inject"
+        scope: RESULT
+
+    # Push WSO2 image to ECR
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Push WSO2 image to ECR
+        scripts:
+          - |
+            #!/bin/sh
+            set -eu
+            ( set -o pipefail ) 2>/dev/null || true
+
+            AWS_REGION="us-east-1"
+            AWS_ACCOUNT_ID="339713019047"
+            ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+            REL_TAG="$(cat .release.wso2)"
+            LOCAL_TAG="conexus-wso2mi:${REL_TAG}"
+            ECR_TAG="${ECR}/conexus-wso2mi:${REL_TAG}"
+
+            echo "[push] LOCAL_TAG=${LOCAL_TAG}"
+            echo "[push] ECR_TAG=${ECR_TAG}"
+
+            aws ecr get-login-password --region "$AWS_REGION" \
+              | docker login --username AWS --password-stdin "${ECR}"
+
+            # Tag and push
+            docker tag "$LOCAL_TAG" "$ECR_TAG"
+            docker push "$ECR_TAG"
+
+            dig="$(docker inspect --format='{{index .RepoDigests 0}}' "$ECR_TAG" 2>/dev/null || true)"
+
+            : > image-digests.txt
+            [ -n "$dig" ] && echo "wso2 ${REL_TAG} ${dig}" | tee -a image-digests.txt
+
+    # Emit image digests
+    - script:
+        description: Emit image digests
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        scripts:
+          - |
+            set -eu
+            [ -f image-digests.txt ] && cat image-digests.txt || echo "<no-digests>"
+
+  artifacts:
+    - name: releases
+      pattern: "bamboo-deployment/.release.wso2"
+      required: false
+    - name: digests
+      pattern: "bamboo-deployment/image-digests.txt"
+      required: false
+
+repositories:
+  - bamboo-deployment:
+      scope: global
+  - scripts:
+      scope: global
+
+triggers:
+  - polling:
+      period: "10"

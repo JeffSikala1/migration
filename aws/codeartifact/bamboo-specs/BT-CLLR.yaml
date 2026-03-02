@@ -1,0 +1,111 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: CLLR
+  name: Create Long Lived Repo
+
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+  # Checkout the default repo (the branch we inspect for ll-*)
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  # Checkout bamboo-deployment and pin to CNXS-62536 (where migrated scripts live)
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout bamboo-deployment repository
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        cd bamboo-deployment
+        git fetch --all --prune
+        git checkout -B CNXS-62536 origin/CNXS-62536 || git checkout -B CNXS-62536
+        git log -1 --oneline
+      description: Ensure bamboo-deployment@CNXS-62536 branch
+
+  # Create the CodeArtifact long-lived repo if needed (parent LL branches only)
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -Eeuo pipefail
+
+        CA_REGION="${CA_REGION:-us-east-1}"
+        CA_DOMAIN="${CA_DOMAIN:-cnxsartifact}"
+        LONG_LIVED_PREFIX="${LONG_LIVED_PREFIX:-ll-}"
+
+        aws_ca() { aws --region "$CA_REGION" codeartifact "$@"; }
+
+        BranchRef="$(git rev-parse --abbrev-ref HEAD | tr -d '\n')"
+        BranchName="${BranchRef##*/}"
+        echo "BranchRef=${BranchRef}"
+        echo "BranchName=${BranchName}"
+
+        if [[ "${BranchName:0:${#LONG_LIVED_PREFIX}}" != "$LONG_LIVED_PREFIX" ]]; then
+          echo "Not a long-lived branch. No repo to create."
+          exit 0
+        fi
+
+        ParentBranchName="$(printf '%s' "$BranchName" | cut -d'+' -f1)"
+        ChildBranchName="$(printf '%s' "$BranchName" | cut -d'+' -f2 -s || true)"
+
+        if [[ -n "${ChildBranchName:-}" ]]; then
+          echo "Long-lived CHILD branch detected (${BranchName}). Skipping repo creation."
+          exit 0
+        fi
+
+        echo "Long-lived PARENT branch detected (${ParentBranchName}). Ensuring CodeArtifact repo exists..."
+        if aws_ca describe-repository --domain "$CA_DOMAIN" --repository "$ParentBranchName" >/dev/null 2>&1; then
+          echo "Repo '$ParentBranchName' already exists."
+        else
+          echo "Creating repo '$ParentBranchName'..."
+          aws_ca create-repository \
+            --domain "$CA_DOMAIN" \
+            --repository "$ParentBranchName" \
+            --description "Auto-created for long-lived branch ${ParentBranchName}"
+          echo "Created repo '$ParentBranchName'."
+        fi
+
+        echo "Repository endpoint:"
+        aws_ca get-repository-endpoint \
+          --domain "$CA_DOMAIN" \
+          --repository "$ParentBranchName" \
+          --format maven \
+          --query repositoryEndpoint \
+          --output text
+      description: Ensure CodeArtifact long-lived repo exists
+
+repositories:
+- bamboo-deployment:
+    scope: global
+
+triggers: []
+
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+
+notifications: []
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

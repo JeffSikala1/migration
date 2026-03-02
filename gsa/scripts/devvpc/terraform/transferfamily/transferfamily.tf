@@ -1,0 +1,173 @@
+# __generated__ by Terraform
+# Please review these resources and move them into your main configuration files.
+
+# __generated__ by Terraform from "s-62d1150f116d4688b"
+
+data aws_efs_file_system "efschroot" {
+  creation_token = "Conexus SFTP Data"
+}
+locals {
+  nametag = {
+    Name = "sftp.${var.dnsdomain}"
+  }
+  tftags = {
+    Terraform   = "true"
+    Team = "Ops"
+    ResourceRole="Conexus SFTP"
+    Service="SFTP"
+    ResourceClass="Application"
+    Application = "Conexus"
+  }
+}
+
+resource "aws_transfer_server" "conexussftp" {
+  certificate                      = null
+  directory_id                     = null
+  domain                           = "EFS"
+  endpoint_type                    = "VPC"
+  force_destroy                    = null
+  function                         = null
+  host_key                         = null # sensitive
+  identity_provider_type           = "SERVICE_MANAGED" 
+  invocation_role                  = null#
+  logging_role                     = aws_iam_role.transferfamilyrole.arn
+  post_authentication_login_banner = null # sensitive
+  pre_authentication_login_banner  = null # sensitive
+  protocols                        = ["SFTP"]
+  security_policy_name             = "TransferSecurityPolicy-FIPS-2024-01"
+  sftp_authentication_methods      = null
+  structured_log_destinations      = []
+  tags = merge(var.tags, local.tftags, local.nametag)
+
+  #url = ""
+  protocol_details {
+    set_stat_option             = "DEFAULT"
+  }
+  endpoint_details {
+    vpc_id = data.aws_vpc.vpc.id
+    //address_allocation_ids = [aws_eip.exttfip.id]
+    subnet_ids = [var.intnlbsubnetids.az2]
+  }
+}
+
+/*resource "aws_eip" "exttfip" {
+  domain = "vpc"
+  tags = {
+    Name = "Ext-TF-EIP-az2"
+  }
+}*/
+
+#SFTP user configuration
+resource "aws_transfer_user" "sftp_users" {
+  for_each = toset(var.sftpusers)
+  user_name = each.value
+  server_id = aws_transfer_server.conexussftp.id
+  role = aws_iam_role.transferfamilyrole.arn
+  
+  home_directory_type = "LOGICAL"
+  //home_directory = "/${each.value}"  
+  home_directory_mappings {
+    entry = "/"
+    target = "/${data.aws_efs_file_system.efschroot.id}/${each.value}" # point each user to their EFS home directory
+  }
+
+  posix_profile {
+    uid = index(var.sftpusers, each.value)  + 1100
+    gid = index(var.sftpusers, each.value)  + 1100
+  }
+  
+  tags = {
+    Name = "${each.value}"
+  }
+}
+
+#Create a EFS access point for each sftp user
+resource "aws_efs_access_point" "sftpuser_access_points" {
+  for_each = toset(var.sftpusers)
+  file_system_id = data.aws_efs_file_system.efschroot.id
+  
+  posix_user {
+    uid = 1100 + index(var.sftpusers, each.value)
+    gid = 1100 + index(var.sftpusers, each.value)
+  }
+  
+  root_directory {
+    path = "/${each.value}"
+    creation_info {
+      owner_uid = 1100 + index(var.sftpusers, each.value)
+      owner_gid = 1100 + index(var.sftpusers, each.value)
+      permissions = 750
+    }
+  }
+  
+  tags = {
+    Name = "${each.value}"
+  }
+}
+
+resource "aws_iam_role" "transferfamilyrole" {
+  name        = "cnxs-transferfamily-sftp-role"
+  description = "The role for the Conexus Transfer family SFTP Users"
+  assume_role_policy = <<EOF
+{
+"Version": "2012-10-17",
+"Statement": {
+"Effect": "Allow",
+"Principal": {"Service": "transfer.amazonaws.com"},
+"Action": "sts:AssumeRole"
+}
+}
+EOF
+
+  tags = {
+    stack = "${var.dnsdomain}"
+  }
+
+}
+
+# EFS chroot policy -Allow role/cnxs-transferfamily-sftp-role                                                                                                                            
+data "aws_iam_policy_document" "tfefspolicydoc" {
+  statement {
+    sid    = "NFSclientreadwriteviafsmt"
+    effect = "Allow"
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+    actions = [
+      "elasticfilesystem:ClientRootAccess",
+      "elasticfilesystem:ClientMount",
+      "elasticfilesystem:ClientWrite"
+    ]
+    resources = [data.aws_efs_file_system.efschroot.arn]
+    condition {
+      test     = "Bool"
+      variable = "elasticfilesystem:AccessedViaMountTarget"
+      values   = ["true"]
+    }
+  }
+  statement {
+    sid    = "SFTPChrootPolicyStatement"
+    effect = "Allow"
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${var.awsaccountid}:role/cnxs-transferfamily-sftp-role"]
+    }
+    actions = [
+      "elasticfilesystem:ClientMount",
+      "elasticfilesystem:ClientWrite"
+    ]
+    resources = [data.aws_efs_file_system.efschroot.arn]
+  }
+}
+/*
+resource "aws_iam_policy" "tfefspolicy" {
+  name = "TransferfamilyEFSAccess"
+  description = "Allow Transferfamily access to EFS for chroot file system"
+  policy = data.aws_iam_policy_document.tfefspolicydoc.json
+}
+*/
+resource "aws_efs_file_system_policy" "efspolicy" {
+  file_system_id = data.aws_efs_file_system.efschroot.id
+  policy = data.aws_iam_policy_document.tfefspolicydoc.json
+}                                                                

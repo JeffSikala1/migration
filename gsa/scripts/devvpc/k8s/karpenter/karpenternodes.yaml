@@ -1,0 +1,88 @@
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2
+  role: "KarpenterNodeRole-cnxs${env}-karpenter"
+  subnetSelectorTerms:
+    - tags:
+        Name: Private-Services-az4
+        Name: Private-Services-az6
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: cnxs${env}-karpenter 
+  tags:
+    karpenter.sh/discovery: cnxs${env}-karpenter 
+  amiSelectorTerms:
+    - name: ISE-AMZ-LINUX-EKS-v1.30-GSA-HARDENED-25-*
+      owner: "752281881774"
+  blockDeviceMappings: 
+    - deviceName: /dev/xvda # Not giving it a snapshot will cause it to just create a default EBS
+      ebs:
+        volumeSize: 100Gi
+        volumeType: gp2
+        encrypted: false  
+        deleteOnTermination: true
+  userData: |
+    #!/bin/bash
+    mkdir -p ~ec2-user/.ssh/
+    touch ~ec2-user/.ssh/authorized_keys
+    cat >> ~ec2-user/.ssh/authorized_keys <<EOF
+    ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDQazymTuBe2uNBOjj3wQJehWlrEYFKGvkOd20+gkScihwsQCiJjXHKnlbNpXSh1IAQybC9NzEdao3Bgv5MTSLqRnKeljr4fOSEUm5Q1OGNIz5xLCAG+s8ytFdfP64wK3brpHg92ZLVB/24G+8YP3zGQTWjWroHfhK/CxWa66YYduzKAm7BcDFMCMhahekRS7sJhIZRCNJldVgq4pC0PSTX2NEIulEniYwVKGxkrVoU9hMekzZ7KC/ut8Xok2xnZ5pTKulVEyheqgOUVQOOcpQN13ekt6Dohsffx1JoX2YKrEBNL7TmSfMXkZTu6+Yw6C1N3/MXryxauL/AxaLqaAL3fsL51DXcWaN7FHG916uP30/npaASLtUwl2F08XFTio25Q3NYN32Mf9v6Z4DwrJ1a07DNnjeEFTnqqpU0JhXyDosdjTu3lRVpBuAdjTjEoOgtS6YoDvK841Q2x1dO6jgbgFruwnPx6cILOi7wxlPsgAf5VwIgcZAOZAaFb/ZTvY8= cloudshell-user@ip-10-138-165-224.ec2.internal
+    EOF
+    chmod -R go-w ~ec2-user/.ssh/authorized_keys
+    chown -R ec2-user ~ec2-user/.ssh
+    yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+    service amazon-ssm-agent restart
+
+
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: "karpenter.k8s.aws/instance-category"
+          operator: In
+          values: ["r", "m"]
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["r6a","m6a"]
+        - key: "karpenter.k8s.aws/instance-cpu"
+          operator: In
+          values: ["4", "8", "16", "32"]
+        - key: "karpenter.k8s.aws/instance-cpu-manufacturer"
+          operator: In
+          values: ["amd"]
+        - key: "karpenter.k8s.aws/instance-hypervisor"
+          operator: In
+          values: ["nitro"]
+        - key: "karpenter.k8s.aws/instance-generation"
+          operator: Gt
+          values: ["5"]
+  limits:
+    cpu: 1000
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 30s
+status:
+  resources:
+    ephemeral-storage: "100Gi"

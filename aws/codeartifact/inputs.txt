@@ -1,0 +1,48 @@
+cd ~
+VER="02.00.000.44"
+SRC_DIR="$HOME/$VER"
+BAD="$SRC_DIR/pg-datafile-$VER-postgres-data.tar.txt.gz"
+GOOD="$SRC_DIR/pg-datafile-$VER-postgres-data.tar.gz"
+
+ls -lh "$BAD"
+
+
+mv -v "$BAD" "$GOOD"
+ls -lh "$GOOD"
+
+
+file "$GOOD"
+
+
+
+gzip -t "$GOOD" && echo "gzip OK"
+
+
+
+tar -tzf "$GOOD" | head
+
+
+
+
+
+
+
+REPO="conexus-release-local"
+BASE="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
+TARGET_PATH="gov/gsa/cnxs/db/pg-datafile/$VER/$(basename "$GOOD")"
+
+curl -f -H "Authorization: Bearer $ART_TOKEN" \
+  -T "$GOOD" \
+  "$BASE/$REPO/$TARGET_PATH"
+
+
+curl -I -H "Authorization: Bearer $ART_TOKEN" \
+  "$BASE/$REPO/$TARGET_PATH"
+
+
+
+VIRTUAL="conexus-plugin-repository"
+curl -I -H "Authorization: Bearer $ART_TOKEN" \
+  "$BASE/$VIRTUAL/$TARGET_PATH"
+
+

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="CS" buildKey="BSFTPFY"><code>---
+version: 2
+plan:
+  project-key: CS
+  key: BSFTPFY
+  name: Billing SFTP - Fortify
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: code scanning
+      path: fortify
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: fortify/install_fortify_client.sh
+      description: Install Fortify Client
+  - script:
+      interpreter: SHELL
+      file: fortify/generate_token.sh
+      description: Generate token
+  - inject-variables:
+      file: bamboo_uploader_token
+      scope: LOCAL
+      namespace: inject_token
+      description: Inject token
+# com.atlassian.bamboo.plugins.scripttask:task.builder.script is disabled. This state is not supported at YAML
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - |-
+        ## Cleanup
+        rm -rf /opt/build /opt/Fortify
+      description: Cleanup
+  requirements:
+  - codescanning: 'yes'
+  artifact-subscriptions: []
+variables:
+  ssc_applicationName: Conexus-BillingSFTP
+  ssc_applicationVersion: 0.0.0
+  ssc_applicationVersionId: '5'
+repositories:
+- billingsftp:
+    scope: global
+- code scanning:
+    scope: global
+triggers:
+- cron:
+    expression: 0 0 5 ? * 5,6,3,7
+    description: weekly morning
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+notifications: []
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+---
+version: 2
+plan:
+  key: CS-BSFTPFY
+plan-permissions:
+- users:
+  - simon.branton-housley@usda.gov
+  groups:
+  - nsfs_devops
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+...
+</code></spec></specs>

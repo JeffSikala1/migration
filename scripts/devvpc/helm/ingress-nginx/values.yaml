@@ -1,0 +1,41 @@
+controller:
+  kind: DaemonSet
+
+  nodeSelector:
+    role: ingress
+  tolerations:
+  - key: ingress-ready
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+
+  service:
+    type: NodePort
+    nodePorts:
+      http: 30080
+      https: 30443
+    externalTrafficPolicy: Cluster        # leave unchanged
+
+  # NGINX runtime config
+  config:
+    # no stub-status over HTTP – we’ll rely on /metrics instead
+    ssl-protocols: "TLSv1.2 TLSv1.3"
+    ssl-prefer-server-ciphers: "true"
+    custom-http-errors: "404,503"
+    ssl-ciphers: >
+      ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:
+      ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:
+      ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:HIGH:!aNULL:!MD5:!CAMELLIA:!RC4
+
+metrics:                               # Prometheus-style metrics on 10254
+  enabled: true
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "10254"
+defaultBackend:
+  enabled: true
+
+myappIngress:
+  enabled: true
+  annotations: {}

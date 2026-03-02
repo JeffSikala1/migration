@@ -1,0 +1,47 @@
+FROM redhat/ubi9-minimal:9.6-1755695350
+LABEL maintainer="Conexus Systems <ocio-eas-conexus-systems@usda.gov>"
+USER root
+# Set Packages and timezone
+ENV TZ="America/Chicago"
+RUN microdnf reinstall -y tzdata && \
+    microdnf update -y  && \
+    microdnf install -y java-17-openjdk-headless less net-tools procps-ng nss unzip tar gzip shadow-utils vi tzdata-java dejavu-sans-fonts libaio bzip2 fontconfig && \
+    microdnf clean all && \
+    rm -rf /var/cache/yum 
+
+ARG DEJAVU_FONT_TARBALL=./dejavu-fonts-ttf-2.37.tar.bz2
+COPY $DEJAVU_FONT_TARBALL  /tmp/dejavu-fonts-ttf.tar.bz2
+RUN mkdir -p /usr/share/fonts/dejavu/
+RUN tar -C /usr/share/fonts/dejavu -xjvf /tmp/dejavu-fonts-ttf.tar.bz2
+RUN fc-cache /usr/share/fonts/
+
+ARG EAP_DEPLOY_DIR=/app
+ARG EAP_VERSION=8.0
+ARG EAP_PATCH_SOURCE=jboss-eap-8.0.8.GA-maven-repository 
+ARG EAP_PATCH_ARCHIVE=jboss-eap-8.0.8-maven-repository.zip 
+ARG EAP_ARCHIVE=jboss-eap-8.0.0.zip
+ENV JBOSS_HOME="${EAP_DEPLOY_DIR}/jboss-eap-${EAP_VERSION}"
+
+RUN useradd -U -m -d ${EAP_DEPLOY_DIR} -u 6060 jboss
+WORKDIR ${EAP_DEPLOY_DIR}
+COPY ${EAP_ARCHIVE} ${EAP_DEPLOY_DIR}/jboss-eap.zip
+RUN unzip -q jboss-eap.zip && \
+    rm jboss-eap.zip
+COPY java.security ${JBOSS_HOME}/standalone/configuration/
+
+RUN chown -R jboss:jboss ${EAP_DEPLOY_DIR}
+
+USER jboss
+ENV LAUNCH_JBOSS_IN_BACKGROUND=true
+
+# Install patch
+COPY ${EAP_PATCH_ARCHIVE} ${EAP_DEPLOY_DIR}/jboss-eap-patch.zip
+RUN cd ${EAP_DEPLOY_DIR} && unzip -q jboss-eap-patch.zip
+RUN ${JBOSS_HOME}/bin/jboss-eap-installation-manager.sh update perform --dir ${JBOSS_HOME} --repositories mrrc::file:${EAP_DEPLOY_DIR}/${EAP_PATCH_SOURCE}/maven-repository --offline --yes
+RUN rm jboss-eap-patch.zip && rm -rf ${EAP_PATCH_SOURCE}
+
+RUN mkdir -p ${JBOSS_HOME}/modules/org/postgres/main
+COPY postgresql-42.7.7.jar ${JBOSS_HOME}/modules/org/postgres/main
+COPY module.xml ${JBOSS_HOME}/modules/org/postgres/main
+
+CMD ["sh", "-c", "${JBOSS_HOME}/bin/standalone.sh -c=standalone-full.xml"]

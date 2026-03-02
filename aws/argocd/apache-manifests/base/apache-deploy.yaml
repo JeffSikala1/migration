@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conexus-httpd
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: conexus-httpd
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: conexus-httpd
+    spec:
+      serviceAccountName: "ekspodidentity-sa"
+      containers:
+        - name: conexus-httpd
+          # Base tag is a dummy; Argo dev overlay sets the real tag (e.g. 1.3)
+          image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:dev-latest
+          imagePullPolicy: Always
+          securityContext:
+            runAsUser: 0
+          envFrom:
+            - configMapRef:
+                name: apache-config        # pre-existing ConfigMap (OIDC / SERVER_NAME)
+            - secretRef:
+                name: cnxsoidcids          # pre-existing Secret (OIDC client secret, etc.)
+          ports:
+            - containerPort: 80
+          args:
+            - /bin/sh
+            - -c
+            - >
+              i=0;
+              /usr/sbin/httpd -t;
+              /usr/sbin/httpd -k start;
+              while true; do
+                i=$((i+1));
+                sleep 10;
+              done
+          volumeMounts:
+            - name: attachments-volume
+              mountPath: /app/conexus/attachments
+            - name: reports-volume
+              mountPath: /app/conexus/reports
+      volumes:
+        - name: attachments-volume
+          persistentVolumeClaim:
+            claimName: efs-attachments-volume-claim
+        - name: reports-volume
+          persistentVolumeClaim:
+            claimName: efs-reports-volume-claim
+        - name: secrets-from-aws
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "aws-secrets-manager"

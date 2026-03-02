@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: reporting
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        karpenter.sh/do-not-disrupt: "true"
+        instrumentation.opentelemetry.io/inject-java: "true"
+        instrumentation.opentelemetry.io/container-names: "conexus-reporting"
+      labels:
+        app.kubernetes.io/name: reporting
+    spec:
+      serviceAccountName: "ekspodidentity-sa"
+      containers:
+      - name: conexus-reporting
+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-reporting:8.0.8-repo111-vend137
+        imagePullPolicy: Always
+        envFrom:
+          - configMapRef:
+              name: jboss-config
+          - secretRef:
+              name: cnxsdbids
+          - secretRef:
+              name: cnxsids
+        ports:
+        - containerPort: 8080
+        args: [/bin/sh, -c, 'i=0; /app/jboss-eap-8.0/bin/standalone.sh -c standalone-full.xml; while true; do i=$((i+1)); sleep 10; done']
+        volumeMounts:
+        - mountPath: /app/jboss-eap-8.0/standalone/configuration/standalone-full.xml
+          name: standalone-config
+          subPath: standalone-full.xml
+        - mountPath: /NSFS_NAS/database
+          name: database-volume
+        - mountPath: /app/conexus/attachments
+          name: attachments-volume
+        - mountPath: /app/conexus/reports
+          name: reports-volume
+        - name: secrets-from-aws
+          mountPath: "/mnt/secrets"
+          readOnly: true
+      volumes:
+        - name: standalone-config
+          configMap:
+            name: jboss-reporting-config
+        - name: database-volume
+          persistentVolumeClaim:
+            claimName: efs-database-volume-claim
+        - name: attachments-volume
+          persistentVolumeClaim:
+            claimName: efs-attachments-volume-claim
+        - name: reports-volume
+          persistentVolumeClaim:
+            claimName: efs-reports-volume-claim
+        - name: secrets-from-aws
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "aws-secrets-manager"
+

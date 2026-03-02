@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conexus-wso2mi
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: conexus-wso2mi
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: disabled
+      labels:
+        app.kubernetes.io/name: conexus-wso2mi
+    spec:
+      containers:
+      - name: conexus-wso2mi
+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi:4.3.0-rocky-0.16
+        imagePullPolicy: Always
+        envFrom:
+          - configMapRef:
+              name: micro-config2
+        env:
+         - name: APP_KEY
+           valueFrom:
+            secretKeyRef:
+              name: cnxsids
+              key: app_key
+         - name: TENANT_KEY
+           valueFrom:
+            secretKeyRef:
+              name: cnxsids
+              key: tenant_key
+        ports:
+        - containerPort: 8253
+        - containerPort: 8290
+        - containerPort: 9201
+        - containerPort: 9164
+

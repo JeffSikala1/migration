@@ -1,0 +1,156 @@
+---
+version: 2
+plan:
+  project-key: BT
+  key: RCNT
+  name: Reconciliation - Nightly Testing
+
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+
+Default Job:
+  key: JOB1
+  tasks:
+  - clean
+
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+
+  # Optional: clear CNXS cache
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/
+      description: Remove existing cnxs maven repo directory
+
+  # Ensure bamboo-deployment uses the migrated scripts branch
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        cd bamboo-deployment
+        git fetch --all --prune
+        git checkout -B CNXS-62536 origin/CNXS-62536 || git checkout -B CNXS-62536
+        git log -1 --oneline
+      description: Ensure bamboo-deployment@CNXS-62536 branch
+
+  # Writes file.properties + settings-ca.xml (points Maven at CodeArtifact)
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination-migration.sh
+      description: Determine parent/target repos and write properties
+
+  # Fetch a short-lived CodeArtifact token (LOCAL scope)
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set +x
+        echo "caToken=$(aws codeartifact get-authorization-token \
+          --domain cnxsartifact --query authorizationToken --output text --region us-east-1)" > ca-token.properties
+      description: Fetch CodeArtifact token (local)
+
+  # Inject endpoints (from file.properties)
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+
+  # Inject token as a Bamboo variable
+  - inject-variables:
+      file: ca-token.properties
+      scope: LOCAL
+      description: Inject CodeArtifact token
+
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+
+  # Build via Script so we can export the token and use settings-ca.xml
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |
+        set -e
+        export CODEARTIFACT_AUTH_TOKEN="${bamboo.caToken}"
+        mvn -s settings-ca.xml \
+          clean verify -B -DskipSurefire=true -U -P integration-test,enable-performance-tests \
+          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} \
+          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} \
+          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} \
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      description: Build and Verify (CodeArtifact)
+
+  # Parse test results (surefire/failsafe)
+  - test-parser:
+      type: junit
+      ignore-time: false
+      test-results: "**/target/surefire-reports/*.xml"
+      description: surefire reports
+  - test-parser:
+      type: junit
+      ignore-time: false
+      test-results: "**/target/failsafe-reports/*.xml"
+      description: failsafe reports
+
+  artifacts:
+  - name: Jboss Log
+    location: integration/target/
+    pattern: jboss.log
+    shared: false
+    required: false
+  - name: Oracle Log
+    location: integration/target/
+    pattern: oracle.log
+    shared: false
+    required: false
+
+repositories:
+- Reconciliation:
+    scope: global
+- bamboo-deployment:
+    scope: global
+
+triggers: []
+
+branches:
+  create: manually
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 7
+  link-to-jira: true
+
+notifications:
+- events: [plan-failed]
+  recipients:
+  - users: [jeffsikala]
+  - watchers
+- events: [plan-completed]
+  recipients:
+  - watchers
+- events: [plan-failed]
+  recipients:
+  - responsible
+  - committers
+  - users: [jeffsikala]
+
+labels: []
+
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []

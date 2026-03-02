@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conexus-nginx
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: conexus-nginx
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+      labels:
+        app.kubernetes.io/name: conexus-nginx
+    spec:
+      containers:
+      - name: conexus-nginx
+        image: nginx:1.29.0-otel
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 443
+        args: [/bin/sh, -c, 'i=0; /usr/sbin/nginx -g "daemon on;"; while true; do i=$((i+1)); sleep 10; done']
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d/default.conf
+          name: nginx-config
+          subPath: default.conf
+        - mountPath: /etc/nginx/ssl/
+          name: nginx-ssl
+          readOnly: true
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: wso2-nginx-config
+        - name: nginx-ssl
+          projected:
+            sources:
+            - configMap:  
+                name: diffie-file-config
+            - secret:
+                name: ${env}${certname}
+
+            

@@ -1,0 +1,154 @@
+version: 2
+plan:
+  project-key: BT
+  key: UBA18
+  name: UI Build Angular18
+  master-branch: feature/CNXS-67776-angular-18-research-what-s-needed-for-implementation
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  other:
+    clean-working-dir: true
+    all-other-apps:
+      custom:
+        auto: {}
+        buildHangingConfig.enabled: 'false'
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+        source ~/.bashrc
+
+        export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
+
+        # Install/Update Google Chrome for Headless testing
+        curl https://conexus-artifactory.edc.ds1.usda.gov/artifactory/file-local/google-chrome.repo &gt; /etc/yum.repos.d/google-chrome.repo
+        yum install -y google-chrome-stable
+
+        npm config set registry https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/npm/npm/
+
+        #SASS_BINARY_SITE='https://conexus-artifactory.edc.ds1.usda.gov/artifactory/file-local/node-sass/' npm install
+        npm install
+        npm test
+
+        # Original
+        #ng build --prod --build-optimizer --output-hashing=all --vendor-chunk --optimization --progress
+
+        # New - needs extra node parameters because source-map generation takes more memory
+        #node --max_old_space_size=8192 \
+        #     node_modules/@angular/cli/bin/ng build \
+        #     --configuration production  --output-hashing=all   --optimization --source-map=true
+        ng build --configuration production --output-hashing=all  --optimization --source-map=true
+      working-dir: web/src/main/
+      description: ng build
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: clean verify -B -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      description: Package
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
+      configuration:
+        variable: mavenVersion
+        variableScope: JOB
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
+      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
+      description: Deploy to Artifactory if needed
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+  artifact-subscriptions: []
+variables:
+  buildVersionQueryArtifact: ui-war
+  buildVersionQueryGroup: gov.gsa.cnxs.ui
+repositories:
+- UIAngular18:
+    scope: global
+- bamboo-deployment:
+    scope: global
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - UIAngular18
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+notifications:
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+---
+version: 2
+plan:
+  key: BT-UBA18
+plan-permissions:
+- users:
+  - jeffsikala
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  
+- users:
+  - jeffsikala
+  groups:
+  - bamboo-admin
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  

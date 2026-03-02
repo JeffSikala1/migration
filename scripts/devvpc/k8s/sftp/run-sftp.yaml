@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conexus-sftp
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: conexus-sftp
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+      labels:
+        app.kubernetes.io/name: conexus-sftp
+    spec:
+      securityContext:
+        runAsUser: 0 
+      containers:
+      - name: conexus-sftp
+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-sftp:0.6
+        imagePullPolicy: Always
+        args: [/bin/sh, -c, 'i=0; /startup.sh; while true; do i=$((i+1)); sleep 3600; done']
+        envFrom:
+        - configMapRef:
+            name: sftp-config
+        volumeMounts:
+        - mountPath: /NSFS_NAS/database
+          name: database-volume
+        - mountPath: /app/conexus/attachments
+          name: attachments-volume
+        - mountPath: /NSFS_NAS/chroot 
+          name: data-volume
+        - mountPath: /NSFS_NAS/fail_scan
+          name: reject-volume
+      volumes:
+        - name: database-volume
+          persistentVolumeClaim:
+            claimName: efs-database-volume-claim
+        - name: attachments-volume
+          persistentVolumeClaim:
+            claimName: efs-attachments-volume-claim
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: efs-data-volume-claim
+        - name: reject-volume
+          persistentVolumeClaim:
+            claimName: efs-reject-volume-claim            

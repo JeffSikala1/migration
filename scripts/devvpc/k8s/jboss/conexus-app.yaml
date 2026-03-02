@@ -1,0 +1,89 @@
+# --- namespace (skip if it exists) -----------------------------
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: conexus
+---
+# --- Deployment -------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conexus-jboss
+  namespace: conexus
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: conexus-jboss
+  template:
+    metadata:
+      labels:
+        app: conexus-jboss
+    spec:
+      containers:
+      - name: jboss
+        image: jboss/wildfly:latest             # put your own image if needed
+        ports:
+        - name: http
+          containerPort: 8080
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        env:
+        - name: TZ
+          value: "UTC"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 15
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 60
+---
+# --- ClusterIP Service -----------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: conexus-jboss
+  namespace: conexus
+spec:
+  selector:
+    app: conexus-jboss
+  ports:
+  - name: http
+    port: 80          # service port
+    targetPort: http  # 8080 in the pod
+---
+# --- Ingress ----------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: conexus-app
+  namespace: conexus
+  annotations:
+    # remove the rewrite if you don't need it
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app.conexus-dev-sandbox.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: conexus-jboss
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - app.conexus-dev-sandbox.org
+    secretName: let-encrypt-ssl-secret   # now present in namespace conexus

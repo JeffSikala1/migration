@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="CS" buildKey="COMFTY"><code>---
+version: 2
+plan:
+  project-key: CS
+  key: COMFTY
+  name: Common - Fortify
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: code scanning
+      path: code_scanning
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: install_fortify_client.sh
+      working-dir: code_scanning
+      description: Install Fortify Client
+  - script:
+      interpreter: SHELL
+      file: code_scanning/generate_token.sh
+      description: Generate token
+  - inject-variables:
+      file: bamboo_uploader_token
+      scope: LOCAL
+      namespace: inject_token
+      description: Inject token
+  - script:
+      interpreter: SHELL
+      file: code_scanning/fortify_sca_process.sh
+      description: SCA clean, package, scan, and upload
+# com.atlassian.bamboo.plugins.scripttask:task.builder.script is disabled. This state is not supported at YAML
+# com.atlassian.bamboo.plugins.scripttask:task.builder.script is disabled. This state is not supported at YAML
+# com.atlassian.bamboo.plugins.scripttask:task.builder.script is disabled. This state is not supported at YAML
+# com.atlassian.bamboo.plugins.maven:task.builder.mvn3 is disabled. This state is not supported at YAML
+# com.atlassian.bamboo.plugins.scripttask:task.builder.script is disabled. This state is not supported at YAML
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        ## Cleanup
+        rm -rf /opt/build /opt/Fortify
+      description: Cleanup
+  requirements:
+  - codescanning: 'yes'
+  artifact-subscriptions: []
+variables:
+  ssc_applicationName: Conexus-Common
+  ssc_applicationVersion: 0.0.0
+  ssc_applicationVersionId: '6'
+repositories:
+- Common:
+    scope: global
+- code scanning:
+    scope: global
+triggers:
+- cron:
+    expression: 0 0 4 ? * 5,2,6,3,4
+    description: weekly morning
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+notifications: []
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+---
+version: 2
+plan:
+  key: CS-COMFTY
+plan-permissions:
+- users:
+  - simon.branton-housley@usda.gov
+  groups:
+  - nsfs_devops
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+...
+</code></spec></specs>

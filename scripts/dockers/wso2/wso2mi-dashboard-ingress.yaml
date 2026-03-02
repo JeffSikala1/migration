@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: conexus-wso2mi-dashboard-ingress
+  namespace: wso2mi          
+  annotations:
+    nginx.ingress.kubernetes.io/whitelist-source-range: "199.128.0.0/11, 10.20.0.0/16, 34.201.0.0/16"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "360"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "360"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Forwarded-For $http_x_forwarded_for" "X-Forwarded-Port 443";
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 20m
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    cert-manager.io/cluster-issuer: letsencrypt-prod-management
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: management.conexus-project.org
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: conexus-wso2mi
+              port:
+                number: 9743
+  tls:
+  - hosts:
+    - management.conexus-project.org
+    secretName: letsencrypt-prod-management

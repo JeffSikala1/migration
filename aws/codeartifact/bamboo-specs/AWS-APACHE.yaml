@@ -1,0 +1,169 @@
+version: 2
+
+plan:
+  project-key: AWS
+  key: APACHE
+  name: Apache Build and Push (AWS)
+
+stages:
+  - Build:
+      jobs:
+        - Build_And_Push
+
+Build_And_Push:
+  key: JOB1
+  requirements:
+    - system.docker.executable
+    - system.builder.command.aws
+  tasks:
+    # Repositories
+    - checkout:
+        repository: "bamboo-deployment"
+        path: bamboo-deployment
+        force-clean-build: true
+        description: Checkout bamboo-deployment (contains builder.sh)
+    - checkout:
+        repository: "scripts"
+        path: scripts
+        force-clean-build: true
+        description: Checkout scripts (contains apache Docker context)
+
+    # Ensure bamboo-deployment develop (for consistency with your other plans)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Ensure bamboo-deployment branch (develop)
+        scripts:
+          - |
+            set -eu
+            git fetch --all --prune
+            git checkout -B develop origin/develop || git checkout develop
+            git reset --hard origin/develop || true
+            git --no-pager log -1 --oneline
+
+    # Sanity – toolchain present
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Sanity – toolchain present?
+        scripts:
+          - |
+            set -e
+            docker --version
+            aws --version
+
+    # Make builder.sh executable
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Make builder.sh executable
+        scripts:
+          - |
+            set -eu
+            test -x ./builder.sh || chmod +x ./builder.sh
+
+    # Build Apache image (staging)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Build Apache image (staging)
+        scripts:
+          - |
+            #!/bin/sh
+            set -e
+            ( set -o pipefail ) 2>/dev/null || true
+
+            id; groups; stat -c '%U %G %a %n' /var/log 2>/dev/null || true
+            docker info >/dev/null
+
+            ./builder.sh -s apache
+
+            echo "Built releases:"; ls -1 .release.* || true
+
+    # Compute release name for deployment visibility (optional but consistent)
+    - script:
+        description: "Compute release name for Deployment"
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        scripts:
+          - |
+            set -eu
+            REL_FILE=".release.apache"
+            if [ -s "$REL_FILE" ]; then
+              REL_TAG="$(head -n1 "$REL_FILE")"
+            else
+              echo "No apache release tag found, falling back to build number"
+              REL_TAG="apache-${bamboo.buildNumber}"
+            fi
+            echo "release_name=${REL_TAG}" > "${bamboo.build.working.directory}/inject.properties"
+            echo "Computed release_name=${REL_TAG}"
+
+    - inject-variables:
+        description: "Expose release_name to Deployment"
+        file: "inject.properties"
+        namespace: "inject"
+        scope: RESULT
+
+    # Push image to ECR
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Push Apache image to ECR
+        scripts:
+          - |
+            #!/bin/sh
+            set -eu
+            # optional but nice:
+            ( set -o pipefail ) 2>/dev/null || true
+
+            AWS_REGION="us-east-1"
+            AWS_ACCOUNT_ID="339713019047"
+            ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+            # We are already in bamboo-deployment/, so just read the local file
+            REL_TAG="$(cat .release.apache)"
+
+            LOCAL_TAG="conexus-apache-oidc:${REL_TAG}"
+            ECR_TAG="${ECR}/conexus-apache-oidc:${REL_TAG}"
+
+            echo "[push] LOCAL_TAG=${LOCAL_TAG}"
+            echo "[push] ECR_TAG=${ECR_TAG}"
+
+            aws ecr get-login-password --region "$AWS_REGION" \
+              | docker login --username AWS --password-stdin "${ECR}"
+
+            docker tag "$LOCAL_TAG" "$ECR_TAG"
+            docker push "$ECR_TAG"
+
+            dig="$(docker inspect --format='{{index .RepoDigests 0}}' "$ECR_TAG" 2>/dev/null || true)"
+
+            : > image-digests.txt
+            [ -n "$dig" ] && echo "apache ${REL_TAG} ${dig}" | tee -a image-digests.txt
+
+    # Emit image digests
+    - script:
+        description: Emit image digests
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        scripts:
+          - |
+            set -eu
+            [ -f image-digests.txt ] && cat image-digests.txt || echo "<no-digests>"
+
+  artifacts:
+    - name: releases
+      pattern: "bamboo-deployment/.release.apache"
+      required: false
+    - name: digests
+      pattern: "bamboo-deployment/image-digests.txt"
+      required: false
+
+repositories:
+  - bamboo-deployment:
+      scope: global
+  - scripts:
+      scope: global
+
+triggers:
+  - polling:
+      period: "10"

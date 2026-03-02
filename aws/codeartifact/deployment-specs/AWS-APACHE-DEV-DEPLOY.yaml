@@ -1,0 +1,145 @@
+---
+version: 2
+deployment:
+  name: Apache OIDC - Deploy to DEV EKS
+  source-plan: AWS-APACHE
+
+release-naming:
+  next-version-name: ${bamboo.inject.release_name}
+  applies-to-branches: false
+  auto-increment: false
+  auto-increment-variables: []
+
+environments:
+  - DEV-EKS
+
+DEV-EKS:
+  description: Deploy Apache OIDC front-end to the DEV EKS cluster
+  release-approval-prerequisite: none
+  triggers: []
+  tasks:
+    - clean
+
+    # Checkout k8/scripts repo (contains devvpc/k8s/apache)
+    - checkout:
+        repository: scripts
+        path: scripts
+        force-clean-build: true
+        description: Checkout k8/scripts repo
+
+    # Show checked-out branch/head (sanity)
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Show checked-out branch/head
+        scripts:
+          - |
+            set -eu
+            cd "${bamboo.build.working.directory}/scripts"
+            git rev-parse --abbrev-ref HEAD
+            git log -1 --oneline
+
+    # Pull the 'releases' artifact from the Apache build (contains .release.apache)
+    - artifact-download:
+        artifacts:
+          - name: releases
+
+    # Sanity – SSH key for push is present
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        description: Sanity – SSH key for push is present
+        scripts:
+          - |
+            [ -s /home/bamboo/.ssh/id_argcdbb ] || { echo "ERROR: /home/bamboo/.ssh/id_argcdbb missing"; exit 1; }
+
+    # GitOps: patch Apache image (DEV) in k8/scripts
+    - script:
+        description: GitOps - patch Apache image (DEV) via k8/scripts
+        interpreter: BINSH_OR_CMDEXE
+        scripts:
+          - |
+            #!/bin/sh
+            set -eu
+            ( set -o pipefail ) 2>/dev/null || true
+
+            ROOT="${bamboo.build.working.directory}"
+            WORKDIR="${ROOT}/scripts"
+
+            cd "${ROOT}"
+
+            # Apache release tag from build artifact (numeric e.g. 1.3)
+            REL_FILE="bamboo-deployment/.release.apache"
+            if [ ! -s "$REL_FILE" ]; then
+              echo "ERROR: $REL_FILE missing or empty"
+              exit 3
+            fi
+            TAG_APACHE="$(sed -n '1p' "$REL_FILE")"
+            RELEASE_NAME="${TAG_APACHE}"
+
+            AWS_REGION="${bamboo.AWS_REGION}"
+            AWS_ACCOUNT_ID="${bamboo.AWS_ACCOUNT_ID}"
+            ECR="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+            IMAGE="${ECR}/conexus-apache-oidc:${TAG_APACHE}"
+
+            YAML="${WORKDIR}/devvpc/k8s/apache/run-httpd.yaml"
+            [ -f "$YAML" ] || { echo "ERROR: target YAML not found: $YAML"; exit 2; }
+
+            echo "[apache] updating image in ${YAML} to ${IMAGE}"
+
+            # Patch the image field for the conexus-httpd container using awk
+            tmp="${YAML}.tmp"
+            awk -v newimg="${IMAGE}" '
+              $0 ~ "name:[[:space:]]*conexus-httpd" { in_ctr=1; print; next }
+              in_ctr && $1 == "image:" {
+                indent = substr($0, 1, index($0,"i")-1)
+                print indent "image: " newimg
+                in_ctr=0
+                next
+              }
+              { print }
+            ' "${YAML}" > "${tmp}"
+            mv "${tmp}" "${YAML}"
+
+            # --- git commit & push to scripts repo ---
+            export GIT_SSH_COMMAND='ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            REAL_REMOTE="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts.git"
+            REAL_BRANCH="develop"
+
+            cd "$WORKDIR"
+
+            git -c user.name="bamboo" -c user.email="bamboo@local" add "$YAML"
+
+            if git diff --cached --quiet; then
+              echo "No Apache YAML changes to commit"
+              exit 0
+            fi
+
+            git -c user.name="bamboo" -c user.email="bamboo@local" commit -m "DEV Apache: ${RELEASE_NAME}"
+
+            git remote remove origin >/dev/null 2>&1 || true
+            git remote add origin "$REAL_REMOTE"
+            git fetch origin "$REAL_BRANCH" || true
+            git checkout -B "$REAL_BRANCH" || true
+            git push origin HEAD:"$REAL_BRANCH"
+
+            git remote -v
+            git ls-remote origin "$REAL_BRANCH" | head -1 || echo "[warn] ls-remote failed"
+
+    # Post-push sanity: show remote head
+    - script:
+        description: Show remote head
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: scripts
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            git remote -v
+            git ls-remote origin develop | head -1 || echo "[warn] ls-remote failed"
+
+  final-tasks: []
+  variables:
+    AWS_REGION: us-east-1
+    AWS_ACCOUNT_ID: "339713019047"
+
+  requirements: []
+  notifications: []

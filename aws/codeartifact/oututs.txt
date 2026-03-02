@@ -1,0 +1,82 @@
+[sikaj01@ip-10-56-112-33 ~]$ cd ~
+VER="02.00.000.44"
+SRC_DIR="$HOME/$VER"
+BAD="$SRC_DIR/pg-datafile-$VER-postgres-data.tar.txt.gz"
+GOOD="$SRC_DIR/pg-datafile-$VER-postgres-data.tar.gz"
+[sikaj01@ip-10-56-112-33 ~]$ ls -lh "$BAD"
+-rw-r-----. 1 sikaj01 users 19M Feb 10 13:33 /home/sikaj01/02.00.000.44/pg-datafile-02.00.000.44-postgres-data.tar.txt.gz
+[sikaj01@ip-10-56-112-33 ~]$ mv -v "$BAD" "$GOOD"
+ls -lh "$GOOD"
+renamed '/home/sikaj01/02.00.000.44/pg-datafile-02.00.000.44-postgres-data.tar.txt.gz' -> '/home/sikaj01/02.00.000.44/pg-datafile-02.00.000.44-postgres-data.tar.gz'
+-rw-r-----. 1 sikaj01 users 19M Feb 10 13:33 /home/sikaj01/02.00.000.44/pg-datafile-02.00.000.44-postgres-data.tar.gz
+[sikaj01@ip-10-56-112-33 ~]$ file "$GOOD"
+/home/sikaj01/02.00.000.44/pg-datafile-02.00.000.44-postgres-data.tar.gz: gzip compressed data, last modified: Tue Feb 10 21:33:36 2026, from Unix, original size modulo 2^32 163194880
+[sikaj01@ip-10-56-112-33 ~]$ gzip -t "$GOOD" && echo "gzip OK"
+gzip OK
+[sikaj01@ip-10-56-112-33 ~]$ tar -tzf "$GOOD" | head
+full-pg-dumpall.sql
+setup-db.sh
+reset-db.sh
+drop_tablespace_roles.sql
+[sikaj01@ip-10-56-112-33 ~]$ REPO="conexus-release-local"
+BASE="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
+TARGET_PATH="gov/gsa/cnxs/db/pg-datafile/$VER/$(basename "$GOOD")"
+
+curl -f -H "Authorization: Bearer $ART_TOKEN" \
+  -T "$GOOD" \
+  "$BASE/$REPO/$TARGET_PATH"
+{
+  "repo" : "conexus-release-local",
+  "path" : "/gov/gsa/cnxs/db/pg-datafile/02.00.000.44/pg-datafile-02.00.000.44-postgres-data.tar.gz",
+  "created" : "2026-03-02T18:30:11.232Z",
+  "createdBy" : "sa_bamboo",
+  "downloadUri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.44/pg-datafile-02.00.000.44-postgres-data.tar.gz",
+  "mimeType" : "application/x-gzip",
+  "size" : "19713574",
+  "checksums" : {
+    "sha1" : "50997e63a7e709db4de2b346f9f6c7f08ba9a783",
+    "md5" : "b4ad417425f1cf33e4a33f084f34db1e",
+    "sha256" : "207ea229e980bfd690cba1ad229532e04bdd9d5cb5e1f1d04696155d870b1d87"
+  },
+  "originalChecksums" : {
+    "sha256" : "207ea229e980bfd690cba1ad229532e04bdd9d5cb5e1f1d04696155d870b1d87"
+  },
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.44/pg-datafile-02.00.000.44-postgres-data.tar.gz"
+[sikaj01@ip-10-56-112-33 ~]$ curl -I -H "Authorization: Bearer $ART_TOKEN" \\
+  "$BASE/$REPO/$TARGET_PATH"
+HTTP/2 200 
+server: nginx/1.29.3
+date: Mon, 02 Mar 2026 18:30:27 GMT
+content-type: application/x-gzip
+content-length: 19713574
+accept-ranges: bytes
+content-disposition: attachment; filename="pg-datafile-02.00.000.44-postgres-data.tar.gz"; filename*=UTF-8''pg-datafile-02.00.000.44-postgres-data.tar.gz
+etag: 50997e63a7e709db4de2b346f9f6c7f08ba9a783
+last-modified: Mon, 02 Mar 2026 18:30:11 GMT
+x-artifactory-filename: pg-datafile-02.00.000.44-postgres-data.tar.gz
+x-artifactory-id: 32a029ea6a1dcb55:-776907a9:19c4e465646:-8000
+x-artifactory-node-id: dc00bfc2ebf3
+x-checksum-md5: b4ad417425f1cf33e4a33f084f34db1e
+x-checksum-sha1: 50997e63a7e709db4de2b346f9f6c7f08ba9a783
+x-checksum-sha256: 207ea229e980bfd690cba1ad229532e04bdd9d5cb5e1f1d04696155d870b1d87
+x-jfrog-version: Artifactory/7.104.14 80414900
+
+[sikaj01@ip-10-56-112-33 ~]$ VIRTUAL="conexus-plugin-repository"
+curl -I -H "Authorization: Bearer $ART_TOKEN" \
+  "$BASE/$VIRTUAL/$TARGET_PATH"
+HTTP/2 200 
+server: nginx/1.29.3
+date: Mon, 02 Mar 2026 18:30:45 GMT
+content-type: application/x-gzip
+content-length: 19713574
+accept-ranges: bytes
+content-disposition: attachment; filename="pg-datafile-02.00.000.44-postgres-data.tar.gz"; filename*=UTF-8''pg-datafile-02.00.000.44-postgres-data.tar.gz
+etag: 50997e63a7e709db4de2b346f9f6c7f08ba9a783
+last-modified: Mon, 02 Mar 2026 18:30:11 GMT
+x-artifactory-filename: pg-datafile-02.00.000.44-postgres-data.tar.gz
+x-artifactory-id: 32a029ea6a1dcb55:-776907a9:19c4e465646:-8000
+x-artifactory-node-id: dc00bfc2ebf3
+x-checksum-md5: b4ad417425f1cf33e4a33f084f34db1e
+x-checksum-sha1: 50997e63a7e709db4de2b346f9f6c7f08ba9a783
+x-checksum-sha256: 207ea229e980bfd690cba1ad229532e04bdd9d5cb5e1f1d04696155d870b1d87
+x-jfrog-version: Artifactory/7.104.14 80414900

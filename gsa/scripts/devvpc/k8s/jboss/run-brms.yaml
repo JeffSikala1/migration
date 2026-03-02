@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brms
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: brms
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
+        instrumentation.opentelemetry.io/container-names: "conexus-brms"
+      labels:
+        app.kubernetes.io/name: brms
+    spec:
+      serviceAccountName: "ekspodidentity-sa"
+      containers:
+      - name: conexus-brms
+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-brms:8.0.8-recon143.100-cmod43.100-swag135.100
+        imagePullPolicy: Always
+        envFrom:
+          - configMapRef:
+              name: jboss-config
+          - secretRef:
+              name: cnxsdbids
+          - secretRef:
+              name: cnxsids
+        ports:
+        - containerPort: 8080
+        args: [/bin/sh, -c, 'i=0; /app/jboss-eap-8.0/bin/standalone.sh -c standalone-full.xml; while true; do i=$((i+1)); sleep 10; done']
+        lifecycle:
+          postStart:
+            exec:
+              command: [ "/bin/sh", "-c", "ln -sf /mnt/digests/application-roles.properties /app/jboss-eap-8.0/standalone/configuration/; ln -sf /mnt/digests/application-users.properties /app/jboss-eap-8.0/standalone/configuration/" ]
+        volumeMounts:
+        - mountPath: /app/customconfig.properties
+          name: custom-config
+          subPath: customconfig.properties
+        - mountPath: /app/jboss-eap-8.0/standalone/configuration/standalone-full.xml
+          name: standalone-config
+          subPath: standalone-full.xml
+        - mountPath: /mnt/digests
+          name: digest-secrets-fromasm
+        - mountPath: /NSFS_NAS/database
+          name: database-volume
+        - mountPath: /app/conexus/attachments
+          name: attachments-volume
+        - mountPath: /app/conexus/reports
+          name: reports-volume
+        - name: secrets-from-aws
+          mountPath: /mnt/secrets
+          readOnly: true
+      volumes:
+        - name: custom-config
+          configMap:
+            name: jboss-brms-custom-config
+        - name: standalone-config
+          configMap:
+            name: jboss-brms-config
+        - name: digest-users
+          configMap:
+            name: digestauth-users-config
+        - name: database-volume
+          persistentVolumeClaim:
+            claimName: efs-database-volume-claim
+        - name: attachments-volume
+          persistentVolumeClaim:
+            claimName: efs-attachments-volume-claim
+        - name: reports-volume
+          persistentVolumeClaim:
+            claimName: efs-reports-volume-claim
+        - name: digest-secrets-fromasm
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "digest-secrets-fromasm"
+        - name: secrets-from-aws
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "aws-secrets-manager"

@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conexus-httpd
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+     app.kubernetes.io/name: conexus-httpd
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+        retry.linkerd.io/http: 504,503,502,500
+      labels:
+        app.kubernetes.io/name: conexus-httpd
+    spec:
+      containers:
+      - name: conexus-httpd
+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:0.8
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: apache-config
+        env:
+          - name: OIDC_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: "cnxsids"
+                key: "oidc_client_secret"
+          - name: OIDC_PASS
+            valueFrom:
+              secretKeyRef:
+                name: "cnxsids"
+                key: "oidc_pass"
+        ports:
+        - containerPort: 80
+        args: [/bin/sh, -c, 'i=0; /usr/sbin/httpd -t; /usr/sbin/httpd -k start; while true; do i=$((i+1)); sleep 10; done']

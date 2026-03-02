@@ -1,0 +1,27 @@
+{{- if .Values.myappIngress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: conexus-app-ingress
+  namespace: ingress-nginx      # Ingress resources live with the controller
+  annotations:
+    {{- toYaml .Values.myappIngress.annotations | nindent 4 }}
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app.conexus-dev-sandbox.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: conexus-jboss        # Service we created above
+            namespace: conexus         # where that Service lives
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - app.conexus-dev-sandbox.org
+    secretName: let-encrypt-ssl-secret
+{{- end }}

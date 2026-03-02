@@ -1,0 +1,63 @@
+kubectl create namespace ingress-nginx
+kubectl create secret tls devwildcard --key ~/ec2mgmtproxy/letsencrypt/archive/dev.cnxs.vpcaas.fcs.gsa.gov/privkey3.pem --cert ~/ec2mgmtproxy/letsencrypt/archive/dev.cnxs.vpcaas.fcs.gsa.gov/cert3.pem -n ingress-nginx
+kubectl create secret generic cnxsids --save-config --dry-run=client --from-file=nsfs_app_pass=/home/conexus/ec2mgmtproxy/dbusernsfs_app-dev.txt --from-file=cnxs_mod_app_pass=/home/conexus/ec2mgmtproxy/dbusercnxs_mod_app-dev.txt --from-file=jmsuser_pass=/home/conexus/ec2mgmtproxy/proxysecs/.ssh/jmsuser.txt --from-file=oidc_pass=/home/conexus/ec2mgmtproxy/proxysecs/.ssh/oidcpass.txt --from-file=oidc_client_secret=/home/conexus/ec2mgmtproxy/proxysecs/.ssh/oidcsecret.txt --from-file=tenant_key=/home/conexus/ec2mgmtproxy/proxysecs/.ssh/tenantkey.txt --from-file=app_key=/home/conexus/ec2mgmtproxy/proxysecs/.ssh/appkey.txt -o yaml |kubectl apply -f - -n ingress-nginx
+cd devvpc/k8s
+./envsubstvars.sh -e dev
+cd efs_mounts
+for i in `ls -1 efs-*dev.yaml`; do echo $i; kubectl apply -f $i; done
+cd ../secretsmanager
+secretsstorecsidriverhelminstall.sh
+kubectl apply -f createserviceaccounts.yaml
+kubectl apply -f secretproviderclass.yaml
+kubectl apply -f digestsecretproviderclass.yaml
+cd ../apache
+kubectl apply -f apache-config-dev.yaml
+kubectl apply -f run-httpd.yaml
+kubectl apply -f httpd-svc.yaml
+cd ../avapache
+kubectl apply -f avapache-config-test.yaml
+kubectl apply -f run-avapache.yaml
+kubectl apply -f avapache-svc.yaml
+cd ../jboss
+kubectl apply -f jboss-brms-custom-config-test.yaml
+kubectl apply -f jboss-reporting-config-test.yaml
+kubectl apply -f jboss-brms-config-test.yaml
+kubectl apply -f jboss-webservice-config-test.yaml
+kubectl apply -f jboss-jms-config-test.yaml
+kubectl apply -f jboss-portal-config-test.yaml
+kubectl apply -f jboss-config-test.yaml
+kubectl create configmap digestauth-users-config --save-config --dry-run=client -o yaml --namespace=ingress-nginx --from-file=application-users.properties=./application-users-test.properties --from-file=application-roles.properties=./application-roles-test.properties > digestauth-users-config-test.yaml
+kubectl apply -f digestauth-users-config-test.yaml 
+kubectl apply -f run-brms.yaml
+kubectl apply -f run-portal.yaml
+kubectl apply -f run-jms.yaml
+kubectl apply -f run-ws.yaml
+kubectl apply -f run-reporting.yaml
+kubectl apply -f ws-svc.yaml
+kubectl apply -f brms-svc.yaml
+kubectl apply -f jms-svc.yaml
+kubectl apply -f portal-svc.yaml
+kubectl apply -f reporting-svc.yaml
+cd ../wso2
+kubectl apply -f wso2mi-config-test.yaml
+kubectl apply -f run-wso2mi.yaml 
+kubectl apply -f wso2mi-svc.yaml 
+cd ../nginx
+kubectl create configmap wso2-nginx-config --save-config --dry-run=client -o yaml --namespace=ingress-nginx --from-file=default.conf=./nginxwso2.conf --from-file=diffie-hellman.pem=./diffie-hellman.pem > wso2-nginx-config.yaml
+kubectl apply -f wso2-nginx-config.yaml
+kubectl create configmap diffie-file-config --save-config --dry-run=client -o yaml --namespace=ingress-nginx --from-file=diffie-hellman.pem=./diffie-hellman.pem > diffie-file-config.yaml
+kubectl apply -f diffie-file-config.yaml
+kubectl apply -f proxy-nginx-dev.yaml
+kubectl apply -f nginx-svc.yaml
+cd ../swaggerapache
+kubectl apply -f swagger-apache-config-dev.yaml
+kubectl apply -f run-swagger-httpd.yaml
+kubectl apply -f swaggerhttpd-svc.yaml
+cd ../gatewayapi
+kubectl apply -f gatewayapi-uiingress-dev.yaml
+kubectl apply -f gatewayapi-ingress-dev.yaml
+kubectl apply -f gatewayapi-swaggerbrms-dev.yaml
+cd ../sftp
+kubectl apply -f sftp-config.yaml
+kubectl apply -f run-sftp.yaml
+create s3 buckets s3://<env>-cnxs-ts-s3/mtlscabundle.pem

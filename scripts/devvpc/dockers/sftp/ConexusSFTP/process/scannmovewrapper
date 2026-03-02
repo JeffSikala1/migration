@@ -1,0 +1,22 @@
+#!/usr/bin/bash
+
+source $(dirname $0)/../conf.d/scannmove.conf.${SFTPENV};
+
+#For running as a service
+#This script should be called via "nohup" and background this
+
+while true
+do
+
+	#Prevent Duplicates 
+	if [ -e ${lockfile} ] && kill -0 $(cat $lockfile)
+	then
+	    echo "Already Running"
+	    sleep 60s;		
+	else
+	    timeout --signal=9 172800 $(dirname $0)/scannmove.sh   2>&1 >> /var/log/sftp.log 
+	    sleep 5m;
+	fi
+
+done
+

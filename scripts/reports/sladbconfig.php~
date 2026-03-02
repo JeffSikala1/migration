@@ -1,0 +1,49 @@
+<?php
+
+// Author: Madhav.Kundala@usda.gov
+// Date: 09/14/2019
+// For Icinga db reporting queries
+
+
+function getconn() {
+    try {
+        $conn = new PDO('pgsql:host=localhost;dbname=icinga', 'icinga', 'iWjniR87');
+    } catch (PDOException $e) {
+        throw $e;
+    }
+    return $conn;
+} 
+
+function getobjectids($mycon) { // prepares for object type
+  
+    $sql = "select object_id,name1,name2 from icinga_objects where is_active = 1 and objecttype_id = ?";
+    $sth = $mycon->prepare($sql);
+    return $sth;
+
+}
+
+function getobjectforid($mycon) { // prepares for an object id
+
+    $sql = "select object_id,name1,name2 from icinga_objects where object_id = ?";
+    $sth = $mycon->prepare($sql);
+    return $sth;
+
+}
+
+
+
+function getdowntimes($mycon) { // prepares for object id, start time and end time
+
+    /* Get records for down and up and assign them row numbers sequentially and then partition the records into two tables, one for 'down' and the other 'up'; where condition can be object id and date range
+       Then inner join the tables and calculate duration
+    */
+//    $sql = "with slaactivity (rowid, statehistory_id, object_id, state, state_time, output) as (select row_number() over (order by object_id, state_time) rowid, statehistory_id, object_id, state, state_time, output from icinga_statehistory where state_type = 1 and state in (0,2) and object_id = ? and state_time between (?)::timestamp and (?)::timestamp ) select d.state_time as downtime, u.state_time as uptime, (date_part('day', u.state_time - d.state_time) * 24 * 60 + date_part('hour', u.state_time - d.state_time) * 60 + date_part('minute', u.state_time - d.state_time)) as duration, d.output as output from (select * from slaactivity where state = 2) d inner join (select * from slaactivity where state = 0) u on d.rowid = u.rowid-1 and u.object_id = d.object_id";
+
+    $sql = "with slaactivity (rowid, statehistory_id, object_id, state, state_time, output) as (select row_number() over (order by object_id, state_time) rowid, statehistory_id, object_id, state, state_time, output from icinga_statehistory where state_type = 1 and state in (0,1,2) and object_id = ? and state_time between (?)::timestamp and (?)::timestamp ) select d.state_time as downtime, u.state_time as uptime, (date_part('day', u.state_time - d.state_time) * 24 * 60 + date_part('hour', u.state_time - d.state_time) * 60 + date_part('minute', u.state_time - d.state_time)) as duration, d.output as output from (select * from slaactivity where state in (1,2) d inner join (select * from slaactivity where state = 0) u on d.rowid = u.rowid-1 and u.object_id = d.object_id";
+
+    $sth = $mycon->prepare($sql);
+    return $sth;
+
+}
+	
+?>

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="BT" buildKey="CON"><code>---
+version: 2
+plan:
+  project-key: BT
+  key: CON
+  name: Contract - Build
+  description: EIS Contract Mod
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  other:
+    clean-working-dir: true
+    all-other-apps:
+      custom:
+        auto: {}
+        buildHangingConfig.enabled: 'false'
+  tasks:
+# com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli is disabled. This state is not supported at YAML
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: "clean verify -B -P integration-test -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} \n-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
+      description: Build and Verify
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
+      configuration:
+        variable: mavenVersion
+        variableScope: JOB
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
+      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
+      description: Deploy to Artifactory if needed
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+      description: Inject the build information to be used in Bamboo Deploy
+  artifacts:
+  - name: Jboss Log
+    location: integration/target/
+    pattern: jboss.log
+    shared: true
+    required: false
+  - name: Oracle Log
+    location: integration/target/
+    pattern: oracle.log
+    shared: true
+    required: false
+  artifact-subscriptions: []
+variables:
+  buildVersionQueryArtifact: contract-mod-war
+  buildVersionQueryGroup: gov.gsa.cnxs.contract-mod
+repositories:
+- ContractMod:
+    scope: global
+- bamboo-deployment:
+    scope: global
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - ContractMod
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+notifications:
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+  - watchers
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans:
+  - BT-REC
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+---
+version: 2
+plan:
+  key: BT-CON
+plan-permissions:
+- users:
+  - madhav.kundala@usda.gov
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - create-plan-branch
+- users:
+  - simon.branton-housley@usda.gov
+  groups:
+  - nsfs_devops
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+...
+</code></spec></specs>

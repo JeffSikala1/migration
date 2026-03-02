@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="CS" buildKey="CODC"><code>---
+version: 2
+plan:
+  project-key: CS
+  key: CODC
+  name: Common-OWASP-Dependency-Check
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: code scanning
+      path: code_scanning
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
+      description: Remove existing cnxs maven repo directory
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: org.owasp:dependency-check-maven:aggregate
+      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/
+      description: OWASP Dependency Check Aggregate Report
+# com.atlassian.bamboo.plugins.scripttask:task.builder.script is disabled. This state is not supported at YAML
+  artifacts:
+  - name: Report
+    location: target/
+    pattern: dependency-check-report.html
+    shared: false
+    required: false
+  artifact-subscriptions: []
+repositories:
+- Common:
+    scope: global
+- code scanning:
+    type: bitbucket-server
+    server: Conexus Bitbucket
+    project: DEVOPS
+    slug: code_scanning
+    clone-url: ssh://git@conexus-bitbucket.edc.ds1.usda.gov:7999/devops/code_scanning.git
+    public-key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7d4qqNEjhGssSHMMcqrortacmw+S/GJwu/mHYSWHjPJp9rdSK7diKER7Dzj2mgU/YUX908cBr64+MHv+6fQpyJfgSD+xIlAzt4d2dD8RgnAMLZfbaN4duG2c2gUKTesh0vYIQpH4cff20IPoXrvRsl12a7bWuXBSxMTvouemSoN1Lfe5oQCXgse/vO1XFKOyYmlu4B57Pm5HkVjus6FGLj7NnxZPn29FSLMilei0oKD8pwT29TDxzPrlcAN7UzTe16ecyLox3JteHdCCJli1atVX4tIk+ZbaH35KXoYmQ9ZHbHq37P3i4OFvJ0KRh9L0EvWG+bDFb3x0h+Z02X6OL https://conexus-bamboo.edc.ds1.usda.gov
+    private-key: BAMSCRT@0@0@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
+    branch: master
+    command-timeout-minutes: '180'
+    use-shallow-clones: false
+    cache-on-agents: false
+    submodules: false
+    ssh-key-applies-to-submodules: false
+    verbose-logs: false
+    fetch-all: false
+    lfs: false
+    viewer:
+      com.atlassian.bamboo.plugins.stash.atlassian-bamboo-plugin-stash:bbServerViewer: {}
+triggers:
+- cron:
+    expression: 0 0 5 ? * 5,2,6,3,4
+    description: weekly morning
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+notifications: []
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+---
+version: 2
+plan:
+  key: CS-CODC
+plan-permissions:
+- users:
+  - simon.branton-housley@usda.gov
+  groups:
+  - nsfs_devops
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+...
+</code></spec></specs>

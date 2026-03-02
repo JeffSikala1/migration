@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="BT" buildKey="ENV"><code>---
+version: 2
+plan:
+  project-key: BT
+  key: ENV
+  name: Env - Build
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - |-
+        rm -rf ~/.m2/repository/gov/gsa/
+        yum install jq -y
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version.sh
+      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.maven.version}
+      description: Determine if deploy to Artifactory is needed
+# com.atlassian.bamboo.warnings.atlassian-bamboo-warnings:task.warnings.parser is disabled. This state is not supported at YAML
+  artifact-subscriptions: []
+repositories:
+- Env:
+    scope: global
+- bamboo-deployment:
+    scope: global
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - Env
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+notifications:
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+labels: []
+dependencies:
+  require-all-stages-passing: true
+  enabled-for-branches: true
+  block-strategy: block_if_parent_in_progress
+  plans:
+  - BT-COMB
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+---
+version: 2
+plan:
+  key: BT-ENV
+plan-permissions:
+- users:
+  - simon.branton-housley@usda.gov
+  groups:
+  - nsfs_devops
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+...
+</code></spec></specs>

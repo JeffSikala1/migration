@@ -1,0 +1,57 @@
+global:
+  nodeSelector:
+    role: argocd # runs only on nodes that have label role=argocd
+  tolerations:
+    - key: "dedicated" # matches the optional taint from the TF config
+      operator: "Equal"
+      value: "argocd"
+      effect: "NoSchedule"
+
+# Argo CD API server Ingress
+server:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - argocd.conexus-dev-sandbox.org
+    tls:
+      - secretName: let-encrypt-ssl-secret
+        hosts:
+          - argocd.conexus-dev-sandbox.org
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "argocd"
+      effect: "NoSchedule"
+
+controller:
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "argocd"
+      effect: "NoSchedule"
+
+repoServer:
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "argocd"
+      effect: "NoSchedule"
+
+applicationSet:
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "argocd"
+      effect: "NoSchedule"
+
+notifications:
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "argocd"
+      effect: "NoSchedule"
+
+configs:
+  params:
+    server.insecure: "true" # Do TLS termination at nginx and forward traffic here

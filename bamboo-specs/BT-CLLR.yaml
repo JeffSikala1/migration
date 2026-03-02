@@ -1,0 +1,69 @@
+version: 2
+plan:
+  project-key: BT
+  key: CLLR
+  name: Create Long Lived Repo
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/bin/bash
+        artifactoryRepositoryUrl="https://easartifactory.edc.ds1.usda.gov/artifactory/api/repositories"
+        user="$bamboo_artifactoryAdminUser"
+        password="$bamboo_artifactoryAdminPassword"
+        longLivedPrefix="ll-"
+        featureBranchName="$(git name-rev --name-only HEAD|cut -d'/' -f2)"
+        mavenFeatureRepositoryUrl="https://easartifactory.edc.ds1.usda.gov/artifactory/${featureBranchName}"
+
+        # Check to see if this is a long lived branch
+        if [ ${featureBranchName:0:3} == "${longLivedPrefix}" ]; then
+          # Check that the long lived maven repo exists - if it doesn't create it
+          pip install requests -i  https://easartifactory.edc.ds1.usda.gov/artifactory/api/pypi/pypi-local/simple --trusted-host easartifactory.edc.ds1.usda.gov
+          mavenRepoExists=$(python -c "import requests; r=requests.get('$artifactoryRepositoryUrl', verify=False, auth=('$user', '$password')); repos=[repo for repo in r.json() if repo['key'] == '$featureBranchName']; print len(repos)")
+          if [ "${mavenRepoExists}" == "1" ]; then
+             echo "Delete Maven Repository: ${mavenFeatureRepositoryUrl}"
+             #curl -X DELETE \
+             #-u "$user:$password" \
+             #"$mavenFeatureRepositoryUrl"
+          fi
+        fi
+  artifact-subscriptions: []
+repositories: []
+# Remove line above if want to set repository with YAML file as primary repository of plan
+triggers: []
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+notifications: []
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+---
+version: 2
+plan:
+  key: BT-CLLR
+plan-permissions:
+- users:
+  - simon.branton-housley@usda.gov
+  groups:
+  - nsfs_devops
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
