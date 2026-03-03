@@ -33,6 +33,8 @@ MAVEN_SETTINGS_OUT="${MAVEN_SETTINGS_OUT:-settings-artifactory.xml}"
 MAVEN_SERVER_ID="${MAVEN_SERVER_ID:-central}"
 NO_DEPLOY="${NO_DEPLOY:-0}"
 POM_PATH="${POM_PATH:-}"
+# Comma-separated short branch names allowed to deploy even if not ll-*
+ALLOW_DEPLOY_BRANCHES="${ALLOW_DEPLOY_BRANCHES:-develop}"
 TOKEN_PING_CHECK="${TOKEN_PING_CHECK:-1}"
 
 ###############################################
@@ -183,8 +185,8 @@ if [[ -z "${pluginRepositoryUrl}" || -z "${mavenFeatureRepositoryUrl}" ]]; then
     pluginRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/${LL_PLUGIN_REPO}")"
     mavenFeatureRepositoryUrl="${SNAPSHOT_DEPLOY_URL}"
   else
-    pluginRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/${DEFAULT_PLUGIN_REPO}")"
-    mavenFeatureRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/${DEFAULT_PLUGIN_REPO}")"
+    pluginRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/${DEFAULT_PLUGIN_REPO}")"
+    mavenFeatureRepositoryUrl="${SNAPSHOT_DEPLOY_URL}"
   fi
 fi
 
@@ -219,22 +221,54 @@ preflight_token_ping
 write_settings
 
 ###############################################
-# DEPLOY GATE: ONLY long-lived parent
+# DEPLOY GATE:
+# - allow LL parent branches (existing behavior)
+# - ALSO allow specific branches (default: develop)
 ###############################################
-if [[ "$IS_LL" != true ]]; then
-  echo "Non long-lived branch → SKIPPING deploy (per current policy)."
+
+# helper: check if BranchName is in comma-separated allowlist
+branch_is_allowed() {
+  local list="$1"
+  local b="$2"
+  local IFS=',' item
+  for item in $list; do
+    item="${item// /}"
+    [[ -n "$item" && "$b" == "$item" ]] && return 0
+  done
+  return 1
+}
+
+DEPLOY_ALLOWED=false
+
+if [[ "$IS_LL" == true ]]; then
+  # LL branches: only deploy from the PARENT (no "+child")
+  if [[ -z "${ChildBranchName:-}" ]]; then
+    DEPLOY_ALLOWED=true
+  else
+    echo "Long-lived CHILD branch → SKIPPING deploy (legacy behavior)."
+  fi
+else
+  # Non-LL branches: allow deploy on allowlisted branches (e.g., develop)
+  if branch_is_allowed "$ALLOW_DEPLOY_BRANCHES" "$BranchName"; then
+    DEPLOY_ALLOWED=true
+    # ParentBranchName is used later in mvn args; set it for non-LL deploy branches
+    ParentBranchName="$BranchName"
+    ChildBranchName=""
+    # treat allowed branches like deploy branches for downstream steps
+    sed -i 's/^isLongLived=false/isLongLived=true/' file.properties || true
+  else
+    echo "Non long-lived branch → SKIPPING deploy (per current policy)."
+  fi
+fi
+
+if [[ "$DEPLOY_ALLOWED" != true ]]; then
   exit 0
 fi
 
-if [[ -n "${ChildBranchName:-}" ]]; then
-  echo "Long-lived CHILD branch → SKIPPING deploy (legacy behavior)."
-  exit 0
-fi
-
-# Force deploy target to snapshot-local (legacy behavior), regardless of file.properties
+# For any allowed deploy (LL parent or develop), deploy to snapshot-local
 mavenFeatureRepositoryUrl="${SNAPSHOT_DEPLOY_URL}"
 
-echo "Long-lived PARENT branch → deploying to ${mavenFeatureRepositoryUrl}"
+echo "Deploy enabled on '${BranchName}' → deploying to ${mavenFeatureRepositoryUrl}"
 
 if (( NO_DEPLOY )); then
   echo "NO_DEPLOY=1 → skipping mvn deploy"

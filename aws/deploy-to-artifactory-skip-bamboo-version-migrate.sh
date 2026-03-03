@@ -3,10 +3,10 @@
 # Artifactory version (not CodeArtifact).
 # Deploys for:
 #   - Long-lived PARENT branches (ll-xxx with no +child)
-#   - develop
+#   - allowlisted branches (default: develop)
 # Skips:
 #   - Long-lived CHILD branches
-#   - Feature branches
+#   - other feature branches
 
 set -Eeuo pipefail
 
@@ -25,10 +25,15 @@ ARTIFACTORY_TOKEN="${ARTIFACTORY_TOKEN:-${bamboo_artifactory_access_token_secret
 LONG_LIVED_PREFIX="${LONG_LIVED_PREFIX:-ll-}"
 DEFAULT_PLUGIN_REPO="${DEFAULT_PLUGIN_REPO:-conexus-plugin-repository}"
 LL_PLUGIN_REPO="${LL_PLUGIN_REPO:-conexus-ll-plugin-repository}"
+SNAPSHOT_DEPLOY_REPO="${SNAPSHOT_DEPLOY_REPO:-conexus-snapshot-local}"
 
 MAVEN_SETTINGS_OUT="${MAVEN_SETTINGS_OUT:-settings-artifactory.xml}"
+MAVEN_SERVER_ID="${MAVEN_SERVER_ID:-artifactory}"  # keep consistent with mirror + deploy id
 NO_DEPLOY="${NO_DEPLOY:-0}"
 POM_PATH="${POM_PATH:-}"
+
+# Comma-separated short branch names allowed to deploy even if not ll-*
+ALLOW_DEPLOY_BRANCHES="${ALLOW_DEPLOY_BRANCHES:-develop}"
 
 ###############################################
 # Helpers
@@ -74,6 +79,18 @@ resolve_pom_path() {
   echo "$found"
 }
 
+# helper: check if BranchName is in comma-separated allowlist
+branch_is_allowed() {
+  local list="$1"
+  local b="$2"
+  local IFS=',' item
+  for item in $list; do
+    item="${item// /}"
+    [[ -n "$item" && "$b" == "$item" ]] && return 0
+  done
+  return 1
+}
+
 write_settings() {
   need_token
 
@@ -83,16 +100,51 @@ write_settings() {
   cat > "$MAVEN_SETTINGS_OUT" <<XML
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
   <mirrors>
+    <!-- Mirror EVERYTHING to our Artifactory virtual, EXCEPT snapshot-local -->
     <mirror>
-      <id>artifactory</id>
-      <mirrorOf>external:*</mirrorOf>
+      <id>${MAVEN_SERVER_ID}</id>
+      <mirrorOf>*,!${SNAPSHOT_DEPLOY_REPO}</mirrorOf>
       <url>${pluginRepositoryUrl}</url>
     </mirror>
   </mirrors>
 
+  <profiles>
+    <profile>
+      <id>use-artifactory</id>
+
+      <!-- Ensure snapshot-local is reachable for SNAPSHOT deps -->
+      <repositories>
+        <repository>
+          <id>${SNAPSHOT_DEPLOY_REPO}</id>
+          <url>${mavenFeatureRepositoryUrl}</url>
+          <releases><enabled>false</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+
+      <pluginRepositories>
+        <pluginRepository>
+          <id>${SNAPSHOT_DEPLOY_REPO}</id>
+          <url>${mavenFeatureRepositoryUrl}</url>
+          <releases><enabled>false</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>use-artifactory</activeProfile>
+  </activeProfiles>
+
   <servers>
     <server>
-      <id>artifactory</id>
+      <id>${MAVEN_SERVER_ID}</id>
+      <username>${ARTIFACTORY_USER}</username>
+      <password>${ARTIFACTORY_TOKEN}</password>
+    </server>
+    <server>
+      <id>${SNAPSHOT_DEPLOY_REPO}</id>
       <username>${ARTIFACTORY_USER}</username>
       <password>${ARTIFACTORY_TOKEN}</password>
     </server>
@@ -120,13 +172,25 @@ fi
 
 touch file.properties
 
+SNAPSHOT_URL="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/${SNAPSHOT_DEPLOY_REPO}")"
+
+DEPLOY_ALLOWED=false
+ParentBranchName="$BranchName"
+ChildBranchName=""
+
 if [[ "$IS_LL" == true ]]; then
   mapfile -t ll_parts < <(parse_ll_parent_child "$BranchName")
   ParentBranchName="${ll_parts[0]}"
   ChildBranchName="${ll_parts[1]:-}"
 
   pluginRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/${LL_PLUGIN_REPO}")"
-  mavenFeatureRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/conexus-snapshot-local")"
+  mavenFeatureRepositoryUrl="$SNAPSHOT_URL"
+
+  if [[ -z "${ChildBranchName:-}" ]]; then
+    DEPLOY_ALLOWED=true
+  else
+    echo "Long-lived CHILD branch → NOT deploying (legacy behavior)."
+  fi
 
   cat > file.properties <<EOF
 BranchName=${ParentBranchName}
@@ -135,10 +199,15 @@ pluginRepositoryUrl=${pluginRepositoryUrl}
 mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}
 isLongLived=true
 EOF
-
 else
   pluginRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/${DEFAULT_PLUGIN_REPO}")"
-  mavenFeatureRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/conexus-snapshot-local")"
+  mavenFeatureRepositoryUrl="$SNAPSHOT_URL"
+
+  if branch_is_allowed "$ALLOW_DEPLOY_BRANCHES" "$BranchName"; then
+    DEPLOY_ALLOWED=true
+  else
+    echo "Feature/other branch → NOT deploying (policy)."
+  fi
 
   cat > file.properties <<EOF
 BranchName=${BranchName}
@@ -155,46 +224,23 @@ cat file.properties
 write_settings
 
 ###############################################
-# DEPLOY LOGIC (matches legacy behavior)
+# DEPLOY
 ###############################################
+if [[ "$DEPLOY_ALLOWED" != true ]]; then
+  exit 0
+fi
 
-if [[ "$IS_LL" == true ]]; then
+echo "Deploy enabled on '${BranchName}' → deploying to ${mavenFeatureRepositoryUrl}"
 
-  if [[ -n "${ChildBranchName:-}" ]]; then
-    echo "Long-lived CHILD branch → NOT deploying (legacy behavior)."
-    exit 0
-  fi
-
-  echo "Long-lived PARENT branch → deploying"
-
-  if (( NO_DEPLOY )); then
-    echo "NO_DEPLOY=1 → skipping mvn deploy"
-  else
-    POM_TO_USE="$(resolve_pom_path)"
-    mvn -B -U -s "$MAVEN_SETTINGS_OUT" -f "$POM_TO_USE" deploy -DskipTests=true \
-      -Dbamboo.inject.BranchName="${ParentBranchName}" \
-      -Dbamboo.inject.mavenFeatureRepositoryUrl="${mavenFeatureRepositoryUrl}" \
-      -Dbamboo.inject.pluginRepositoryUrl="${pluginRepositoryUrl}" \
-      -DaltDeploymentRepository="artifactory::${mavenFeatureRepositoryUrl}"
-  fi
-
+if (( NO_DEPLOY )); then
+  echo "NO_DEPLOY=1 → skipping mvn deploy"
 else
-  if [[ "$BranchName" == "develop" ]]; then
-    echo "Develop branch → deploying"
-
-    if (( NO_DEPLOY )); then
-      echo "NO_DEPLOY=1 → skipping mvn deploy"
-    else
-      POM_TO_USE="$(resolve_pom_path)"
-      mvn -B -U -s "$MAVEN_SETTINGS_OUT" -f "$POM_TO_USE" deploy -DskipTests=true \
-        -Dbamboo.inject.BranchName="${BranchName}" \
-        -Dbamboo.inject.mavenFeatureRepositoryUrl="${mavenFeatureRepositoryUrl}" \
-        -Dbamboo.inject.pluginRepositoryUrl="${pluginRepositoryUrl}" \
-        -DaltDeploymentRepository="artifactory::${mavenFeatureRepositoryUrl}"
-    fi
-  else
-    echo "Feature/other branch → NOT deploying (legacy behavior)."
-  fi
+  POM_TO_USE="$(resolve_pom_path)"
+  mvn -B -U -s "$MAVEN_SETTINGS_OUT" -f "$POM_TO_USE" deploy -DskipTests=true \
+    -Dbamboo.inject.BranchName="${ParentBranchName}" \
+    -Dbamboo.inject.mavenFeatureRepositoryUrl="${mavenFeatureRepositoryUrl}" \
+    -Dbamboo.inject.pluginRepositoryUrl="${pluginRepositoryUrl}" \
+    -DaltDeploymentRepository="${MAVEN_SERVER_ID}::${mavenFeatureRepositoryUrl}"
 fi
 
 echo
