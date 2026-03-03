@@ -29,8 +29,8 @@ SNAPSHOT_REPO="${SNAPSHOT_REPO:-conexus-snapshot-local}"  # confirmed by you
 SNAPSHOT_DEPLOY_REPO="${SNAPSHOT_DEPLOY_REPO:-conexus-snapshot-local}"
 SNAPSHOT_DEPLOY_URL="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/${SNAPSHOT_DEPLOY_REPO}")"
 
-MAVEN_SETTINGS_OUT="${MAVEN_SETTINGS_OUT:-settings-artifactory.xml}"
-MAVEN_SERVER_ID="${MAVEN_SERVER_ID:-central}"
+MAVEN_SETTINGS_OUT="${MAVEN_SETTINGS_OUT:-settings-deploy.xml}"
+MAVEN_SERVER_ID="${MAVEN_SERVER_ID:-artifactory}"
 NO_DEPLOY="${NO_DEPLOY:-0}"
 POM_PATH="${POM_PATH:-}"
 # Comma-separated short branch names allowed to deploy even if not ll-*
@@ -89,17 +89,62 @@ write_settings() {
   local xtrace_on=0
   [[ $- == *x* ]] && xtrace_on=1 && set +x
   need_token
+
   cat > "$MAVEN_SETTINGS_OUT" <<XML
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+  <mirrors>
+    <!-- Mirror everything to Artifactory virtual, but DO NOT mirror snapshot-local -->
+    <mirror>
+      <id>${MAVEN_SERVER_ID}</id>
+      <mirrorOf>*,!${SNAPSHOT_DEPLOY_REPO}</mirrorOf>
+      <url>${pluginRepositoryUrl}</url>
+    </mirror>
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>use-artifactory</id>
+
+      <!-- Make snapshot-local reachable for SNAPSHOT deps -->
+      <repositories>
+        <repository>
+          <id>${SNAPSHOT_DEPLOY_REPO}</id>
+          <url>${mavenFeatureRepositoryUrl}</url>
+          <releases><enabled>false</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+
+      <pluginRepositories>
+        <pluginRepository>
+          <id>${SNAPSHOT_DEPLOY_REPO}</id>
+          <url>${mavenFeatureRepositoryUrl}</url>
+          <releases><enabled>false</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>use-artifactory</activeProfile>
+  </activeProfiles>
+
   <servers>
     <server>
       <id>${MAVEN_SERVER_ID}</id>
       <username>${ARTIFACTORY_USER}</username>
       <password>${ARTIFACTORY_TOKEN}</password>
     </server>
+    <server>
+      <id>${SNAPSHOT_DEPLOY_REPO}</id>
+      <username>${ARTIFACTORY_USER}</username>
+      <password>${ARTIFACTORY_TOKEN}</password>
+    </server>
   </servers>
 </settings>
 XML
+
   (( xtrace_on )) && set -x
   echo "Wrote ${MAVEN_SETTINGS_OUT} (server id=${MAVEN_SERVER_ID})"
 }
@@ -182,7 +227,7 @@ if [[ -z "${pluginRepositoryUrl}" || -z "${mavenFeatureRepositoryUrl}" ]]; then
     mapfile -t ll_parts < <(parse_ll_parent_child "$BranchName")
     ParentBranchName="${ll_parts[0]}"
     ChildBranchName="${ll_parts[1]:-}"
-    pluginRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/${LL_PLUGIN_REPO}")"
+    pluginRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/${LL_PLUGIN_REPO}")"
     mavenFeatureRepositoryUrl="${SNAPSHOT_DEPLOY_URL}"
   else
     pluginRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/${DEFAULT_PLUGIN_REPO}")"
@@ -254,8 +299,6 @@ else
     # ParentBranchName is used later in mvn args; set it for non-LL deploy branches
     ParentBranchName="$BranchName"
     ChildBranchName=""
-    # treat allowed branches like deploy branches for downstream steps
-    sed -i 's/^isLongLived=false/isLongLived=true/' file.properties || true
   else
     echo "Non long-lived branch → SKIPPING deploy (per current policy)."
   fi
@@ -278,7 +321,7 @@ else
     -Dbamboo.inject.BranchName="${ParentBranchName}" \
     -Dbamboo.inject.mavenFeatureRepositoryUrl="${mavenFeatureRepositoryUrl}" \
     -Dbamboo.inject.pluginRepositoryUrl="${pluginRepositoryUrl}" \
-    -DaltDeploymentRepository="${MAVEN_SERVER_ID}::${mavenFeatureRepositoryUrl}"
+    -DaltDeploymentRepository="${MAVEN_SERVER_ID}::default::${mavenFeatureRepositoryUrl}"
 fi
 
 # Keep legacy “latestVersion” output; choose one:
