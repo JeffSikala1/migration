@@ -32,18 +32,22 @@ Default Job:
         force-clean-build: true
         description: Checkout Default Repository
 
+    # FIXED: add scriptLocation: INLINE
     - any-task:
         plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
         configuration:
           interpreter: BINSH_OR_CMDEXE
+          scriptLocation: INLINE
           inlineBody: |
             rm -rf ~/.m2/repository/gov/gsa/
         description: Remove existing cnxs maven repo directory
 
+    # FIXED: add scriptLocation: FILE
     - any-task:
         plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
         configuration:
           interpreter: SHELL
+          scriptLocation: FILE
           scriptFile: bamboo-deployment/build-determination-migration.sh
         description: Determine parent branch and pass correct variables
 
@@ -57,11 +61,12 @@ Default Job:
         plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
         configuration: {}
 
-    # NEW (any-task): write settings-artifactory.xml
+    # FIXED: add scriptLocation: INLINE
     - any-task:
         plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
         configuration:
           interpreter: SHELL
+          scriptLocation: INLINE
           inlineBody: |
             cat > settings-artifactory.xml <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
@@ -110,7 +115,6 @@ Default Job:
             XML
         description: Write Artifactory Maven settings
 
-    # UPDATED: add -s settings-artifactory.xml to Maven goal
     - any-task:
         plugin-key: com.atlassian.bamboo.plugins.maven:task.maven
         configuration:
@@ -126,11 +130,12 @@ Default Job:
           tests: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
         description: Common Build and Verify
 
-    # NEW (any-task): derive mavenVersion without the missing variable-extractor plugin
+    # FIXED: add scriptLocation: INLINE
     - any-task:
         plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
         configuration:
           interpreter: SHELL
+          scriptLocation: INLINE
           inlineBody: |
             MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version)
             echo "mavenVersion=${MVN_VERSION}" >> file.properties
@@ -143,11 +148,12 @@ Default Job:
         namespace: inject
         description: Inject updated values (mavenVersion)
 
-    # UPDATED: pass injected mavenVersion
+    # FIXED: add scriptLocation: FILE and use injected mavenVersion
     - any-task:
         plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
         configuration:
           interpreter: SHELL
+          scriptLocation: FILE
           scriptFile: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
           environmentVariables: |
             buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
@@ -158,7 +164,6 @@ Default Job:
   artifact-subscriptions: []
 
 variables:
-  # only keep these if they are NOT already defined globally in Bamboo
   buildVersionQueryArtifact: pricing-war
   buildVersionQueryGroup: gov.gsa.cnxs.pricing
 
@@ -186,7 +191,6 @@ notifications:
     recipients:
       - responsible
       - committers
-
   - events:
       - plan-completed
     recipients:
