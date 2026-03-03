@@ -321,7 +321,7 @@ else
     -Dbamboo.inject.BranchName="${ParentBranchName}" \
     -Dbamboo.inject.mavenFeatureRepositoryUrl="${mavenFeatureRepositoryUrl}" \
     -Dbamboo.inject.pluginRepositoryUrl="${pluginRepositoryUrl}" \
-    -DaltDeploymentRepository="${MAVEN_SERVER_ID}::default::${mavenFeatureRepositoryUrl}"
+    -DaltDeploymentRepository="${MAVEN_SERVER_ID}::${mavenFeatureRepositoryUrl}"
 fi
 
 # Keep legacy “latestVersion” output; choose one:
