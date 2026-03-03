@@ -59,6 +59,8 @@ Default Job:
           - |-
             cat > settings-artifactory.xml <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+              <!-- Only mirror the known legacy repo IDs (CodeArtifact/central),
+                   but allow our explicit snapshot repo below to be used as-is -->
               <mirrors>
                 <mirror>
                   <id>artifactory</id>
@@ -70,17 +72,26 @@ Default Job:
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
+
                   <repositories>
                     <repository>
-                      <id>artifactory</id>
+                      <id>conexus-plugin-repository</id>
                       <url>${bamboo.inject.pluginRepositoryUrl}</url>
                       <releases><enabled>true</enabled></releases>
                       <snapshots><enabled>true</enabled></snapshots>
                     </repository>
+
+                    <repository>
+                      <id>conexus-snapshot-local</id>
+                      <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
+                      <releases><enabled>false</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
                   </repositories>
+
                   <pluginRepositories>
                     <pluginRepository>
-                      <id>artifactory</id>
+                      <id>conexus-plugin-repository</id>
                       <url>${bamboo.inject.pluginRepositoryUrl}</url>
                       <releases><enabled>true</enabled></releases>
                       <snapshots><enabled>true</enabled></snapshots>
@@ -95,7 +106,12 @@ Default Job:
 
               <servers>
                 <server>
-                  <id>artifactory</id>
+                  <id>conexus-plugin-repository</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+                <server>
+                  <id>conexus-snapshot-local</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
@@ -121,7 +137,7 @@ Default Job:
         interpreter: SHELL
         scripts:
           - |-
-            MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version)
+            MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1 | tr -d '\r\n')
             echo "mavenVersion=${MVN_VERSION}" >> file.properties
             echo "Detected mavenVersion=${MVN_VERSION}"
         description: Determine Maven version
@@ -203,4 +219,5 @@ dependencies:
   require-all-stages-passing: false
   enabled-for-branches: true
   block-strategy: block_if_parent_in_progress
-  plans: []
+  plans:
+    - BT-TASK
