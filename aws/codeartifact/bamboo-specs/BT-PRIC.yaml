@@ -32,23 +32,15 @@ Default Job:
         force-clean-build: true
         description: Checkout Default Repository
 
-    # FIXED: add scriptLocation: INLINE
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
-        configuration:
-          interpreter: BINSH_OR_CMDEXE
-          scriptLocation: INLINE
-          inlineBody: |
-            rm -rf ~/.m2/repository/gov/gsa/
+    - script:
+        interpreter: SHELL
+        scripts:
+          - rm -rf ~/.m2/repository/gov/gsa/
         description: Remove existing cnxs maven repo directory
 
-    # FIXED: add scriptLocation: FILE
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
-        configuration:
-          interpreter: SHELL
-          scriptLocation: FILE
-          scriptFile: bamboo-deployment/build-determination-migration.sh
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/build-determination-migration.sh
         description: Determine parent branch and pass correct variables
 
     - inject-variables:
@@ -61,13 +53,10 @@ Default Job:
         plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
         configuration: {}
 
-    # FIXED: add scriptLocation: INLINE
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
-        configuration:
-          interpreter: SHELL
-          scriptLocation: INLINE
-          inlineBody: |
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
             cat > settings-artifactory.xml <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
               <mirrors>
@@ -77,7 +66,6 @@ Default Job:
                   <url>${bamboo.inject.pluginRepositoryUrl}</url>
                 </mirror>
               </mirrors>
-
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
@@ -99,11 +87,9 @@ Default Job:
                   </pluginRepositories>
                 </profile>
               </profiles>
-
               <activeProfiles>
                 <activeProfile>use-artifactory</activeProfile>
               </activeProfiles>
-
               <servers>
                 <server>
                   <id>artifactory</id>
@@ -115,28 +101,23 @@ Default Job:
             XML
         description: Write Artifactory Maven settings
 
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.maven:task.maven
-        configuration:
-          executable: Maven 3
-          jdk: JDK 17
-          goal: >
-            -s settings-artifactory.xml
-            clean verify -B -U
-            -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
-            -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
-            -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
-            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-          tests: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
+    - maven:
+        executable: Maven 3
+        jdk: JDK 17
+        goal: >-
+          -s settings-artifactory.xml
+          clean verify -B -U
+          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
+          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        tests: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
         description: Common Build and Verify
 
-    # FIXED: add scriptLocation: INLINE
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
-        configuration:
-          interpreter: SHELL
-          scriptLocation: INLINE
-          inlineBody: |
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
             MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version)
             echo "mavenVersion=${MVN_VERSION}" >> file.properties
             echo "Detected mavenVersion=${MVN_VERSION}"
@@ -148,17 +129,10 @@ Default Job:
         namespace: inject
         description: Inject updated values (mavenVersion)
 
-    # FIXED: add scriptLocation: FILE and use injected mavenVersion
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.scripttask:task.builder.script
-        configuration:
-          interpreter: SHELL
-          scriptLocation: FILE
-          scriptFile: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
-          environmentVariables: |
-            buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
-            buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
-            mavenVersion=${bamboo.inject.mavenVersion}
+    - script:
+        interpreter: SHELL
+        file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
+        environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.inject.mavenVersion}
         description: Deploy to Artifactory if needed
 
   artifact-subscriptions: []
