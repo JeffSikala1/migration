@@ -1,1 +1,40 @@
-Hey — I’m setting up Artifactory OAuth (OIDC) against https://auth-preprod.gsa.gov, but login fails with “JsonNode is null”, which makes it look like the /userinfo response is empty/non-JSON or missing expected claims. Can you confirm what scopes/claims this client is configured to return (I believe we need at least openid profile email, and /userinfo should return sub + email/preferred_username), and if possible share a sample /userinfo JSON for a successful login?
+server {
+  listen 80 default_server;
+  server_name _;
+
+  client_max_body_size 0;
+
+  location / {
+    proxy_read_timeout  900;
+    proxy_send_timeout  900;
+    proxy_connect_timeout 60;
+
+    proxy_pass http://artifactory:8082;
+
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+
+    # IMPORTANT: preserve original scheme from the outer proxy (.34)
+    proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Port  443;
+  }
+}
+
+
+
+
+
+
+docker exec -it artifactory-nginx sh -lc 'nginx -t'
+docker exec -it artifactory-nginx sh -lc 'nginx -s reload'
+
+
+
+
+docker ps | grep -i artifactory
+docker inspect artifactory-nginx | grep -i dns
+
+
+docker exec -it artifactory-nginx sh -lc 'getent hosts artifactory && nslookup artifactory 2>/dev/null || true'
