@@ -1,10 +1,30 @@
-docker exec -it artifactory sh -lc 'ls -1 /var/opt/jfrog/artifactory/logs | tail'
-docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/logs/access-service.log'
-docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/logs/artifactory.log'
-docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/logs/request.log'
+docker exec -it artifactory sh -lc 'ls -lah /var/opt/jfrog/artifactory/var/log | tail -n 50'
+docker exec -it artifactory sh -lc 'find /var/opt/jfrog/artifactory/var/log -maxdepth 2 -type f | sort | tail -n 50'
 
 
 
 
+docker exec -it artifactory sh -lc 'ls -1 /var/opt/jfrog/artifactory/var/log | grep -Ei "access|router|artifactory|request|security|jfrog"'
+docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/var/log/artifactory-service.log 2>/dev/null || true'
+docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/var/log/router-service.log 2>/dev/null || true'
+docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/var/log/access-service.log 2>/dev/null || true'
+
+
+
+
+
+
+docker exec -it artifactory sh -lc 'grep -Rin --color -E "oauth|oidc|loginResponse|token_endpoint|accessToken|invalid_client|invalid_grant|state cookie" /var/opt/jfrog/artifactory/var/log | tail -n 200'
+
+
+docker exec -it artifactory sh -lc 'grep -Rin --color -E "oauth|oidc|loginResponse|token_endpoint|invalid_client|invalid_grant|accessTokenNode" /var/opt/jfrog/artifactory/var/log | tail -n 80'
+
+
+
+docker exec -i nginx sh -lc 'cat > /etc/nginx/conf.d/artifactory.conf' <<'EOF'
 proxy_set_header X-Forwarded-Host $host;
 proxy_set_header X-Forwarded-Port 443;
+EOF
+
+docker exec -it nginx nginx -t
+docker exec -it nginx nginx -s reload
