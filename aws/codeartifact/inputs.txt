@@ -1,30 +1,50 @@
-docker exec -it artifactory sh -lc 'ls -lah /var/opt/jfrog/artifactory/var/log | tail -n 50'
-docker exec -it artifactory sh -lc 'find /var/opt/jfrog/artifactory/var/log -maxdepth 2 -type f | sort | tail -n 50'
+docker exec -i nginx sh -lc 'cat > /etc/nginx/conf.d/artifactory.conf' << "EOF"
+server {
+  listen 80;
+  server_name artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+  return 301 https://$host$request_uri;
+}
 
+server {
+  listen 443 ssl;
+  server_name artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov;
 
+  ssl_certificate     /etc/nginx/certificates/mgmt_wildcard.pem;
+  ssl_certificate_key /etc/nginx/certificates/privatekey.key;
 
+  client_max_body_size 0;
 
-docker exec -it artifactory sh -lc 'ls -1 /var/opt/jfrog/artifactory/var/log | grep -Ei "access|router|artifactory|request|security|jfrog"'
-docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/var/log/artifactory-service.log 2>/dev/null || true'
-docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/var/log/router-service.log 2>/dev/null || true'
-docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/var/log/access-service.log 2>/dev/null || true'
+  proxy_read_timeout 900;
+  proxy_send_timeout 900;
+  proxy_connect_timeout 60;
 
+  location / {
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
 
+    # Added for OIDC
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Port  443;
 
-
-
-
-docker exec -it artifactory sh -lc 'grep -Rin --color -E "oauth|oidc|loginResponse|token_endpoint|accessToken|invalid_client|invalid_grant|state cookie" /var/opt/jfrog/artifactory/var/log | tail -n 200'
-
-
-docker exec -it artifactory sh -lc 'grep -Rin --color -E "oauth|oidc|loginResponse|token_endpoint|invalid_client|invalid_grant|accessTokenNode" /var/opt/jfrog/artifactory/var/log | tail -n 80'
-
-
-
-docker exec -i nginx sh -lc 'cat > /etc/nginx/conf.d/artifactory.conf' <<'EOF'
-proxy_set_header X-Forwarded-Host $host;
-proxy_set_header X-Forwarded-Port 443;
+    proxy_pass http://10.56.112.243:80;
+  }
+}
 EOF
 
 docker exec -it nginx nginx -t
 docker exec -it nginx nginx -s reload
+
+
+
+
+
+docker exec -it artifactory sh -lc "grep -i oauth var/log/* | tail -n 50"
+
+
+docker exec -it artifactory sh -lc "grep -i oidc var/log/* | tail -n 50"
+
+
+
+docker exec -it artifactory sh -lc "grep -i oauth var/log/* | tail -n 40"
