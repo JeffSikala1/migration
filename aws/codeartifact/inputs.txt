@@ -1,50 +1,13 @@
-docker exec -i nginx sh -lc 'cat > /etc/nginx/conf.d/artifactory.conf' << "EOF"
-server {
-  listen 80;
-  server_name artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov;
-  return 301 https://$host$request_uri;
-}
-
-server {
-  listen 443 ssl;
-  server_name artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov;
-
-  ssl_certificate     /etc/nginx/certificates/mgmt_wildcard.pem;
-  ssl_certificate_key /etc/nginx/certificates/privatekey.key;
-
-  client_max_body_size 0;
-
-  proxy_read_timeout 900;
-  proxy_send_timeout 900;
-  proxy_connect_timeout 60;
-
-  location / {
-    proxy_set_header Host              $host;
-    proxy_set_header X-Real-IP         $remote_addr;
-    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto https;
-
-    # Added for OIDC
-    proxy_set_header X-Forwarded-Host  $host;
-    proxy_set_header X-Forwarded-Port  443;
-
-    proxy_pass http://10.56.112.243:80;
-  }
-}
-EOF
-
-docker exec -it nginx nginx -t
-docker exec -it nginx nginx -s reload
+Artifactory is failing the token exchange; Okta returns invalid_request from /oauth2/v1/token and Artifactory then errors accessTokenNode is null. Can you confirm whether the OIDC app is Public (PKCE/no secret) or Confidential (client secret enabled) and what token_endpoint_auth_method is set to (client_secret_basic vs client_secret_post)? Also please confirm the registered redirect URI is exactly https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/oauth2/loginResponse.
 
 
 
 
 
-docker exec -it artifactory sh -lc "grep -i oauth var/log/* | tail -n 50"
+docker exec -it artifactory sh -lc "grep -nEi 'OAuth|oauth|token|invalid_request|loginResponse' var/log/artifactory-service.log | tail -n 200"
+docker exec -it artifactory sh -lc "grep -nEi 'oauth|token|openid|invalid_request' var/log/access-service.log | tail -n 200"
 
 
-docker exec -it artifactory sh -lc "grep -i oidc var/log/* | tail -n 50"
 
 
-
-docker exec -it artifactory sh -lc "grep -i oauth var/log/* | tail -n 40"
+docker exec -it nginx sh -lc 'nginx -T | sed -n "1,220p"'
