@@ -1,40 +1,10 @@
-server {
-  listen 80 default_server;
-  server_name _;
-
-  client_max_body_size 0;
-
-  location / {
-    proxy_read_timeout  900;
-    proxy_send_timeout  900;
-    proxy_connect_timeout 60;
-
-    proxy_pass http://artifactory:8082;
-
-    proxy_set_header Host              $host;
-    proxy_set_header X-Real-IP         $remote_addr;
-    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-
-    # IMPORTANT: preserve original scheme from the outer proxy (.34)
-    proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
-    proxy_set_header X-Forwarded-Host  $host;
-    proxy_set_header X-Forwarded-Port  443;
-  }
-}
+docker exec -it artifactory sh -lc 'ls -1 /var/opt/jfrog/artifactory/logs | tail'
+docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/logs/access-service.log'
+docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/logs/artifactory.log'
+docker exec -it artifactory sh -lc 'tail -n 200 /var/opt/jfrog/artifactory/logs/request.log'
 
 
 
 
-
-
-docker exec -it artifactory-nginx sh -lc 'nginx -t'
-docker exec -it artifactory-nginx sh -lc 'nginx -s reload'
-
-
-
-
-docker ps | grep -i artifactory
-docker inspect nginx | grep -i dns
-
-
-docker exec -it nginx sh -lc 'getent hosts artifactory && nslookup artifactory 2>/dev/null || true'
+proxy_set_header X-Forwarded-Host $host;
+proxy_set_header X-Forwarded-Port 443;
