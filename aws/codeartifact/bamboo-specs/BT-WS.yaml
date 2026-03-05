@@ -22,8 +22,6 @@ Default Job:
         buildHangingConfig.enabled: 'false'
 
   tasks:
-    # NOTE: removed invalid "- clean" task (clean is handled by clean-working-dir)
-    # com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli is disabled. This state is not supported at YAML
     - checkout:
         force-clean-build: true
         description: Checkout Default Repository
@@ -32,10 +30,10 @@ Default Job:
         repository: bamboo-deployment
         path: bamboo-deployment
         force-clean-build: true
-        description: Checkout Default Repository
+        description: Checkout bamboo-deployment
 
     - script:
-        interpreter: BINSH_OR_CMDEXE
+        interpreter: SHELL
         scripts:
           - rm -rf ~/.m2/repository/gov/gsa/
         description: Remove existing cnxs maven repo directory
@@ -55,11 +53,77 @@ Default Job:
         plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
         configuration: {}
 
+    # ✅ Write Artifactory Maven settings (plugin repo + snapshot-local + tokens)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
+            cat > settings-artifactory.xml <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+              <mirrors>
+                <mirror>
+                  <id>cnxs-artifactory</id>
+                  <mirrorOf>conexus-plugin-repository,maven-central-store,central</mirrorOf>
+                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                </mirror>
+              </mirrors>
+
+              <profiles>
+                <profile>
+                  <id>use-artifactory</id>
+
+                  <repositories>
+                    <repository>
+                      <id>conexus-plugin-repository</id>
+                      <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                    <repository>
+                      <id>conexus-snapshot-local</id>
+                      <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
+                      <releases><enabled>false</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>conexus-plugin-repository</id>
+                      <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+
+              <activeProfiles>
+                <activeProfile>use-artifactory</activeProfile>
+              </activeProfiles>
+
+              <servers>
+                <server>
+                  <id>conexus-plugin-repository</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+                <server>
+                  <id>conexus-snapshot-local</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
+        description: Write Artifactory Maven settings
+
     - maven:
         executable: Maven 3
         jdk: JDK 17
         goal: >-
-          clean verify -B -U -P integration-test
+          -s settings-artifactory.xml
+          clean verify -B -U
           -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
           -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
           -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
@@ -67,11 +131,21 @@ Default Job:
         tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
         description: Build and Verify
 
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-        configuration:
-          variable: mavenVersion
-          variableScope: JOB
+    # ✅ Determine Maven version and write into file.properties
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
+            MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version)
+            echo "mavenVersion=${MVN_VERSION}" >> file.properties
+            echo "Detected mavenVersion=${MVN_VERSION}"
+        description: Determine Maven version
+
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
+        description: Inject updated values (mavenVersion)
 
     - script:
         interpreter: SHELL
@@ -79,7 +153,7 @@ Default Job:
         environment: >-
           buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
           buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
-          mavenVersion=${bamboo.mavenVersion}
+          mavenVersion=${bamboo.inject.mavenVersion}
         description: Deploy to Artifactory if needed
 
     - inject-variables:
@@ -87,6 +161,10 @@ Default Job:
         scope: RESULT
         namespace: inject
         description: Inject the build information to be used in Bamboo Deploy
+
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+        configuration: {}
 
   artifacts:
     - name: Jboss Log
