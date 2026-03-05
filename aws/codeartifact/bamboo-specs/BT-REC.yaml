@@ -64,7 +64,8 @@ Default Job:
               <mirrors>
                 <mirror>
                   <id>cnxs-artifactory</id>
-                  <mirrorOf>*</mirrorOf>
+                  <!-- Mirror everything EXCEPT snapshot-local so SNAPSHOT deps can come from snapshot-local -->
+                  <mirrorOf>*,!conexus-snapshot-local</mirrorOf>
                   <url>${bamboo.inject.pluginRepositoryUrl}</url>
                 </mirror>
               </mirrors>
@@ -128,6 +129,7 @@ Default Job:
               </servers>
             </settings>
             XML
+          - grep -n "<mirrorOf>" settings-artifactory.xml
           - grep -n "<url>" settings-artifactory.xml
         description: Write Artifactory Maven settings
 
@@ -140,7 +142,7 @@ Default Job:
             -s settings-artifactory.xml
             -Djava.io.tmpdir=/tmp/BT-REC-JOB1
             clean package -B -U
-            -pl :reconciliation-war -am
+            -pl :reconciliation-processor -am
             -DskipTests -DskipITs=true -Dmaven.test.skip=true
             -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
             -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
@@ -173,7 +175,7 @@ Default Job:
             -s settings-artifactory.xml
             -Djava.io.tmpdir=/tmp/BT-REC-JOB1
             deploy -B -U
-            -pl :reconciliation-war -am
+            -pl :reconciliation-processor -am
             -DaltDeploymentRepository=artifactory::${bamboo.inject.mavenFeatureRepositoryUrl}
             -DskipTests -DskipITs=true -Dmaven.test.skip=true
             -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
