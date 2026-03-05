@@ -62,8 +62,8 @@ Default Job:
               <mirrors>
                 <mirror>
                   <id>cnxs-artifactory</id>
-                  <!-- Mirror everything EXCEPT snapshot-local so SNAPSHOT deps can come from snapshot-local -->
-                  <mirrorOf>*,!conexus-snapshot-local</mirrorOf>
+                  <!-- Mirror everything (including snapshots) through Artifactory -->
+                  <mirrorOf>*</mirrorOf>
                   <url>${bamboo.inject.pluginRepositoryUrl}</url>
                 </mirror>
               </mirrors>
@@ -103,6 +103,14 @@ Default Job:
               </activeProfiles>
 
               <servers>
+                <!-- IMPORTANT: must match the mirror <id> -->
+                <server>
+                  <id>cnxs-artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+
+                <!-- Keep these too (in case repos are referenced directly by ID) -->
                 <server>
                   <id>conexus-plugin-repository</id>
                   <username>sa_bamboo</username>
@@ -116,23 +124,27 @@ Default Job:
               </servers>
             </settings>
             XML
+          - grep -n "<url>" settings-artifactory.xml
         description: Write Artifactory Maven settings
 
-    - maven:
-        executable: Maven 3
-        jdk: JDK 17
-        goal: >-
-          clean deploy -B -U
-          -DskipTests
-          -DskipITs
-          -Dmaven.test.skip=true
-          -Djboss.standalone.webservices_tenantKey=fbe58f4c-96f3-449e-8d52-306526d56049
-          -Djboss.standalone.webservices_appKey=DEVSUXENOC
-          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
-          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
-          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        description: Build and Deploy (skip tests / ITs)
+    - script:
+        interpreter: SHELL
+        scripts:
+          - >-
+            /usr/share/maven/bin/mvn
+            -s settings-artifactory.xml
+            -Djava.io.tmpdir=/tmp/BT-WS-JOB1
+            clean package -B -U
+            -am
+            -pl '!ws-integration-test,!ws-integration-ear,!ws-integration-core,!ws-integration-api,!ws-integration'
+            -DskipTests -DskipITs -Dmaven.test.skip=true
+            -Djboss.standalone.webservices_tenantKey=fbe58f4c-96f3-449e-8d52-306526d56049
+            -Djboss.standalone.webservices_appKey=DEVSUXENOC
+            -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+            -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
+            -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        description: Build (package only, skip tests/ITs) using Artifactory settings
 
     - script:
         interpreter: SHELL
@@ -168,18 +180,7 @@ Default Job:
         plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
         configuration: {}
 
-  artifacts:
-    - name: Jboss Log
-      location: integration/integration-test/target/
-      pattern: jboss.log
-      shared: false
-      required: false
-
-    - name: Oracle Log
-      location: integration/integration-test/target/
-      pattern: oracle.log
-      shared: false
-      required: false
+  artifacts: []
 
   artifact-subscriptions: []
 
