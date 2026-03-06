@@ -18,20 +18,20 @@ Build_And_Push:
     - system.docker.executable
     - system.builder.command.aws
     - system.builder.command.kubectl
+
   tasks:
-    # Repositories
     - checkout:
         repository: "bamboo-deployment"
         path: bamboo-deployment
         force-clean-build: true
         description: Checkout bamboo-deployment repository
+
     - checkout:
         repository: "scripts"
         path: scripts
         force-clean-build: true
         description: Checkout scripts repository (Dockerfiles)
 
-    # Ensure bamboo-deployment develop
     - script:
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
@@ -44,7 +44,6 @@ Build_And_Push:
             git reset --hard origin/develop || true
             git --no-pager log -1 --oneline
 
-    # (Optional) prior step
     - script:
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
@@ -54,19 +53,18 @@ Build_And_Push:
             set -eu
             WRITE_MAVEN_SETTINGS=0 bash ./build-determination-migration.sh || true
 
-    # Stage Dockerfiles from scripts repo
     - script:
         interpreter: BINSH_OR_CMDEXE
         description: Stage service Dockerfiles from scripts repo
         scripts:
           - |
-            # Portable "strict mode" prelude for /bin/sh or /bin/bash
             set -e
             set -u
-            # Enable pipefail if the shell supports it (bash/zsh); dash/sh will ignore it cleanly
             ( set -o pipefail ) 2>/dev/null || true
+
             SCRIPTS_DIR="${bamboo.build.working.directory}/scripts/devvpc/dockers/jboss"
             DEST_DIR="${bamboo.build.working.directory}/bamboo-deployment"
+
             ls -l "$SCRIPTS_DIR" || true
             cp -v "$SCRIPTS_DIR"/PortalDockerfile     "$DEST_DIR"/ || true
             cp -v "$SCRIPTS_DIR"/JmsDockerfile        "$DEST_DIR"/ || true
@@ -74,22 +72,18 @@ Build_And_Push:
             cp -v "$SCRIPTS_DIR"/BrmsDockerfile       "$DEST_DIR"/ || true
             cp -v "$SCRIPTS_DIR"/ReportingDockerfile  "$DEST_DIR"/ || true
 
-    # Make scripts executable
     - script:
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
         description: Make scripts executable
         scripts:
           - |
-            # Portable "strict mode" prelude for /bin/sh or /bin/bash
             set -e
             set -u
-            # Enable pipefail if the shell supports it (bash/zsh); dash/sh will ignore it cleanly
             ( set -o pipefail ) 2>/dev/null || true
             chmod +x ./download_artifacts.sh || true
             chmod +x ./builder.sh || true
 
-    # Sanity check toolchain presence (one-off)
     - script:
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
@@ -101,29 +95,25 @@ Build_And_Push:
             aws --version
             mvn -v | head -3
 
-    # Download artifacts (binaries only)
     - script:
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
-        description: Download artifacts from Artifactory
+        description: Download JBoss artifacts from Artifactory
         scripts:
           - |
-            # Portable "strict mode" prelude for /bin/sh or /bin/bash
             set -e
             set -u
-            # Enable pipefail if the shell supports it (bash/zsh); dash/sh will ignore it cleanly
             ( set -o pipefail ) 2>/dev/null || true
+
             export ARTIFACTORY_BASE_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov"
             export ARTIFACTORY_USER="sa_bamboo"
             export ARTIFACTORY_TOKEN="${bamboo.artifactory_access_token_secret}"
 
-            # Put snapshot-local first
-            export INCLUDE_REPOS="conexus-snapshot-local,conexus-plugin-repository,conexus-dependencies,ll-postgres"
+            export INCLUDE_REPOS="conexus-snapshot-local,conexus-plugin-repository,conexus-dependencies,ll-postgres,ll-tops-task-order-ahcs"
 
-            # Start with only the coords you have already validated
-            export INCLUDE_COORDS="gov.gsa.cnxs.reconciliation:reconciliation-war,gov.gsa.cnxs.ws:ws-services-ear"
+            export INCLUDE_COORDS="gov.gsa.cnxs.ui:ui-war,gov.gsa.cnxs.rest:rest-ear,gov.gsa.cnxs.task:task-ear,gov.gsa.cnxs.ws:ws-services-ear,gov.gsa.cnxs.webservices:cnxs-ws-ear,gov.gsa.cnxs.dpa:dpa-ear,gov.gsa.cnxs.reconciliation:reconciliation-war,gov.gsa.cnxs.contract-mod:contract-mod-war,gov.gsa.cnxs.emulator:vendor-emulator-war,gov.gsa.cnxs.emulator:vendor-emulator-ear,gov.gsa.cnxs.reporting:reporting-war"
 
-            export VERSION_HINTS="gov.gsa.cnxs.reconciliation:reconciliation-war:02.00.000.148-SNAPSHOT,gov.gsa.cnxs.ws:ws-services-ear:02.00.000.152-SNAPSHOT"
+            export VERSION_HINTS="gov.gsa.cnxs.ui:ui-war:01.00.000.99-SNAPSHOT,gov.gsa.cnxs.rest:rest-ear:02.00.000.174-SNAPSHOT,gov.gsa.cnxs.task:task-ear:02.00.000.214-SNAPSHOT,gov.gsa.cnxs.ws:ws-services-ear:02.00.000.152-SNAPSHOT,gov.gsa.cnxs.webservices:cnxs-ws-ear:02.00.000.173-SNAPSHOT,gov.gsa.cnxs.dpa:dpa-ear:02.00.000.132-SNAPSHOT,gov.gsa.cnxs.reconciliation:reconciliation-war:02.00.000.148-SNAPSHOT,gov.gsa.cnxs.contract-mod:contract-mod-war:02.00.000.48-SNAPSHOT,gov.gsa.cnxs.emulator:vendor-emulator-war:02.00.000.140-SNAPSHOT,gov.gsa.cnxs.reporting:reporting-war:02.00.000.114-SNAPSHOT"
 
             export DL_DIR="${bamboo.build.working.directory}/bamboo-deployment/artifacts"
             export DEBUG=1
@@ -131,82 +121,163 @@ Build_And_Push:
             ./download_artifacts.sh
             ls -lh "${DL_DIR}" || true
 
-    # Build all images (staging); allow partial success
     - script:
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
-        description: Build all service images (staging)
+        description: Preflight artifact validation for JBoss services
         scripts:
           - |
-            # Fast docker socket diagnostics
+            set -eu
+
+            ARTIFACTS_DIR="${bamboo.build.working.directory}/bamboo-deployment/artifacts"
+            rc=0
+
+            check_artifact() {
+              label="$1"
+              pattern="$2"
+              if ls "${ARTIFACTS_DIR}"/${pattern} >/dev/null 2>&1; then
+                echo "OK: ${label} -> ${pattern}"
+              else
+                echo "ERROR: Missing required artifact for ${label} (${pattern})"
+                rc=1
+              fi
+            }
+
+            check_artifact "portal" "ui-war-*.war"
+            check_artifact "portal" "rest-ear-*.ear"
+
+            check_artifact "jms" "task-ear-*.ear"
+
+            check_artifact "webservice" "ws-services-ear-*.ear"
+            check_artifact "webservice" "cnxs-ws-ear-*.ear"
+            check_artifact "webservice" "dpa-ear-*.ear"
+
+            check_artifact "brms" "reconciliation-war-*.war"
+            check_artifact "brms" "contract-mod-war-*.war"
+            check_artifact "brms" "vendor-emulator-war-*.war"
+
+            check_artifact "reporting" "reporting-war-*.war"
+            check_artifact "reporting" "vendor-emulator-ear-*.ear"
+
+            if [ "$rc" -ne 0 ]; then
+              echo "Artifact preflight failed."
+              exit 1
+            fi
+
+    - script:
+        interpreter: BINSH_OR_CMDEXE
+        working-dir: bamboo-deployment
+        description: Build JBoss service images
+        scripts:
+          - |
             id; groups; stat -c '%U %G %a %n' /var/run/docker.sock
             docker info >/dev/null || { echo "ERROR: docker unusable from agent task"; exit 2; }
-            # Fail fast if the agent user can’t talk to docker
+
             if ! docker info >/dev/null 2>&1; then
               echo "ERROR: Docker CLI cannot access /var/run/docker.sock. Check group mapping & restart agent."
               echo "Hint: add bamboo to GID $(stat -c '%g' /var/run/docker.sock) inside the container, then docker restart <agent>."
               exit 1
             fi
-            set -e
-            set -u
+
+            set -eu
             ( set -o pipefail ) 2>/dev/null || true
+
             export ARTIFACTS_DIR="${bamboo.build.working.directory}/bamboo-deployment/artifacts"
             export DOCKER_BUILDKIT=0
-            ALLOW_PARTIAL=1 ./builder.sh -s all
-            echo "Built releases:"; ls -1 .release.* || true
 
-    # Task A — Compute release name for Deployment
+            build_one() {
+              svc="$1"
+              echo "=================================================="
+              echo "STARTING JBoss build for service: ${svc}"
+              echo "=================================================="
+
+              if ./builder.sh -s "${svc}"; then
+                echo "SUCCESS: ${svc} build completed."
+              else
+                rc=$?
+                echo "ERROR: ${svc} build failed with exit code ${rc}."
+                echo "Check the log section above for the exact missing artifact, Dockerfile issue, or docker build failure."
+                exit "${rc}"
+              fi
+            }
+
+            build_one portal
+            build_one jms
+            build_one webservice
+            build_one brms
+            build_one reporting
+
+            echo "Built releases:"
+            ls -1 .release.* || true
+
     - script:
-        description: "Compute release name for Deployment"
+        description: Compute release names for JBoss services
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
         scripts:
           - |
             #!/bin/sh
             set -eu
-            REL_FILE=".release.portal"
-            if [ -s "$REL_FILE" ]; then
-              REL_TAG="$(head -n1 "$REL_FILE")"
-            else
-              echo "No portal release tag found, falling back to build number"
-              REL_TAG="${bamboo.buildNumber}"
-            fi
-            echo "release_name=${REL_TAG}" > "${bamboo.build.working.directory}/inject.properties"
-            echo "Computed release_name=${REL_TAG}"
 
-    # Task B — Inject release name into build result
+            OUT="${bamboo.build.working.directory}/inject.properties"
+            : > "$OUT"
+
+            write_release() {
+              svc="$1"
+              file=".release.${svc}"
+              key="release_${svc}"
+
+              if [ -s "$file" ]; then
+                val="$(head -n1 "$file")"
+                echo "${key}=${val}" >> "$OUT"
+                echo "Computed ${key}=${val}"
+              else
+                echo "ERROR: Missing release file ${file}"
+                exit 1
+              fi
+            }
+
+            write_release portal
+            write_release jms
+            write_release webservice
+            write_release brms
+            write_release reporting
+
     - inject-variables:
-        description: "Expose release_name to Deployment"
+        description: Expose release names to Deployment
         file: "inject.properties"
         namespace: "inject"
         scope: RESULT
 
-    # Push images to ECR
     - script:
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
-        description: Push built images to ECR (POSIX)
+        description: Push built JBoss images to ECR
         scripts:
           - |
-            # Fast docker socket diagnostics
             id; groups; stat -c '%U %G %a %n' /var/run/docker.sock
             docker info >/dev/null || { echo "ERROR: docker unusable from agent task"; exit 2; }
-            # Fail fast if the agent user can’t talk to docker
+
             if ! docker info >/dev/null 2>&1; then
               echo "ERROR: Docker CLI cannot access /var/run/docker.sock. Check group mapping & restart agent."
               echo "Hint: add bamboo to GID $(stat -c '%g' /var/run/docker.sock) inside the container, then docker restart <agent>."
               exit 1
             fi
-            set -e
+
+            set -eu
             ( set -o pipefail ) 2>/dev/null || true
+
             AWS_REGION="us-east-1"
             AWS_ACCOUNT_ID="339713019047"
             ECR_REPO_BASE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
             if ! aws ecr get-authorization-token --region "$AWS_REGION" >/dev/null 2>&1; then
               echo "ERROR: missing ecr:GetAuthorizationToken on this role." >&2
               exit 1
             fi
+
             aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ECR_REPO_BASE}"
+
             repo_for() {
               case "$1" in
                 portal) echo "conexus-jboss-portal" ;;
@@ -217,55 +288,35 @@ Build_And_Push:
                 *) echo "" ;;
               esac
             }
+
             : > image-digests.txt
-            built_any=0
+
             for svc in portal jms webservice brms reporting; do
               rel_file=".release.${svc}"
-              if [ -f "$rel_file" ]; then
-                rel="$(cat "$rel_file")"
-                local_tag="conexus-jboss:${rel}"
-                ecr_repo="$(repo_for "$svc")"
-                ecr_tag="${ECR_REPO_BASE}/${ecr_repo}:${rel}"
-                echo "→ Pushing ${svc} : ${rel}"
-                docker tag "$local_tag" "$ecr_tag"
-                docker push "$ecr_tag"
-                dig="$(docker inspect --format='{{index .RepoDigests 0}}' "$ecr_tag" 2>/dev/null || true)"
-                [ -n "$dig" ] && echo "${svc} ${rel} ${dig}" | tee -a image-digests.txt
-                built_any=1
-              else
-                echo "Skipping ${svc} (no .release file)"
-              fi
-            done
-            if [ "$built_any" -ne 1 ]; then
-              echo "No images were pushed."
-              exit 2
-            fi
 
-    # Emit image digests
-    - script:
-        description: Emit image digests
-        interpreter: BINSH_OR_CMDEXE
-        working-dir: bamboo-deployment
-        scripts:
-          - |
-            #!/bin/sh
-            set -eu
-            : > image-digests.txt
-            for svc in portal jms webservice brms reporting; do
-              f=".release.${svc}"
-              if [ -f "$f" ]; then
-                rel=$(sed -n '1p' "$f")
-                img="conexus-jboss:${rel}"
-                dig=$(docker inspect --format='{{index .RepoDigests 0}}' "$img" 2>/dev/null || true)
-                [ -n "$dig" ] || dig="<no-digest-local>"
-                printf "%s %s %s\n" "$svc" "$rel" "$dig" | tee -a image-digests.txt
+              if [ ! -f "$rel_file" ]; then
+                echo "ERROR: Expected release file missing for ${svc}: ${rel_file}"
+                exit 1
               fi
+
+              rel="$(cat "$rel_file")"
+              local_tag="conexus-jboss:${rel}"
+              ecr_repo="$(repo_for "$svc")"
+              ecr_tag="${ECR_REPO_BASE}/${ecr_repo}:${rel}"
+
+              echo "→ Pushing ${svc}:${rel}"
+              docker tag "$local_tag" "$ecr_tag"
+              docker push "$ecr_tag"
+
+              dig="$(docker inspect --format='{{index .RepoDigests 0}}' "$ecr_tag" 2>/dev/null || true)"
+              [ -n "$dig" ] && echo "${svc} ${rel} ${dig}" | tee -a image-digests.txt
             done
 
   artifacts:
     - name: releases
       pattern: "bamboo-deployment/.release.*"
       required: false
+
     - name: digests
       pattern: "bamboo-deployment/image-digests.txt"
       required: false
