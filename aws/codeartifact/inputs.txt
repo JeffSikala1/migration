@@ -1,19 +1,38 @@
-bash -n download_artifacts.sh
-bash -n builder.sh
+
+curl -su "sa_bamboo:${ARTIFACTORY_TOKEN}" \
+  -H 'Accept: application/json' \
+  "${ARTIFACTORY_BASE_URL}/artifactory/api/repositories" | jq .
 
 
-shellcheck download_artifacts.sh
-shellcheck builder.sh
+curl -su "sa_bamboo:${ARTIFACTORY_TOKEN}" \
+  -H 'Accept: application/json' \
+  "${ARTIFACTORY_BASE_URL}/artifactory/api/repositories" | jq -r '.[].key'
 
 
+curl -su "sa_bamboo:${ARTIFACTORY_TOKEN}" \
+  "${ARTIFACTORY_BASE_URL}/artifactory/api/search/latestVersion?g=gov.gsa.cnxs.reconciliation&a=reconciliation-war&repos=conexus-snapshot-local"
+
+curl -su "sa_bamboo:${ARTIFACTORY_TOKEN}" \
+  "${ARTIFACTORY_BASE_URL}/artifactory/api/search/latestVersion?g=gov.gsa.cnxs.ws&a=ws-services-ear&repos=conexus-snapshot-local"
+
+# replace version with "latest" to get the latest version of the artifact
+curl -su "sa_bamboo:${ARTIFACTORY_TOKEN}" \
+  "${ARTIFACTORY_BASE_URL}/artifactory/conexus-snapshot-local/gov/gsa/cnxs/reconciliation/reconciliation-war/<VERSION>/maven-metadata.xml"
+
+curl -su "sa_bamboo:${ARTIFACTORY_TOKEN}" \
+  "${ARTIFACTORY_BASE_URL}/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws/ws-services-ear/<VERSION>/maven-metadata.xml"
+
+
+chmod 750 download_artifacts.sh
 
 export ARTIFACTORY_BASE_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov"
 export ARTIFACTORY_USER="sa_bamboo"
 export ARTIFACTORY_TOKEN="MY-TOKEN"
 export INCLUDE_REPOS="conexus-snapshot-local,conexus-plugin-repository"
-export INCLUDE_PACKAGES="reconciliation-war,ws-services-ear"
 export NAMESPACE_PREFIX="gov.gsa.cnxs"
 export DL_DIR="./artifacts-test"
+export INCLUDE_COORDS="gov.gsa.cnxs.reconciliation:reconciliation-war,gov.gsa.cnxs.ws:ws-services-ear"
+unset INCLUDE_PACKAGES
 export DEBUG=1
 
 ./download_artifacts.sh

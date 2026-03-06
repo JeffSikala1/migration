@@ -32,6 +32,10 @@ SKIP_REPOS="${SKIP_REPOS:-}"
 # Example: task-ear,ws-services-ear,reconciliation-war
 INCLUDE_PACKAGES="${INCLUDE_PACKAGES:-}"
 
+# Optional explicit full Maven coordinates, comma-separated
+# Example: gov.gsa.cnxs.reconciliation:reconciliation-war,gov.gsa.cnxs.ws:ws-services-ear
+INCLUDE_COORDS="${INCLUDE_COORDS:-}"
+
 # Allowed extensions
 PREFERRED_EXTS="${PREFERRED_EXTS:-ear,war}"
 
@@ -62,6 +66,7 @@ log "DL_DIR=$DL_DIR NAMESPACE_PREFIX=$NAMESPACE_PREFIX VERSION_REGEX=${VERSION_R
 [[ -n "$INCLUDE_REPOS"   ]] && log "INCLUDE_REPOS=$INCLUDE_REPOS"
 [[ -n "$SKIP_REPOS"      ]] && log "SKIP_REPOS=$SKIP_REPOS"
 [[ -n "$INCLUDE_PACKAGES" ]] && log "INCLUDE_PACKAGES=$INCLUDE_PACKAGES"
+[[ -n "$INCLUDE_COORDS" ]] && log "INCLUDE_COORDS=$INCLUDE_COORDS"
 log "DEBUG mode enabled: ${DEBUG:-0}"
 log "Using repos: ${INCLUDE_REPOS:-<auto>}"
 log "Using packages: ${INCLUDE_PACKAGES:-<discovery>}"
@@ -107,6 +112,7 @@ curl_download() {
 ###############################################
 declare -A ALLOW_REPO=()
 declare -A SKIP_REPO_MAP=()
+declare -A WANT_COORD=()
 declare -A WANT_PKG=()
 declare -A OKEXT=()
 
@@ -128,6 +134,12 @@ for p in "${_pkgs[@]}"; do
   [[ -n "$p" ]] && WANT_PKG["$p"]=1
 done
 
+IFS=',' read -r -a _coords <<< "$INCLUDE_COORDS"
+for c in "${_coords[@]}"; do
+  c="${c// /}"
+  [[ -n "$c" ]] && WANT_COORD["$c"]=1
+done
+
 IFS=',' read -r -a _exts <<< "$PREFERRED_EXTS"
 for e in "${_exts[@]}"; do
   e="${e// /}"
@@ -145,11 +157,18 @@ API_AQL="${ARTIFACTORY_BASE_URL}/artifactory/api/search/aql"
 # Repo discovery
 ###############################################
 get_maven_repos() {
+  # If INCLUDE_REPOS is explicitly set, trust it and skip API discovery.
+  if [[ -n "${INCLUDE_REPOS:-}" ]]; then
+    tr ',' '\n' <<< "$INCLUDE_REPOS" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | awk 'NF'
+    return 0
+  fi
+
+  # Fallback: discover from Artifactory API
   curl_json "$API_REPOS" | jq -r '
     .[]
     | select(
-        (.packageType? == "maven")
-        or (.type? == "virtual" and (.repositories? != null))
+        ((.packageType? // "" | ascii_downcase) == "maven")
+        or ((.key? // "") | test("maven|snapshot|plugin"; "i"))
       )
     | .key
   ' | sort -u
@@ -282,33 +301,18 @@ build_candidate_filenames() {
 # Main
 ###############################################
 mapfile -t ALL_REPOS < <(get_maven_repos)
+[[ ${#ALL_REPOS[@]} -gt 0 ]] || die "No repos available. Set INCLUDE_REPOS or verify Artifactory API access."
 
-[[ ${#ALL_REPOS[@]} -gt 0 ]] || die "No Maven repos discovered from Artifactory."
-
-FILTERED_REPOS=()
-
-if [[ ${#ALLOW_REPO[@]} -gt 0 ]]; then
-  # Preserve INCLUDE_REPOS ordering exactly
-  for r in "${_allow[@]}"; do
-    r="${r// /}"
-    [[ -z "$r" ]] && continue
-    [[ -n "${SKIP_REPO_MAP[$r]+x}" ]] && continue
-    FILTERED_REPOS+=( "$r" )
-  done
-else
-  for r in "${ALL_REPOS[@]}"; do
-    [[ -n "${SKIP_REPO_MAP[$r]+x}" ]] && continue
-    FILTERED_REPOS+=( "$r" )
-  done
-fi
-
-[[ ${#FILTERED_REPOS[@]} -gt 0 ]] || die "No repos left after filtering."
-
-log "Repos to scan (ordered): ${FILTERED_REPOS[*]}"
+log "Repos to scan: ${ALL_REPOS[*]}"
 
 declare -A COORDS=()
 
-if [[ ${#WANT_PKG[@]} -gt 0 ]]; then
+if [[ ${#WANT_COORD[@]} -gt 0 ]]; then
+  for c in "${!WANT_COORD[@]}"; do
+    COORDS["$c"]=1
+  done
+  log "Using INCLUDE_COORDS list (${#COORDS[@]} coords)"
+elif [[ ${#WANT_PKG[@]} -gt 0 ]]; then
   for p in "${!WANT_PKG[@]}"; do
     COORDS["${NAMESPACE_PREFIX}:${p}"]=1
   done
@@ -332,7 +336,7 @@ for key in "${!COORDS[@]}"; do
   [[ -n "${DOWNLOADED[$key]+x}" ]] && continue
 
   success=0
-  for repo in "${FILTERED_REPOS[@]}"; do
+  for repo in "${ALL_REPOS[@]}"; do
     ver="$(latest_version_in_repo "$repo" "$group" "$artifact" || true)"
     [[ -n "$ver" ]] || continue
 
