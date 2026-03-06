@@ -31,6 +31,7 @@ cd "$SCRIPT_DIR"
 
 # Enable BuildKit by default
 export DOCKER_BUILDKIT="${DOCKER_BUILDKIT:-1}"
+DRY_RUN="${DRY_RUN:-0}"
 
 trap 'rm -rf "$SCRIPT_DIR/.build"' EXIT
 shopt -s nullglob
@@ -175,11 +176,19 @@ build_portal() {
   ui_v="$(short_version_token "$ui" 'ui-war')"
   rest_v="$(short_version_token "$rest" 'rest-ear')"
 
+  echo "    artifact basename=$ui_bn"
+  echo "    parsed version token=$ui_v"
+  echo "    artifact basename=$rest_bn"
+  echo "    parsed version token=$rest_v"
+
   [[ -n "$ui_v" && -n "$rest_v" ]] || { echo "  ✖ version parse failed"; return 3; }
 
   release="${BASE_JBOSS_VERSION}-ui${ui_v}-rest${rest_v}"
   tag="${LOCAL_REPO}:${release}"
   legacy="${LEGACY_BASE}-portal:${release}"
+
+  echo "    computed release=$release"
+  echo "    image tag=$tag"
 
   df="$(find_dockerfile portal)"
   [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for portal"; return 4; }
@@ -188,12 +197,17 @@ build_portal() {
   stage="$SCRIPT_DIR/.build/portal"
   prep_stage "$stage" "$df" "$ui" "$rest"
 
-  docker build -t "$tag" \
-    --build-arg="UIWAR=${ui_bn}" \
-    --build-arg="RESTEAR=${rest_bn}" \
-    -f "$(basename "$df")" "$stage"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "[DRY_RUN] docker build -t \"$tag\" ..."
+    echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
+  else
+    docker build -t "$tag" \
+      --build-arg="UIWAR=${ui_bn}" \
+      --build-arg="RESTEAR=${rest_bn}" \
+      -f "$(basename "$df")" "$stage"
 
-  docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+    docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+  fi
   echo "$release" > "$SCRIPT_DIR/.release.portal"
 
   echo "  Built: $tag"
@@ -209,11 +223,18 @@ build_jms() {
 
   ear_bn="$(basename "$ear")"
   v="$(short_version_token "$ear" 'task-ear')"
+
+  echo "    artifact basename=$ear_bn"
+  echo "    parsed version token=$v"
+
   [[ -n "$v" ]] || { echo "  ✖ version parse failed"; return 3; }
 
   release="${BASE_JBOSS_VERSION}-task${v}"
   tag="${LOCAL_REPO}:${release}"
   legacy="${LEGACY_BASE}-jms:${release}"
+
+  echo "    computed release=$release"
+  echo "    image tag=$tag"
 
   df="$(find_dockerfile jms)"
   [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for jms"; return 4; }
@@ -222,11 +243,16 @@ build_jms() {
   stage="$SCRIPT_DIR/.build/jms"
   prep_stage "$stage" "$df" "$ear"
 
-  docker build -t "$tag" \
-    --build-arg="TASKEAR=${ear_bn}" \
-    -f "$(basename "$df")" "$stage"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "[DRY_RUN] docker build -t \"$tag\" ..."
+    echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
+  else
+    docker build -t "$tag" \
+      --build-arg="TASKEAR=${ear_bn}" \
+      -f "$(basename "$df")" "$stage"
 
-  docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+    docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+  fi
   echo "$release" > "$SCRIPT_DIR/.release.jms"
 
   echo "  Built: $tag"
@@ -256,11 +282,21 @@ build_webservice() {
   cnxv="$(short_version_token "$cnxs" 'cnxs-ws-ear')"
   dpav="$(short_version_token "$dpa" 'dpa-ear')"
 
+  echo "    artifact basename=$wse_bn"
+  echo "    parsed version token=$wsv"
+  echo "    artifact basename=$cnxs_bn"
+  echo "    parsed version token=$cnxv"
+  echo "    artifact basename=$dpa_bn"
+  echo "    parsed version token=$dpav"
+
   [[ -n "$wsv" && -n "$cnxv" && -n "$dpav" ]] || { echo "  ✖ version parse failed"; return 3; }
 
   release="${BASE_JBOSS_VERSION}-ws${wsv}-cnxs${cnxv}-dpa${dpav}"
   tag="${LOCAL_REPO}:${release}"
   legacy="${LEGACY_BASE}-webservice:${release}"
+
+  echo "    computed release=$release"
+  echo "    image tag=$tag"
 
   df="$(find_dockerfile webservice)"
   [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for webservice"; return 4; }
@@ -269,13 +305,18 @@ build_webservice() {
   stage="$SCRIPT_DIR/.build/webservice"
   prep_stage "$stage" "$df" "$wse" "$cnxs" "$dpa"
 
-  docker build -t "$tag" \
-    --build-arg="WSEAR=${wse_bn}" \
-    --build-arg="CNXSEAR=${cnxs_bn}" \
-    --build-arg="DPAEAR=${dpa_bn}" \
-    -f "$(basename "$df")" "$stage"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "[DRY_RUN] docker build -t \"$tag\" ..."
+    echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
+  else
+    docker build -t "$tag" \
+      --build-arg="WSEAR=${wse_bn}" \
+      --build-arg="CNXSEAR=${cnxs_bn}" \
+      --build-arg="DPAEAR=${dpa_bn}" \
+      -f "$(basename "$df")" "$stage"
 
-  docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+    docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+  fi
   echo "$release" > "$SCRIPT_DIR/.release.webservice"
 
   echo "  Built: $tag"
@@ -305,11 +346,21 @@ build_brms() {
   cv="$(short_version_token "$cmod" 'contract-mod-war')"
   sv="$(short_version_token "$swag" 'vendor-emulator-war')"
 
+  echo "    artifact basename=$rbn"
+  echo "    parsed version token=$rv"
+  echo "    artifact basename=$cbn"
+  echo "    parsed version token=$cv"
+  echo "    artifact basename=$sbn"
+  echo "    parsed version token=$sv"
+
   [[ -n "$rv" && -n "$cv" && -n "$sv" ]] || { echo "  ✖ version parse failed"; return 3; }
 
   release="${BASE_JBOSS_VERSION}-recon${rv}-cmod${cv}-swag${sv}"
   tag="${LOCAL_REPO}:${release}"
   legacy="${LEGACY_BASE}-brms:${release}"
+
+  echo "    computed release=$release"
+  echo "    image tag=$tag"
 
   df="$(find_dockerfile brms)"
   [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for brms"; return 4; }
@@ -318,13 +369,18 @@ build_brms() {
   stage="$SCRIPT_DIR/.build/brms"
   prep_stage "$stage" "$df" "$recon" "$cmod" "$swag"
 
-  docker build -t "$tag" \
-    --build-arg="RECONWAR=${rbn}" \
-    --build-arg="CMODWAR=${cbn}" \
-    --build-arg="SWAGWAR=${sbn}" \
-    -f "$(basename "$df")" "$stage"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "[DRY_RUN] docker build -t \"$tag\" ..."
+    echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
+  else
+    docker build -t "$tag" \
+      --build-arg="RECONWAR=${rbn}" \
+      --build-arg="CMODWAR=${cbn}" \
+      --build-arg="SWAGWAR=${sbn}" \
+      -f "$(basename "$df")" "$stage"
 
-  docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+    docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+  fi
   echo "$release" > "$SCRIPT_DIR/.release.brms"
 
   echo "  Built: $tag"
@@ -349,11 +405,19 @@ build_reporting() {
   rv="$(short_version_token "$rep" 'reporting-war')"
   vv="$(short_version_token "$vend" 'vendor-emulator-ear')"
 
+  echo "    artifact basename=$rbn"
+  echo "    parsed version token=$rv"
+  echo "    artifact basename=$vbn"
+  echo "    parsed version token=$vv"
+
   [[ -n "$rv" && -n "$vv" ]] || { echo "  ✖ version parse failed"; return 3; }
 
   release="${BASE_JBOSS_VERSION}-repo${rv}-vend${vv}"
   tag="${LOCAL_REPO}:${release}"
   legacy="${LEGACY_BASE}-reporting:${release}"
+
+  echo "    computed release=$release"
+  echo "    image tag=$tag"
 
   df="$(find_dockerfile reporting)"
   [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for reporting"; return 4; }
@@ -362,12 +426,17 @@ build_reporting() {
   stage="$SCRIPT_DIR/.build/reporting"
   prep_stage "$stage" "$df" "$rep" "$vend"
 
-  docker build -t "$tag" \
-    --build-arg="REPOWAR=${rbn}" \
-    --build-arg="VENDEAR=${vbn}" \
-    -f "$(basename "$df")" "$stage"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "[DRY_RUN] docker build -t \"$tag\" ..."
+    echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
+  else
+    docker build -t "$tag" \
+      --build-arg="REPOWAR=${rbn}" \
+      --build-arg="VENDEAR=${vbn}" \
+      -f "$(basename "$df")" "$stage"
 
-  docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+    docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
+  fi
   echo "$release" > "$SCRIPT_DIR/.release.reporting"
 
   echo "  Built: $tag"
@@ -385,6 +454,9 @@ build_apache() {
   tag="${LOCAL_APACHE_REPO}:${release}"
   ecrtag="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/${APACHE_ECR_REPO}:${release}"
 
+  echo "    computed release=$release"
+  echo "    image tag=$tag"
+
   stage="$SCRIPT_DIR/.build/apache"
   rm -rf "$stage"
   mkdir -p "$stage"
@@ -399,8 +471,13 @@ build_apache() {
   echo "    staged files (context: $stage):"
   (cd "$stage" && ls -la)
 
-  docker build -t "$tag" -f "$stage/Dockerfile" "$stage"
-  docker tag "$tag" "$ecrtag"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "[DRY_RUN] docker build -t \"$tag\" ..."
+    echo "[DRY_RUN] docker tag \"$tag\" \"$ecrtag\""
+  else
+    docker build -t "$tag" -f "$stage/Dockerfile" "$stage"
+    docker tag "$tag" "$ecrtag"
+  fi
 
   echo "$release" > "$SCRIPT_DIR/.release.apache"
   echo "  Built: $tag"
@@ -425,6 +502,9 @@ build_wso2() {
   tag="${LOCAL_WSO2_REPO}:${release}"
   ecrtag="${ECR_ACCOUNT}.dkr.ecr.${ECR_REGION}.amazonaws.com/${WSO2_ECR_REPO}:${release}"
 
+  echo "    computed release=$release"
+  echo "    image tag=$tag"
+
   stage="$SCRIPT_DIR/.build/wso2"
   rm -rf "$stage"
   mkdir -p "$stage"
@@ -436,8 +516,13 @@ build_wso2() {
   echo "    staged files (context: $stage):"
   (cd "$stage" && ls -la)
 
-  docker build -t "$tag" -f "$stage/Dockerfile" "$stage"
-  docker tag "$tag" "$ecrtag"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "[DRY_RUN] docker build -t \"$tag\" ..."
+    echo "[DRY_RUN] docker tag \"$tag\" \"$ecrtag\""
+  else
+    docker build -t "$tag" -f "$stage/Dockerfile" "$stage"
+    docker tag "$tag" "$ecrtag"
+  fi
 
   echo "$release" > "$SCRIPT_DIR/.release.wso2"
   echo "  Built: $tag"

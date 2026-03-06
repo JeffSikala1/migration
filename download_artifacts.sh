@@ -62,6 +62,9 @@ log "DL_DIR=$DL_DIR NAMESPACE_PREFIX=$NAMESPACE_PREFIX VERSION_REGEX=${VERSION_R
 [[ -n "$INCLUDE_REPOS"   ]] && log "INCLUDE_REPOS=$INCLUDE_REPOS"
 [[ -n "$SKIP_REPOS"      ]] && log "SKIP_REPOS=$SKIP_REPOS"
 [[ -n "$INCLUDE_PACKAGES" ]] && log "INCLUDE_PACKAGES=$INCLUDE_PACKAGES"
+log "DEBUG mode enabled: ${DEBUG:-0}"
+log "Using repos: ${INCLUDE_REPOS:-<auto>}"
+log "Using packages: ${INCLUDE_PACKAGES:-<discovery>}"
 
 ###############################################
 # Curl helpers
@@ -353,6 +356,9 @@ for key in "${!COORDS[@]}"; do
         [[ -n "$f" ]] && filenames+=( "$f" )
       done < <(build_candidate_filenames "$artifact" "$ver")
     fi
+
+    log "Resolved version for ${group}:${artifact} in ${repo} -> ${ver}"
+    log "Candidate filenames: ${filenames[*]}"
 
     got=""
     for f in "${filenames[@]}"; do

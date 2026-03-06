@@ -1,1 +1,140 @@
-Thanks for the clarification. If PKCE with a client secret is a hard requirement on the Okta side, then moving to the SAML application integration may be the more straightforward option for Artifactory since the current OAuth implementation appears to have limitations when both PKCE and client secret are enforced together. From the vendor documentation, OIDC/OAuth is generally recommended because it integrates better with token-based workflows and API access, but SAML works well for browser-based SSO authentication. If the primary goal is user login/SSO to the UI, SAML should work without issue. Let us know if you’d like us to proceed with testing the SAML integration instead.
+bash -n download_artifacts.sh
+bash -n builder.sh
+
+
+shellcheck download_artifacts.sh
+shellcheck builder.sh
+
+
+
+export ARTIFACTORY_BASE_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov"
+export ARTIFACTORY_USER="sa_bamboo"
+export ARTIFACTORY_TOKEN="YOUR_TOKEN"
+export INCLUDE_REPOS="conexus-snapshot-local,conexus-plugin-repository"
+export INCLUDE_PACKAGES="reconciliation-war,ws-services-ear"
+export NAMESPACE_PREFIX="gov.gsa.cnxs"
+export DL_DIR="./artifacts-test"
+export DEBUG=1
+
+./download_artifacts.sh
+
+
+ls -lah ./artifacts-test
+
+
+
+
+export INCLUDE_PACKAGES="reconciliation-war"
+./download_artifacts.sh
+
+
+
+export INCLUDE_REPOS="conexus-plugin-repository"
+export INCLUDE_PACKAGES="reconciliation-war"
+./download_artifacts.sh
+
+
+
+export INCLUDE_REPOS="conexus-snapshot-local,conexus-plugin-repository"
+export INCLUDE_PACKAGES="reconciliation-war"
+./download_artifacts.sh
+
+
+
+
+unset INCLUDE_PACKAGES
+export NAMESPACE_PREFIX="gov.gsa.cnxs.reconciliation"
+export DISCOVERY_LIMIT=50
+./download_artifacts.sh
+
+
+
+
+# builder.sh
+export ARTIFACTS_DIR="$(pwd)/artifacts-test"
+export DOCKER_BUILDKIT=1
+export DRY_RUN=1
+
+
+
+
+./builder.sh -s webservice
+
+./builder.sh -s brms
+
+# The following services are not expected to be built successfully due to missing dependencies in the artifacts directory, but they should be processed without errors and skipped.
+./builder.sh -s portal
+./builder.sh -s jms
+./builder.sh -s reporting
+./builder.sh -s apache
+./builder.sh -s wso2
+
+
+
+
+unset DRY_RUN
+./builder.sh -s brms
+
+
+
+
+
+docker images | grep conexus
+
+
+
+
+cat .release.brms
+
+
+
+
+
+
+
+# combined smoke test
+rm -rf artifacts-test
+mkdir -p artifacts-test
+
+export ARTIFACTORY_BASE_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov"
+export ARTIFACTORY_USER="sa_bamboo"
+export ARTIFACTORY_TOKEN="YOUR_TOKEN"
+export INCLUDE_REPOS="conexus-snapshot-local,conexus-plugin-repository"
+export INCLUDE_PACKAGES="reconciliation-war,contract-mod-war,vendor-emulator-war"
+export NAMESPACE_PREFIX="gov.gsa.cnxs"
+export DL_DIR="$(pwd)/artifacts-test"
+export DEBUG=1
+
+./download_artifacts.sh
+
+
+
+
+ls -lah artifacts-test
+
+
+
+
+
+export ARTIFACTS_DIR="$(pwd)/artifacts-test"
+export DRY_RUN=1
+./builder.sh -s brms
+
+
+
+
+
+unset DRY_RUN
+./builder.sh -s brms
+
+
+
+docker images | grep conexus-jboss
+cat .release.brms
+
+
+
+file artifacts-test/*
+
+
+
