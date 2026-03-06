@@ -105,7 +105,7 @@ Build_And_Push:
     - script:
         interpreter: BINSH_OR_CMDEXE
         working-dir: bamboo-deployment
-        description: Download artifacts from CodeArtifact
+        description: Download artifacts from Artifactory
         scripts:
           - |
             # Portable "strict mode" prelude for /bin/sh or /bin/bash
@@ -113,14 +113,23 @@ Build_And_Push:
             set -u
             # Enable pipefail if the shell supports it (bash/zsh); dash/sh will ignore it cleanly
             ( set -o pipefail ) 2>/dev/null || true
-            export REGION="us-east-1"
-            export DOMAIN="cnxsartifact"
-            export OWNER="339713019047"
-            export INCLUDE_REPOS="conexus-dependencies,conexus-plugin-repository,ll-postgres,conexus-snapshot-local"
-            export INCLUDE_PACKAGES="ui-war,rest-ear,task-ear,ws-services-ear,cnxs-ws-ear,dpa-ear,reconciliation-war,contract-mod-war,reporting-war,vendor-emulator-ear,vendor-emulator-war"
+            export ARTIFACTORY_BASE_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov"
+            export ARTIFACTORY_USER="sa_bamboo"
+            export ARTIFACTORY_TOKEN="${bamboo.artifactory_access_token_secret}"
+
+            # Put snapshot-local first
+            export INCLUDE_REPOS="conexus-snapshot-local,conexus-plugin-repository,conexus-dependencies,ll-postgres"
+
+            # Start with only the coords you have already validated
+            export INCLUDE_COORDS="gov.gsa.cnxs.reconciliation:reconciliation-war,gov.gsa.cnxs.ws:ws-services-ear"
+
+            export VERSION_HINTS="gov.gsa.cnxs.reconciliation:reconciliation-war:02.00.000.148-SNAPSHOT,gov.gsa.cnxs.ws:ws-services-ear:02.00.000.152-SNAPSHOT"
+
             export DL_DIR="${bamboo.build.working.directory}/bamboo-deployment/artifacts"
+            export DEBUG=1
+
             ./download_artifacts.sh
-            ls -lh artifacts || true
+            ls -lh "${DL_DIR}" || true
 
     # Build all images (staging); allow partial success
     - script:
