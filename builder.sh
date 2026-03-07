@@ -9,6 +9,13 @@ usage() {
   exit 2
 }
 
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "ERROR: required command not found: $1" >&2
+    exit 1
+  }
+}
+
 s=""
 while getopts ":s:" opt; do
   case "$opt" in
@@ -29,11 +36,24 @@ echo "[builder] target service: $s"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 cd "$SCRIPT_DIR"
 
-# Enable BuildKit by default
-export DOCKER_BUILDKIT="${DOCKER_BUILDKIT:-1}"
-DRY_RUN="${DRY_RUN:-0}"
+require_cmd docker
+require_cmd bash
 
-trap 'rm -rf "$SCRIPT_DIR/.build"' EXIT
+if [[ "$s" == "apache" || "$s" == "wso2" || "$s" == "all" ]]; then
+  require_cmd aws
+fi
+
+KEEP_BUILD_CONTEXT="${KEEP_BUILD_CONTEXT:-0}"
+
+cleanup() {
+  if [[ "$KEEP_BUILD_CONTEXT" == "1" ]]; then
+    echo "[builder] KEEP_BUILD_CONTEXT=1, leaving $SCRIPT_DIR/.build intact"
+  else
+    rm -rf "$SCRIPT_DIR/.build"
+  fi
+}
+
+trap cleanup EXIT
 shopt -s nullglob
 
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-$SCRIPT_DIR/artifacts}"
@@ -78,10 +98,6 @@ need_file() {
   echo "  ✔ $label: $(basename "$val")"
 }
 
-# Extract Maven version from artifact file name:
-#   artifactId-<version>.war
-#   artifactId-<version>.ear
-# Returns full version string, not just patch.
 full_version_from() {
   local file="$1" artifact="$2"
   local bn
@@ -92,27 +108,35 @@ full_version_from() {
   printf '%s\n' "$bn"
 }
 
-# Short numeric build token used in your current image release format
-# Example:
-#   reconciliation-war-02.00.000.148-SNAPSHOT.war -> 148
-#   ws-client-02.00.000.144-20260305.164656-47.jar -> 144
 short_version_token() {
   local file="$1" artifact="$2"
   local v
   v="$(full_version_from "$file" "$artifact")"
-  printf '%s\n' "$v" | sed -nE 's#^[0-9]+\.[0-9]+\.[0-9]+\.([0-9]+).*$#\1#p'
+  printf '%s\n' "$v" | sed -nE 's#^[0-9]+\.[0-9]+\.[0-9]+\.([0-9]+([.][0-9]+)?).*$#\1#p'
+}
+
+ensure_image_exists() {
+  local tag="$1"
+  docker image inspect "$tag" >/dev/null 2>&1 || {
+    echo "  ✖ docker image was not created: $tag"
+    return 1
+  }
 }
 
 find_dockerfile() {
   local svc="$1"
+  local tried=()
   for f in \
     "${svc^}Dockerfile" "Dockerfile.${svc}" "Dockerfile-${svc}" \
     "dockerfiles/${svc^}Dockerfile" "dockerfiles/Dockerfile.${svc}" "dockerfiles/Dockerfile-${svc}" \
     "Dockerfile"
   do
+    tried+=( "$f" )
     [[ -f "$f" ]] && { echo "$f"; return 0; }
   done
-  echo ""
+
+  echo "ERROR: No Dockerfile found for service '$svc'. Tried: ${tried[*]}" >&2
+  return 1
 }
 
 prep_stage() {
@@ -126,6 +150,10 @@ prep_stage() {
   printf '%s\n' '*.git' '*.tmp' > "$stage/.dockerignore"
 
   for f in "$@"; do
+    [[ -f "$f" ]] || {
+      echo "ERROR: stage input file missing: $f" >&2
+      return 1
+    }
     cp "$f" "$stage/$(basename "$f")"
   done
 
@@ -190,12 +218,11 @@ build_portal() {
   echo "    computed release=$release"
   echo "    image tag=$tag"
 
-  df="$(find_dockerfile portal)"
-  [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for portal"; return 4; }
+  df="$(find_dockerfile portal)" || return 4
 
   echo "    using Dockerfile: $df"
   stage="$SCRIPT_DIR/.build/portal"
-  prep_stage "$stage" "$df" "$ui" "$rest"
+  prep_stage "$stage" "$df" "$ui" "$rest" || return 5
 
   if [[ "$DRY_RUN" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
@@ -204,10 +231,15 @@ build_portal() {
     docker build -t "$tag" \
       --build-arg="UIWAR=${ui_bn}" \
       --build-arg="RESTEAR=${rest_bn}" \
-      -f "$(basename "$df")" "$stage"
+      -f "$(basename "$df")" "$stage" || {
+        echo "  ✖ docker build failed for portal"
+        return 10
+      }
 
+    ensure_image_exists "$tag" || return 11
     docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
   fi
+
   echo "$release" > "$SCRIPT_DIR/.release.portal"
 
   echo "  Built: $tag"
@@ -236,12 +268,11 @@ build_jms() {
   echo "    computed release=$release"
   echo "    image tag=$tag"
 
-  df="$(find_dockerfile jms)"
-  [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for jms"; return 4; }
+  df="$(find_dockerfile jms)" || return 4
 
   echo "    using Dockerfile: $df"
   stage="$SCRIPT_DIR/.build/jms"
-  prep_stage "$stage" "$df" "$ear"
+  prep_stage "$stage" "$df" "$ear" || return 5
 
   if [[ "$DRY_RUN" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
@@ -249,10 +280,15 @@ build_jms() {
   else
     docker build -t "$tag" \
       --build-arg="TASKEAR=${ear_bn}" \
-      -f "$(basename "$df")" "$stage"
+      -f "$(basename "$df")" "$stage" || {
+        echo "  ✖ docker build failed for jms"
+        return 10
+      }
 
+    ensure_image_exists "$tag" || return 11
     docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
   fi
+
   echo "$release" > "$SCRIPT_DIR/.release.jms"
 
   echo "  Built: $tag"
@@ -298,12 +334,11 @@ build_webservice() {
   echo "    computed release=$release"
   echo "    image tag=$tag"
 
-  df="$(find_dockerfile webservice)"
-  [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for webservice"; return 4; }
+  df="$(find_dockerfile webservice)" || return 4
 
   echo "    using Dockerfile: $df"
   stage="$SCRIPT_DIR/.build/webservice"
-  prep_stage "$stage" "$df" "$wse" "$cnxs" "$dpa"
+  prep_stage "$stage" "$df" "$wse" "$cnxs" "$dpa" || return 5
 
   if [[ "$DRY_RUN" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
@@ -313,10 +348,15 @@ build_webservice() {
       --build-arg="WSEAR=${wse_bn}" \
       --build-arg="CNXSEAR=${cnxs_bn}" \
       --build-arg="DPAEAR=${dpa_bn}" \
-      -f "$(basename "$df")" "$stage"
+      -f "$(basename "$df")" "$stage" || {
+        echo "  ✖ docker build failed for webservice"
+        return 10
+      }
 
+    ensure_image_exists "$tag" || return 11
     docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
   fi
+
   echo "$release" > "$SCRIPT_DIR/.release.webservice"
 
   echo "  Built: $tag"
@@ -362,12 +402,11 @@ build_brms() {
   echo "    computed release=$release"
   echo "    image tag=$tag"
 
-  df="$(find_dockerfile brms)"
-  [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for brms"; return 4; }
+  df="$(find_dockerfile brms)" || return 4
 
   echo "    using Dockerfile: $df"
   stage="$SCRIPT_DIR/.build/brms"
-  prep_stage "$stage" "$df" "$recon" "$cmod" "$swag"
+  prep_stage "$stage" "$df" "$recon" "$cmod" "$swag" || return 5
 
   if [[ "$DRY_RUN" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
@@ -377,10 +416,15 @@ build_brms() {
       --build-arg="RECONWAR=${rbn}" \
       --build-arg="CMODWAR=${cbn}" \
       --build-arg="SWAGWAR=${sbn}" \
-      -f "$(basename "$df")" "$stage"
+      -f "$(basename "$df")" "$stage" || {
+        echo "  ✖ docker build failed for brms"
+        return 10
+      }
 
+    ensure_image_exists "$tag" || return 11
     docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
   fi
+
   echo "$release" > "$SCRIPT_DIR/.release.brms"
 
   echo "  Built: $tag"
@@ -419,12 +463,11 @@ build_reporting() {
   echo "    computed release=$release"
   echo "    image tag=$tag"
 
-  df="$(find_dockerfile reporting)"
-  [[ -n "$df" ]] || { echo "  ✖ No Dockerfile for reporting"; return 4; }
+  df="$(find_dockerfile reporting)" || return 4
 
   echo "    using Dockerfile: $df"
   stage="$SCRIPT_DIR/.build/reporting"
-  prep_stage "$stage" "$df" "$rep" "$vend"
+  prep_stage "$stage" "$df" "$rep" "$vend" || return 5
 
   if [[ "$DRY_RUN" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
@@ -433,10 +476,15 @@ build_reporting() {
     docker build -t "$tag" \
       --build-arg="REPOWAR=${rbn}" \
       --build-arg="VENDEAR=${vbn}" \
-      -f "$(basename "$df")" "$stage"
+      -f "$(basename "$df")" "$stage" || {
+        echo "  ✖ docker build failed for reporting"
+        return 10
+      }
 
+    ensure_image_exists "$tag" || return 11
     docker tag "$tag" "$legacy" >/dev/null 2>&1 || true
   fi
+
   echo "$release" > "$SCRIPT_DIR/.release.reporting"
 
   echo "  Built: $tag"
@@ -461,6 +509,8 @@ build_apache() {
   rm -rf "$stage"
   mkdir -p "$stage"
 
+  [[ -f "$SRC/Dockerfile" ]] || { echo "  ✖ Apache Dockerfile missing: $SRC/Dockerfile"; return 5; }
+
   cp "$SRC/Dockerfile" "$stage/Dockerfile"
   compgen -G "$SRC/*.conf" >/dev/null && cp "$SRC"/*.conf "$stage"/
   [[ -d "$SRC/html" ]] && cp -a "$SRC/html" "$stage/html"
@@ -475,7 +525,12 @@ build_apache() {
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
     echo "[DRY_RUN] docker tag \"$tag\" \"$ecrtag\""
   else
-    docker build -t "$tag" -f "$stage/Dockerfile" "$stage"
+    docker build -t "$tag" -f "$stage/Dockerfile" "$stage" || {
+      echo "  ✖ docker build failed for apache"
+      return 10
+    }
+
+    ensure_image_exists "$tag" || return 11
     docker tag "$tag" "$ecrtag"
   fi
 
@@ -496,6 +551,7 @@ build_wso2() {
 
   local SRC="${SCRIPT_DIR}/../scripts/devvpc/dockers/wso2"
   [[ -d "$SRC" ]] || { echo "  ✖ WSO2 Dockerfile source not found: $SRC"; return 4; }
+  [[ -f "$SRC/Dockerfile" ]] || { echo "  ✖ WSO2 Dockerfile missing: $SRC/Dockerfile"; return 5; }
 
   local release tag ecrtag stage
   release="$(next_numeric_tag "$WSO2_ECR_REPO")"
@@ -520,7 +576,12 @@ build_wso2() {
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
     echo "[DRY_RUN] docker tag \"$tag\" \"$ecrtag\""
   else
-    docker build -t "$tag" -f "$stage/Dockerfile" "$stage"
+    docker build -t "$tag" -f "$stage/Dockerfile" "$stage" || {
+      echo "  ✖ docker build failed for wso2"
+      return 10
+    }
+
+    ensure_image_exists "$tag" || return 11
     docker tag "$tag" "$ecrtag"
   fi
 
