@@ -72,7 +72,7 @@ Build_And_Push:
             git fetch --all --prune
 
             if git show-ref --verify --quiet refs/heads/develop; then
-              git checkout develop
+              git checkout develop >/dev/null 2>&1 || git checkout -b develop origin/develop
             else
               git checkout -b develop origin/develop
             fi
@@ -142,11 +142,14 @@ Build_And_Push:
             set -eu
             ( set -o pipefail ) 2>/dev/null || true
 
-            : "${bamboo.artifactory_access_token_secret:?ERROR: missing bamboo.artifactory_access_token_secret}"
-
             export ARTIFACTORY_BASE_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov"
             export ARTIFACTORY_USER="sa_bamboo"
             export ARTIFACTORY_TOKEN="${bamboo.artifactory_access_token_secret}"
+
+            if [ -z "$ARTIFACTORY_TOKEN" ]; then
+              echo "ERROR: missing bamboo.artifactory_access_token_secret"
+              exit 1
+            fi
 
             export INCLUDE_REPOS="conexus-snapshot-local,ll-tops-task-order-ahcs,conexus-plugin-repository,conexus-dependencies,ll-postgres"
 
@@ -404,14 +407,17 @@ Build_And_Push:
     - name: releases
       pattern: bamboo-deployment/.release.*
       required: false
+      shared: false
 
     - name: digests
       pattern: bamboo-deployment/image-digests.txt
       required: false
+      shared: false
 
     - name: inject-properties
       pattern: bamboo-deployment/inject.properties
       required: false
+      shared: false
 
 repositories:
   - bamboo-deployment:
