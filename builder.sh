@@ -4,6 +4,8 @@
 
 set -euo pipefail
 
+: "${DRY_RUN:=0}"
+
 usage() {
   echo "Usage: $0 -s {portal|jms|webservice|brms|reporting|apache|wso2|all}" >&2
   exit 2
@@ -224,7 +226,7 @@ build_portal() {
   stage="$SCRIPT_DIR/.build/portal"
   prep_stage "$stage" "$df" "$ui" "$rest" || return 5
 
-  if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
     echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
   else
@@ -274,7 +276,7 @@ build_jms() {
   stage="$SCRIPT_DIR/.build/jms"
   prep_stage "$stage" "$df" "$ear" || return 5
 
-  if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
     echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
   else
@@ -340,7 +342,7 @@ build_webservice() {
   stage="$SCRIPT_DIR/.build/webservice"
   prep_stage "$stage" "$df" "$wse" "$cnxs" "$dpa" || return 5
 
-  if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
     echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
   else
@@ -408,7 +410,7 @@ build_brms() {
   stage="$SCRIPT_DIR/.build/brms"
   prep_stage "$stage" "$df" "$recon" "$cmod" "$swag" || return 5
 
-  if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
     echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
   else
@@ -469,7 +471,7 @@ build_reporting() {
   stage="$SCRIPT_DIR/.build/reporting"
   prep_stage "$stage" "$df" "$rep" "$vend" || return 5
 
-  if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
     echo "[DRY_RUN] docker tag \"$tag\" \"$legacy\""
   else
@@ -521,7 +523,7 @@ build_apache() {
   echo "    staged files (context: $stage):"
   (cd "$stage" && ls -la)
 
-  if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
     echo "[DRY_RUN] docker tag \"$tag\" \"$ecrtag\""
   else
@@ -572,7 +574,7 @@ build_wso2() {
   echo "    staged files (context: $stage):"
   (cd "$stage" && ls -la)
 
-  if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
     echo "[DRY_RUN] docker build -t \"$tag\" ..."
     echo "[DRY_RUN] docker tag \"$tag\" \"$ecrtag\""
   else
