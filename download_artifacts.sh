@@ -16,7 +16,6 @@
 #   bash download_artifacts.sh
 
 set -euo pipefail
-[[ "${DEBUG:-}" == "1" ]] && set -x
 
 ###############################################
 # Defaults (override via env)
@@ -46,8 +45,6 @@ INCLUDE_PACKAGES="${INCLUDE_PACKAGES:-}"
 
 # Optional explicit version hints:
 #   group:artifact:version,group:artifact:version
-# Example:
-#   gov.gsa.cnxs.reconciliation:reconciliation-war:02.00.000.148-SNAPSHOT
 VERSION_HINTS="${VERSION_HINTS:-}"
 
 # Optional regex to filter versions if discovered from metadata
@@ -76,16 +73,8 @@ die()  { err "$*"; exit 1; }
 
 [[ -n "$ARTIFACTORY_TOKEN" ]] || die "ARTIFACTORY_TOKEN is empty. Set ARTIFACTORY_TOKEN or bamboo_artifactory_access_token_secret."
 
-log "Using ARTIFACTORY_BASE_URL=$ARTIFACTORY_BASE_URL as user=$ARTIFACTORY_USER"
-log "DL_DIR=$DL_DIR"
-log "INCLUDE_REPOS=${INCLUDE_REPOS:-<none>}"
-[[ -n "$SKIP_REPOS" ]] && log "SKIP_REPOS=$SKIP_REPOS"
-[[ -n "$INCLUDE_COORDS" ]] && log "INCLUDE_COORDS=$INCLUDE_COORDS"
-[[ -n "$INCLUDE_PACKAGES" ]] && log "INCLUDE_PACKAGES=$INCLUDE_PACKAGES"
-[[ -n "$VERSION_HINTS" ]] && log "VERSION_HINTS=$VERSION_HINTS"
-log "VERSION_REGEX=${VERSION_REGEX:-<none>}"
-log "PREFERRED_EXTS=$PREFERRED_EXTS"
-log "DEBUG mode enabled: ${DEBUG:-0}"
+log "Starting artifact download"
+log "Target directory: $DL_DIR"
 
 ###############################################
 # Curl helpers
@@ -153,7 +142,6 @@ for h in "${_hints[@]}"; do
   h="${h// /}"
   [[ -z "$h" ]] && continue
 
-  # Expect group:artifact:version where version itself does NOT contain colon
   group="${h%%:*}"
   rest="${h#*:}"
   artifact="${rest%%:*}"
@@ -199,8 +187,6 @@ version_metadata_url() {
 }
 
 extract_latest_version_from_artifact_metadata() {
-  # Works on artifact-level maven-metadata.xml
-  # Prefers <latest>, then <release>, then the last <version> entry
   local xml="$1"
   local v
 
@@ -224,13 +210,11 @@ resolve_version_for_coord() {
   local repo="$1" group="$2" artifact="$3"
   local key="${group}:${artifact}"
 
-  # 1. explicit hint wins
   if [[ -n "${VERSION_HINT_MAP[$key]+x}" ]]; then
     printf '%s' "${VERSION_HINT_MAP[$key]}"
     return 0
   fi
 
-  # 2. artifact-level maven metadata
   local meta_url xml v
   meta_url="$(artifact_metadata_url "$repo" "$group" "$artifact")"
   xml="$(curl_text "$meta_url" 2>/dev/null || true)"
@@ -249,7 +233,6 @@ resolve_version_for_coord() {
 snapshot_candidates_from_metadata() {
   local artifact="$1" xml="$2"
 
-  # Prefer snapshotVersion entries
   awk '
     /<snapshotVersion>/ { in_block=1; val=""; ext="" }
     in_block && /<value>/ {
@@ -268,7 +251,6 @@ snapshot_candidates_from_metadata() {
     [[ -n "${OKEXT[$ext]+x}" ]] && echo "${artifact}-${val}.${ext}"
   done
 
-  # Fallback to timestamp/buildNumber
   local ts bn
   ts="$(sed -n 's:.*<timestamp>\(.*\)</timestamp>.*:\1:p' <<< "$xml" | head -n1 | trim)"
   bn="$(sed -n 's:.*<buildNumber>\(.*\)</buildNumber>.*:\1:p' <<< "$xml" | head -n1 | trim)"
@@ -307,8 +289,6 @@ done
 
 [[ ${#REPO_LIST[@]} -gt 0 ]] || die "No repos available after applying INCLUDE_REPOS/SKIP_REPOS."
 
-log "Repos to scan in order: ${REPO_LIST[*]}"
-
 ###############################################
 # Build coordinate list
 ###############################################
@@ -318,14 +298,12 @@ if [[ ${#WANT_COORD[@]} -gt 0 ]]; then
   for c in "${!WANT_COORD[@]}"; do
     COORDS["$c"]=1
   done
-  log "Using INCLUDE_COORDS list (${#COORDS[@]} coords)"
 elif [[ ${#WANT_PKG[@]} -gt 0 ]]; then
   for p in "${!WANT_PKG[@]}"; do
     COORDS["${NAMESPACE_PREFIX}:${p}"]=1
   done
-  log "Using INCLUDE_PACKAGES list (${#COORDS[@]} coords) under group ${NAMESPACE_PREFIX}"
 else
-  die "Set INCLUDE_COORDS or INCLUDE_PACKAGES. Option B is deterministic and does not auto-discover by default."
+  die "Set INCLUDE_COORDS or INCLUDE_PACKAGES."
 fi
 
 ###############################################
@@ -339,15 +317,11 @@ for key in "${!COORDS[@]}"; do
   artifact="${key##*:}"
 
   [[ -n "${DOWNLOADED[$key]+x}" ]] && continue
-
   success=0
 
   for repo in "${REPO_LIST[@]}"; do
     version="$(resolve_version_for_coord "$repo" "$group" "$artifact" || true)"
-    [[ -n "$version" ]] || {
-      warn "[${group}:${artifact}] unable to resolve version in repo=${repo}"
-      continue
-    }
+    [[ -n "$version" ]] || continue
 
     CURRENT_VERSION="$version"
     group_path="$(group_to_path "$group")"
@@ -365,7 +339,6 @@ for key in "${!COORDS[@]}"; do
         done < <(snapshot_candidates_from_metadata "$artifact" "$xml")
       fi
 
-      # Final fallback guesses
       if ((${#filenames[@]} == 0)); then
         for e in "${!OKEXT[@]}"; do
           filenames+=( "${artifact}-${version}.${e}" )
@@ -378,9 +351,6 @@ for key in "${!COORDS[@]}"; do
       done < <(release_candidates "$artifact" "$version")
     fi
 
-    log "Resolved ${group}:${artifact} in ${repo} -> version=${version}"
-    log "Candidate filenames: ${filenames[*]}"
-
     got=""
     for f in "${filenames[@]}"; do
       ext="${f##*.}"
@@ -392,20 +362,17 @@ for key in "${!COORDS[@]}"; do
       fi
     done
 
-    if [[ -z "$got" ]]; then
-      warn "[${group}:${artifact}] no downloadable binary found in repo=${repo} version=${version}"
-      continue
-    fi
+    [[ -n "$got" ]] || continue
 
     out="${DL_DIR}/$(basename "$got")"
-    log "↓ ${group}:${artifact}:${version} @ ${repo} -> $(basename "$got")"
+    log "Downloading $(basename "$got")"
 
     if curl_download "$got" "$out"; then
       DOWNLOADED["$key"]=1
       success=1
       break
     else
-      err "[${group}:${artifact}] download failed from repo=${repo}: $got"
+      err "[${group}:${artifact}] download failed from repo=${repo}"
       rm -f "$out" || true
     fi
   done
