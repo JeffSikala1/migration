@@ -49,13 +49,14 @@ echo
 echo "Starting build agents..."
 for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
   AGENT_NAME="${HOSTNAME_SHORT}-ba-${num}"
-  AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
+  HOST_AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
+  CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
 
-  mkdir -p "$AGENT_HOME"
+  mkdir -p "$HOST_AGENT_HOME"
 
   docker run -d \
     --net="$NETWORK_NAME" \
-    -v "${AGENT_HOME}:/cache/bamboo/${AGENT_NAME}" \
+    -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
     -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
     --name="$AGENT_NAME" \
     -h "$AGENT_NAME" \
@@ -63,12 +64,13 @@ for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
     --restart=always \
     --sysctl net.ipv4.ip_forward=1 \
     "$DOCKER_BUILD_AGENT_IMAGE" \
-    bash -lc '
+    bash -lc "
       set -e
       mkdir -p /opt/java
       ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk
-      exec java -Dbamboo.home="'"${AGENT_HOME}"'" -jar /opt/bamboo-agent.jar "'"$BAMBOO_URL"'"
-    '
+      mkdir -p '${CONTAINER_AGENT_HOME}'
+      exec java -Dbamboo.home='${CONTAINER_AGENT_HOME}' -jar /opt/bamboo-agent.jar '${BAMBOO_URL}'
+    "
 done
 
 echo
