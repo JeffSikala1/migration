@@ -14,11 +14,6 @@ stages:
 
 Default Job:
   key: JOB1
-  clean-working-dir: true
-  all-other-apps:
-    custom:
-      auto: {}
-      buildHangingConfig.enabled: "false"
 
   tasks:
     - checkout:
@@ -58,24 +53,13 @@ Default Job:
 
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
 
-            # Install/Update Google Chrome for Headless testing
             curl https://conexus-artifactory.edc.ds1.usda.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
             yum install -y google-chrome-stable
 
             npm config set registry https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/npm/npm/
 
-            # SASS_BINARY_SITE='https://conexus-artifactory.edc.ds1.usda.gov/artifactory/file-local/node-sass/' npm install
             npm install
             npm test
-
-            # Original
-            # ng build --prod --build-optimizer --output-hashing=all --vendor-chunk --optimization --progress
-
-            # New - needs extra node parameters because source-map generation takes more memory
-            # node --max_old_space_size=8192 \
-            #   node_modules/@angular/cli/bin/ng build \
-            #   --configuration production --output-hashing=all --optimization --source-map=true
-
             ng build --configuration production --output-hashing=all --optimization --source-map=true
 
     - maven:
