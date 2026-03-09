@@ -4,8 +4,8 @@ set -Eeuo pipefail
 DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324}"
 DOCKER_DEPLOY_AGENT_IMAGE="${DOCKER_DEPLOY_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/deploy-agents:2025-07-03-1318}"
 
-NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-5}"
-NUMBER_OF_DEPLOY_AGENTS="${NUMBER_OF_DEPLOY_AGENTS:-2}"
+NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
+NUMBER_OF_DEPLOY_AGENTS="${NUMBER_OF_DEPLOY_AGENTS:-0}"
 
 BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
 
@@ -35,14 +35,9 @@ echo
 echo "Pulling build agent image..."
 docker pull "$DOCKER_BUILD_AGENT_IMAGE"
 
-
 echo
-echo "Stopping existing build agents..."
-docker ps -aq -f "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker stop
-
-echo "Removing existing build agents..."
-docker ps -aq -f "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm
-
+echo "Stopping/removing existing build agents..."
+docker ps -aq --filter "name=-ba-" | xargs -r docker rm -f
 
 echo
 echo "Starting build agents..."
@@ -71,11 +66,8 @@ if [[ "$CREATE_DEPLOY_AGENTS" == "1" ]]; then
   docker pull "$DOCKER_DEPLOY_AGENT_IMAGE"
 
   echo
-  echo "Stopping existing deploy agents..."
-  docker ps -aq -f "name=${HOSTNAME_SHORT}-da-" | xargs -r docker stop
-
-  echo "Removing existing deploy agents..."
-  docker ps -aq -f "name=${HOSTNAME_SHORT}-da-" | xargs -r docker rm
+  echo "Stopping/removing existing deploy agents..."
+  docker ps -aq --filter "name=-da-" | xargs -r docker rm -f
 
   echo
   echo "Starting deploy agents..."
