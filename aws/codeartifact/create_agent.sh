@@ -37,7 +37,6 @@ else
   echo "Skipping docker pull because SKIP_PULL=1"
   docker image inspect "$DOCKER_BUILD_AGENT_IMAGE" >/dev/null 2>&1 || {
     echo "ERROR: image not found locally: $DOCKER_BUILD_AGENT_IMAGE"
-    echo "Either pull it first or run with SKIP_PULL=0"
     exit 1
   }
 fi
@@ -64,7 +63,12 @@ for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
     --restart=always \
     --sysctl net.ipv4.ip_forward=1 \
     "$DOCKER_BUILD_AGENT_IMAGE" \
-    java -Dbamboo.home="/cache/bamboo/${AGENT_NAME}" -jar /opt/bamboo-agent.jar "$BAMBOO_URL"
+    bash -lc '
+      set -e
+      mkdir -p /opt/java
+      ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk
+      exec java -Dbamboo.home="'"${AGENT_HOME}"'" -jar /opt/bamboo-agent.jar "'"$BAMBOO_URL"'"
+    '
 done
 
 echo
