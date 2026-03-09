@@ -2,10 +2,7 @@
 set -Eeuo pipefail
 
 DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324}"
-DOCKER_DEPLOY_AGENT_IMAGE="${DOCKER_DEPLOY_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/deploy-agents:2025-07-03-1318}"
-
 NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
-NUMBER_OF_DEPLOY_AGENTS="${NUMBER_OF_DEPLOY_AGENTS:-0}"
 
 BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
 
@@ -15,7 +12,7 @@ NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
 HOST_CACHE_BASE="${HOST_CACHE_BASE:-/app/cache/bamboo}"
 DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
 
-CREATE_DEPLOY_AGENTS="${CREATE_DEPLOY_AGENTS:-0}"
+SKIP_PULL="${SKIP_PULL:-1}"
 
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
 systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
@@ -31,13 +28,23 @@ fi
 
 HOSTNAME_SHORT="$(hostname)"
 
-echo
-echo "Pulling build agent image..."
-docker pull "$DOCKER_BUILD_AGENT_IMAGE"
+if [[ "$SKIP_PULL" != "1" ]]; then
+  echo
+  echo "Pulling build agent image..."
+  docker pull "$DOCKER_BUILD_AGENT_IMAGE"
+else
+  echo
+  echo "Skipping docker pull because SKIP_PULL=1"
+  docker image inspect "$DOCKER_BUILD_AGENT_IMAGE" >/dev/null 2>&1 || {
+    echo "ERROR: image not found locally: $DOCKER_BUILD_AGENT_IMAGE"
+    echo "Either pull it first or run with SKIP_PULL=0"
+    exit 1
+  }
+fi
 
 echo
 echo "Stopping/removing existing build agents..."
-docker ps -aq --filter "name=-ba-" | xargs -r docker rm -f
+docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
 
 echo
 echo "Starting build agents..."
@@ -60,36 +67,6 @@ for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
     java -Dbamboo.home="/cache/bamboo/${AGENT_NAME}" -jar /opt/bamboo-agent.jar "$BAMBOO_URL"
 done
 
-if [[ "$CREATE_DEPLOY_AGENTS" == "1" ]]; then
-  echo
-  echo "Pulling deploy agent image..."
-  docker pull "$DOCKER_DEPLOY_AGENT_IMAGE"
-
-  echo
-  echo "Stopping/removing existing deploy agents..."
-  docker ps -aq --filter "name=-da-" | xargs -r docker rm -f
-
-  echo
-  echo "Starting deploy agents..."
-  for num in $(seq 1 "$NUMBER_OF_DEPLOY_AGENTS"); do
-    AGENT_NAME="${HOSTNAME_SHORT}-da-${num}"
-    AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
-
-    mkdir -p "$AGENT_HOME"
-
-    docker run -d \
-      --net="$NETWORK_NAME" \
-      -v "${AGENT_HOME}:/cache/bamboo/${AGENT_NAME}" \
-      --name="$AGENT_NAME" \
-      -h "$AGENT_NAME" \
-      --init \
-      --restart=always \
-      --sysctl net.ipv4.ip_forward=1 \
-      "$DOCKER_DEPLOY_AGENT_IMAGE" \
-      java -Dbamboo.home="/cache/bamboo/${AGENT_NAME}" -jar /opt/bamboo-agent.jar "$BAMBOO_URL"
-  done
-fi
-
 echo
 echo "Running Bamboo agent containers:"
-docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
