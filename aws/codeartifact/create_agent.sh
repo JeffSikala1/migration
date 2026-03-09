@@ -16,6 +16,8 @@ HOST_CACHE_BASE="${HOST_CACHE_BASE:-/app/cache/bamboo}"  # host path bound to ea
 DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
 AGENT_SSH_HOST_DIR="${AGENT_SSH_HOST_DIR:-/app/ci-ssh}"  # contains id_argcdbb (+.pub)
 INSTALL_TOOLCHAIN="${INSTALL_TOOLCHAIN:-0}"
+AUTO_BUILD_CUSTOM_IMAGE="${AUTO_BUILD_CUSTOM_IMAGE:-1}"
+CUSTOM_DOCKERFILE="${CUSTOM_DOCKERFILE:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)/Dockerfile.conexusbuildagent}"
 
 # --- JAVA HEAP FOR BAMBOO REMOTE AGENTS ---
 AGENT_INIT_MEMORY="${AGENT_INIT_MEMORY:-512}"
@@ -28,9 +30,18 @@ mkdir -p "$HOST_CACHE_BASE" "$AGENT_SSH_HOST_DIR"; chmod 700 "$AGENT_SSH_HOST_DI
 
 # ---------- CHOOSE IMAGE ----------
 AGENT_IMAGE="$FALLBACK_IMAGE"
-if [ "$USE_CUSTOM_IMAGE" = "1" ] && docker image inspect "$PRIMARY_IMAGE" >/dev/null 2>&1; then
-  echo "Using custom image: $PRIMARY_IMAGE"
-  AGENT_IMAGE="$PRIMARY_IMAGE"
+if [ "$USE_CUSTOM_IMAGE" = "1" ]; then
+  if [ "$AUTO_BUILD_CUSTOM_IMAGE" = "1" ] && [ -f "$CUSTOM_DOCKERFILE" ]; then
+    echo "Building custom image $PRIMARY_IMAGE from $CUSTOM_DOCKERFILE ..."
+    docker build --pull -t "$PRIMARY_IMAGE" -f "$CUSTOM_DOCKERFILE" "$(dirname "$CUSTOM_DOCKERFILE")"
+    AGENT_IMAGE="$PRIMARY_IMAGE"
+  elif docker image inspect "$PRIMARY_IMAGE" >/dev/null 2>&1; then
+    echo "Using custom image: $PRIMARY_IMAGE"
+    AGENT_IMAGE="$PRIMARY_IMAGE"
+  else
+    echo "Using official image: $FALLBACK_IMAGE"
+    docker image inspect "$FALLBACK_IMAGE" >/dev/null 2>&1 || docker pull "$FALLBACK_IMAGE"
+  fi
 else
   echo "Using official image: $FALLBACK_IMAGE"
   docker image inspect "$FALLBACK_IMAGE" >/dev/null 2>&1 || docker pull "$FALLBACK_IMAGE"
@@ -48,7 +59,7 @@ else
   echo "Network ${NETWORK_NAME} already exists."
 fi
 
-# ---------- helper: install toolchain (JDK/Maven/Docker CLI + buildx + AWS CLI v2 + kubectl) inside a running container ----------
+# ---------- helper: install toolchain (JDK/Maven/Docker CLI + buildx + AWS CLI v2) inside a running container ----------
 install_tools_in() {
   local cname="$1"
   docker exec -u 0 -i "$cname" sh -lc '
@@ -75,14 +86,6 @@ install_tools_in() {
       curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o "$tmp/awscliv2.zip"
       unzip -q "$tmp/awscliv2.zip" -d "$tmp"
       "$tmp/aws/install" -i /usr/local/aws-cli -b /usr/local/bin || true
-    fi
-
-    # kubectl (latest stable)
-    if ! command -v kubectl >/dev/null 2>&1; then
-      arch="$(uname -m)"; case "$arch" in x86_64) arch=amd64 ;; aarch64) arch=arm64 ;; *) arch=amd64 ;; esac
-      ver="$(curl -fsSL https://dl.k8s.io/release/stable.txt 2>/dev/null || echo v1.30.3)"
-      curl -fsSL "https://dl.k8s.io/release/${ver}/bin/linux/${arch}/kubectl" -o /usr/local/bin/kubectl
-      chmod +x /usr/local/bin/kubectl || true
     fi
 
     # Stable JAVA_HOME symlink for Bamboo capability
@@ -395,7 +398,6 @@ system.builder.mvn3.Maven\ 3=/usr/share/maven
 system.git.executable=/usr/bin/git
 system.docker.executable=/usr/bin/docker
 system.builder.command.aws=/usr/local/bin/aws
-system.builder.command.kubectl=/usr/local/bin/kubectl
 EOF
 
   # Fix permissions on the capabilities file/dir so bamboo user can use it
