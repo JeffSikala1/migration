@@ -57,7 +57,7 @@ Default Job:
             export npm_config_registry="${ARTI_NPM_REGISTRY}"
 
             command -v node >/dev/null 2>&1 || { echo "ERROR: node is not installed on this Bamboo agent"; exit 1; }
-            command -v npm >/dev/null 2>&1 || { echo "ERROR: npm is not installed on this Bamboo agent"; exit 1; }
+            command -v npm  >/dev/null 2>&1 || { echo "ERROR: npm is not installed on this Bamboo agent"; exit 1; }
 
             node --version
             npm --version
@@ -67,7 +67,7 @@ Default Job:
 
             echo "----- npm config before cleanup -----"
             npm config get registry || true
-            npm config ls -l | grep -Ei 'registry|proxy|cafile|strict-ssl' || true
+            npm config ls -l | grep -Ei 'registry|proxy|cafile|strict-ssl|replace-registry-host' || true
 
             echo "----- repo .npmrc -----"
             [[ -f .npmrc ]] && cat .npmrc || echo "No repo .npmrc found"
@@ -75,16 +75,17 @@ Default Job:
             rm -f "${HOME}/.npmrc"
 
             npm config set registry "${ARTI_NPM_REGISTRY}"
+            npm config set replace-registry-host always
             npm config delete proxy || true
             npm config delete https-proxy || true
             npm cache clean --force || true
 
             echo "----- npm config after cleanup -----"
             npm config get registry
-            npm config ls -l | grep -Ei 'registry|proxy|cafile|strict-ssl' || true
+            npm config ls -l | grep -Ei 'registry|proxy|cafile|strict-ssl|replace-registry-host' || true
 
             echo "----- checking workspace for old registry refs -----"
-            grep -RniE "artifactory\.mgmt\.cnxs\.vpcaas\.fcs\.gsa\.gov" . || true
+            grep -RniE "easartifactory\.edc\.ds1\.usda\.gov|conexus-artifactory\.edc\.ds1\.usda\.gov|npm-virtual|artifactory/api/npm" . || true
 
             npm ci
             npm test
