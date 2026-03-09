@@ -1,81 +1,189 @@
-for n in $(seq 1 6); do docker rm -f "$(hostname)-ba-$n" 2>/dev/null || true; done
-  610  clear
-  611  history 40
-  612  sudo rm /app/create_agents.sh
-  613  sudo vim /app/create_agents.sh
-  614  sudo chmod 755 /app/create_agents.sh
-  615  sudo /app/create_agents.sh | sudo tee /var/log/create_agents.log
+[ec2-user@ip-10-56-112-35 ~]$ aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+WARNING! Your password will be stored unencrypted in /home/ec2-user/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 
+Login Succeeded
+[ec2-user@ip-10-56-112-35 ~]$ sudo /app/create_agents.sh | sudo tee /var/log/create_agents.log
+Docker network isolated_nw already exists.
 
-
-[ec2-user@ip-10-56-112-35 ~]$ docker run --rm -it 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324 bash -lc '
-cat /etc/os-release
-java -version
-node -v
-npm -v
-ng version || true
-ls -l /opt/bamboo-agent.jar
-'
-NAME="CentOS Stream"
-VERSION="9"
-ID="centos"
-ID_LIKE="rhel fedora"
-VERSION_ID="9"
-PLATFORM_ID="platform:el9"
-PRETTY_NAME="CentOS Stream 9"
-ANSI_COLOR="0;31"
-LOGO="fedora-logo-icon"
-CPE_NAME="cpe:/o:centos:centos:9"
-HOME_URL="https://centos.org/"
-BUG_REPORT_URL="https://issues.redhat.com/"
-REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux 9"
-REDHAT_SUPPORT_PRODUCT_VERSION="CentOS Stream"
-openjdk version "17.0.16" 2025-07-15 LTS
-OpenJDK Runtime Environment (Red_Hat-17.0.16.0.8-1) (build 17.0.16+8-LTS)
-OpenJDK 64-Bit Server VM (Red_Hat-17.0.16.0.8-1) (build 17.0.16+8-LTS, mixed mode, sharing)
-v20.19.5
-10.8.2
-
-     _                      _                 ____ _     ___
-    / \   _ __   __ _ _   _| | __ _ _ __     / ___| |   |_ _|
-   / △ \ | '_ \ / _` | | | | |/ _` | '__|   | |   | |    | |
-  / ___ \| | | | (_| | |_| | | (_| | |      | |___| |___ | |
- /_/   \_\_| |_|\__, |\__,_|_|\__,_|_|       \____|_____|___|
-                |___/
-    
-
-Angular CLI: 19.2.17
-Node: 20.19.5
-Package Manager: npm 10.8.2
-OS: linux x64
-
-Angular: 19.2.15
-... animations, common, compiler, compiler-cli, core, forms
-... language-service, platform-browser, platform-browser-dynamic
-... platform-server, router
-
-Package                         Version
----------------------------------------------------------
-@angular-devkit/architect       0.1902.17
-@angular-devkit/build-angular   19.2.17
-@angular-devkit/build-webpack   0.1902.17
-@angular-devkit/core            19.2.17
-@angular-devkit/schematics      19.2.17
-@angular/cli                    19.2.17
-@ngtools/webpack                19.2.17
-@schematics/angular             19.2.17
-rxjs                            6.6.7
-typescript                      5.8.3
-webpack                         5.101.3
-zone.js                         0.15.1
-    
--rw-r--r--. 1 root root 203315609 Sep 19 12:51 /opt/bamboo-agent.jar
-[ec2-user@ip-10-56-112-35 ~]$ docker ps
-CONTAINER ID   IMAGE                                COMMAND                   CREATED        STATUS        PORTS     NAMES
-456ae9b0b8b6   conexusbuildagent:local-jdk17-mvn3   "bash -lc '\n        …"   2 months ago   Up 2 months             ip-10-56-112-35.ec2.internal-ba-6
-15466d773fc3   conexusbuildagent:local-jdk17-mvn3   "bash -lc '\n        …"   2 months ago   Up 2 months             ip-10-56-112-35.ec2.internal-ba-5
-d1fe0bb286c0   conexusbuildagent:local-jdk17-mvn3   "bash -lc '\n        …"   2 months ago   Up 2 months             ip-10-56-112-35.ec2.internal-ba-4
-0158dc5fa368   conexusbuildagent:local-jdk17-mvn3   "bash -lc '\n        …"   2 months ago   Up 2 months             ip-10-56-112-35.ec2.internal-ba-3
-9e2e3fc7fbe8   conexusbuildagent:local-jdk17-mvn3   "bash -lc '\n        …"   2 months ago   Up 2 months             ip-10-56-112-35.ec2.internal-ba-2
-e99110bfee89   conexusbuildagent:local-jdk17-mvn3   "bash -lc '\n        …"   2 months ago   Up 2 months             ip-10-56-112-35.ec2.internal-ba-1
-[ec2-user@ip-10-56-11
+Pulling build agent image...
+Error response from daemon: Head "https://339713019047.dkr.ecr.us-east-1.amazonaws.com/v2/build-agents/manifests/node22-angular19-el9-2025-09-23-1324": no basic auth credentials
+[ec2-user@ip-10-56-112-35 ~]$ docker images
+REPOSITORY                                                              TAG                                         IMAGE ID       CREATED         SIZE
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-reporting    8.0.8-repo114-vend139.1                     66044832013e   2 days ago      2.57GB
+conexus-jboss                                                           8.0.8-repo114-vend139.1                     66044832013e   2 days ago      2.57GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-brms         8.0.8-recon148-cmod48-swag140               00649b46307b   2 days ago      2.64GB
+conexus-jboss                                                           8.0.8-recon148-cmod48-swag140               00649b46307b   2 days ago      2.64GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-webservice   8.0.8-ws152-cnxs173-dpa132                  04e5383214f7   2 days ago      2.57GB
+conexus-jboss                                                           8.0.8-ws152-cnxs173-dpa132                  04e5383214f7   2 days ago      2.57GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-jms          8.0.8-task214                               8f1e19fd85e2   2 days ago      2.53GB
+conexus-jboss                                                           8.0.8-task214                               8f1e19fd85e2   2 days ago      2.53GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-portal       8.0.8-ui99-rest174                          184513c9d513   2 days ago      2.54GB
+conexus-jboss                                                           8.0.8-ui99-rest174                          184513c9d513   2 days ago      2.54GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-reporting    <none>                                      6a446f3b5f45   2 days ago      2.57GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-brms         <none>                                      97fcdcdc7c84   2 days ago      2.64GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-webservice   <none>                                      dff38c9a2164   2 days ago      2.57GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-portal       <none>                                      66d1319dfab0   2 days ago      2.54GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-jms          <none>                                      88f3818096c1   2 days ago      2.53GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.46                                        144e616717aa   3 days ago      390MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.47                                        144e616717aa   3 days ago      390MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.48                                        144e616717aa   3 days ago      390MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.49                                        144e616717aa   3 days ago      390MB
+conexus-apache-oidc                                                     1.46                                        144e616717aa   3 days ago      390MB
+conexus-apache-oidc                                                     1.47                                        144e616717aa   3 days ago      390MB
+conexus-apache-oidc                                                     1.48                                        144e616717aa   3 days ago      390MB
+conexus-apache-oidc                                                     1.49                                        144e616717aa   3 days ago      390MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.10                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.11                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.12                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.13                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.14                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.15                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.16                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.17                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.18                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.19                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.20                                        fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.3                                         fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.4                                         fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.5                                         fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.6                                         fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.7                                         fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.8                                         fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.9                                         fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.10                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.11                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.12                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.13                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.14                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.15                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.16                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.17                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.18                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.19                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.20                                        fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.3                                         fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.4                                         fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.5                                         fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.6                                         fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.7                                         fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.8                                         fad0e6447462   2 months ago    841MB
+conexus-wso2mi                                                          1.9                                         fad0e6447462   2 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.13                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.14                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.15                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.16                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.17                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.18                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.19                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.20                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.21                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.22                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.23                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.24                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.25                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.26                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.27                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.28                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.29                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.30                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.31                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.32                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.33                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.34                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.35                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.36                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.37                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.38                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.39                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.40                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.41                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.42                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.43                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.44                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.45                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.13                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.14                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.15                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.16                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.17                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.18                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.19                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.20                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.21                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.22                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.23                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.24                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.25                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.26                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.27                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.28                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.29                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.30                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.31                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.32                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.33                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.34                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.35                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.36                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.37                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.38                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.39                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.40                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.41                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.42                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.43                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.44                                        0a80bf0bd436   2 months ago    359MB
+conexus-apache-oidc                                                     1.45                                        0a80bf0bd436   2 months ago    359MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss              ib8.0.8                                     a0972886ebbd   3 months ago    2.51GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi-minimal              9.7                                         f4e8530d4221   3 months ago    166MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.0                                         d53910c6d940   3 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.1                                         d53910c6d940   3 months ago    841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi             1.2                                         d53910c6d940   3 months ago    841MB
+conexus-wso2mi                                                          1.0                                         d53910c6d940   3 months ago    841MB
+conexus-wso2mi                                                          1.1                                         d53910c6d940   3 months ago    841MB
+conexus-wso2mi                                                          1.2                                         d53910c6d940   3 months ago    841MB
+conexus-apache                                                          httpd42-b45596f                             23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.10                                        23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.11                                        23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.12                                        23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.2                                         23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.3                                         23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.4                                         23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.5                                         23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.6                                         23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.7                                         23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.8                                         23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        1.9                                         23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc        httpd42-b45596f                             23a69cc2af0f   3 months ago    403MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache             httpd42-b45596f                             23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.10                                        23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.11                                        23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.12                                        23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.2                                         23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.3                                         23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.4                                         23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.5                                         23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.6                                         23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.7                                         23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.8                                         23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     1.9                                         23a69cc2af0f   3 months ago    403MB
+conexus-apache-oidc                                                     httpd42-b45596f                             23a69cc2af0f   3 months ago    403MB
+atlassian/bamboo-agent-base                                             9.6.6                                       23f5ae381034   4 months ago    562MB
+conexusbuildagent                                                       local-jdk17-mvn3                            67ff6fc6168c   4 months ago    1.93GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-reporting    8.0.8-repo110.100-vend136.100               a1a2c04d8bc3   4 months ago    2.55GB
+conexus-jboss                                                           8.0.8-repo110.100-vend136.100               a1a2c04d8bc3   4 months ago    2.55GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-brms         8.0.8-recon144.100-cmod44.100-swag136.100   12de35306e9e   4 months ago    2.63GB
+conexus-jboss                                                           8.0.8-recon144.100-cmod44.100-swag136.100   12de35306e9e   4 months ago    2.63GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-webservice   8.0.8-ws148.100-cnxs169.100-dpa128.100      27cded8d4914   4 months ago    2.56GB
+conexus-jboss                                                           8.0.8-ws148.100-cnxs169.100-dpa128.100      27cded8d4914   4 months ago    2.56GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-jms          8.0.8-task210.100                           018a2945bbc8   4 months ago    2.51GB
+conexus-jboss                                                           8.0.8-task210.100                           018a2945bbc8   4 months ago    2.51GB
+conexus-jboss                                                           8.0.8-ui97-rest170.100                      32e01a0c365f   4 months ago    2.53GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-portal       8.0.8-ui97-rest170.100                      32e01a0c365f   4 months ago    2.53GB
+atlassian/bamboo-agent-base                                             latest                                      0f2fb5d6e874   5 months ago    628MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss              8.0.8                                       832084c5960c   5 months ago    2.5GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents               node22-angular19-el9-2025-09-23-1324        e87699960a66   5 months ago    3.99GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi96-minimal            9.6                                         4bc369f4e019   6 months ago    162MB
+wso2/wso2mi                                                             4.3.0-rocky                                 f21fad8e5bba   19 months ago   841MB
