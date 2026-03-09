@@ -51,6 +51,8 @@ Default Job:
             set -eo pipefail
 
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
+            export NPM_CONFIG_REGISTRY=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/npm/npm/
+            export npm_config_registry=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/npm/npm/
 
             command -v node >/dev/null 2>&1 || { echo "ERROR: node is not installed on this Bamboo agent"; exit 1; }
             command -v npm >/dev/null 2>&1 || { echo "ERROR: npm is not installed on this Bamboo agent"; exit 1; }
@@ -58,7 +60,30 @@ Default Job:
             node --version
             npm --version
 
-            npm config set registry https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/npm/npm/
+            echo "HOME=$HOME"
+            echo "PWD=$(pwd)"
+
+            echo "----- npm config before cleanup -----"
+            npm config get registry || true
+            npm config ls -l | grep -Ei 'registry|proxy|cafile|strict-ssl' || true
+
+            echo "----- repo .npmrc -----"
+            [[ -f .npmrc ]] && cat .npmrc || echo "No repo .npmrc found"
+
+            rm -f "${HOME}/.npmrc"
+
+            npm config set registry "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/npm/npm/"
+            npm config delete proxy || true
+            npm config delete https-proxy || true
+            npm cache clean --force || true
+
+            echo "----- npm config after cleanup -----"
+            npm config get registry
+            npm config ls -l | grep -Ei 'registry|proxy|cafile|strict-ssl' || true
+
+            echo "----- checking workspace for old registry refs -----"
+            grep -Rni "easartifactory\.edc\.ds1\.usda\.gov\|npm-virtual\|artifactory/api/npm" . || true
+
             npm ci
             npm test
             npx ng build --configuration production --output-hashing=all --optimization --source-map=true
