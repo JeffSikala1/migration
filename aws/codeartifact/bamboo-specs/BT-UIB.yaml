@@ -50,9 +50,11 @@ Default Job:
             #!/usr/bin/env bash
             set -eo pipefail
 
+            ARTI_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
+
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
-            export NPM_CONFIG_REGISTRY=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/npm/npm/
-            export npm_config_registry=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/npm/npm/
+            export NPM_CONFIG_REGISTRY="${ARTI_NPM_REGISTRY}"
+            export npm_config_registry="${ARTI_NPM_REGISTRY}"
 
             command -v node >/dev/null 2>&1 || { echo "ERROR: node is not installed on this Bamboo agent"; exit 1; }
             command -v npm >/dev/null 2>&1 || { echo "ERROR: npm is not installed on this Bamboo agent"; exit 1; }
@@ -72,7 +74,7 @@ Default Job:
 
             rm -f "${HOME}/.npmrc"
 
-            npm config set registry "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/npm/npm/"
+            npm config set registry "${ARTI_NPM_REGISTRY}"
             npm config delete proxy || true
             npm config delete https-proxy || true
             npm cache clean --force || true
@@ -82,7 +84,7 @@ Default Job:
             npm config ls -l | grep -Ei 'registry|proxy|cafile|strict-ssl' || true
 
             echo "----- checking workspace for old registry refs -----"
-            grep -Rni "easartifactory\.edc\.ds1\.usda\.gov\|npm-virtual\|artifactory/api/npm" . || true
+            grep -RniE "artifactory\.mgmt\.cnxs\.vpcaas\.fcs\.gsa\.gov" . || true
 
             npm ci
             npm test
