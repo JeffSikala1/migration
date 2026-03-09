@@ -75,7 +75,6 @@ Default Job:
             echo "repo .npmrc present? $([[ -f .npmrc ]] && echo yes || echo no)"
             echo "user .npmrc present? $([[ -f "${HOME}/.npmrc" ]] && echo yes || echo no)"
 
-            # Keep existing .npmrc files in case they contain auth/token config.
             npm config set registry "${ARTI_NPM_REGISTRY}"
             npm config delete replace-registry-host || true
             npm config delete proxy || true
@@ -107,20 +106,27 @@ Default Job:
         goal: clean verify -B -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         description: Package
 
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-        configuration:
-          variable: mavenVersion
-          variableScope: JOB
+    - script:
+        interpreter: SHELL
+        description: Extract Maven version
+        scripts:
+          - |-
+            #!/usr/bin/env bash
+            set -euo pipefail
 
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-        configuration: {}
+            MVN_VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1)"
+            echo "mavenVersion=${MVN_VERSION}" >> file.properties
+            echo "Wrote mavenVersion=${MVN_VERSION} to file.properties"
+
+    - inject-variables:
+        file: file.properties
+        scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
         file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
-        environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
+        environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.inject.mavenVersion}
         description: Deploy to Artifactory if needed
 
     - inject-variables:
