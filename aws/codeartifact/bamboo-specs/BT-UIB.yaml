@@ -112,11 +112,26 @@ Default Job:
         scripts:
           - |-
             #!/usr/bin/env bash
-            set -euo pipefail
+            set -eux
 
-            MVN_VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1)"
+            MVN_VERSION="$(awk '
+              /<project/ { inproject=1 }
+              inproject && /<version>/ {
+                gsub(/.*<version>/,"")
+                gsub(/<\/version>.*/,"")
+                print
+                exit
+              }
+            ' pom.xml)"
+
+            if [[ -z "${MVN_VERSION}" ]]; then
+              echo "ERROR: Could not determine Maven version from pom.xml"
+              exit 1
+            fi
+
             echo "mavenVersion=${MVN_VERSION}" >> file.properties
             echo "Wrote mavenVersion=${MVN_VERSION} to file.properties"
+            cat file.properties
 
     - inject-variables:
         file: file.properties
