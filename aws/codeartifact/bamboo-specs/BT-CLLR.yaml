@@ -4,108 +4,69 @@ plan:
   project-key: BT
   key: CLLR
   name: Create Long Lived Repo
-
 stages:
 - Default Stage:
     manual: false
     final: false
     jobs:
     - Default Job
-
 Default Job:
   key: JOB1
   tasks:
-  # Checkout the default repo (the branch we inspect for ll-*)
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-
-  # Checkout bamboo-deployment and pin to CNXS-62536 (where migrated scripts live)
-  - checkout:
-      repository: bamboo-deployment
-      path: bamboo-deployment
-      force-clean-build: true
-      description: Checkout bamboo-deployment repository
   - script:
       interpreter: SHELL
       scripts:
-      - |
-        set -e
-        cd bamboo-deployment
-        git fetch --all --prune
-        git checkout -B CNXS-62536 origin/CNXS-62536 || git checkout -B CNXS-62536
-        git log -1 --oneline
-      description: Ensure bamboo-deployment@CNXS-62536 branch
+      - |-
+        #!/bin/bash
+        artifactoryRepositoryUrl="https://easartifactory.edc.ds1.usda.gov/artifactory/api/repositories"
+        user="$bamboo_artifactoryAdminUser"
+        password="$bamboo_artifactoryAdminPassword"
+        longLivedPrefix="ll-"
+        featureBranchName="$(git name-rev --name-only HEAD|cut -d'/' -f2)"
+        mavenFeatureRepositoryUrl="https://easartifactory.edc.ds1.usda.gov/artifactory/${featureBranchName}"
 
-  # Create the CodeArtifact long-lived repo if needed (parent LL branches only)
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |
-        set -Eeuo pipefail
-
-        CA_REGION="${CA_REGION:-us-east-1}"
-        CA_DOMAIN="${CA_DOMAIN:-cnxsartifact}"
-        LONG_LIVED_PREFIX="${LONG_LIVED_PREFIX:-ll-}"
-
-        aws_ca() { aws --region "$CA_REGION" codeartifact "$@"; }
-
-        BranchRef="$(git rev-parse --abbrev-ref HEAD | tr -d '\n')"
-        BranchName="${BranchRef##*/}"
-        echo "BranchRef=${BranchRef}"
-        echo "BranchName=${BranchName}"
-
-        if [[ "${BranchName:0:${#LONG_LIVED_PREFIX}}" != "$LONG_LIVED_PREFIX" ]]; then
-          echo "Not a long-lived branch. No repo to create."
-          exit 0
+        # Check to see if this is a long lived branch
+        if [ ${featureBranchName:0:3} == "${longLivedPrefix}" ]; then
+          # Check that the long lived maven repo exists - if it doesn't create it
+          pip install requests -i  https://easartifactory.edc.ds1.usda.gov/artifactory/api/pypi/pypi-local/simple --trusted-host easartifactory.edc.ds1.usda.gov
+          mavenRepoExists=$(python -c "import requests; r=requests.get('$artifactoryRepositoryUrl', verify=False, auth=('$user', '$password')); repos=[repo for repo in r.json() if repo['key'] == '$featureBranchName']; print len(repos)")
+          if [ "${mavenRepoExists}" == "1" ]; then
+             echo "Delete Maven Repository: ${mavenFeatureRepositoryUrl}"
+             #curl -X DELETE \
+             #-u "$user:$password" \
+             #"$mavenFeatureRepositoryUrl"
+          fi
         fi
-
-        ParentBranchName="$(printf '%s' "$BranchName" | cut -d'+' -f1)"
-        ChildBranchName="$(printf '%s' "$BranchName" | cut -d'+' -f2 -s || true)"
-
-        if [[ -n "${ChildBranchName:-}" ]]; then
-          echo "Long-lived CHILD branch detected (${BranchName}). Skipping repo creation."
-          exit 0
-        fi
-
-        echo "Long-lived PARENT branch detected (${ParentBranchName}). Ensuring CodeArtifact repo exists..."
-        if aws_ca describe-repository --domain "$CA_DOMAIN" --repository "$ParentBranchName" >/dev/null 2>&1; then
-          echo "Repo '$ParentBranchName' already exists."
-        else
-          echo "Creating repo '$ParentBranchName'..."
-          aws_ca create-repository \
-            --domain "$CA_DOMAIN" \
-            --repository "$ParentBranchName" \
-            --description "Auto-created for long-lived branch ${ParentBranchName}"
-          echo "Created repo '$ParentBranchName'."
-        fi
-
-        echo "Repository endpoint:"
-        aws_ca get-repository-endpoint \
-          --domain "$CA_DOMAIN" \
-          --repository "$ParentBranchName" \
-          --format maven \
-          --query repositoryEndpoint \
-          --output text
-      description: Ensure CodeArtifact long-lived repo exists
-
-repositories:
-- bamboo-deployment:
-    scope: global
-
+  artifact-subscriptions: []
+repositories: []
+# Remove line above if want to set repository with YAML file as primary repository of plan
 triggers: []
-
 branches:
   create: manually
   delete: never
   link-to-jira: true
-
 notifications: []
-
 labels: []
-
 dependencies:
   require-all-stages-passing: false
   enabled-for-branches: true
   block-strategy: none
   plans: []
+---
+version: 2
+plan:
+  key: BT-CLLR
+plan-permissions:
+- users:
+  - jeff.sikala
+  groups:
+  - bamboo-admin
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+
+
