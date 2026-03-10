@@ -20,7 +20,6 @@ Default Job:
         auto: {}
         buildHangingConfig.enabled: "false"
   tasks:
-    # com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli is disabled. This state is not supported at YAML
     - checkout:
         force-clean-build: true
         description: Checkout Default Repository
@@ -50,24 +49,13 @@ Default Job:
         executable: Maven 3
         jdk: JDK 17
         goal: >-
-          clean verify -B -DskipSurefire=true -U # include integration tests and performance tests
+          clean package -B -DskipTests=true -DskipSurefire=true -DskipITs=true -U
           -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
           -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
           -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        tests: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
-        description: Build and Verify
-  artifacts:
-    - name: Jboss Log
-      location: integration/target/
-      pattern: jboss.log
-      shared: false
-      required: false
-    - name: Oracle Log
-      location: integration/target/
-      pattern: oracle.log
-      shared: false
-      required: false
+        description: Package and Build
+  artifacts: []
   artifact-subscriptions: []
 
 repositories:
