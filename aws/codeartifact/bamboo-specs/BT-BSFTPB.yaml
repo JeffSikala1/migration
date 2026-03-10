@@ -60,11 +60,28 @@ Default Job:
     - script:
         interpreter: SHELL
         scripts:
-          - |
-            set -euo pipefail
-            v="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
-            echo "mavenVersion=$v" >> file.properties
-            echo "Resolved mavenVersion=$v"
+          - |-
+            #!/usr/bin/env bash
+            set -eux
+
+            MVN_VERSION="$(awk '
+              /<project/ { inproject=1 }
+              inproject && /<version>/ {
+                gsub(/.*<version>/,"")
+                gsub(/<\/version>.*/,"")
+                print
+                exit
+              }
+            ' pom.xml)"
+
+            if [[ -z "${MVN_VERSION}" ]]; then
+              echo "ERROR: Could not determine Maven version from pom.xml"
+              exit 1
+            fi
+
+            echo "mavenVersion=${MVN_VERSION}" >> file.properties
+            echo "Wrote mavenVersion=${MVN_VERSION} to file.properties"
+            cat file.properties
         description: Extract mavenVersion from pom.xml
 
     - inject-variables:
