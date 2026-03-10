@@ -36,8 +36,6 @@ Default Job:
         interpreter: BINSH_OR_CMDEXE
         scripts:
           - |-
-            # Bas: this only deletes snapshot folders so we don't download
-            # the big released datafile artifact each time.
             dirName=~/.m2/repository/gov/gsa/cnxs/
             if [ -d "$dirName" ]; then
               echo "Removing snapshot folders from $dirName"
@@ -70,10 +68,25 @@ Default Job:
         interpreter: SHELL
         scripts:
           - |-
-            set -euo pipefail
-            v="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
-            echo "mavenVersion=$v" >> file.properties
-            echo "Resolved mavenVersion=$v"
+            set -euxo pipefail
+            MVN_VERSION=$(awk '
+              /<project/ { inproject=1 }
+              inproject && /<version>/ {
+                gsub(/.*<version>/,"")
+                gsub(/<\/version>.*/,"")
+                print
+                exit
+              }
+            ' pom.xml)
+
+            if [[ -z "${MVN_VERSION}" ]]; then
+              echo "ERROR: Unable to determine project.version from pom.xml"
+              exit 1
+            fi
+
+            echo "mavenVersion=${MVN_VERSION}" >> file.properties
+            echo "Wrote mavenVersion=${MVN_VERSION} to file.properties"
+            cat file.properties
         description: Extract mavenVersion from pom.xml
 
     - inject-variables:
@@ -84,10 +97,25 @@ Default Job:
 
     - script:
         interpreter: SHELL
-        file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
+        scripts:
+          - |-
+            export buildVersionQueryArtifact=schema
+            export buildVersionQueryGroup=gov.gsa.cnxs.db
+            export mavenVersion=${bamboo.inject.mavenVersion}
+            bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
         description: Deploy to Artifactory if needed
 
+    - inject-variables:
+        file: file.properties
+        scope: RESULT
+        namespace: inject
+        description: Persist variables for deployment plans
+
   artifact-subscriptions: []
+
+variables:
+  buildVersionQueryArtifact: schema
+  buildVersionQueryGroup: gov.gsa.cnxs.db
 
 repositories:
   - Schema:
