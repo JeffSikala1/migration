@@ -1,167 +1,120 @@
-pricing/pom.xml
+pricing/integration/integration-ear/pom.xml
 
-<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
+  <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>gov.gsa.cnxs.bom</groupId>
-        <artifactId>env</artifactId>
-        <version>02.00.000.166-SNAPSHOT</version>
+        <artifactId>pricing-integration</artifactId>
+        <groupId>gov.gsa.cnxs.pricing</groupId>
+        <version>02.00.000.146-SNAPSHOT</version>
     </parent>
+  <artifactId>pricing-ear</artifactId>
+  <packaging>ear</packaging>
 
-    <version>02.00.000.146-SNAPSHOT</version>
-    <groupId>gov.gsa.cnxs.pricing</groupId>
-    <artifactId>pricing-aggregator</artifactId>
-    <packaging>pom</packaging>
-    <name>Conexus Pricing Aggregator</name>
-
-    <modules>
-        <module>api</module>
-        <module>core</module>
-        <module>integration</module>
-    </modules>
-
-    <properties>
-        <version.domain>02.00.000.172-SNAPSHOT</version.domain>
-        <version.common>02.00.000.160-SNAPSHOT</version.common>
-    </properties>
+  <name>pricing-ear</name>
 
     <dependencies>
         <dependency>
-            <groupId>gov.gsa.cnxs.domain</groupId>
-            <artifactId>domain-aggregator</artifactId>
-            <version>${version.domain}</version>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>gov.gsa.cnxs.domain</groupId>
-            <artifactId>domain</artifactId>
-            <version>${version.domain}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>gov.gsa.cnxs.common</groupId>
-            <artifactId>common-aggregator</artifactId>
-            <version>${version.common}</version>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>gov.gsa.cnxs.common</groupId>
-            <artifactId>common-utils</artifactId>
-            <version>${version.common}</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>gov.gsa.cnxs.common</groupId>
-            <artifactId>common-test-utils</artifactId>
-            <version>${version.common}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <scope>test</scope>
+            <groupId>gov.gsa.cnxs.pricing</groupId>
+            <artifactId>pricing-core</artifactId>
+            <version>${project.version}</version>
+            <type>ejb</type>
         </dependency>
     </dependencies>
 
     <build>
+        <finalName>pricing-ear</finalName>
         <plugins>
             <plugin>
-                <groupId>org.openclover</groupId>
-                <artifactId>clover-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-ear-plugin</artifactId>
+                <version>${version.ear.plugin}</version>
                 <configuration>
-                    <setTestFailureIgnore>true</setTestFailureIgnore>
-                    <skip>${skipTests}</skip>
+                    <generateApplicationXml>true</generateApplicationXml>
+                    <!-- Tell Maven we are using Java EE 8 -->
+                    <version>8</version>
+
+                    <defaultLibBundleDir>lib</defaultLibBundleDir>
+                    <outputFileNameMapping>@{artifactId}@@{dashClassifier?}@.@{extension}@</outputFileNameMapping>
+                    <modules>
+                        <ejbModule>
+                            <groupId>gov.gsa.cnxs.pricing</groupId>
+                            <artifactId>pricing-core</artifactId>
+                        </ejbModule>
+                    </modules>
+                    <archive>
+                        <manifestEntries>
+                            <!-- Required so that the Postgres jdbc JAR is loaded before this EAR -->
+                            <Dependencies>org.postgres export</Dependencies>
+                        </manifestEntries>
+                    </archive>
                 </configuration>
-                <executions>
-                  <execution>
-                    <phase>verify</phase>
-                    <goals>
-                      <goal>instrument-test</goal>
-                      <goal>check</goal>
-                    </goals>
-                  </execution>
-                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
             </plugin>
         </plugins>
     </build>
-</project>
-
-
-
-pricing/integration/pom.xml
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <artifactId>pricing-aggregator</artifactId>
-        <groupId>gov.gsa.cnxs.pricing</groupId>
-        <version>02.00.000.146-SNAPSHOT</version>
-    </parent>
-    <modelVersion>4.0.0</modelVersion>
-
-    <artifactId>pricing-integration</artifactId>
-    <packaging>pom</packaging>
-    <name>Pricing Integration</name>
-
-    <modules>
-        <module>integration-ear</module>
-        <module>integration-test</module>
-    </modules>
 
 </project>
 
 
-
-pricing/core/pom.xml
+pricing/integration/integration-test/pom.xml
 
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <artifactId>pricing-aggregator</artifactId>
+        <artifactId>pricing-integration</artifactId>
         <groupId>gov.gsa.cnxs.pricing</groupId>
         <version>02.00.000.146-SNAPSHOT</version>
     </parent>
 
-    <artifactId>pricing-core</artifactId>
-    <name>Conexus Pricing Facade Core</name>
+    <artifactId>pricing-integration-test</artifactId>
+    <properties>
+        <skipUnitTests>false</skipUnitTests>
+        <jboss-home>${project.build.directory}/jboss</jboss-home>
+
+        <postgres.docker.volume.directory>${project.build.directory}/cnxs-pg-data</postgres.docker.volume.directory>
+    </properties>
 
     <dependencies>
-        <!-- Conexus Libraries -->
         <dependency>
             <groupId>gov.gsa.cnxs.pricing</groupId>
-            <artifactId>pricing-api</artifactId>
+            <artifactId>pricing-ear</artifactId>
             <version>${project.version}</version>
+            <type>ear</type>
         </dependency>
+
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>gov.gsa.cnxs.domain</groupId>
-            <artifactId>domain</artifactId>
+            <groupId>gov.gsa.cnxs.domain.test</groupId>
+            <artifactId>domain-test-ear</artifactId>
             <version>${version.domain}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Java EE -->
-        <dependency>
-            <groupId>jakarta.ejb</groupId>
-            <artifactId>jakarta.ejb-api</artifactId>
-            <scope>provided</scope>
+            <type>ear</type>
         </dependency>
 
         <dependency>
-            <groupId>jakarta.validation</groupId>
-            <artifactId>jakarta.validation-api</artifactId>
+            <groupId>gov.gsa.cnxs.domain.test</groupId>
+            <artifactId>domain-test-api</artifactId>
+            <version>${version.domain}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>gov.gsa.cnxs.pricing</groupId>
+            <artifactId>pricing-core</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>gov.gsa.cnxs.domain.test</groupId>
+            <artifactId>domain-integration</artifactId>
+            <version>${version.domain}</version>
+            <type>test-jar</type>
         </dependency>
 
         <dependency>
@@ -169,53 +122,241 @@ pricing/core/pom.xml
             <artifactId>jakarta.el</artifactId>
             <scope>test</scope>
         </dependency>
-    </dependencies>
 
-    <build>
-        <finalName>${project.artifactId}</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.openclover</groupId>
-                <artifactId>clover-maven-plugin</artifactId>
-                <configuration>
-                    <targetPercentage>72.3%</targetPercentage>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-</project>
-
-
-pricing/api/pom.xml
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <parent>
-        <artifactId>pricing-aggregator</artifactId>
-        <groupId>gov.gsa.cnxs.pricing</groupId>
-        <version>02.00.000.146-SNAPSHOT</version>
-    </parent>
-
-    <artifactId>pricing-api</artifactId>
-    <name>Conexus Pricing Facade API</name>
-
-    <dependencies>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <scope>provided</scope>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
+    <profiles>
+        <profile>
+            <id>integration-test</id>
+            <activation>
+                <property>
+                    <name>skip.docker</name>
+                    <value>false</value>
+                </property>
+            </activation>
+            <dependencies>
+<!--                <dependency>-->
+<!--                    <groupId>gov.gsa.cnxs.db</groupId>-->
+<!--                    <artifactId>schema</artifactId>-->
+<!--                    <version>${version.schema}</version>-->
+<!--                    <classifier>data</classifier>-->
+<!--                    <type>tar.gz</type>-->
+<!--                </dependency>-->
+                <dependency>
+                    <groupId>gov.gsa.cnxs.db</groupId>
+                    <artifactId>pg-datafile</artifactId>
+                    <classifier>postgres-data</classifier>
+                    <version>${version.cnxs-pg-datafile}</version>
+                    <type>tar.gz</type>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <!-- compile our integration tests -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>test-compile</phase>
+                                <goals>
+                                    <goal>testCompile</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Tell surefire to skip test, we are using the failsafe plugin -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>unpack-cnxs-pg-datafile</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>unpack-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <includeArtifactIds>pg-datafile</includeArtifactIds>
+                                    <includeClassifiers>postgres-data</includeClassifiers>
+                                    <type>tar.gz</type>
+                                    <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
+                                </configuration>
+                            </execution>
+
+<!--                            <execution>-->
+<!--                                <id>copy-schema</id>-->
+<!--                                <phase>process-resources</phase>-->
+<!--                                <goals>-->
+<!--                                    <goal>copy</goal>-->
+<!--                                </goals>-->
+<!--                                <configuration>-->
+<!--                                    <artifactItems>-->
+<!--                                        <artifactItem>-->
+<!--                                            <groupId>gov.gsa.cnxs.db</groupId>-->
+<!--                                            <artifactId>schema</artifactId>-->
+<!--                                            <version>${version.schema}</version>-->
+<!--                                            <classifier>data</classifier>-->
+<!--                                            <type>tar.gz</type>-->
+<!--                                            <destFileName>schema.tar.gz</destFileName>-->
+<!--                                        </artifactItem>-->
+<!--                                    </artifactItems>-->
+
+<!--                                    <outputDirectory>${oracle.docker.volume.directory}/upgrade</outputDirectory>-->
+<!--                                </configuration>-->
+<!--                            </execution>-->
+                        </executions>
+                    </plugin>
+
+                    <!-- create / start a docker image containing jboss and our artifacts -->
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>start-container</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop-container</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                    <goal>remove</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <verbose>true</verbose>
+                            <removeAll>true</removeAll>
+                            <images>
+                                <image>
+                                    <name>${dbPostgresHost}</name>
+                                    <alias>${dbPostgresHost}</alias>
+                                    <build>
+                                        <from>${docker.postgres}</from>
+                                        <cleanup>remove</cleanup>
+                                    </build>
+                                    <run>
+                                        <namingStrategy>alias</namingStrategy>
+                                        <network>
+                                            <mode>custom</mode>
+                                            <name>isolated_nw</name>
+                                        </network>
+                                        <wait>
+                                            <log>${postgres.started.message}</log>
+                                            <time>${docker.timeout}</time>
+                                            <kill>60000</kill>
+                                        </wait>
+                                        <volumes>
+                                            <bind>
+                                                <volume>${postgres.docker.volume.directory}:${postgresVolumeMount}</volume>
+                                            </bind>
+                                        </volumes>
+                                        <log>
+                                            <enabled>true</enabled>
+                                            <prefix>CNX-POSTGRES</prefix>
+                                            <color>green</color>
+                                        </log>
+                                    </run>
+                                </image>
+                                <image>
+                                    <name>${jboss.docker.alias}</name>
+                                    <alias>${jboss.docker.alias}</alias>
+                                    <build>
+                                        <from>${docker.jboss-pg}</from>
+                                        <assembly>
+                                            <user>jboss:jboss:jboss</user>
+                                            <basedir>${docker.jboss.home}/standalone</basedir>
+                                            <descriptor>assembly.xml</descriptor>
+                                        </assembly>
+                                        <cleanup>remove</cleanup>
+                                    </build>
+                                    <run>
+                                        <namingStrategy>alias</namingStrategy>
+                                        <network>
+                                            <mode>custom</mode>
+                                            <name>isolated_nw</name>
+                                        </network>
+                                        <wait>
+                                            <log>${jboss.started.message}</log>
+                                            <time>${docker.timeout}</time>
+                                        </wait>
+                                        <dependsOn>
+                                            <container>${dbPostgresHost}</container>
+                                        </dependsOn>
+                                        <env>
+                                            <CONEXUS_DB_URL>jdbc:postgresql://${dbPostgresHost}:${dbPostgresPort}/${dbPostgresService}</CONEXUS_DB_URL>
+                                            <JBOSS_BIND_ADDRESS>${jboss.host}</JBOSS_BIND_ADDRESS>
+                                            <JBOSS_BIND_ADDRESS_MANAGEMENT>${jboss.host}</JBOSS_BIND_ADDRESS_MANAGEMENT>
+                                        </env>
+                                        <log>
+                                            <enabled>true</enabled>
+                                            <prefix>CNX-JBOSS</prefix>
+                                            <color>yellow</color>
+                                        </log>
+                                    </run>
+                                </image>
+                            </images>
+                        </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>non-forked</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                                <configuration>
+                                    <runOrder>alphabetical</runOrder>
+                                    <includes>
+                                        <include>gov.gsa.nsfs.**</include>
+                                        <include>**/*IT.java</include>
+                                    </includes>
+                                    <systemPropertyVariables>
+                                        <conexus.jboss.host>${jboss.host}</conexus.jboss.host>
+                                        <conexus.jms.host>${jboss.host}</conexus.jms.host>
+                                        <postgres.host>${dbPostgresHost}</postgres.host>
+                                        <hibernate.properties>db-postgres.properties</hibernate.properties>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <version>${version.maven-failsafe-plugin}</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
     <build>
         <plugins>
             <plugin>
-                <groupId>org.openclover</groupId>
-                <artifactId>clover-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
                 <configuration>
-                    <targetPercentage>82.2%</targetPercentage>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
         </plugins>
