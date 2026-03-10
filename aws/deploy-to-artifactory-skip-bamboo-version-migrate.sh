@@ -198,6 +198,7 @@ ChildBranchName=${ChildBranchName}
 pluginRepositoryUrl=${pluginRepositoryUrl}
 mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}
 isLongLived=true
+mavenVersion=${mavenVersion:-}
 EOF
 else
   pluginRepositoryUrl="$(normalize_url "${ARTIFACTORY_BASE_URL}/artifactory/${DEFAULT_PLUGIN_REPO}")"
@@ -215,6 +216,7 @@ ChildBranchName=
 pluginRepositoryUrl=${pluginRepositoryUrl}
 mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}
 isLongLived=false
+mavenVersion=${mavenVersion:-}
 EOF
 fi
 
@@ -233,7 +235,7 @@ fi
 echo "Deploy enabled on '${BranchName}' → deploying to ${mavenFeatureRepositoryUrl}"
 
 if (( NO_DEPLOY )); then
-  echo "NO_DEPLOY=1 → skipping mvn deploy"
+  echo "NO_DEPLOY=1 skipping mvn deploy"
 else
   POM_TO_USE="$(resolve_pom_path)"
   mvn -B -U -s "$MAVEN_SETTINGS_OUT" -f "$POM_TO_USE" deploy -DskipTests=true \
@@ -241,6 +243,24 @@ else
     -Dbamboo.inject.mavenFeatureRepositoryUrl="${mavenFeatureRepositoryUrl}" \
     -Dbamboo.inject.pluginRepositoryUrl="${pluginRepositoryUrl}" \
     -DaltDeploymentRepository="${MAVEN_SERVER_ID}::${mavenFeatureRepositoryUrl}"
+
+  if [[ -n "${buildVersionQueryGroup:-}" && -n "${buildVersionQueryArtifact:-}" && -n "${mavenVersion:-}" ]]; then
+    echo "Query latestVersion: ${ARTIFACTORY_BASE_URL}/artifactory/api/search/latestVersion?g=${buildVersionQueryGroup}&a=${buildVersionQueryArtifact}&v=${mavenVersion}&repos=${SNAPSHOT_DEPLOY_REPO}"
+
+    latestVersion="$(
+      curl -fsS -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+        "${ARTIFACTORY_BASE_URL}/artifactory/api/search/latestVersion?g=${buildVersionQueryGroup}&a=${buildVersionQueryArtifact}&v=${mavenVersion}&repos=${SNAPSHOT_DEPLOY_REPO}"
+    )"
+
+    if [[ -n "${latestVersion}" ]]; then
+      echo "latestVersion=${latestVersion}" >> file.properties
+      echo "Resolved latestVersion=${latestVersion}"
+    else
+      echo "WARNING: latestVersion query returned empty result"
+    fi
+  else
+    echo "Skipping latestVersion lookup because one or more query inputs are missing"
+  fi
 fi
 
 echo
