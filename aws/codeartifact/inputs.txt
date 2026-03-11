@@ -18,38 +18,24 @@ lsblk
 
 
 
-date
+mkdir -p /root/bitbucket-upgrade-20260311
 
-echo "=== containers ==="
-docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+echo "=== disk space ==="
+df -h
 
-echo "=== real Bitbucket volume paths ==="
-docker volume inspect bitbucketVolume optbitbucketVolume
+echo "=== current Bitbucket config file ==="
+docker exec cnxs-mgmt-bitbucket bash -lc 'sed -n "1,200p" /var/atlassian/application-data/bitbucket/shared/bitbucket.properties'
 
-echo "=== app/docker paths ==="
-ls -ld /app/docker/volumes/bitbucketVolume/_data /app/docker/volumes/optbitbucketVolume/_data
+echo "=== shared plugins ==="
+docker exec cnxs-mgmt-bitbucket bash -lc 'find /var/atlassian/application-data/bitbucket/shared/plugins -maxdepth 3 -type f | sort'
 
-echo "=== var/lib/docker paths ==="
-ls -ld /var/lib/docker/volumes/bitbucketVolume/_data /var/lib/docker/volumes/optbitbucketVolume/_data
+echo "=== possible SSO / auth clues ==="
+docker exec cnxs-mgmt-bitbucket bash -lc 'find /var/atlassian/application-data/bitbucket/shared -maxdepth 4 -type f | egrep -i "sso|saml|okta|crowd|auth|plugin" | sort'
 
-echo "=== resolve /var/lib/docker/volumes ==="
-readlink -f /var/lib/docker/volumes || true
+echo "=== save current container and network metadata ==="
+docker inspect cnxs-mgmt-bitbucket > /root/bitbucket-upgrade-20260311/cnxs-mgmt-bitbucket.inspect.json
+docker network inspect prod-net > /root/bitbucket-upgrade-20260311/prod-net.inspect.json
+docker volume inspect bitbucketVolume optbitbucketVolume pgdataVolume16 > /root/bitbucket-upgrade-20260311/volumes.inspect.json
 
-echo "=== Bitbucket home basics ==="
-docker exec cnxs-mgmt-bitbucket bash -lc 'ls -lah /var/atlassian/application-data/bitbucket'
-docker exec cnxs-mgmt-bitbucket bash -lc 'find /var/atlassian/application-data/bitbucket -maxdepth 3 \( -name bitbucket.properties -o -name ssh-server-keys.pem -o -name secrets-config.yaml \) -type f -ls'
-
-echo "=== recent nightly backup log ==="
-tail -150 /app/bamboobackup/atlassian-backups/logs/nightly-$(date +%F).log || \
-tail -150 /app/bamboobackup/atlassian-backups/logs/nightly-$(date -d 'yesterday' +%F).log
-
-echo "=== S3 nightly postgres objects ==="
-aws s3 ls s3://cnxs-atlassian-backups/postgres/$(date +%F)/ --recursive || \
-aws s3 ls s3://cnxs-atlassian-backups/postgres/$(date -d 'yesterday' +%F)/ --recursive
-
-echo "=== S3 nightly app objects ==="
-aws s3 ls s3://cnxs-atlassian-backups/apps/$(date +%F)/ --recursive || \
-aws s3 ls s3://cnxs-atlassian-backups/apps/$(date -d 'yesterday' +%F)/ --recursive
-
-echo "=== weekly area ==="
-aws s3 ls s3://cnxs-atlassian-backups/weekly/ --recursive | tail -50
+echo "=== try target image pull ==="
+docker pull atlassian/bitbucket:9.4.17
