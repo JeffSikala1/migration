@@ -1,1 +1,55 @@
-Hi Bob — I was working on the UI build in Bamboo and noticed that while the build and deployment completed successfully, there is still one frontend unit test failing that the pipeline is currently allowing to continue. The failing test is Task Order Scoped Users Grid Service Instance Methods initGrid() Inactive Tab only has allTaskOrdersFilter for admins FAILED, and it appears the test expects optionLabel: 'label' on the filter field but the actual object does not include it. Just wanted to flag it in case it needs to be updated or the implementation changed.
+aws ec2 modify-volume --volume-id vol-xxxxxxxxxxxxxxxxx --size 1200
+
+
+
+lsblk
+df -hT /app/jfrog
+
+
+
+sudo xfs_growfs /app/jfrog
+
+df -hT /app/jfrog
+
+
+df -hT /app/jfrog
+lsblk
+
+
+
+
+date
+
+echo "=== containers ==="
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+
+echo "=== real Bitbucket volume paths ==="
+docker volume inspect bitbucketVolume optbitbucketVolume
+
+echo "=== app/docker paths ==="
+ls -ld /app/docker/volumes/bitbucketVolume/_data /app/docker/volumes/optbitbucketVolume/_data
+
+echo "=== var/lib/docker paths ==="
+ls -ld /var/lib/docker/volumes/bitbucketVolume/_data /var/lib/docker/volumes/optbitbucketVolume/_data
+
+echo "=== resolve /var/lib/docker/volumes ==="
+readlink -f /var/lib/docker/volumes || true
+
+echo "=== Bitbucket home basics ==="
+docker exec cnxs-mgmt-bitbucket bash -lc 'ls -lah /var/atlassian/application-data/bitbucket'
+docker exec cnxs-mgmt-bitbucket bash -lc 'find /var/atlassian/application-data/bitbucket -maxdepth 3 \( -name bitbucket.properties -o -name ssh-server-keys.pem -o -name secrets-config.yaml \) -type f -ls'
+
+echo "=== recent nightly backup log ==="
+tail -150 /app/bamboobackup/atlassian-backups/logs/nightly-$(date +%F).log || \
+tail -150 /app/bamboobackup/atlassian-backups/logs/nightly-$(date -d 'yesterday' +%F).log
+
+echo "=== S3 nightly postgres objects ==="
+aws s3 ls s3://cnxs-atlassian-backups/postgres/$(date +%F)/ --recursive || \
+aws s3 ls s3://cnxs-atlassian-backups/postgres/$(date -d 'yesterday' +%F)/ --recursive
+
+echo "=== S3 nightly app objects ==="
+aws s3 ls s3://cnxs-atlassian-backups/apps/$(date +%F)/ --recursive || \
+aws s3 ls s3://cnxs-atlassian-backups/apps/$(date -d 'yesterday' +%F)/ --recursive
+
+echo "=== weekly area ==="
+aws s3 ls s3://cnxs-atlassian-backups/weekly/ --recursive | tail -50
