@@ -1,70 +1,668 @@
-[ec2-user@ip-10-56-112-243 ~]$ ll
-total 0
-[ec2-user@ip-10-56-112-243 ~]$ df -Th
-Filesystem       Type      Size  Used Avail Use% Mounted on
-devtmpfs         devtmpfs  4.0M     0  4.0M   0% /dev
-tmpfs            tmpfs     7.7G     0  7.7G   0% /dev/shm
-tmpfs            tmpfs     3.1G  836K  3.1G   1% /run
-/dev/nvme0n1p1   xfs       150G   13G  137G   9% /
-tmpfs            tmpfs     7.7G   96K  7.7G   1% /tmp
-/dev/nvme0n1p128 vfat       10M  1.3M  8.7M  13% /boot/efi
-tmpfs            tmpfs     1.6G     0  1.6G   0% /run/user/1000
-/dev/nvme1n1     xfs       800G  710G   90G  89% /app/jfrog
-/dev/nvme2n1     xfs       200G  6.2G  194G   4% /app/postgres
-[ec2-user@ip-10-56-112-243 ~]$ free
-               total        used        free      shared  buff/cache   available
-Mem:        16086132     4600428      295724      145028    11189980    11004340
-Swap:              0           0           0
-[ec2-user@ip-10-56-112-243 ~]$ free -h
-               total        used        free      shared  buff/cache   available
-Mem:            15Gi       4.4Gi       288Mi       141Mi        10Gi        10Gi
-Swap:             0B          0B          0B
-[ec2-user@ip-10-56-112-243 ~]$ sudp pvgs
--bash: sudp: command not found
-[ec2-user@ip-10-56-112-243 ~]$ sudp pvg
--bash: sudp: command not found
-[ec2-user@ip-10-56-112-243 ~]$ sudp pv
--bash: sudp: command not found
-[ec2-user@ip-10-56-112-243 ~]$ sudo pvgs
-sudo: pvgs: command not found
-[ec2-user@ip-10-56-112-243 ~]$ sudo pvg
-sudo: pvg: command not found
-[ec2-user@ip-10-56-112-243 ~]$ sudo lvg
-sudo: lvg: command not found
-[ec2-user@ip-10-56-112-243 ~]$ sudo fdisk -l
-Disk /dev/nvme0n1: 150 GiB, 161061273600 bytes, 314572800 sectors
-Disk model: Amazon Elastic Block Store              
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 4096 bytes
-I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-Disklabel type: gpt
-Disk identifier: D3E6C813-9ECB-4100-9D7A-23A4A4DF25DB
+[root@ip-10-56-112-34 ec2-user]# docker  ps
+CONTAINER ID   IMAGE                        COMMAND                  CREATED        STATUS        PORTS                                                                                 NAMES
+060d937ba842   atlassian/bamboo:9.6.6       "/usr/bin/tini -- /e…"   2 months ago   Up 3 weeks    0.0.0.0:8085->8085/tcp, 0.0.0.0:8443->8443/tcp, 54663/tcp, 0.0.0.0:54663->54664/tcp   prod-bamboo
+45bc929b6696   atlassian/bitbucket:8.19.9   "/usr/bin/tini -- /e…"   3 months ago   Up 3 months   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp                                        cnxs-mgmt-bitbucket
+704e46755f36   postgres:16.5                "docker-entrypoint.s…"   3 months ago   Up 3 months   0.0.0.0:32769->5432/tcp                                                               prod-postgres
+5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   3 months ago   Up 3 months   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp                                              nginx
+[root@ip-10-56-112-34 ec2-user]# docker container inspect cnxs-mgmt-bitbucket
+[
+    {
+        "Id": "45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987",
+        "Created": "2025-12-02T17:58:54.452535789Z",
+        "Path": "/usr/bin/tini",
+        "Args": [
+            "--",
+            "/entrypoint.py",
+            "--log=INFO"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 2099420,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2025-12-02T20:00:23.910563232Z",
+            "FinishedAt": "2025-12-02T20:00:07.935533976Z"
+        },
+        "Image": "sha256:5b11aaa18086aa020e51ca04ad279c73555a2dcb57f23d9aa63caf88f36b7168",
+        "ResolvConfPath": "/app/docker/containers/45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987/resolv.conf",
+        "HostnamePath": "/app/docker/containers/45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987/hostname",
+        "HostsPath": "/app/docker/containers/45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987/hosts",
+        "LogPath": "/app/docker/containers/45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987/45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987-json.log",
+        "Name": "/cnxs-mgmt-bitbucket",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "optbitbucketVolume:/opt/atlassian",
+                "bitbucketVolume:/var/atlassian/application-data/bitbucket"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "prod-net",
+            "PortBindings": {
+                "7990/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "7990"
+                    }
+                ],
+                "7999/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "7999"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                57,
+                185
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [
+                {
+                    "Name": "nofile",
+                    "Hard": 65536,
+                    "Soft": 32768
+                }
+            ],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/asound",
+                "/proc/acpi",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/sys/firmware",
+                "/sys/devices/virtual/powercap"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/app/docker/overlay2/ccf4678ccb0fd513bb98a305876d99e38f10af30154017fb8bb0f6f0482be413-init/diff:/app/docker/overlay2/b43df4df1846140921c7c4c89ad296f5628267f6a92e7c232e410df56fc7e4a8/diff:/app/docker/overlay2/8f339bab731ff9a3ac9c248c793c7665cb647c29aee77da54e87f7de3fe7ab5f/diff:/app/docker/overlay2/a13a1c50c3d9dd5eff6cb838b20ec69a5722c2ee944f87575780ff207f5da412/diff:/app/docker/overlay2/c669805e2b9243e5aed7148c43d4128b7ae338f9f683063e5622d943578df49b/diff:/app/docker/overlay2/76cd8660d880053dccd0999977acf932b3afeb61d9eda728bf67e16626c515a8/diff:/app/docker/overlay2/06cb84a554ef4dc250c7dd13f2a60cc9fdd4b0d51e2d9c4c7328a0a5d6dd713c/diff:/app/docker/overlay2/b2a823affea12f9fde814b178a264cb2a2b0d762c05581f8396de9aae5818a47/diff:/app/docker/overlay2/12f26fe725e548a7ab23c2af7b0bec7e1f7742e45a54d46bf4a5333ffbb6ed39/diff:/app/docker/overlay2/48d075d10541c3f9abc1a27d9f49eda90039fedb60fdbba84d5f47e6c1009567/diff:/app/docker/overlay2/76f4306605dff7db4b80c67cafb5e202098db01cc2f582e99a499f7c62854f31/diff:/app/docker/overlay2/aa68761f4a959b23c73a312e8903537f6d16eb94d9c0c997ad70454174998b2a/diff:/app/docker/overlay2/831ca805487021f478a241c110814397009345fcd9d56e19acd827665d50b94e/diff:/app/docker/overlay2/f07fdf5b101321626db58ede937b3758bd69635e8ff97428a346bc9a57ef0238/diff",
+                "MergedDir": "/app/docker/overlay2/ccf4678ccb0fd513bb98a305876d99e38f10af30154017fb8bb0f6f0482be413/merged",
+                "UpperDir": "/app/docker/overlay2/ccf4678ccb0fd513bb98a305876d99e38f10af30154017fb8bb0f6f0482be413/diff",
+                "WorkDir": "/app/docker/overlay2/ccf4678ccb0fd513bb98a305876d99e38f10af30154017fb8bb0f6f0482be413/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "volume",
+                "Name": "bitbucketVolume",
+                "Source": "/app/docker/volumes/bitbucketVolume/_data",
+                "Destination": "/var/atlassian/application-data/bitbucket",
+                "Driver": "local",
+                "Mode": "z",
+                "RW": true,
+                "Propagation": ""
+            },
+            {
+                "Type": "volume",
+                "Name": "optbitbucketVolume",
+                "Source": "/app/docker/volumes/optbitbucketVolume/_data",
+                "Destination": "/opt/atlassian",
+                "Driver": "local",
+                "Mode": "z",
+                "RW": true,
+                "Propagation": ""
+            }
+        ],
+        "Config": {
+            "Hostname": "bitbucket",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "7990/tcp": {},
+                "7999/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "JVM_MINIMUM_MEMORY=1g",
+                "JVM_MAXIMUM_MEMORY=2g",
+                "JVM_SUPPORT_RECOMMENDED_ARGS=-Duser.timezone=America/Denver",
+                "ATL_TOMCAT_SECURE=true",
+                "ATL_TOMCAT_SCHEME=https",
+                "ATL_PROXY_NAME=bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov",
+                "ATL_PROXY_PORT=443",
+                "PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "JAVA_HOME=/opt/java/openjdk",
+                "LANG=en_US.UTF-8",
+                "LANGUAGE=en_US:en",
+                "LC_ALL=en_US.UTF-8",
+                "JAVA_VERSION=jdk-17.0.16+8",
+                "APP_NAME=bitbucket",
+                "RUN_USER=bitbucket",
+                "RUN_GROUP=bitbucket",
+                "RUN_UID=2003",
+                "RUN_GID=2003",
+                "BITBUCKET_HOME=/var/atlassian/application-data/bitbucket",
+                "BITBUCKET_INSTALL_DIR=/opt/atlassian/bitbucket",
+                "SEARCH_ENABLED=true",
+                "APPLICATION_MODE=default",
+                "JRE_HOME=/opt/java/openjdk",
+                "JAVA_BINARY=/opt/java/openjdk/bin/java"
+            ],
+            "Cmd": [
+                "/entrypoint.py",
+                "--log=INFO"
+            ],
+            "Image": "atlassian/bitbucket:8.19.9",
+            "Volumes": {
+                "/var/atlassian/application-data/bitbucket": {}
+            },
+            "WorkingDir": "/var/atlassian/application-data/bitbucket",
+            "Entrypoint": [
+                "/usr/bin/tini",
+                "--"
+            ],
+            "OnBuild": null,
+            "Labels": {
+                "maintainer": "dc-deployments@atlassian.com",
+                "org.opencontainers.image.ref.name": "ubuntu",
+                "org.opencontainers.image.version": "24.04",
+                "securitytxt": "https://www.atlassian.com/.well-known/security.txt"
+            }
+        },
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "02b8f6bc9f25a646df3a2dd03eb697a70cd128c99638ed7ef710d0cb37c34b97",
+            "SandboxKey": "/var/run/docker/netns/02b8f6bc9f25",
+            "Ports": {
+                "7990/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "7990"
+                    }
+                ],
+                "7999/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "7999"
+                    }
+                ]
+            },
+            "HairpinMode": false,
+            "LinkLocalIPv6Address": "",
+            "LinkLocalIPv6PrefixLen": 0,
+            "SecondaryIPAddresses": null,
+            "SecondaryIPv6Addresses": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "MacAddress": "",
+            "Networks": {
+                "prod-net": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "bitbucket",
+                        "45bc929b6696"
+                    ],
+                    "MacAddress": "02:42:ac:12:00:03",
+                    "NetworkID": "d81e4102f500b69cf6f85ba6886e02fa6dbd2e5db304c2488d4ad4a0d9dc30b8",
+                    "EndpointID": "56158f305f8a5dcb131afedc2b4042433bd3da143613a8302d2b14183933cb41",
+                    "Gateway": "172.18.0.1",
+                    "IPAddress": "172.18.0.3",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DriverOpts": null,
+                    "DNSNames": [
+                        "cnxs-mgmt-bitbucket",
+                        "bitbucket",
+                        "45bc929b6696"
+                    ]
+                }
+            }
+        }
+    }
+]
+[root@ip-10-56-112-34 ec2-user]# docker volume ls
+DRIVER    VOLUME NAME
+local     bambooVolume
+local     bitbucketVolume
+local     nginxVolume
+local     optbambooVolume
+local     optbitbucketVolume
+local     pgdataVolume16
+[root@ip-10-56-112-34 ec2-user]# docker volume inspect optbitbucketVolume bitbucketVolume
+[
+    {
+        "CreatedAt": "2025-11-26T20:15:06Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/app/docker/volumes/optbitbucketVolume/_data",
+        "Name": "optbitbucketVolume",
+        "Options": null,
+        "Scope": "local"
+    },
+    {
+        "CreatedAt": "2025-11-26T20:14:23Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/app/docker/volumes/bitbucketVolume/_data",
+        "Name": "bitbucketVolume",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+[root@ip-10-56-112-34 ec2-user]# history |grep cron
+  323  crontab -e
+  332  crontab -e
+  493  crontab -e
+  497  crontab -e
+  504  crontab -l
+  512  less /var/log/cron
+  516  crontab -l
+  520  crontab -l
+  558  crontab -e
+  811  crontab -l
+  830  crontab -l
+  832  crontab -l
+  835  crontab -l
+  845  crontab -l
+  848  crontab -l
+  850  crontab -l
+  872  crontab -l
+  881  crontab -l
+  887  crontab -l
+  955  history |grep cron
+[root@ip-10-56-112-34 ec2-user]# crontab -l
+#Ansible: CIS 1.3.2 - Run aide filesystem integrity check
+0 5 * * * /usr/sbin/aide --check
 
-Device           Start       End   Sectors  Size Type
-/dev/nvme0n1p1   24576 314572766 314548191  150G Linux filesystem
-/dev/nvme0n1p127 22528     24575      2048    1M BIOS boot
-/dev/nvme0n1p128  2048     22527     20480   10M EFI System
-
-Partition table entries are not in disk order.
+0 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/aws_script.sh 2>&1
+15 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/cnxs_script.sh 2>&1
+30 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/devops_script.sh 2>&1
+45 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/docker_script.sh 2>&1
 
 
-Disk /dev/nvme1n1: 800 GiB, 858993459200 bytes, 1677721600 sectors
-Disk model: Amazon Elastic Block Store              
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 4096 bytes
-I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+# Nightly at 02:15
+15 2 * * * /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
 
+# Weekly Sunday at 03:00
+0 3 * * 0 /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
 
-Disk /dev/nvme2n1: 200 GiB, 214748364800 bytes, 419430400 sectors
-Disk model: Amazon Elastic Block Store              
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 4096 bytes
-I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-[ec2-user@ip-10-56-112-243 ~]$ sudo lsblk
-NAME          MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
-nvme0n1       259:0    0  150G  0 disk 
-├─nvme0n1p1   259:3    0  150G  0 part /
-├─nvme0n1p127 259:4    0    1M  0 part 
-└─nvme0n1p128 259:5    0   10M  0 part /boot/efi
-nvme1n1       259:1    0  800G  0 disk /app/jfrog
-nvme2n1       259:2    0  200G  0 disk /app/postgres
+# Daily Secrets Manager backup (encrypted to S3)
+55 1 * * * /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
+
+0 4 * * * find /app/bamboobackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+
+[root@ip-10-56-112-34 ec2-user]# cat /home/ec2-user/bitbucket_mirror_data/aws_script.sh
+#!/usr/bin/env bash
+
+SOURCE_GIT_SERVER="ssh://git@bbmirror.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999"
+SOURCE_GIT_SERVER_DESCRIPTION="conexus-bitbucket"
+DEST_GIT_SERVER="ssh://git@localhost:7999"
+DEST_GIT_SERVER_DESCRIPTION="aws-bitbucket"
+declare -a repos=(\
+    "scripts" \
+    )
+
+cd /home/ec2-user/bitbucket_mirror_data/aws
+
+for i in "${repos[@]}"
+do
+    if [  -d "$i.mirror" ]; then
+        echo "Forcing overwrite of $i"
+        echo ""
+        cd $i.mirror
+        git fetch origin
+        echo "Pushing $i to $DEST_GIT_SERVER_DESCRIPTION"
+        git push  $DEST_GIT_SERVER/usda/$i --tags --force
+        git push  $DEST_GIT_SERVER/usda/$i --all --force
+        cd ..
+    else
+        echo "Cloning $i from $SOURCE_GIT_SERVER_DESCRIPTION"
+        echo ""
+        git clone  --mirror $SOURCE_GIT_SERVER/usda/$i.git $i.mirror
+        cd $i.mirror
+        echo "Pushing $i to $DEST_GIT_SERVER_DESCRIPTION"
+        echo ""
+        git push  $DEST_GIT_SERVER/usda/$i --all --force
+        git push  $DEST_GIT_SERVER/usda/$i --tags --force
+        cd ..
+    fi
+done
+[root@ip-10-56-112-34 ec2-user]# cat /home/ec2-user/bitbucket_mirror_data/^C
+[root@ip-10-56-112-34 ec2-user]# cat /home/ec2-user/bitbucket_mirror_data/cnxs_script.sh
+#!/usr/bin/env bash
+
+SOURCE_GIT_SERVER="ssh://git@bbmirror.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999"
+SOURCE_GIT_SERVER_DESCRIPTION="conexus-bitbucket"
+DEST_GIT_SERVER="ssh://git@localhost:7999"
+DEST_GIT_SERVER_DESCRIPTION="aws-bitbucket"
+declare -a repos=(\
+    "api_gateway" \
+    "billingsftp" \
+    "bsstwiki" \
+    "cnxs-unified-automation" \
+    "common" \
+    "common-rest" \
+    "contract-mod" \
+    "datafile" \
+    "dba_scripts" \
+    "development-utils" \
+    "domain" \
+    "dpa" \
+    "env" \
+    "functional-automation" \
+    "help" \
+    "help-working-files" \
+    "icam" \
+    "iconectiv" \
+    "pricing" \
+    "reconciliation" \
+    "refdata_processing" \
+    "reporting" \
+    "rest" \
+    "schema" \
+    "task" \
+    "temp-utility-module" \
+    "temp-application-01" \
+    "TestAutomation" \
+    "ui" \
+    "ui-public" \
+    "vendoremulator" \
+    "webservices" \
+    "ws" \
+    "ws-client" \
+    )
+
+cd /home/ec2-user/bitbucket_mirror_data/conexus
+
+for i in "${repos[@]}"
+do
+    if [  -d "$i.mirror" ]; then
+        echo "Forcing overwrite of $i"
+        echo ""
+        cd $i.mirror
+        git fetch origin
+        echo "Pushing $i to $DEST_GIT_SERVER_DESCRIPTION"
+        git push --quiet $DEST_GIT_SERVER/cnxs/$i --tags --force
+        git push --quiet $DEST_GIT_SERVER/cnxs/$i --all --force
+        cd ..
+    else
+        echo "Cloning $i from $SOURCE_GIT_SERVER_DESCRIPTION"
+        echo ""
+        git clone --quiet --mirror $SOURCE_GIT_SERVER/cnxs/$i.git $i.mirror
+        cd $i.mirror
+        echo "Pushing $i to $DEST_GIT_SERVER_DESCRIPTION"
+        echo ""
+        git push --quiet $DEST_GIT_SERVER/cnxs/$i --all --force
+        git push --quiet $DEST_GIT_SERVER/cnxs/$i --tags --force
+        cd ..
+    fi
+done
+[root@ip-10-56-112-34 ec2-user]# cat /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ===== Config =====
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+BASE="/app/bamboobackup/atlassian-backups"
+STAGE="${BASE}/staging/${DATE}/${TS}"
+LOGDIR="${BASE}/logs"
+LOG="${LOGDIR}/nightly-${DATE}.log"
+HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+
+PG_CONTAINER="${PG_CONTAINER:-prod-postgres}"
+DB_LIST=(${DB_LIST:-bitbucket bamboo})   # space-separated, override if needed
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+echo "==== Nightly backup start: ${TS} host=${HOSTNAME} ===="
+
+# ===== Helpers =====
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
+need aws
+need docker
+need tar
+
+have_jq=0
+if command -v jq >/dev/null 2>&1; then
+  have_jq=1
+else
+  echo "WARN: jq not found; metadata.json will be minimal."
+fi
+
+s3_put_dir() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest" --recursive
+}
+
+s3_put_file() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest"
+}
+
+# ===== 1) Postgres dumps (logical) =====
+echo "[1/6] Postgres dumps..."
+mkdir -p "$STAGE/postgres"
+
+# quick sanity check container exists
+if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
+  echo "ERROR: Postgres container '$PG_CONTAINER' not running. Aborting."
+  exit 3
+fi
+
+# Dump globals (roles, grants) - optional but recommended
+echo "  - dumping globals (roles/grants)"
+docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
+  > "$STAGE/postgres/globals_${TS}.sql"
+
+for DB in "${DB_LIST[@]}"; do
+  echo "  - dumping ${DB}"
+  docker exec "$PG_CONTAINER" pg_dump -U postgres -Fc "$DB" \
+    > "$STAGE/postgres/${DB}_${TS}.dump"
+done
+
+# ===== 2) Atlassian volumes (tar) =====
+echo "[2/6] Atlassian volume backups..."
+mkdir -p "$STAGE/apps"
+
+tar -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bitbucketVolume/_data \
+  /var/lib/docker/volumes/optbitbucketVolume/_data
+
+tar -czf "$STAGE/apps/bamboo_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bambooVolume/_data \
+  /var/lib/docker/volumes/optbambooVolume/_data
+
+# ===== 3) NGINX + TLS/certs/config =====
+echo "[3/6] NGINX + TLS backup..."
+mkdir -p "$STAGE/nginx"
+
+# Include common cert locations; ignore missing
+tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
+  /etc/nginx \
+  /var/lib/docker/volumes/nginxVolume/_data \
+  /etc/ssl \
+  /etc/pki \
+  2>/dev/null || true
+
+# ===== 4) Bamboo keystores (explicit safety net) =====
+echo "[4/6] Bamboo keystore safety backup..."
+mkdir -p "$STAGE/crypto"
+
+tar -czf "$STAGE/crypto/bamboo_keystores_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bambooVolume/_data \
+  /var/lib/docker/volumes/optbambooVolume/_data \
+  2>/dev/null || true
+
+# ===== 5) Metadata =====
+echo "[5/6] Metadata..."
+if [[ "$have_jq" -eq 1 ]]; then
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
+  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]')
+}
+JSON
+else
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "note": "jq not installed; container/volume inventory omitted"
+}
+JSON
+fi
+
+# ===== 6) Upload to S3 =====
+echo "[6/6] Uploading to S3..."
+s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
+s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
+s3_put_dir  "$STAGE/nginx"    "${BUCKET}/nginx/${DATE}/"
+s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
+s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
+
+# ===== EBS snapshots (same run) =====
+echo "[EXTRA] EBS snapshots..."
+TOKEN_IMDS="$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")"
+
+INSTANCE_ID="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/instance-id)"
+
+AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/placement/availability-zone)"
+
+REGION="${AZ::-1}"
+
+# Find attached EBS volume IDs
+VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
+  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
+
+# Map volume IDs to mount purpose using NVMe serial mapping (common on Nitro)
+# This is best-effort; if it can't map, we still snapshot.
+declare -A VOL_PURPOSE
+VOL_PURPOSE["vol-08f7bca75e08f0d3f"]="root"
+VOL_PURPOSE["vol-05ebadfa92a493533"]="app"
+VOL_PURPOSE["vol-04e3115aea57b5c70"]="backup"
+
+for VOL in $VOL_IDS; do
+  echo "  - snapshotting volume $VOL"
+  PURPOSE_TAG="${VOL_PURPOSE[$VOL]:-unknown}"
+  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
+    --description "Nightly Atlassian backup ${HOSTNAME} ${TS}" \
+    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-atlassian-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=atlassian-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
+    --query SnapshotId --output text)"
+  echo "    created snapshot: $SNAP_ID"
+done
+
+echo "==== Nightly backup completed OK ===="
+
+# Cleanup local staging after successful upload
+echo "Cleaning up local staging..."
+rm -rf "$STAGE"
+[root@ip-10-56-112-34 ec2-user]# cat /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh 
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%G-W%V)"
+
+aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
+aws s3 sync "${BUCKET}/apps/${DATE}/"     "${BUCKET}/weekly/apps/${DATE}/"
+aws s3 sync "${BUCKET}/nginx/${DATE}/"    "${BUCKET}/weekly/nginx/${DATE}/"
+aws s3 sync "${BUCKET}/metadata/${DATE}/" "${BUCKET}/weekly/metadata/${DATE}/"
