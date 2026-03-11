@@ -1,226 +1,434 @@
-[ec2-user@ip-10-56-112-34 ~]$ sudo su
-[root@ip-10-56-112-34 ec2-user]# mkdir -p /root/bitbucket-upgrade-20260311
-[root@ip-10-56-112-34 ec2-user]# df -h
-Filesystem        Size  Used Avail Use% Mounted on
-devtmpfs          4.0M     0  4.0M   0% /dev
-tmpfs              16G     0   16G   0% /dev/shm
-tmpfs             6.2G  9.0M  6.2G   1% /run
-/dev/nvme0n1p1    150G   29G  122G  20% /
-tmpfs              16G   12K   16G   1% /tmp
-/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
-/dev/nvme1n1p1    150G   89G   62G  60% /app
-/dev/nvme2n1      148G   60G   81G  43% /app/bamboobackup
-overlay           150G   89G   62G  60% /app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/merged
-overlay           150G   89G   62G  60% /app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged
-tmpfs             3.1G     0  3.1G   0% /run/user/1000
-overlay           150G   89G   62G  60% /app/docker/overlay2/ccf4678ccb0fd513bb98a305876d99e38f10af30154017fb8bb0f6f0482be413/merged
-overlay           150G   89G   62G  60% /app/docker/overlay2/51dc2b5c2c3f00ccb12a417ee2df5305acdf0180a811e64850d1dcfe41d43497/merged
-[root@ip-10-56-112-34 ec2-user]# docker exec cnxs-mgmt-bitbucket bash -lc 'sed -n "1,200p" /var/atlassian/application-data/bitbucket/shared/bitbucket.properties'
-#>*******************************************************
-#> Migrated to database at jdbc:postgresql://prod-postgres:5432/bitbucket?targetServerType=master
-#> Updated on 2025-11-25T14:42:05.295-07:00
-#>*******************************************************
-jdbc.driver=org.postgresql.Driver
-jdbc.url=jdbc:postgresql://prod-postgres:5432/bitbucket?targetServerType=master
-jdbc.user=bitbucketuser
-jdbc.password=sdifhbIHSDBVipydbfv8345go458g03
-server.port=7990
-server.secure=true
-server.scheme=https
-server.proxy-port=443
-server.proxy-name=bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
-[root@ip-10-56-112-34 ec2-user]# docker exec cnxs-mgmt-bitbucket bash -lc 'find /var/atlassian/application-data/bitbucket/shared/plugins -maxdepth 3 -type f | sort'
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.10994327344950119674.bitbucket-pr-auto-unapprove-5.0.1.jar
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.155855007496914992.commit-graph-for-bitbucket-2025.05.15.jar
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.5565121369864797880.bitbucket-migration-plugin-2.5.73.jar
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.6493291922111642615.bitbucket-look-and-feel-plugin-1.2.4.jar
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.989111831753994000.atlassian-authentication-plugin-4.3.11.jar
-[root@ip-10-56-112-34 ec2-user]# docker exec cnxs-mgmt-bitbucket bash -lc 'find /var/atlassian/application-data/bitbucket/shared -maxdepth 4 -type f | egrep -i "sso|saml|okta|crowd|auth|plugin" | sort'
-/var/atlassian/application-data/bitbucket/shared/config/upgrades/disable-plugins
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.10994327344950119674.bitbucket-pr-auto-unapprove-5.0.1.jar
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.155855007496914992.commit-graph-for-bitbucket-2025.05.15.jar
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.5565121369864797880.bitbucket-migration-plugin-2.5.73.jar
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.6493291922111642615.bitbucket-look-and-feel-plugin-1.2.4.jar
-/var/atlassian/application-data/bitbucket/shared/plugins/installed-plugins/plugin.989111831753994000.atlassian-authentication-plugin-4.3.11.jar
-[root@ip-10-56-112-34 ec2-user]# docker inspect cnxs-mgmt-bitbucket > /root/bitbucket-upgrade-20260311/cnxs-mgmt-bitbucket.inspect.json
-docker network inspect prod-net > /root/bitbucket-upgrade-20260311/prod-net.inspect.json
-docker volume inspect bitbucketVolume optbitbucketVolume pgdataVolume16 > /root/bitbucket-upgrade-20260311/volumes.inspect.json
-[root@ip-10-56-112-34 ec2-user]# docker pull atlassian/bitbucket:9.4.17
-9.4.17: Pulling from atlassian/bitbucket
-01d7766a2e4a: Pull complete 
-868b909f8ce7: Pull complete 
-f12c2f6b47b7: Pull complete 
-e6b56ff66d06: Pull complete 
-c45a8f54c8db: Pull complete 
-f4ac0aa2e016: Pull complete 
-10a107490f02: Pull complete 
-5e74da8559fc: Pull complete 
-021e1a5e6f68: Pull complete 
-2053a048cf5c: Pull complete 
-1b81d22a0aeb: Pull complete 
-918508cb352c: Pull complete 
-d46088fda0f3: Pull complete 
-Digest: sha256:ff204252f7960623a6c658d6298eeb312bfb301ec6d8c5ef221ab09f798cb202
-Status: Downloaded newer image for atlassian/bitbucket:9.4.17
-docker.io/atlassian/bitbucket:9.4.17
+[root@ip-10-56-112-34 ec2-user]# docker images
+REPOSITORY            TAG           IMAGE ID       CREATED         SIZE
+atlassian/bitbucket   9.4.17        fc66f747474d   4 days ago      1.4GB
+atlassian/bamboo      9.6.6         27ad78e12bb2   3 months ago    1.18GB
+nginx                 1.29.3        60adc2e137e7   3 months ago    152MB
+atlassian/bitbucket   8.19.9        5b11aaa18086   4 months ago    1.34GB
+postgres              16.5-alpine   9ff53a21c37a   16 months ago   251MB
+postgres              16.5          30a563de922f   16 months ago   432MB
+[root@ip-10-56-112-34 ec2-user]# crontab -l > /root/bitbucket-upgrade-20260311/root.crontab.preupgrade
 
-User-installed apps
-Bitbucket Cloud Migration AssistantUPDATE AVAILABLE
-Update
-Commit Graph for BitbucketPAID UPDATE AVAILABLE
-Paid update
-Bitbucket Look and Feel Plugin
-Bitbucket Server - Auto-unapprove Pull Requests
-System apps
-These apps are integral parts of your Bitbucket system. They cannot be uninstalled. Disabling them will have serious effects, and could make Bitbucket inoperable. Only make changes here if instructed by Atlassian Support.
-ActiveObjects Plugin - OSGi Bundle
-Analytics Client Plugin
-Analytics Whitelist Plugin
-Applinks - Plugin - Basic Authentication
-Applinks - Plugin - Core
-Applinks - Plugin - CORS
-Applinks - Plugin - OAuth
-Applinks - Plugin - Trusted Apps
-Atlassian Audit Plugin
-Atlassian Bitbucket Announcement Banner Plugin
-Atlassian Bitbucket Authentication
-Atlassian Bitbucket Hook Scripts
-Atlassian Bitbucket i18n Plugin
-Atlassian Bitbucket Label Plugin
-Atlassian Chaperone
-Atlassian Client Resource
-Atlassian Connect Plugin
-Atlassian Data Pipeline Bitbucket Plugin
-Atlassian Data Pipeline Core Plugin
-Atlassian Diagnostics - Plugin
-Atlassian Embedded Crowd - Administration Plugin
-Atlassian HealthCheck Common Module
-Atlassian JSON Schema Validator Bundle
-Atlassian JWT Plugin
-Atlassian LESS Transformer Plugin
-Atlassian Navigation Links Plugin
-Atlassian OAuth 2 Client - Plugin
-Atlassian OAuth 2 Provider - Plugin
-Atlassian OAuth 2 Scopes - Plugin
-Atlassian OAuth Consumer Plugin
-Atlassian OAuth Consumer SAL SPI Implementation
-Atlassian OAuth Consumer SPI
-Atlassian OAuth Service Provider Plugin
-Atlassian OAuth Service Provider SAL SPI Implementation
-Atlassian OAuth Service Provider SPI
-Atlassian Plugins - Client-side Extensions - Runtime
-Atlassian Plugins - DC Browser Metrics - Plugin
-Atlassian Plugins - Web Resources - Implementation Plugin
-Atlassian Plugins - Web Resources REST
-Atlassian Pretty URLs Plugin
-Atlassian Remote Event Common Plugin
-Atlassian Remote Event Consumer Plugin
-Atlassian Remote Event Producer Plugin
-Atlassian Remote Events Bitbucket SPI
-Atlassian REST - Module Types
-Atlassian Soy - Plugin
-Atlassian Spring Scanner Annotations
-Atlassian Spring Scanner Runtime
-Atlassian Template Renderer API
-Atlassian Template Renderer Velocity 1.6 Plugin
-Atlassian Theme Plugin
-Atlassian Troubleshooting and Support Tools
-Atlassian UI Plugin
-Atlassian Universal Plugin Manager Plugin
-Atlassian Webhooks Plugin
-atlassian-failure-cache-plugin
-Bitbucket - Project settings restrictions
-Bitbucket Data Center Migration Core Importers/Exporters
-Bitbucket French (France) Language Pack
-Bitbucket German (Germany) Language Pack
-Bitbucket Japanese (Japan) Language Pack
-Bitbucket Public Web Components
-Bitbucket Repository Hooks
-Bitbucket Server - Access Tokens
-Bitbucket Server - Active Objects Common
-Bitbucket Server - Analytics Whitelist
-Bitbucket Server - Atlassian Connect Support
-Bitbucket Server - Audit
-Bitbucket Server - Branch
-Bitbucket Server - Build
-Bitbucket Server - Build Bamboo
-Bitbucket Server - Build Feature
-Bitbucket Server - Build Jenkins
-Bitbucket Server - Bundled Hooks
-Bitbucket Server - Cluster Info
-Bitbucket Server - Code Insights
-Bitbucket Server - Code Owners Feature
-Bitbucket Server - Comment Likes
-Bitbucket Server - Contributing Guidelines
-Bitbucket Server - Crowd SPI
-Bitbucket Server - Crowd SSO
-Bitbucket Server - Default Reviewers
-Bitbucket Server - Default Tasks
-Bitbucket Server - Deployments Feature
-Bitbucket Server - Emoticons
-Bitbucket Server - Frontend
-Bitbucket Server - Git LFS
-Bitbucket Server - Git SCM
-Bitbucket Server - Git SCM REST
-Bitbucket Server - GPG Commit Signatures
-Bitbucket Server - Importer
-Bitbucket Server - In-product diagnostics
-Bitbucket Server - Jira Development Integration
-Bitbucket Server - Jira Integration
-Bitbucket Server - Jira integration - Commit Checker
-Bitbucket Server - Mesh Support
-Bitbucket Server - Mirroring Upstream Capability
-Bitbucket Server - Navigation Links
-Bitbucket Server - Notification
-Bitbucket Server - Plugin Information Provider
-Bitbucket Server - Policies
-Bitbucket Server - Pull Request Branch Deletion
-Bitbucket Server - Rate Limiting
-Bitbucket Server - Ref Restriction
-Bitbucket Server - Repository Management Feature
-Bitbucket Server - Repository Ref Sync
-Bitbucket Server - Repository Shortcuts
-Bitbucket Server - REST
-Bitbucket Server - REST resources for UI
-Bitbucket Server - Reviewer Suggester
-Bitbucket Server - SAL
-Bitbucket Server - Search
-Bitbucket Server - Secret Scanning Feature
-Bitbucket Server - Sourcetree
-Bitbucket Server - SSH
-Bitbucket Server - Suggestions
-Bitbucket Server - Support Information Providers
-Bitbucket Server - Tag
-Bitbucket Server - UPM Accessor
-Bitbucket Server - Velocity Helper
-Bitbucket Server - Webhooks
-Bitbucket Server - X.509 Feature
-Bitbucket Server - Xcode Integration
-Bitbucket User Anonymization Handlers
-Bitbucket Zero Downtime Upgrade
-Client Web Fragments
-CodeMirror Syntax Highlighting
-Comment Property Providers
-Config WRM Data
-Custom Markup Renderers
-Custom Soy Functions
-Feature WRM Data
-Internal Web Resources
-Issue Status Plugin
-Java Concurrency in Practice Annotations
-JDOM DOM Processor
-Jira Integration :: Plugin
-jquery
-JSON in Java
-Keyboard Shortcuts Plugin
-Metadata Plugin
-Page Data Plugin
-Pull Request Property Providers
-Remote Link Aggregator Plugin
-SSO for Atlassian Data Center
-Static Assets (CDN) Plugin
-System HTTP SCM Protocol
-System Keyboard Shortcuts
-System Server Side Web Fragments
-System Web Resource Transformers
-System Web Resources - DO NOT DEPEND ON THESE
+crontab -l | grep -v 'bitbucket_mirror_data/.*_script.sh' \
+  > /root/bitbucket-upgrade-20260311/root.crontab.upgrade
+
+crontab /root/bitbucket-upgrade-20260311/root.crontab.upgrade
+
+echo "=== current crontab after temporary change ==="
+crontab -l
+=== current crontab after temporary change ===
+#Ansible: CIS 1.3.2 - Run aide filesystem integrity check
+0 5 * * * /usr/sbin/aide --check
+
+
+
+# Nightly at 02:15
+15 2 * * * /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+
+# Weekly Sunday at 03:00
+0 3 * * 0 /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
+
+# Daily Secrets Manager backup (encrypted to S3)
+55 1 * * * /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
+
+0 4 * * * find /app/bamboobackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+
+[root@ip-10-56-112-34 ec2-user]# TS=$(date +%Y%m%d_%H%M%S)
+BK="/app/bamboobackup/manual/bitbucket-upgrade-${TS}"
+
+mkdir -p "$BK"
+
+echo "=== backup folder ==="
+echo "$BK"
+
+cp -v /root/bitbucket-upgrade-20260311/*.json "$BK"/
+
+echo "=== stopping Bitbucket cleanly ==="
+docker stop cnxs-mgmt-bitbucket
+
+echo "=== postgres logical backups ==="
+docker exec prod-postgres pg_dumpall -U postgres --globals-only > "${BK}/globals_${TS}.sql"
+docker exec prod-postgres pg_dump -U postgres -Fc bitbucket > "${BK}/bitbucket_${TS}.dump"
+
+echo "=== filesystem backups ==="
+tar -C /var/lib/docker/volumes -czf "${BK}/bitbucket_home_${TS}.tar.gz" bitbucketVolume/_data
+tar -C /var/lib/docker/volumes -czf "${BK}/bitbucket_install8_${TS}.tar.gz" optbitbucketVolume/_data
+
+echo "=== checksums ==="
+sha256sum "${BK}"/* > "${BK}/SHA256SUMS.txt"
+
+echo "=== optional upload to S3 ==="
+aws s3 cp "$BK" "s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-${TS}/" --recursive
+
+echo "=== resulting files ==="
+ls -lh "$BK"
+=== backup folder ===
+/app/bamboobackup/manual/bitbucket-upgrade-20260311_201200
+'/root/bitbucket-upgrade-20260311/cnxs-mgmt-bitbucket.inspect.json' -> '/app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/cnxs-mgmt-bitbucket.inspect.json'
+'/root/bitbucket-upgrade-20260311/prod-net.inspect.json' -> '/app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/prod-net.inspect.json'
+'/root/bitbucket-upgrade-20260311/volumes.inspect.json' -> '/app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/volumes.inspect.json'
+=== stopping Bitbucket cleanly ===
+cnxs-mgmt-bitbucket
+=== postgres logical backups ===
+=== filesystem backups ===
+=== checksums ===
+=== optional upload to S3 ===
+upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/SHA256SUMS.txt to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/SHA256SUMS.txt
+upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/volumes.inspect.json to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/volumes.inspect.json
+upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/prod-net.inspect.json to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/prod-net.inspect.json
+upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/globals_20260311_201200.sql to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/globals_20260311_201200.sql
+upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/cnxs-mgmt-bitbucket.inspect.json to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/cnxs-mgmt-bitbucket.inspect.json
+upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/bitbucket_20260311_201200.dump to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/bitbucket_20260311_201200.dump
+upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/bitbucket_install8_20260311_201200.tar.gz to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/bitbucket_install8_20260311_201200.tar.gz
+upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/bitbucket_home_20260311_201200.tar.gz to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/bitbucket_home_20260311_201200.tar.gz
+=== resulting files ===
+total 7.0G
+-rw-r-----. 1 root root 1.1K Mar 11 20:17 SHA256SUMS.txt
+-rw-r-----. 1 root root 7.5M Mar 11 20:12 bitbucket_20260311_201200.dump
+-rw-r-----. 1 root root 6.5G Mar 11 20:16 bitbucket_home_20260311_201200.tar.gz
+-rw-r-----. 1 root root 511M Mar 11 20:16 bitbucket_install8_20260311_201200.tar.gz
+-rw-r-----. 1 root root  12K Mar 11 20:12 cnxs-mgmt-bitbucket.inspect.json
+-rw-r-----. 1 root root 1.1K Mar 11 20:12 globals_20260311_201200.sql
+-rw-r-----. 1 root root 2.2K Mar 11 20:12 prod-net.inspect.json
+-rw-r-----. 1 root root  790 Mar 11 20:12 volumes.inspect.json
+[root@ip-10-56-112-34 ec2-user]# echo "=== rename old container ==="
+docker rename cnxs-mgmt-bitbucket "cnxs-mgmt-bitbucket_8_19_9_preupgrade_${TS}"
+
+echo "=== prevent old container from auto-restarting later ==="
+docker update --restart=no "cnxs-mgmt-bitbucket_8_19_9_preupgrade_${TS}"
+
+echo "=== create new install volume for 9.4 ==="
+docker volume create optbitbucketVolume94
+
+echo "=== verify ==="
+docker volume inspect optbitbucketVolume94
+
+
+
+=== rename old container ===
+=== prevent old container from auto-restarting later ===
+cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
+=== create new install volume for 9.4 ===
+optbitbucketVolume94
+=== verify ===
+[
+    {
+        "CreatedAt": "2026-03-11T20:21:29Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/app/docker/volumes/optbitbucketVolume94/_data",
+        "Name": "optbitbucketVolume94",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+[root@ip-10-56-112-34 ec2-user]# docker run -d \
+  --name cnxs-mgmt-bitbucket \
+  --hostname bitbucket \
+  --network prod-net \
+  --network-alias bitbucket \
+  --restart unless-stopped \
+  -p 7990:7990 \
+  -p 7999:7999 \
+  --ulimit nofile=32768:65536 \
+  -e JVM_MINIMUM_MEMORY=1g \
+  -e JVM_MAXIMUM_MEMORY=2g \
+  -e JVM_SUPPORT_RECOMMENDED_ARGS='-Duser.timezone=America/Denver' \
+  -e ATL_TOMCAT_SECURE=true \
+  -e ATL_TOMCAT_SCHEME=https \
+  -e ATL_PROXY_NAME=bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e SEARCH_ENABLED=true \
+  -e APPLICATION_MODE=default \
+  -v optbitbucketVolume94:/opt/atlassian \
+  -v bitbucketVolume:/var/atlassian/application-data/bitbucket \
+  atlassian/bitbucket:9.4.17
+3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787
+
+
+[root@ip-10-56-112-34 ec2-user]# docker logs -f --tail=300 cnxs-mgmt-bitbucket | tee "${BK}/bitbucket_9.4_startup.log"
+INFO:root:User is currently root. Will downgrade run user to bitbucket
+INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
+WARNING: Using incubator modules: jdk.incubator.vector
+Mar 11, 2026 8:23:09 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
+WARNING: COMPAT locale provider will be removed in a future release
+Starting Atlassian Bitbucket as the current user
+2026-03-11 20:23:05,920 INFO  [main]  c.a.b.s.helper.ConfigDirectoryHelper Backing up existing configuration files
+2026-03-11 20:23:05,938 INFO  [main]  c.a.b.s.helper.ConfigDirectoryHelper Existing bundled search configuration needs to be updated
+2026-03-11 20:23:05,938 INFO  [main]  c.a.b.s.helper.ConfigDirectoryHelper Copying search configuration to /var/atlassian/application-data/bitbucket/shared/search/config
+2026-03-11 20:23:05,945 INFO  [main]  c.a.b.s.helper.ConfigDirectoryHelper Configuring TLS
+2026-03-11 20:23:06,321 INFO  [main]  c.a.b.s.helper.ConfigDirectoryHelper Setting search configuration version to 10
+2026-03-11 20:23:06,332 INFO  [main]  c.a.b.s.helper.ConfigDirectoryHelper Recursively setting permissions for config directory
+2026-03-11 20:23:06,420 INFO  [main]  c.a.b.s.helper.SecurityIndexHelper Using security index name .bitbucket_security_index_1.
+2026-03-11 20:23:06,445 INFO  [main]  c.a.b.s.helper.DataDirectoryHelper Clearing search data due to incompatible index format (note this will force a reindex)
+2026-03-11 20:23:06,609 INFO  [main]  c.a.b.s.helper.DataDirectoryHelper Setting search data version to 4
+
+Starting the bundled search server
+        Hint: Run start-bitbucket.sh --no-search to skip starting the bundled search server
+Bundled search server started successfully
+
+Bitbucket is being run with a umask that contains potentially unsafe settings.
+The following issues were found with the mask "u=rwx,g=rx,o=rx" (0022):
+ - Access is allowed to 'others'. It is recommended that 'others' be denied
+   all access for security reasons.
+The recommended umask for Bitbucket is "u=,g=w,o=rwx" (0027) and can be
+configured in _start-webapp.sh
+
+Starting Bitbucket webapp at http://localhost:7990
+14:23:09.131 [main] INFO com.atlassian.security.serialfilter.DeserializationFilterConfigurator -- Global serial filter set to JDK 11 DeserializationFilter
+ERROR StatusConsoleListener Could not define attribute view on path "/var/atlassian/application-data/bitbucket/log/search/bitbucket_search_server.json" got access denied ("java.lang.RuntimePermission" "accessUserInformation")
+ java.security.AccessControlException: access denied ("java.lang.RuntimePermission" "accessUserInformation")
+        at java.base/java.security.AccessControlContext.checkPermission(AccessControlContext.java:488)
+        at java.base/java.security.AccessController.checkPermission(AccessController.java:1071)
+        at java.base/java.lang.SecurityManager.checkPermission(SecurityManager.java:411)
+        at java.base/sun.nio.fs.UnixFileAttributeViews$Posix.checkWriteExtended(UnixFileAttributeViews.java:195)
+        at java.base/sun.nio.fs.UnixFileAttributeViews$Posix.setMode(UnixFileAttributeViews.java:264)
+        at java.base/sun.nio.fs.UnixFileAttributeViews$Posix.setPermissions(UnixFileAttributeViews.java:299)
+        at org.apache.logging.log4j.core.util.FileUtils.defineFilePosixAttributeView(FileUtils.java:181)
+        at org.apache.logging.log4j.core.appender.FileManager.defineAttributeView(FileManager.java:216)
+        at org.apache.logging.log4j.core.appender.FileManager.createOutputStream(FileManager.java:203)
+        at org.apache.logging.log4j.core.appender.rolling.RollingFileManager.createFileAfterRollover(RollingFileManager.java:421)
+        at org.apache.logging.log4j.core.appender.rolling.RollingFileManager.rollover(RollingFileManager.java:398)
+        at org.apache.logging.log4j.core.appender.rolling.RollingFileManager.checkRollover(RollingFileManager.java:308)
+        at org.apache.logging.log4j.core.appender.RollingFileAppender.append(RollingFileAppender.java:300)
+        at org.apache.logging.log4j.core.config.AppenderControl.tryCallAppender(AppenderControl.java:161)
+        at org.apache.logging.log4j.core.config.AppenderControl.callAppender0(AppenderControl.java:134)
+        at org.apache.logging.log4j.core.config.AppenderControl.callAppenderPreventRecursion(AppenderControl.java:125)
+        at org.apache.logging.log4j.core.config.AppenderControl.callAppender(AppenderControl.java:89)
+        at org.apache.logging.log4j.core.config.LoggerConfig.callAppenders(LoggerConfig.java:686)
+        at org.apache.logging.log4j.core.config.LoggerConfig.processLogEvent(LoggerConfig.java:644)
+        at org.apache.logging.log4j.core.config.LoggerConfig.log(LoggerConfig.java:620)
+        at org.apache.logging.log4j.core.config.LoggerConfig.log(LoggerConfig.java:556)
+        at org.apache.logging.log4j.core.config.AwaitCompletionReliabilityStrategy.log(AwaitCompletionReliabilityStrategy.java:81)
+        at org.apache.logging.log4j.core.Logger.log(Logger.java:163)
+        at org.apache.logging.log4j.spi.AbstractLogger.tryLogMessage(AbstractLogger.java:2165)
+        at org.apache.logging.log4j.spi.AbstractLogger.logMessageTrackRecursion(AbstractLogger.java:2119)
+        at org.apache.logging.log4j.spi.AbstractLogger.logMessageSafely(AbstractLogger.java:2102)
+        at org.apache.logging.log4j.spi.AbstractLogger.logMessage(AbstractLogger.java:1988)
+        at org.apache.logging.log4j.spi.AbstractLogger.logIfEnabled(AbstractLogger.java:1851)
+        at org.apache.logging.log4j.spi.AbstractLogger.info(AbstractLogger.java:1285)
+        at org.opensearch.node.Node.<init>(Node.java:478)
+        at org.opensearch.node.Node.<init>(Node.java:451)
+        at org.opensearch.bootstrap.Bootstrap$5.<init>(Bootstrap.java:242)
+        at org.opensearch.bootstrap.Bootstrap.setup(Bootstrap.java:242)
+        at org.opensearch.bootstrap.Bootstrap.init(Bootstrap.java:404)
+        at org.opensearch.bootstrap.OpenSearch.init(OpenSearch.java:181)
+        at org.opensearch.bootstrap.OpenSearch.execute(OpenSearch.java:172)
+        at org.opensearch.cli.EnvironmentAwareCommand.execute(EnvironmentAwareCommand.java:104)
+        at org.opensearch.cli.Command.mainWithoutErrorHandling(Command.java:138)
+        at org.opensearch.cli.Command.main(Command.java:101)
+        at org.opensearch.bootstrap.OpenSearch.main(OpenSearch.java:138)
+        at org.opensearch.bootstrap.OpenSearch.main(OpenSearch.java:104)
+ERROR StatusConsoleListener Could not define attribute view on path "/var/atlassian/application-data/bitbucket/log/search/bitbucket_search.log" got access denied ("java.lang.RuntimePermission" "accessUserInformation")
+ java.security.AccessControlException: access denied ("java.lang.RuntimePermission" "accessUserInformation")
+        at java.base/java.security.AccessControlContext.checkPermission(AccessControlContext.java:488)
+        at java.base/java.security.AccessController.checkPermission(AccessController.java:1071)
+        at java.base/java.lang.SecurityManager.checkPermission(SecurityManager.java:411)
+        at java.base/sun.nio.fs.UnixFileAttributeViews$Posix.checkWriteExtended(UnixFileAttributeViews.java:195)
+        at java.base/sun.nio.fs.UnixFileAttributeViews$Posix.setMode(UnixFileAttributeViews.java:264)
+        at java.base/sun.nio.fs.UnixFileAttributeViews$Posix.setPermissions(UnixFileAttributeViews.java:299)
+        at org.apache.logging.log4j.core.util.FileUtils.defineFilePosixAttributeView(FileUtils.java:181)
+        at org.apache.logging.log4j.core.appender.FileManager.defineAttributeView(FileManager.java:216)
+        at org.apache.logging.log4j.core.appender.FileManager.createOutputStream(FileManager.java:203)
+        at org.apache.logging.log4j.core.appender.rolling.RollingFileManager.createFileAfterRollover(RollingFileManager.java:421)
+        at org.apache.logging.log4j.core.appender.rolling.RollingFileManager.rollover(RollingFileManager.java:398)
+        at org.apache.logging.log4j.core.appender.rolling.RollingFileManager.checkRollover(RollingFileManager.java:308)
+        at org.apache.logging.log4j.core.appender.RollingFileAppender.append(RollingFileAppender.java:300)
+        at org.apache.logging.log4j.core.config.AppenderControl.tryCallAppender(AppenderControl.java:161)
+        at org.apache.logging.log4j.core.config.AppenderControl.callAppender0(AppenderControl.java:134)
+        at org.apache.logging.log4j.core.config.AppenderControl.callAppenderPreventRecursion(AppenderControl.java:125)
+        at org.apache.logging.log4j.core.config.AppenderControl.callAppender(AppenderControl.java:89)
+        at org.apache.logging.log4j.core.config.LoggerConfig.callAppenders(LoggerConfig.java:686)
+        at org.apache.logging.log4j.core.config.LoggerConfig.processLogEvent(LoggerConfig.java:644)
+        at org.apache.logging.log4j.core.config.LoggerConfig.log(LoggerConfig.java:620)
+        at org.apache.logging.log4j.core.config.LoggerConfig.log(LoggerConfig.java:556)
+        at org.apache.logging.log4j.core.config.AwaitCompletionReliabilityStrategy.log(AwaitCompletionReliabilityStrategy.java:81)
+        at org.apache.logging.log4j.core.Logger.log(Logger.java:163)
+        at org.apache.logging.log4j.spi.AbstractLogger.tryLogMessage(AbstractLogger.java:2165)
+        at org.apache.logging.log4j.spi.AbstractLogger.logMessageTrackRecursion(AbstractLogger.java:2119)
+        at org.apache.logging.log4j.spi.AbstractLogger.logMessageSafely(AbstractLogger.java:2102)
+        at org.apache.logging.log4j.spi.AbstractLogger.logMessage(AbstractLogger.java:1988)
+        at org.apache.logging.log4j.spi.AbstractLogger.logIfEnabled(AbstractLogger.java:1851)
+        at org.apache.logging.log4j.spi.AbstractLogger.info(AbstractLogger.java:1285)
+        at org.opensearch.node.Node.<init>(Node.java:478)
+        at org.opensearch.node.Node.<init>(Node.java:451)
+        at org.opensearch.bootstrap.Bootstrap$5.<init>(Bootstrap.java:242)
+        at org.opensearch.bootstrap.Bootstrap.setup(Bootstrap.java:242)
+        at org.opensearch.bootstrap.Bootstrap.init(Bootstrap.java:404)
+        at org.opensearch.bootstrap.OpenSearch.init(OpenSearch.java:181)
+        at org.opensearch.bootstrap.OpenSearch.execute(OpenSearch.java:172)
+        at org.opensearch.cli.EnvironmentAwareCommand.execute(EnvironmentAwareCommand.java:104)
+        at org.opensearch.cli.Command.mainWithoutErrorHandling(Command.java:138)
+        at org.opensearch.cli.Command.main(Command.java:101)
+        at org.opensearch.bootstrap.OpenSearch.main(OpenSearch.java:138)
+        at org.opensearch.bootstrap.OpenSearch.main(OpenSearch.java:104)
+2026-03-11 14:23:11,582 INFO  [main]  c.a.b.i.b.BitbucketServerApplication Starting BitbucketServerApplication v9.4.17 using Java 21.0.10 on bitbucket with PID 234 (/opt/atlassian/bitbucket/app/WEB-INF/classes started by bitbucket in /var/atlassian/application-data/bitbucket)
+2026-03-11 14:23:11,587 INFO  [main]  c.a.b.i.b.BitbucketServerApplication No active profile set, falling back to 1 default profile: "default"
+2026-03-11 14:23:12,379 INFO  [main]  c.a.b.i.boot.log.BuildInfoLogger Starting Bitbucket 9.4.17 (e570242 built on Sun Feb 08 21:42:25 MST 2026)
+2026-03-11 14:23:12,380 INFO  [main]  c.a.b.i.boot.log.BuildInfoLogger JVM: Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.10+7-LTS
+2026-03-11 14:23:14,277 INFO  [main]  c.a.b.i.b.BitbucketServerApplication Started BitbucketServerApplication in 4.976 seconds (JVM running for 5.959)
+2026-03-11 14:23:18,192 INFO  [spring-startup]  c.a.s.internal.home.HomeLockAcquirer Successfully acquired lock on home directory /var/atlassian/application-data/bitbucket
+2026-03-11 14:23:18,541 INFO  [spring-startup]  c.a.s.internal.home.HomeValidator Upgrading Bitbucket from 8.19.9 to 9.4.17
+2026-03-11 14:23:21,161 INFO  [spring-startup]  c.a.s.internal.home.HomeLockAcquirer Successfully acquired lock on home directory /var/atlassian/application-data/bitbucket/shared
+2026-03-11 14:23:22,814 WARN  [spring-startup]  com.hazelcast.instance.impl.Node [172.18.0.3]:5701 [bitbucket] [5.4.3] No join method is enabled! Starting standalone.
+2026-03-11 14:23:24,126 INFO  [spring-startup]  c.a.s.i.l.d.ExtendedSpringLiquibase About to apply 3 database upgrade tasks.
+2026-03-11 14:23:24,190 INFO  [spring-startup]  c.a.s.i.l.d.ExtendedSpringLiquibase Applying changeset 5 of 3
+2026-03-11 14:23:24,215 INFO  [spring-startup]  c.a.s.i.l.d.ExtendedSpringLiquibase Upgrade complete. Applied 6 changesets.
+2026-03-11 14:23:29,078 INFO  [spring-startup]  c.a.s.i.s.u.AbstractApplicationSecretUpgradeTask Starting upgrade task core-migrate-system-signing-passphrase
+2026-03-11 14:23:29,361 INFO  [spring-startup]  c.a.s.i.s.u.AbstractApplicationSecretUpgradeTask Upgrade task core-migrate-system-signing-passphrase completed
+2026-03-11 14:23:29,365 INFO  [spring-startup]  c.a.s.i.s.u.AbstractApplicationSecretUpgradeTask Starting upgrade task core-migrate-mail-password
+2026-03-11 14:23:29,370 INFO  [spring-startup]  c.a.s.i.s.u.AbstractApplicationSecretUpgradeTask Upgrade task core-migrate-mail-password completed
+2026-03-11 14:23:31,518 INFO  [spring-startup]  c.a.s.i.c.u.EncryptCrowdDirectoryPasswordsUpgradeTask User directory password encryption upgrade task completed.
+2026-03-11 14:23:46,022 INFO  [spring-startup]  c.a.s.i.s.g.m.DefaultSidecarManager Sidecar started after 9279ms
+2026-03-11 14:23:53,968 INFO  [spring-startup]  c.a.s.i.s.g.m.DefaultMeshSidebandRegistry Sidecar#0 (http://localhost:7777): Opening sideband channel
+2026-03-11 14:23:56,987 WARN  [FelixStartLevel]  o.e.g.b.e.i.s.ExtenderConfiguration Gemini Blueprint extensions bundle not present, annotation processing disabled.
+2026-03-11 14:24:00,773 WARN  [spring-startup]  c.a.s.i.plugin.PluginUpgradeHelper Disabled com.atlassian.stash.plugin.stash-auto-unapprove-plugin
+2026-03-11 14:24:00,778 WARN  [spring-startup]  c.a.s.i.plugin.PluginUpgradeHelper Disabled com.atlassian.stash.plugin.stash-look-and-feel-plugin
+WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impact performance.
+2026-03-11 14:24:08,811 INFO  [ThreadPoolAsyncTaskExecutor::Thread 13]  c.a.b.p.b.m.MigrationServiceClient migration service migration url : https://api-private.atlassian.com/migrations/
+2026-03-11 14:24:08,811 INFO  [ThreadPoolAsyncTaskExecutor::Thread 13]  c.a.b.p.b.m.MigrationServiceClient bitbucket migration service url : https://api-private.atlassian.com/migration/bitbucket/
+2026-03-11 14:24:08,811 INFO  [ThreadPoolAsyncTaskExecutor::Thread 13]  c.a.b.p.b.m.MigrationServiceClient analytics service url : https://api-private.atlassian.com/migration/analytics/bitbucketMigration/
+2026-03-11 14:24:10,013 INFO  [ThreadPoolAsyncTaskExecutor::Thread 13]  c.a.b.p.b.l.j.MigrationCommandScheduledRunner Successfully registered migration command cleanup job bitbucket-migration-command-cleanup-job-key
+2026-03-11 14:24:10,034 INFO  [ThreadPoolAsyncTaskExecutor::Thread 17]  c.a.b.i.g.GpgSystemSigningKeyProvider Using signing key with fingerprint b04911e931bf6f4d2ca071f5476c8f8d822a2f12
+2026-03-11 14:24:10,674 INFO  [ThreadPoolAsyncTaskExecutor::Thread 15]  c.a.b.i.s.c.u.MigrateSearchPasswordUpgradeTask Starting upgrade task plugin.search.migrate-search-password
+2026-03-11 14:24:10,690 INFO  [ThreadPoolAsyncTaskExecutor::Thread 15]  c.a.b.i.s.c.u.MigrateSearchPasswordUpgradeTask Upgrade task plugin.search.migrate-search-password completed
+2026-03-11 14:24:15,866 WARN  [spring-startup]  c.a.p.c.r.OsgiBundledPathScanner Cannot scan directory META-INF/fe-bundled-metadata/swagger-annotations-2.2.23-jar/ in bundle com.atlassian.bitbucket.server.bitbucket-jira as it does not exist
+2026-03-11 14:24:15,866 WARN  [spring-startup]  c.a.p.c.r.OsgiBundledPathScanner Cannot scan directory META-INF/fe-bundled-metadata/bitbucket-jira-api-9.4.17-jar/ in bundle com.atlassian.bitbucket.server.bitbucket-jira as it does not exist
+2026-03-11 14:24:16,067 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/websudo/ in bundle com.atlassian.bitbucket.server.bitbucket-frontend; it does not exist
+2026-03-11 14:24:16,067 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/file-browser/ in bundle com.atlassian.bitbucket.server.bitbucket-frontend; it does not exist
+2026-03-11 14:24:16,068 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle com.atlassian.bitbucket.server.bitbucket-frontend; it does not exist
+2026-03-11 14:24:16,882 WARN  [spring-startup]  c.a.p.c.r.OsgiBundledPathScanner Cannot scan directory /page/ in bundle com.atlassian.bitbucket.server.bitbucket-policies as it does not exist
+2026-03-11 14:24:16,914 WARN  [spring-startup]  c.a.p.c.r.StaticPluginPathScanner Cannot scan directory /static/bitbucket/internal/feature/admin/ratelimit/ in web static as it does not exist
+2026-03-11 14:24:18,435 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle com.atlassian.oauth.atlassian-oauth-service-provider-plugin; it does not exist
+2026-03-11 14:24:18,674 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/file-browser/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-11 14:24:18,675 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/websudo/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-11 14:24:18,675 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-11 14:24:18,675 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-11 14:24:18,682 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/file-browser/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-11 14:24:18,683 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/websudo/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-11 14:24:18,683 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-11 14:24:18,684 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-11 14:24:18,691 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/file-browser/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-11 14:24:18,691 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/websudo/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-11 14:24:18,691 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-11 14:24:18,692 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-11 14:24:18,702 WARN  [spring-startup]  c.a.s.i.plugin.PluginUpgradeHelper Disabled com.bit-booster.graph
+2026-03-11 14:24:18,822 INFO  [spring-startup]  c.a.s.internal.scm.PluginScmService Bitbucket is using /usr/bin/git version 2.50.1
+2026-03-11 14:24:19,350 INFO  [spring-startup]  c.a.b.internal.ssh.server.SshServer Starting SSH server on port 7999...
+2026-03-11 14:24:19,415 INFO  [spring-startup]  c.a.b.internal.ssh.server.SshServer Started SSH server successfully.
+2026-03-11 14:24:19,566 INFO  [spring-startup]  c.a.b.plugin.bcma.PluginLifecycle Bitbucket Migration Plugin 2.6.38 initialising..
+2026-03-11 14:24:19,568 INFO  [spring-startup]  c.a.b.p.b.a.AnalyticsEventDispatcher Successfully registered analytics event dispatcher job
+2026-03-11 14:24:19,568 INFO  [spring-startup]  c.a.b.plugin.bcma.PluginLifecycle Bitbucket Migration Plugin 2.6.38 initialised
+2026-03-11 14:24:19,568 INFO  [spring-startup]  c.a.b.plugin.bcma.PluginLifecycle Re-validating migration plans stuck in VALIDATING state (if any)..
+2026-03-11 14:24:19,572 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollingSetup Acquired lock and no node which initiated PollingSetup is currently active
+2026-03-11 14:24:19,572 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollingSetup initializing pollers
+2026-03-11 14:24:19,576 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating status poller StatusPoller-a53908a9-8a04-4776-b39b-54e0f108eb7a
+2026-03-11 14:24:19,581 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating V4 poller V4Poller-allUserUpload-46b63ec7-ba96-4ea9-8b69-3cdff698d5e7
+2026-03-11 14:24:19,582 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating V4 poller V4Poller-bitbucketRepositoryUpload-1ea50a07-6158-47f2-b9c4-c4f281475600
+2026-03-11 14:24:19,582 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating V4 poller V4Poller-bitbucketRepositoryUpload-123e29b3-1c5b-4dc8-bbc6-5302cd95a76d
+2026-03-11 14:24:19,582 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating V4 poller V4Poller-bitbucketRepositoryDataUpload-3dd57e2e-bf3e-4cd2-a8de-0c7569d82269
+2026-03-11 14:24:19,582 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating V4 poller V4Poller-bitbucketRepositoryDataUpload-7a38b5c6-e4b5-4b36-a765-62c08fe6c74f
+2026-03-11 14:24:19,583 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating V4 poller V4Poller-bitbucketRepositoryPullRequestUpload-ade51ef1-40c0-4ee6-b504-2244f19c9595
+2026-03-11 14:24:19,583 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating V4 poller V4Poller-bitbucketRepositoryPullRequestUpload-60e83e24-1a10-4d70-afac-1be48eb7e7b5
+2026-03-11 14:24:19,583 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollingSetup pollers were successfully initialized!
+2026-03-11 14:24:19,679 INFO  [spring-startup]  c.a.b.i.s.c.c.DefaultClusterJobManager Registering job for StartupChecksJob
+2026-03-11 14:24:19,696 INFO  [spring-startup]  c.a.b.i.s.i.e.DefaultIndexEventQueueProcessor Event queue processor has been started
+2026-03-11 14:24:19,702 INFO  [spring-startup]  c.a.b.i.s.c.j.c.HealthCheckRunner New health check registered: VersionCheck
+2026-03-11 14:24:19,702 INFO  [spring-startup]  c.a.b.i.s.c.j.c.HealthCheckRunner New health check registered: KnownIssueCheck
+2026-03-11 14:24:19,703 INFO  [spring-startup]  c.a.b.i.s.c.c.DefaultClusterJobManager Registering job for SearchSynchronizeJob
+2026-03-11 14:24:19,703 INFO  [spring-startup]  c.a.b.i.s.c.j.c.HealthCheckRunner New health check registered: AuthenticationCheck
+2026-03-11 14:24:19,703 INFO  [spring-startup]  c.a.b.i.s.c.j.c.HealthCheckRunner New health check registered: SearchIndexCheck
+2026-03-11 14:24:21,113 INFO  [spring-startup]  c.a.s.DefaultSecretStoreProvider Initiating secret store class: com.atlassian.secrets.store.algorithm.AesOnlyAlgorithmSecretStore
+2026-03-11 14:24:21,190 INFO  [spring-startup]  c.a.s.DefaultSecretStoreProvider Initiated secret store class: AesOnlyAlgorithmSecretStore
+2026-03-11 14:24:21,982 INFO  [spring-startup]  c.a.s.i.plugin.PluginUpgradeHelper Disabled 3 plugins during Bitbucket upgrade
+2026-03-11 14:24:22,473 INFO  [spring-startup]  c.a.s.i.p.r.PullRequestRescopeBucketProcessor Rescheduled rescope processing for 26 repositories: [1, 7, 8, 19, 21, 23, 24, 25, 26, 28, 29, 30, 31, 32, 38, 39, 41, 42, 44, 48, 50, 51, 52, 53, 56, 62]
+2026-03-11 14:24:34,696 INFO  [Caesium-1-4]  c.a.b.i.s.i.jobs.StartupChecksJob Running startup jobs for search
+2026-03-11 14:24:35,668 ERROR [Caesium-1-4]  c.a.b.i.s.i.IndexingSynchronizationService Failed to create indexes: ''[Unsuccessful search response: 401. Bitbucket did not have authorization to request data from the search server.]''
+2026-03-11 14:24:35,669 ERROR [Caesium-1-4]  c.a.b.i.s.i.IndexingSynchronizationService Unable to synchronize the mapping in the search server
+2026-03-11 14:24:35,670 WARN  [Caesium-1-4]  c.a.b.i.s.c.cluster.ClusterJobRunner Job execution failed. Rescheduling. Job key: com.atlassian.bitbucket.internal.search.indexing.jobs.StartupChecksJob  Job id: 8f2dd27c-4648-4863-a958-ccfa49a18636
+2026-03-11 14:24:40,459 INFO  [Caesium-1-1]  c.a.b.i.s.c.s.p.AutomaticAuthenticationProvisioner The search server is using default credentials. Will attempt to provision authentication
+2026-03-11 14:24:41,778 INFO  [Caesium-1-1]  c.a.b.i.s.c.s.p.AutomaticAuthenticationProvisioner Authentication was failing, but the search server was set to default password. Reattempting original provisioning should now occur through StartupChecks
+2026-03-11 14:24:41,778 INFO  [Caesium-1-1]  c.a.b.i.s.i.j.c.AuthenticationCheck Authentication was failing, but the search server was configured to use the default installer password.Reprovisioning has taken place and Bitbucket Search will now resynchronize.
+2026-03-11 14:24:41,794 INFO  [Caesium-1-1]  c.a.b.i.s.c.c.DefaultClusterJobManager Attempting to schedule an ad-hoc for SearchSynchronizeJob
+2026-03-11 14:24:41,795 INFO  [Caesium-1-1]  c.a.b.i.s.c.c.DefaultClusterJobManager There are currently 2 to select from
+2026-03-11 14:24:41,808 INFO  [Caesium-1-2]  c.a.b.i.s.i.IndexingSynchronizationService Beginning indexing of all projects and repositories for search.
+2026-03-11 14:24:43,086 INFO  [Caesium-1-2]  c.a.b.i.s.i.IndexingSynchronizationService Mapping in the search server has been created successfully
+
+
+
+
+[root@ip-10-56-112-34 ec2-user]# docker logs --tail=500 cnxs-mgmt-bitbucket 2>&1 | \
+  egrep -i 'upgrade|plugin|opensearch|reindex|error|exception|warn'
+2026-03-11 20:23:06,445 INFO  [main]  c.a.b.s.helper.DataDirectoryHelper Clearing search data due to incompatible index format (note this will force a reindex)
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: COMPAT locale provider will be removed in a future release
+ERROR StatusConsoleListener Could not define attribute view on path "/var/atlassian/application-data/bitbucket/log/search/bitbucket_search_server.json" got access denied ("java.lang.RuntimePermission" "accessUserInformation")
+ java.security.AccessControlException: access denied ("java.lang.RuntimePermission" "accessUserInformation")
+        at org.opensearch.node.Node.<init>(Node.java:478)
+        at org.opensearch.node.Node.<init>(Node.java:451)
+        at org.opensearch.bootstrap.Bootstrap$5.<init>(Bootstrap.java:242)
+        at org.opensearch.bootstrap.Bootstrap.setup(Bootstrap.java:242)
+        at org.opensearch.bootstrap.Bootstrap.init(Bootstrap.java:404)
+        at org.opensearch.bootstrap.OpenSearch.init(OpenSearch.java:181)
+        at org.opensearch.bootstrap.OpenSearch.execute(OpenSearch.java:172)
+        at org.opensearch.cli.EnvironmentAwareCommand.execute(EnvironmentAwareCommand.java:104)
+        at org.opensearch.cli.Command.mainWithoutErrorHandling(Command.java:138)
+        at org.opensearch.cli.Command.main(Command.java:101)
+        at org.opensearch.bootstrap.OpenSearch.main(OpenSearch.java:138)
+        at org.opensearch.bootstrap.OpenSearch.main(OpenSearch.java:104)
+ERROR StatusConsoleListener Could not define attribute view on path "/var/atlassian/application-data/bitbucket/log/search/bitbucket_search.log" got access denied ("java.lang.RuntimePermission" "accessUserInformation")
+ java.security.AccessControlException: access denied ("java.lang.RuntimePermission" "accessUserInformation")
+        at org.opensearch.node.Node.<init>(Node.java:478)
+        at org.opensearch.node.Node.<init>(Node.java:451)
+        at org.opensearch.bootstrap.Bootstrap$5.<init>(Bootstrap.java:242)
+        at org.opensearch.bootstrap.Bootstrap.setup(Bootstrap.java:242)
+        at org.opensearch.bootstrap.Bootstrap.init(Bootstrap.java:404)
+        at org.opensearch.bootstrap.OpenSearch.init(OpenSearch.java:181)
+        at org.opensearch.bootstrap.OpenSearch.execute(OpenSearch.java:172)
+        at org.opensearch.cli.EnvironmentAwareCommand.execute(EnvironmentAwareCommand.java:104)
+        at org.opensearch.cli.Command.mainWithoutErrorHandling(Command.java:138)
+        at org.opensearch.cli.Command.main(Command.java:101)
+        at org.opensearch.bootstrap.OpenSearch.main(OpenSearch.java:138)
+        at org.opensearch.bootstrap.OpenSearch.main(OpenSearch.java:104)
+2026-03-11 14:23:22,814 WARN  [spring-startup]  com.hazelcast.instance.impl.Node [172.18.0.3]:5701 [bitbucket] [5.4.3] No join method is enabled! Starting standalone.
+2026-03-11 14:23:24,126 INFO  [spring-startup]  c.a.s.i.l.d.ExtendedSpringLiquibase About to apply 3 database upgrade tasks.
+2026-03-11 14:23:24,215 INFO  [spring-startup]  c.a.s.i.l.d.ExtendedSpringLiquibase Upgrade complete. Applied 6 changesets.
+2026-03-11 14:23:29,078 INFO  [spring-startup]  c.a.s.i.s.u.AbstractApplicationSecretUpgradeTask Starting upgrade task core-migrate-system-signing-passphrase
+2026-03-11 14:23:29,361 INFO  [spring-startup]  c.a.s.i.s.u.AbstractApplicationSecretUpgradeTask Upgrade task core-migrate-system-signing-passphrase completed
+2026-03-11 14:23:29,365 INFO  [spring-startup]  c.a.s.i.s.u.AbstractApplicationSecretUpgradeTask Starting upgrade task core-migrate-mail-password
+2026-03-11 14:23:29,370 INFO  [spring-startup]  c.a.s.i.s.u.AbstractApplicationSecretUpgradeTask Upgrade task core-migrate-mail-password completed
+2026-03-11 14:23:31,518 INFO  [spring-startup]  c.a.s.i.c.u.EncryptCrowdDirectoryPasswordsUpgradeTask User directory password encryption upgrade task completed.
+2026-03-11 14:23:56,987 WARN  [FelixStartLevel]  o.e.g.b.e.i.s.ExtenderConfiguration Gemini Blueprint extensions bundle not present, annotation processing disabled.
+2026-03-11 14:24:00,773 WARN  [spring-startup]  c.a.s.i.plugin.PluginUpgradeHelper Disabled com.atlassian.stash.plugin.stash-auto-unapprove-plugin
+2026-03-11 14:24:00,778 WARN  [spring-startup]  c.a.s.i.plugin.PluginUpgradeHelper Disabled com.atlassian.stash.plugin.stash-look-and-feel-plugin
+WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impact performance.
+2026-03-11 14:24:10,674 INFO  [ThreadPoolAsyncTaskExecutor::Thread 15]  c.a.b.i.s.c.u.MigrateSearchPasswordUpgradeTask Starting upgrade task plugin.search.migrate-search-password
+2026-03-11 14:24:10,690 INFO  [ThreadPoolAsyncTaskExecutor::Thread 15]  c.a.b.i.s.c.u.MigrateSearchPasswordUpgradeTask Upgrade task plugin.search.migrate-search-password completed
+2026-03-11 14:24:15,866 WARN  [spring-startup]  c.a.p.c.r.OsgiBundledPathScanner Cannot scan directory META-INF/fe-bundled-metadata/swagger-annotations-2.2.23-jar/ in bundle com.atlassian.bitbucket.server.bitbucket-jira as it does not exist
+2026-03-11 14:24:15,866 WARN  [spring-startup]  c.a.p.c.r.OsgiBundledPathScanner Cannot scan directory META-INF/fe-bundled-metadata/bitbucket-jira-api-9.4.17-jar/ in bundle com.atlassian.bitbucket.server.bitbucket-jira as it does not exist
+2026-03-11 14:24:16,067 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/websudo/ in bundle com.atlassian.bitbucket.server.bitbucket-frontend; it does not exist
+2026-03-11 14:24:16,067 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/file-browser/ in bundle com.atlassian.bitbucket.server.bitbucket-frontend; it does not exist
+2026-03-11 14:24:16,068 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle com.atlassian.bitbucket.server.bitbucket-frontend; it does not exist
+2026-03-11 14:24:16,882 WARN  [spring-startup]  c.a.p.c.r.OsgiBundledPathScanner Cannot scan directory /page/ in bundle com.atlassian.bitbucket.server.bitbucket-policies as it does not exist
+2026-03-11 14:24:16,914 WARN  [spring-startup]  c.a.p.c.r.StaticPluginPathScanner Cannot scan directory /static/bitbucket/internal/feature/admin/ratelimit/ in web static as it does not exist
+2026-03-11 14:24:18,435 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle com.atlassian.oauth.atlassian-oauth-service-provider-plugin; it does not exist
+2026-03-11 14:24:18,674 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/file-browser/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-11 14:24:18,675 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/websudo/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-11 14:24:18,675 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-11 14:24:18,675 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-11 14:24:18,682 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/file-browser/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-11 14:24:18,683 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/websudo/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-11 14:24:18,683 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-11 14:24:18,684 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-11 14:24:18,691 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/file-browser/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-11 14:24:18,691 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /feature/websudo/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-11 14:24:18,691 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-11 14:24:18,692 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-11 14:24:18,702 WARN  [spring-startup]  c.a.s.i.plugin.PluginUpgradeHelper Disabled com.bit-booster.graph
+2026-03-11 14:24:18,822 INFO  [spring-startup]  c.a.s.internal.scm.PluginScmService Bitbucket is using /usr/bin/git version 2.50.1
+2026-03-11 14:24:19,566 INFO  [spring-startup]  c.a.b.plugin.bcma.PluginLifecycle Bitbucket Migration Plugin 2.6.38 initialising..
+2026-03-11 14:24:19,568 INFO  [spring-startup]  c.a.b.plugin.bcma.PluginLifecycle Bitbucket Migration Plugin 2.6.38 initialised
+2026-03-11 14:24:19,568 INFO  [spring-startup]  c.a.b.plugin.bcma.PluginLifecycle Re-validating migration plans stuck in VALIDATING state (if any)..
+2026-03-11 14:24:21,982 INFO  [spring-startup]  c.a.s.i.plugin.PluginUpgradeHelper Disabled 3 plugins during Bitbucket upgrade
+2026-03-11 14:24:35,668 ERROR [Caesium-1-4]  c.a.b.i.s.i.IndexingSynchronizationService Failed to create indexes: ''[Unsuccessful search response: 401. Bitbucket did not have authorization to request data from the search server.]''
+2026-03-11 14:24:35,669 ERROR [Caesium-1-4]  c.a.b.i.s.i.IndexingSynchronizationService Unable to synchronize the mapping in the search server
+2026-03-11 14:24:35,670 WARN  [Caesium-1-4]  c.a.b.i.s.c.cluster.ClusterJobRunner Job execution failed. Rescheduling. Job key: com.atlassian.bitbucket.internal.search.indexing.jobs.StartupChecksJob  Job id: 8f2dd27c-4648-4863-a958-ccfa49a18636
