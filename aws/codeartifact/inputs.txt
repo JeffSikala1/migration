@@ -17,100 +17,15 @@ lsblk
 
 
 
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 
-crontab -l > /root/bitbucket-upgrade-20260311/root.crontab.preupgrade
+ss -ltnp | egrep ':7990|:7999|:443|:80'
 
-crontab -l | grep -v 'bitbucket_mirror_data/.*_script.sh' \
-  > /root/bitbucket-upgrade-20260311/root.crontab.upgrade
-
-crontab /root/bitbucket-upgrade-20260311/root.crontab.upgrade
-
-echo "=== current crontab after temporary change ==="
-crontab -l
+curl -I http://localhost:7990/
+curl -kI https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/
 
 
-
-
-
-
-
-TS=$(date +%Y%m%d_%H%M%S)
-BK="/app/bamboobackup/manual/bitbucket-upgrade-${TS}"
-
-mkdir -p "$BK"
-
-echo "=== backup folder ==="
-echo "$BK"
-
-cp -v /root/bitbucket-upgrade-20260311/*.json "$BK"/
-
-echo "=== stopping Bitbucket cleanly ==="
-docker stop cnxs-mgmt-bitbucket
-
-echo "=== postgres logical backups ==="
-docker exec prod-postgres pg_dumpall -U postgres --globals-only > "${BK}/globals_${TS}.sql"
-docker exec prod-postgres pg_dump -U postgres -Fc bitbucket > "${BK}/bitbucket_${TS}.dump"
-
-echo "=== filesystem backups ==="
-tar -C /var/lib/docker/volumes -czf "${BK}/bitbucket_home_${TS}.tar.gz" bitbucketVolume/_data
-tar -C /var/lib/docker/volumes -czf "${BK}/bitbucket_install8_${TS}.tar.gz" optbitbucketVolume/_data
-
-echo "=== checksums ==="
-sha256sum "${BK}"/* > "${BK}/SHA256SUMS.txt"
-
-echo "=== optional upload to S3 ==="
-aws s3 cp "$BK" "s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-${TS}/" --recursive
-
-echo "=== resulting files ==="
-ls -lh "$BK"
-
-
-
-
-
-
-
-
-echo "=== rename old container ==="
-docker rename cnxs-mgmt-bitbucket "cnxs-mgmt-bitbucket_8_19_9_preupgrade_${TS}"
-
-echo "=== prevent old container from auto-restarting later ==="
-docker update --restart=no "cnxs-mgmt-bitbucket_8_19_9_preupgrade_${TS}"
-
-echo "=== create new install volume for 9.4 ==="
-docker volume create optbitbucketVolume94
-
-echo "=== verify ==="
-docker volume inspect optbitbucketVolume94
-
-
-
-
-
-
-docker run -d \
-  --name cnxs-mgmt-bitbucket \
-  --hostname bitbucket \
-  --network prod-net \
-  --network-alias bitbucket \
-  --restart unless-stopped \
-  -p 7990:7990 \
-  -p 7999:7999 \
-  --ulimit nofile=32768:65536 \
-  -e JVM_MINIMUM_MEMORY=1g \
-  -e JVM_MAXIMUM_MEMORY=2g \
-  -e JVM_SUPPORT_RECOMMENDED_ARGS='-Duser.timezone=America/Denver' \
-  -e ATL_TOMCAT_SECURE=true \
-  -e ATL_TOMCAT_SCHEME=https \
-  -e ATL_PROXY_NAME=bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov \
-  -e ATL_PROXY_PORT=443 \
-  -e SEARCH_ENABLED=true \
-  -e APPLICATION_MODE=default \
-  -v optbitbucketVolume94:/opt/atlassian \
-  -v bitbucketVolume:/var/atlassian/application-data/bitbucket \
-  atlassian/bitbucket:9.4.17
-
-
+docker logs --since 10m cnxs-mgmt-bitbucket 2>&1 | egrep -i 'ERROR|Exception|Failed|WARN|search|index|plugin'
 
 
 
@@ -118,5 +33,34 @@ docker logs -f --tail=300 cnxs-mgmt-bitbucket | tee "${BK}/bitbucket_9.4_startup
 
 
 
+
 docker logs --tail=500 cnxs-mgmt-bitbucket 2>&1 | \
   egrep -i 'upgrade|plugin|opensearch|reindex|error|exception|warn'
+
+
+
+docker logs --tail=500 cnxs-mgmt-bitbucket 2>&1 | \
+  egrep -i 'upgrade|plugin|opensearch|reindex|error|exception|warn' | \
+  grep -v 'INFO\|DEBUG\|search\|index\|Plugin\|Reindexing\|Upgrade\|opensearch\|Elasticsearch
+
+
+
+
+sudo -u ec2-user git ls-remote ssh://git@localhost:7999/cnxs/common.git | head
+
+
+sudo -u ec2-user git ls-remote ssh://git@localhost:7999/usda/scripts.git | head
+
+
+
+
+
+
+crontab /root/bitbucket-upgrade-20260311/root.crontab.preupgrade
+crontab -l
+
+
+
+
+
+
