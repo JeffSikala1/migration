@@ -18,24 +18,105 @@ lsblk
 
 
 
-mkdir -p /root/bitbucket-upgrade-20260311
+crontab -l > /root/bitbucket-upgrade-20260311/root.crontab.preupgrade
 
-echo "=== disk space ==="
-df -h
+crontab -l | grep -v 'bitbucket_mirror_data/.*_script.sh' \
+  > /root/bitbucket-upgrade-20260311/root.crontab.upgrade
 
-echo "=== current Bitbucket config file ==="
-docker exec cnxs-mgmt-bitbucket bash -lc 'sed -n "1,200p" /var/atlassian/application-data/bitbucket/shared/bitbucket.properties'
+crontab /root/bitbucket-upgrade-20260311/root.crontab.upgrade
 
-echo "=== shared plugins ==="
-docker exec cnxs-mgmt-bitbucket bash -lc 'find /var/atlassian/application-data/bitbucket/shared/plugins -maxdepth 3 -type f | sort'
+echo "=== current crontab after temporary change ==="
+crontab -l
 
-echo "=== possible SSO / auth clues ==="
-docker exec cnxs-mgmt-bitbucket bash -lc 'find /var/atlassian/application-data/bitbucket/shared -maxdepth 4 -type f | egrep -i "sso|saml|okta|crowd|auth|plugin" | sort'
 
-echo "=== save current container and network metadata ==="
-docker inspect cnxs-mgmt-bitbucket > /root/bitbucket-upgrade-20260311/cnxs-mgmt-bitbucket.inspect.json
-docker network inspect prod-net > /root/bitbucket-upgrade-20260311/prod-net.inspect.json
-docker volume inspect bitbucketVolume optbitbucketVolume pgdataVolume16 > /root/bitbucket-upgrade-20260311/volumes.inspect.json
 
-echo "=== try target image pull ==="
-docker pull atlassian/bitbucket:9.4.17
+
+
+
+
+TS=$(date +%Y%m%d_%H%M%S)
+BK="/app/bamboobackup/manual/bitbucket-upgrade-${TS}"
+
+mkdir -p "$BK"
+
+echo "=== backup folder ==="
+echo "$BK"
+
+cp -v /root/bitbucket-upgrade-20260311/*.json "$BK"/
+
+echo "=== stopping Bitbucket cleanly ==="
+docker stop cnxs-mgmt-bitbucket
+
+echo "=== postgres logical backups ==="
+docker exec prod-postgres pg_dumpall -U postgres --globals-only > "${BK}/globals_${TS}.sql"
+docker exec prod-postgres pg_dump -U postgres -Fc bitbucket > "${BK}/bitbucket_${TS}.dump"
+
+echo "=== filesystem backups ==="
+tar -C /var/lib/docker/volumes -czf "${BK}/bitbucket_home_${TS}.tar.gz" bitbucketVolume/_data
+tar -C /var/lib/docker/volumes -czf "${BK}/bitbucket_install8_${TS}.tar.gz" optbitbucketVolume/_data
+
+echo "=== checksums ==="
+sha256sum "${BK}"/* > "${BK}/SHA256SUMS.txt"
+
+echo "=== optional upload to S3 ==="
+aws s3 cp "$BK" "s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-${TS}/" --recursive
+
+echo "=== resulting files ==="
+ls -lh "$BK"
+
+
+
+
+
+
+
+
+echo "=== rename old container ==="
+docker rename cnxs-mgmt-bitbucket "cnxs-mgmt-bitbucket_8_19_9_preupgrade_${TS}"
+
+echo "=== prevent old container from auto-restarting later ==="
+docker update --restart=no "cnxs-mgmt-bitbucket_8_19_9_preupgrade_${TS}"
+
+echo "=== create new install volume for 9.4 ==="
+docker volume create optbitbucketVolume94
+
+echo "=== verify ==="
+docker volume inspect optbitbucketVolume94
+
+
+
+
+
+
+docker run -d \
+  --name cnxs-mgmt-bitbucket \
+  --hostname bitbucket \
+  --network prod-net \
+  --network-alias bitbucket \
+  --restart unless-stopped \
+  -p 7990:7990 \
+  -p 7999:7999 \
+  --ulimit nofile=32768:65536 \
+  -e JVM_MINIMUM_MEMORY=1g \
+  -e JVM_MAXIMUM_MEMORY=2g \
+  -e JVM_SUPPORT_RECOMMENDED_ARGS='-Duser.timezone=America/Denver' \
+  -e ATL_TOMCAT_SECURE=true \
+  -e ATL_TOMCAT_SCHEME=https \
+  -e ATL_PROXY_NAME=bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e SEARCH_ENABLED=true \
+  -e APPLICATION_MODE=default \
+  -v optbitbucketVolume94:/opt/atlassian \
+  -v bitbucketVolume:/var/atlassian/application-data/bitbucket \
+  atlassian/bitbucket:9.4.17
+
+
+
+
+
+docker logs -f --tail=300 cnxs-mgmt-bitbucket | tee "${BK}/bitbucket_9.4_startup.log"
+
+
+
+docker logs --tail=500 cnxs-mgmt-bitbucket 2>&1 | \
+  egrep -i 'upgrade|plugin|opensearch|reindex|error|exception|warn'
