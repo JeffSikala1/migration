@@ -1,364 +1,70 @@
-pricing/integration/integration-ear/pom.xml
+[ec2-user@ip-10-56-112-243 ~]$ ll
+total 0
+[ec2-user@ip-10-56-112-243 ~]$ df -Th
+Filesystem       Type      Size  Used Avail Use% Mounted on
+devtmpfs         devtmpfs  4.0M     0  4.0M   0% /dev
+tmpfs            tmpfs     7.7G     0  7.7G   0% /dev/shm
+tmpfs            tmpfs     3.1G  836K  3.1G   1% /run
+/dev/nvme0n1p1   xfs       150G   13G  137G   9% /
+tmpfs            tmpfs     7.7G   96K  7.7G   1% /tmp
+/dev/nvme0n1p128 vfat       10M  1.3M  8.7M  13% /boot/efi
+tmpfs            tmpfs     1.6G     0  1.6G   0% /run/user/1000
+/dev/nvme1n1     xfs       800G  710G   90G  89% /app/jfrog
+/dev/nvme2n1     xfs       200G  6.2G  194G   4% /app/postgres
+[ec2-user@ip-10-56-112-243 ~]$ free
+               total        used        free      shared  buff/cache   available
+Mem:        16086132     4600428      295724      145028    11189980    11004340
+Swap:              0           0           0
+[ec2-user@ip-10-56-112-243 ~]$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       4.4Gi       288Mi       141Mi        10Gi        10Gi
+Swap:             0B          0B          0B
+[ec2-user@ip-10-56-112-243 ~]$ sudp pvgs
+-bash: sudp: command not found
+[ec2-user@ip-10-56-112-243 ~]$ sudp pvg
+-bash: sudp: command not found
+[ec2-user@ip-10-56-112-243 ~]$ sudp pv
+-bash: sudp: command not found
+[ec2-user@ip-10-56-112-243 ~]$ sudo pvgs
+sudo: pvgs: command not found
+[ec2-user@ip-10-56-112-243 ~]$ sudo pvg
+sudo: pvg: command not found
+[ec2-user@ip-10-56-112-243 ~]$ sudo lvg
+sudo: lvg: command not found
+[ec2-user@ip-10-56-112-243 ~]$ sudo fdisk -l
+Disk /dev/nvme0n1: 150 GiB, 161061273600 bytes, 314572800 sectors
+Disk model: Amazon Elastic Block Store              
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 4096 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+Disklabel type: gpt
+Disk identifier: D3E6C813-9ECB-4100-9D7A-23A4A4DF25DB
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <artifactId>pricing-integration</artifactId>
-        <groupId>gov.gsa.cnxs.pricing</groupId>
-        <version>02.00.000.146-SNAPSHOT</version>
-    </parent>
-  <artifactId>pricing-ear</artifactId>
-  <packaging>ear</packaging>
+Device           Start       End   Sectors  Size Type
+/dev/nvme0n1p1   24576 314572766 314548191  150G Linux filesystem
+/dev/nvme0n1p127 22528     24575      2048    1M BIOS boot
+/dev/nvme0n1p128  2048     22527     20480   10M EFI System
 
-  <name>pricing-ear</name>
-
-    <dependencies>
-        <dependency>
-            <groupId>gov.gsa.cnxs.pricing</groupId>
-            <artifactId>pricing-core</artifactId>
-            <version>${project.version}</version>
-            <type>ejb</type>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <finalName>pricing-ear</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-ear-plugin</artifactId>
-                <version>${version.ear.plugin}</version>
-                <configuration>
-                    <generateApplicationXml>true</generateApplicationXml>
-                    <!-- Tell Maven we are using Java EE 8 -->
-                    <version>8</version>
-
-                    <defaultLibBundleDir>lib</defaultLibBundleDir>
-                    <outputFileNameMapping>@{artifactId}@@{dashClassifier?}@.@{extension}@</outputFileNameMapping>
-                    <modules>
-                        <ejbModule>
-                            <groupId>gov.gsa.cnxs.pricing</groupId>
-                            <artifactId>pricing-core</artifactId>
-                        </ejbModule>
-                    </modules>
-                    <archive>
-                        <manifestEntries>
-                            <!-- Required so that the Postgres jdbc JAR is loaded before this EAR -->
-                            <Dependencies>org.postgres export</Dependencies>
-                        </manifestEntries>
-                    </archive>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-
-</project>
+Partition table entries are not in disk order.
 
 
-pricing/integration/integration-test/pom.xml
+Disk /dev/nvme1n1: 800 GiB, 858993459200 bytes, 1677721600 sectors
+Disk model: Amazon Elastic Block Store              
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 4096 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
 
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <artifactId>pricing-integration</artifactId>
-        <groupId>gov.gsa.cnxs.pricing</groupId>
-        <version>02.00.000.146-SNAPSHOT</version>
-    </parent>
-
-    <artifactId>pricing-integration-test</artifactId>
-    <properties>
-        <skipUnitTests>false</skipUnitTests>
-        <jboss-home>${project.build.directory}/jboss</jboss-home>
-
-        <postgres.docker.volume.directory>${project.build.directory}/cnxs-pg-data</postgres.docker.volume.directory>
-    </properties>
-
-    <dependencies>
-        <dependency>
-            <groupId>gov.gsa.cnxs.pricing</groupId>
-            <artifactId>pricing-ear</artifactId>
-            <version>${project.version}</version>
-            <type>ear</type>
-        </dependency>
-
-        <dependency>
-            <groupId>gov.gsa.cnxs.domain.test</groupId>
-            <artifactId>domain-test-ear</artifactId>
-            <version>${version.domain}</version>
-            <type>ear</type>
-        </dependency>
-
-        <dependency>
-            <groupId>gov.gsa.cnxs.domain.test</groupId>
-            <artifactId>domain-test-api</artifactId>
-            <version>${version.domain}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>gov.gsa.cnxs.pricing</groupId>
-            <artifactId>pricing-core</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>gov.gsa.cnxs.domain.test</groupId>
-            <artifactId>domain-integration</artifactId>
-            <version>${version.domain}</version>
-            <type>test-jar</type>
-        </dependency>
-
-        <dependency>
-            <groupId>org.glassfish</groupId>
-            <artifactId>jakarta.el</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>jakarta.validation</groupId>
-            <artifactId>jakarta.validation-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
-    <profiles>
-        <profile>
-            <id>integration-test</id>
-            <activation>
-                <property>
-                    <name>skip.docker</name>
-                    <value>false</value>
-                </property>
-            </activation>
-            <dependencies>
-<!--                <dependency>-->
-<!--                    <groupId>gov.gsa.cnxs.db</groupId>-->
-<!--                    <artifactId>schema</artifactId>-->
-<!--                    <version>${version.schema}</version>-->
-<!--                    <classifier>data</classifier>-->
-<!--                    <type>tar.gz</type>-->
-<!--                </dependency>-->
-                <dependency>
-                    <groupId>gov.gsa.cnxs.db</groupId>
-                    <artifactId>pg-datafile</artifactId>
-                    <classifier>postgres-data</classifier>
-                    <version>${version.cnxs-pg-datafile}</version>
-                    <type>tar.gz</type>
-                </dependency>
-            </dependencies>
-            <build>
-                <plugins>
-                    <!-- compile our integration tests -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <phase>test-compile</phase>
-                                <goals>
-                                    <goal>testCompile</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- Tell surefire to skip test, we are using the failsafe plugin -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-dependency-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>unpack-cnxs-pg-datafile</id>
-                                <phase>process-resources</phase>
-                                <goals>
-                                    <goal>unpack-dependencies</goal>
-                                </goals>
-                                <configuration>
-                                    <includeArtifactIds>pg-datafile</includeArtifactIds>
-                                    <includeClassifiers>postgres-data</includeClassifiers>
-                                    <type>tar.gz</type>
-                                    <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
-                                </configuration>
-                            </execution>
-
-<!--                            <execution>-->
-<!--                                <id>copy-schema</id>-->
-<!--                                <phase>process-resources</phase>-->
-<!--                                <goals>-->
-<!--                                    <goal>copy</goal>-->
-<!--                                </goals>-->
-<!--                                <configuration>-->
-<!--                                    <artifactItems>-->
-<!--                                        <artifactItem>-->
-<!--                                            <groupId>gov.gsa.cnxs.db</groupId>-->
-<!--                                            <artifactId>schema</artifactId>-->
-<!--                                            <version>${version.schema}</version>-->
-<!--                                            <classifier>data</classifier>-->
-<!--                                            <type>tar.gz</type>-->
-<!--                                            <destFileName>schema.tar.gz</destFileName>-->
-<!--                                        </artifactItem>-->
-<!--                                    </artifactItems>-->
-
-<!--                                    <outputDirectory>${oracle.docker.volume.directory}/upgrade</outputDirectory>-->
-<!--                                </configuration>-->
-<!--                            </execution>-->
-                        </executions>
-                    </plugin>
-
-                    <!-- create / start a docker image containing jboss and our artifacts -->
-                    <plugin>
-                        <groupId>io.fabric8</groupId>
-                        <artifactId>docker-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>start-container</id>
-                                <phase>pre-integration-test</phase>
-                                <goals>
-                                    <goal>build</goal>
-                                    <goal>start</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>stop-container</id>
-                                <phase>post-integration-test</phase>
-                                <goals>
-                                    <goal>stop</goal>
-                                    <goal>remove</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <verbose>true</verbose>
-                            <removeAll>true</removeAll>
-                            <images>
-                                <image>
-                                    <name>${dbPostgresHost}</name>
-                                    <alias>${dbPostgresHost}</alias>
-                                    <build>
-                                        <from>${docker.postgres}</from>
-                                        <cleanup>remove</cleanup>
-                                    </build>
-                                    <run>
-                                        <namingStrategy>alias</namingStrategy>
-                                        <network>
-                                            <mode>custom</mode>
-                                            <name>isolated_nw</name>
-                                        </network>
-                                        <wait>
-                                            <log>${postgres.started.message}</log>
-                                            <time>${docker.timeout}</time>
-                                            <kill>60000</kill>
-                                        </wait>
-                                        <volumes>
-                                            <bind>
-                                                <volume>${postgres.docker.volume.directory}:${postgresVolumeMount}</volume>
-                                            </bind>
-                                        </volumes>
-                                        <log>
-                                            <enabled>true</enabled>
-                                            <prefix>CNX-POSTGRES</prefix>
-                                            <color>green</color>
-                                        </log>
-                                    </run>
-                                </image>
-                                <image>
-                                    <name>${jboss.docker.alias}</name>
-                                    <alias>${jboss.docker.alias}</alias>
-                                    <build>
-                                        <from>${docker.jboss-pg}</from>
-                                        <assembly>
-                                            <user>jboss:jboss:jboss</user>
-                                            <basedir>${docker.jboss.home}/standalone</basedir>
-                                            <descriptor>assembly.xml</descriptor>
-                                        </assembly>
-                                        <cleanup>remove</cleanup>
-                                    </build>
-                                    <run>
-                                        <namingStrategy>alias</namingStrategy>
-                                        <network>
-                                            <mode>custom</mode>
-                                            <name>isolated_nw</name>
-                                        </network>
-                                        <wait>
-                                            <log>${jboss.started.message}</log>
-                                            <time>${docker.timeout}</time>
-                                        </wait>
-                                        <dependsOn>
-                                            <container>${dbPostgresHost}</container>
-                                        </dependsOn>
-                                        <env>
-                                            <CONEXUS_DB_URL>jdbc:postgresql://${dbPostgresHost}:${dbPostgresPort}/${dbPostgresService}</CONEXUS_DB_URL>
-                                            <JBOSS_BIND_ADDRESS>${jboss.host}</JBOSS_BIND_ADDRESS>
-                                            <JBOSS_BIND_ADDRESS_MANAGEMENT>${jboss.host}</JBOSS_BIND_ADDRESS_MANAGEMENT>
-                                        </env>
-                                        <log>
-                                            <enabled>true</enabled>
-                                            <prefix>CNX-JBOSS</prefix>
-                                            <color>yellow</color>
-                                        </log>
-                                    </run>
-                                </image>
-                            </images>
-                        </configuration>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>non-forked</id>
-                                <goals>
-                                    <goal>integration-test</goal>
-                                    <goal>verify</goal>
-                                </goals>
-                                <configuration>
-                                    <runOrder>alphabetical</runOrder>
-                                    <includes>
-                                        <include>gov.gsa.nsfs.**</include>
-                                        <include>**/*IT.java</include>
-                                    </includes>
-                                    <systemPropertyVariables>
-                                        <conexus.jboss.host>${jboss.host}</conexus.jboss.host>
-                                        <conexus.jms.host>${jboss.host}</conexus.jms.host>
-                                        <postgres.host>${dbPostgresHost}</postgres.host>
-                                        <hibernate.properties>db-postgres.properties</hibernate.properties>
-                                    </systemPropertyVariables>
-                                </configuration>
-                            </execution>
-                        </executions>
-                        <version>${version.maven-failsafe-plugin}</version>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-</project>
+Disk /dev/nvme2n1: 200 GiB, 214748364800 bytes, 419430400 sectors
+Disk model: Amazon Elastic Block Store              
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 4096 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+[ec2-user@ip-10-56-112-243 ~]$ sudo lsblk
+NAME          MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+nvme0n1       259:0    0  150G  0 disk 
+├─nvme0n1p1   259:3    0  150G  0 part /
+├─nvme0n1p127 259:4    0    1M  0 part 
+└─nvme0n1p128 259:5    0   10M  0 part /boot/efi
+nvme1n1       259:1    0  800G  0 disk /app/jfrog
+nvme2n1       259:2    0  200G  0 disk /app/postgres
