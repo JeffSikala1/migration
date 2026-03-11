@@ -1,156 +1,35 @@
-[root@ip-10-56-112-34 ec2-user]# docker images
-REPOSITORY            TAG           IMAGE ID       CREATED         SIZE
-atlassian/bitbucket   9.4.17        fc66f747474d   4 days ago      1.4GB
-atlassian/bamboo      9.6.6         27ad78e12bb2   3 months ago    1.18GB
-nginx                 1.29.3        60adc2e137e7   3 months ago    152MB
-atlassian/bitbucket   8.19.9        5b11aaa18086   4 months ago    1.34GB
-postgres              16.5-alpine   9ff53a21c37a   16 months ago   251MB
-postgres              16.5          30a563de922f   16 months ago   432MB
-[root@ip-10-56-112-34 ec2-user]# crontab -l > /root/bitbucket-upgrade-20260311/root.crontab.preupgrade
+[root@ip-10-56-112-34 ec2-user]# docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+NAMES                 IMAGE                        STATUS          PORTS
+cnxs-mgmt-bitbucket   atlassian/bitbucket:9.4.17   Up 43 minutes   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp
+prod-bamboo           atlassian/bamboo:9.6.6       Up 3 weeks      0.0.0.0:8085->8085/tcp, 0.0.0.0:8443->8443/tcp, 54663/tcp, 0.0.0.0:54663->54664/tcp
+prod-postgres         postgres:16.5                Up 3 months     0.0.0.0:32769->5432/tcp
+nginx                 nginx:1.29.3                 Up 3 months     0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
+[root@ip-10-56-112-34 ec2-user]# ss -ltnp | egrep ':7990|:7999|:443|:80'
+LISTEN 0      4096         0.0.0.0:80         0.0.0.0:*    users:(("docker-proxy",pid=332373,fd=4)) 
+LISTEN 0      4096         0.0.0.0:443        0.0.0.0:*    users:(("docker-proxy",pid=332359,fd=4)) 
+LISTEN 0      4096         0.0.0.0:8085       0.0.0.0:*    users:(("docker-proxy",pid=538019,fd=4)) 
+LISTEN 0      4096         0.0.0.0:7999       0.0.0.0:*    users:(("docker-proxy",pid=3086518,fd=4))
+LISTEN 0      4096         0.0.0.0:7990       0.0.0.0:*    users:(("docker-proxy",pid=3086532,fd=4))
+[root@ip-10-56-112-34 ec2-user]# curl -I http://localhost:7990/
+curl -kI https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/
+HTTP/1.1 302 
+X-AREQUESTID: @1GGLEERx906x689x0
+x-xss-protection: 1; mode=block
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+Pragma: no-cache
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+Cache-Control: no-cache
+Cache-Control: no-store
+Location: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/dashboard
+Content-Language: en-US
+Date: Wed, 11 Mar 2026 21:06:54 GMT
 
-crontab -l | grep -v 'bitbucket_mirror_data/.*_script.sh' \
-  > /root/bitbucket-upgrade-20260311/root.crontab.upgrade
-
-crontab /root/bitbucket-upgrade-20260311/root.crontab.upgrade
-
-echo "=== current crontab after temporary change ==="
-crontab -l
-=== current crontab after temporary change ===
-#Ansible: CIS 1.3.2 - Run aide filesystem integrity check
-0 5 * * * /usr/sbin/aide --check
-
-
-
-# Nightly at 02:15
-15 2 * * * /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-
-# Weekly Sunday at 03:00
-0 3 * * 0 /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
-
-# Daily Secrets Manager backup (encrypted to S3)
-55 1 * * * /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
-
-0 4 * * * find /app/bamboobackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
-
-[root@ip-10-56-112-34 ec2-user]# TS=$(date +%Y%m%d_%H%M%S)
-BK="/app/bamboobackup/manual/bitbucket-upgrade-${TS}"
-
-mkdir -p "$BK"
-
-echo "=== backup folder ==="
-echo "$BK"
-
-cp -v /root/bitbucket-upgrade-20260311/*.json "$BK"/
-
-echo "=== stopping Bitbucket cleanly ==="
-docker stop cnxs-mgmt-bitbucket
-
-echo "=== postgres logical backups ==="
-docker exec prod-postgres pg_dumpall -U postgres --globals-only > "${BK}/globals_${TS}.sql"
-docker exec prod-postgres pg_dump -U postgres -Fc bitbucket > "${BK}/bitbucket_${TS}.dump"
-
-echo "=== filesystem backups ==="
-tar -C /var/lib/docker/volumes -czf "${BK}/bitbucket_home_${TS}.tar.gz" bitbucketVolume/_data
-tar -C /var/lib/docker/volumes -czf "${BK}/bitbucket_install8_${TS}.tar.gz" optbitbucketVolume/_data
-
-echo "=== checksums ==="
-sha256sum "${BK}"/* > "${BK}/SHA256SUMS.txt"
-
-echo "=== optional upload to S3 ==="
-aws s3 cp "$BK" "s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-${TS}/" --recursive
-
-echo "=== resulting files ==="
-ls -lh "$BK"
-=== backup folder ===
-/app/bamboobackup/manual/bitbucket-upgrade-20260311_201200
-'/root/bitbucket-upgrade-20260311/cnxs-mgmt-bitbucket.inspect.json' -> '/app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/cnxs-mgmt-bitbucket.inspect.json'
-'/root/bitbucket-upgrade-20260311/prod-net.inspect.json' -> '/app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/prod-net.inspect.json'
-'/root/bitbucket-upgrade-20260311/volumes.inspect.json' -> '/app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/volumes.inspect.json'
-=== stopping Bitbucket cleanly ===
-cnxs-mgmt-bitbucket
-=== postgres logical backups ===
-=== filesystem backups ===
-=== checksums ===
-=== optional upload to S3 ===
-upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/SHA256SUMS.txt to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/SHA256SUMS.txt
-upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/volumes.inspect.json to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/volumes.inspect.json
-upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/prod-net.inspect.json to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/prod-net.inspect.json
-upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/globals_20260311_201200.sql to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/globals_20260311_201200.sql
-upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/cnxs-mgmt-bitbucket.inspect.json to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/cnxs-mgmt-bitbucket.inspect.json
-upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/bitbucket_20260311_201200.dump to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/bitbucket_20260311_201200.dump
-upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/bitbucket_install8_20260311_201200.tar.gz to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/bitbucket_install8_20260311_201200.tar.gz
-upload: ../../app/bamboobackup/manual/bitbucket-upgrade-20260311_201200/bitbucket_home_20260311_201200.tar.gz to s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/bitbucket_home_20260311_201200.tar.gz
-=== resulting files ===
-total 7.0G
--rw-r-----. 1 root root 1.1K Mar 11 20:17 SHA256SUMS.txt
--rw-r-----. 1 root root 7.5M Mar 11 20:12 bitbucket_20260311_201200.dump
--rw-r-----. 1 root root 6.5G Mar 11 20:16 bitbucket_home_20260311_201200.tar.gz
--rw-r-----. 1 root root 511M Mar 11 20:16 bitbucket_install8_20260311_201200.tar.gz
--rw-r-----. 1 root root  12K Mar 11 20:12 cnxs-mgmt-bitbucket.inspect.json
--rw-r-----. 1 root root 1.1K Mar 11 20:12 globals_20260311_201200.sql
--rw-r-----. 1 root root 2.2K Mar 11 20:12 prod-net.inspect.json
--rw-r-----. 1 root root  790 Mar 11 20:12 volumes.inspect.json
-[root@ip-10-56-112-34 ec2-user]# echo "=== rename old container ==="
-docker rename cnxs-mgmt-bitbucket "cnxs-mgmt-bitbucket_8_19_9_preupgrade_${TS}"
-
-echo "=== prevent old container from auto-restarting later ==="
-docker update --restart=no "cnxs-mgmt-bitbucket_8_19_9_preupgrade_${TS}"
-
-echo "=== create new install volume for 9.4 ==="
-docker volume create optbitbucketVolume94
-
-echo "=== verify ==="
-docker volume inspect optbitbucketVolume94
-
-
-
-=== rename old container ===
-=== prevent old container from auto-restarting later ===
-cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
-=== create new install volume for 9.4 ===
-optbitbucketVolume94
-=== verify ===
-[
-    {
-        "CreatedAt": "2026-03-11T20:21:29Z",
-        "Driver": "local",
-        "Labels": null,
-        "Mountpoint": "/app/docker/volumes/optbitbucketVolume94/_data",
-        "Name": "optbitbucketVolume94",
-        "Options": null,
-        "Scope": "local"
-    }
-]
-[root@ip-10-56-112-34 ec2-user]# docker run -d \
-  --name cnxs-mgmt-bitbucket \
-  --hostname bitbucket \
-  --network prod-net \
-  --network-alias bitbucket \
-  --restart unless-stopped \
-  -p 7990:7990 \
-  -p 7999:7999 \
-  --ulimit nofile=32768:65536 \
-  -e JVM_MINIMUM_MEMORY=1g \
-  -e JVM_MAXIMUM_MEMORY=2g \
-  -e JVM_SUPPORT_RECOMMENDED_ARGS='-Duser.timezone=America/Denver' \
-  -e ATL_TOMCAT_SECURE=true \
-  -e ATL_TOMCAT_SCHEME=https \
-  -e ATL_PROXY_NAME=bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov \
-  -e ATL_PROXY_PORT=443 \
-  -e SEARCH_ENABLED=true \
-  -e APPLICATION_MODE=default \
-  -v optbitbucketVolume94:/opt/atlassian \
-  -v bitbucketVolume:/var/atlassian/application-data/bitbucket \
-  atlassian/bitbucket:9.4.17
-3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787
-
-
+[root@ip-10-56-112-34 ec2-user]# docker logs --since 10m cnxs-mgmt-bitbucket 2>&1 | egrep -i 'ERROR|Exception|Failed|WARN|search|index|plugin'
+[root@ip-10-56-112-34 ec2-user]# docker logs --since 10m cnxs-mgmt-bitbucket 2>&1 | egrep -i 'ERROR|Exception|Failed|WARN|search|index|plugin'
 [root@ip-10-56-112-34 ec2-user]# docker logs -f --tail=300 cnxs-mgmt-bitbucket | tee "${BK}/bitbucket_9.4_startup.log"
 INFO:root:User is currently root. Will downgrade run user to bitbucket
 INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
-WARNING: Using incubator modules: jdk.incubator.vector
-Mar 11, 2026 8:23:09 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
-WARNING: COMPAT locale provider will be removed in a future release
 Starting Atlassian Bitbucket as the current user
 2026-03-11 20:23:05,920 INFO  [main]  c.a.b.s.helper.ConfigDirectoryHelper Backing up existing configuration files
 2026-03-11 20:23:05,938 INFO  [main]  c.a.b.s.helper.ConfigDirectoryHelper Existing bundled search configuration needs to be updated
@@ -172,9 +51,12 @@ The following issues were found with the mask "u=rwx,g=rx,o=rx" (0022):
    all access for security reasons.
 The recommended umask for Bitbucket is "u=,g=w,o=rwx" (0027) and can be
 configured in _start-webapp.sh
+WARNING: Using incubator modules: jdk.incubator.vector
+Mar 11, 2026 8:23:09 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
 
 Starting Bitbucket webapp at http://localhost:7990
 14:23:09.131 [main] INFO com.atlassian.security.serialfilter.DeserializationFilterConfigurator -- Global serial filter set to JDK 11 DeserializationFilter
+WARNING: COMPAT locale provider will be removed in a future release
 ERROR StatusConsoleListener Could not define attribute view on path "/var/atlassian/application-data/bitbucket/log/search/bitbucket_search_server.json" got access denied ("java.lang.RuntimePermission" "accessUserInformation")
  java.security.AccessControlException: access denied ("java.lang.RuntimePermission" "accessUserInformation")
         at java.base/java.security.AccessControlContext.checkPermission(AccessControlContext.java:488)
@@ -352,9 +234,9 @@ WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impac
 2026-03-11 14:24:41,795 INFO  [Caesium-1-1]  c.a.b.i.s.c.c.DefaultClusterJobManager There are currently 2 to select from
 2026-03-11 14:24:41,808 INFO  [Caesium-1-2]  c.a.b.i.s.i.IndexingSynchronizationService Beginning indexing of all projects and repositories for search.
 2026-03-11 14:24:43,086 INFO  [Caesium-1-2]  c.a.b.i.s.i.IndexingSynchronizationService Mapping in the search server has been created successfully
-
-
-
+2026-03-11 14:34:19,569 INFO  [bcma-3]  c.a.b.p.b.a.AnalyticsEventDispatcher Analytics event dispatching job started jobId=5fa2795a-8c0e-435c-b95d-4d0d3cad238c
+2026-03-11 14:34:19,572 INFO  [bcma-3]  c.a.b.p.b.a.AnalyticsEventDispatcher Analytics event dispatching finished jobId=5fa2795a-8c0e-435c-b95d-4d0d3cad238c, total time PT0.002988322S.
+^C\
 
 [root@ip-10-56-112-34 ec2-user]# docker logs --tail=500 cnxs-mgmt-bitbucket 2>&1 | \
   egrep -i 'upgrade|plugin|opensearch|reindex|error|exception|warn'
@@ -432,3 +314,22 @@ WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impac
 2026-03-11 14:24:35,668 ERROR [Caesium-1-4]  c.a.b.i.s.i.IndexingSynchronizationService Failed to create indexes: ''[Unsuccessful search response: 401. Bitbucket did not have authorization to request data from the search server.]''
 2026-03-11 14:24:35,669 ERROR [Caesium-1-4]  c.a.b.i.s.i.IndexingSynchronizationService Unable to synchronize the mapping in the search server
 2026-03-11 14:24:35,670 WARN  [Caesium-1-4]  c.a.b.i.s.c.cluster.ClusterJobRunner Job execution failed. Rescheduling. Job key: com.atlassian.bitbucket.internal.search.indexing.jobs.StartupChecksJob  Job id: 8f2dd27c-4648-4863-a958-ccfa49a18636
+[root@ip-10-56-112-34 ec2-user]# docker logs --tail=500 cnxs-mgmt-bitbucket 2>&1 | \
+  egrep -i 'upgrade|plugin|opensearch|reindex|error|exception|warn' | \
+  grep -v 'INFO\|DEBUG\|search\|index\|Plugin\|Reindexing\|Upgrade\|opensearch\|Elasticsearch
+> ^C
+
+
+
+
+[root@ip-10-56-112-34 ec2-user]# sudo -u ec2-user git ls-remote ssh://git@localhost:7999/cnxs/common.git | head
+1571b90999cb4efc924bed35524af3f071cf3e67        HEAD
+1571b90999cb4efc924bed35524af3f071cf3e67        refs/heads/develop
+cfab8925cff512847bd516e98051944c8d5f0cc9        refs/heads/feature/ll-2025-jboss-8
+71f1691fe542d59bdfdb4a3407cbd58d7e931a81        refs/heads/feature/ll-CNXS-68737-newer-versions
+a923404780248c85d7b408cec9dfe0bcd95b9483        refs/heads/feature/ll-CNXS-68737-newer-versions+to-a-newer-version-dependencies
+f7f248b37f6a2d8c1bb4148a93b3497c5c77946b        refs/heads/feature/ll-jboss8
+1106d700f0cefdcab8b9be55471e24ad6bc969a9        refs/heads/feature/ll-jboss8+CNXS-65884-upgrade-to-jboss-8.x-for-Common
+85c8eb26b4724ae9a855e18d35b8bdfada6a60fe        refs/heads/feature/ll-modelchanges
+f7f248b37f6a2d8c1bb4148a93b3497c5c77946b        refs/heads/feature/ll-postgres
+71bd1cb15704a63fa02d8b0505f75f10d6f45d61        refs/heads/feature/ll-postgres+CNXS-69417-update-ws-backend-to-not-check-for-app-key-tenant-key-headers
