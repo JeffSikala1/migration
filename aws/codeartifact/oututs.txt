@@ -1,676 +1,85 @@
-[root@ip-10-56-112-243 ec2-user]# docker inspect artifactory --format '{{json .Mounts}}' | jq
-[
-  {
-    "Type": "bind",
-    "Source": "/app/jfrog/artifactory/var",
-    "Destination": "/var/opt/jfrog/artifactory",
-    "Mode": "",
-    "RW": true,
-    "Propagation": "rprivate"
-  },
-  {
-    "Type": "bind",
-    "Source": "/app/jfrog/artifactory/security",
-    "Destination": "/opt/jfrog/artifactory/app/third-party/java/lib/security",
-    "Mode": "",
-    "RW": true,
-    "Propagation": "rprivate"
-  }
-]
-[root@ip-10-56-112-243 ec2-user]# export AWS_REGION=us-east-1
-export JFROG_BUCKET=artifactory-filestore
-export JFROG_PATH=artifactory-prod-filestore
+[root@ip-10-56-112-243 ec2-user]# docker ps
+CONTAINER ID   IMAGE                                                         COMMAND                  CREATED       STATUS          PORTS                                                                      NAMES
+7c25ec7ae10e   releases-docker.jfrog.io/jfrog/nginx-artifactory-pro:7.68.7   "/entrypoint-nginx.sh"   5 weeks ago   Up 25 minutes   0.0.0.0:80->80/tcp, :::80->80/tcp, 0.0.0.0:443->443/tcp, :::443->443/tcp   artifactory-nginx
+dc00bfc2ebf3   releases-docker.jfrog.io/jfrog/artifactory-pro:7.104.14       "/entrypoint-artifac…"   5 weeks ago   Up 25 minutes   8081/tcp                                                                   artifactory
+6b40766d0dc5   postgres:15-alpine                                            "docker-entrypoint.s…"   5 weeks ago   Up 5 weeks      5432/tcp                                                                   artifactory-postgres
+[root@ip-10-56-112-243 ec2-user]# curl -k -I https://localhost
+curl: (35) Send failure: Broken pipe
+[root@ip-10-56-112-243 ec2-user]# curl -I http://localhost:8082
+curl: (7) Failed to connect to localhost port 8082 after 0 ms: Could not connect to server
+[root@ip-10-56-112-243 ec2-user]# curl -k -I https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
+HTTP/2 200 
+server: nginx/1.29.3
+date: Thu, 12 Mar 2026 18:29:44 GMT
+content-type: text/html; charset=UTF-8
+content-length: 3499
+accept-ranges: bytes
+cache-control: public, max-age=0
+content-security-policy: script-src 'self' 'unsafe-eval' 'sha256-3PmEzEApyqy0Ymv5EIdVsBkrTBDIyTw4NHP1HOpBh00='; font-src 'self' data:; base-uri 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'self'
+etag: W/"dab-19488d6ad30"
+feature-policy: geolocation 'none';microphone 'none';camera 'none';payment 'none'
+last-modified: Tue, 21 Jan 2025 12:29:18 GMT
+referrer-policy: no-referrer
+vary: Accept-Encoding
+x-content-security-policy: script-src 'self' 'unsafe-eval' 'sha256-3PmEzEApyqy0Ymv5EIdVsBkrTBDIyTw4NHP1HOpBh00='; font-src 'self' data:; base-uri 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'self'
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-webkit-csp: script-src 'self' 'unsafe-eval' 'sha256-3PmEzEApyqy0Ymv5EIdVsBkrTBDIyTw4NHP1HOpBh00='; font-src 'self' data:; base-uri 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'self'
+x-xss-protection: 1; mode=block
 
-aws s3api create-bucket \
-  --bucket "$JFROG_BUCKET" \
-  --region "$AWS_REGION"
+[root@ip-10-56-112-243 ec2-user]# curl -I http://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:8082
+^C
+[root@ip-10-56-112-243 ec2-user]# df -Th
+Filesystem       Type      Size  Used Avail Use% Mounted on
+devtmpfs         devtmpfs  4.0M     0  4.0M   0% /dev
+tmpfs            tmpfs     7.7G     0  7.7G   0% /dev/shm
+tmpfs            tmpfs     3.1G  828K  3.1G   1% /run
+/dev/nvme0n1p1   xfs       150G   13G  137G   9% /
+tmpfs            tmpfs     7.7G  100K  7.7G   1% /tmp
+/dev/nvme0n1p128 vfat       10M  1.3M  8.7M  13% /boot/efi
+tmpfs            tmpfs     1.6G     0  1.6G   0% /run/user/1000
+/dev/nvme1n1     xfs       800G  667G  133G  84% /app/jfrog
+/dev/nvme2n1     xfs       200G  6.3G  194G   4% /app/postgres
+overlay          overlay   150G   13G  137G   9% /var/lib/docker/overlay2/58dd16c23aa43909368722e285c7be2fae3ea7f993fe630bb2fdf1d21a6b29df/merged
+overlay          overlay   150G   13G  137G   9% /var/lib/docker/overlay2/c3d925b76ae70290d883ee1b18f32c87995dcc027fb969e120a6f9724c0fe8c7/merged
+overlay          overlay   150G   13G  137G   9% /var/lib/docker/overlay2/37976cbd42301cd320d1a6deca1d3438c348247fe2d4d5ef463a1b23dad12c2d/merged
+[root@ip-10-56-112-243 ec2-user]# du -sh /app/jfrog/artifactory/var/data/artifactory/filestore
+397G    /app/jfrog/artifactory/var/data/artifactory/filestore
+[root@ip-10-56-112-243 ec2-user]# cat /app/jfrog/artifactory/var/etc/artifactory/binarystore.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Artifactory is a binaries repository manager.
+  ~ Copyright (C) 2019 JFrog Ltd.
+  ~
+  ~ Artifactory is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU Affero General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ Artifactory is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU Affero General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Affero General Public License
+  ~ along with Artifactory.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+<!--
+    This file configures Artifactory's binary provider
+-->
 
-An error occurred (BucketAlreadyExists) when calling the CreateBucket operation: The requested bucket name is not available. The bucket namespace is shared by all users of the system. Please select a different name and try again.
-[root@ip-10-56-112-243 ec2-user]# export AWS_REGION=us-east-1
-export JFROG_BUCKET=conexus-artifactory-filestore
-export JFROG_PATH=artifactory-prod-filestore
+<!--
+  ~ TAKE CARE! Making changes to this file may result in losing binaries stored in Artifactory!
+  ~ If you are not sure of what you are doing, please contact JFrog Support for assistance.
+  -->
 
-aws s3api create-bucket \
-  --bucket "$JFROG_BUCKET" \
-  --region "$AWS_REGION"
-{
-    "Location": "/conexus-artifactory-filestore",
-    "BucketArn": "arn:aws:s3:::conexus-artifactory-filestore"
-}
-[root@ip-10-56-112-243 ec2-user]# aws s3api put-bucket-versioning \
-  --bucket "$JFROG_BUCKET" \
-  --versioning-configuration Status=Enabled
-[root@ip-10-56-112-243 ec2-user]# aws s3api put-bucket-encryption \
-  --bucket "$JFROG_BUCKET" \
-  --server-side-encryption-configuration '{
-    "Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]
-  }'
-[root@ip-10-56-112-243 ec2-user]# cp -p /app/jfrog/artifactory/var/etc/artifactory/binarystore.xml \
-      /app/jfrog/artifactory/var/etc/artifactory/binarystore.xml.bak.$(date +%F-%H%M%S)
-[root@ip-10-56-112-243 ec2-user]# vim /app/jfrog/artifactory/var/etc/artifactory/binarystore.xml
-[root@ip-10-56-112-243 ec2-user]# docker stop artifactory
-docker stop artifactory-nginx
-artifactory
-artifactory-nginx
-[root@ip-10-56-112-243 ec2-user]# echo test > /tmp/jfrog-s3-test.txt
-aws s3 cp /tmp/jfrog-s3-test.txt s3://conexus-artifactory-filestore/artifactory-prod-filestore/_connectivity/jfrog-s3-test.txt
-aws s3 ls s3://conexus-artifactory-filestore/artifactory-prod-filestore/_connectivity/
-upload: ../../tmp/jfrog-s3-test.txt to s3://conexus-artifactory-filestore/artifactory-prod-filestore/_connectivity/jfrog-s3-test.txt
-2026-03-12 16:21:13          5 jfrog-s3-test.txt
-[root@ip-10-56-112-243 ec2-user]# aws s3 sync \
-  /app/jfrog/artifactory/var/data/artifactory/filestore/ \
-  s3://conexus-artifactory-filestore/artifactory-prod-filestore/ \
-  --only-show-errors
-[root@ip-10-56-112-243 ec2-user]# docker start artifactory
-docker start artifactory-nginx
-artifactory
-artifactory-nginx
-
-[root@ip-10-56-112-243 ec2-user]# tail -f /app/jfrog/artifactory/var/log/artifactory-service.log
-2026-03-12T18:04:55.212Z [jfrt ] [INFO ] [798229fd02c855ac] [.e.EventsLogCleanUpService:118] [d02c855ac|art-exec-6] - Starting cleanup of old events from event log
-2026-03-12T18:04:55.214Z [jfrt ] [INFO ] [798229fd02c855ac] [.e.EventsLogCleanUpService:124] [d02c855ac|art-exec-6] - deleteFrom=1773313951130
-2026-03-12T18:04:55.214Z [jfrt ] [INFO ] [798229fd02c855ac] [.e.EventsLogCleanUpService:131] [d02c855ac|art-exec-6] - eventsDeleteInterval=14400000
-2026-03-12T18:04:55.219Z [jfrt ] [INFO ] [798229fd02c855ac] [.e.EventsLogCleanUpService:134] [d02c855ac|art-exec-6] - maxBoundary.timestamp=1773331051120
-2026-03-12T18:04:55.220Z [jfrt ] [INFO ] [798229fd02c855ac] [.e.EventsLogCleanUpService:135] [d02c855ac|art-exec-6] - maxBoundary.deleteErrors=false
-2026-03-12T18:04:55.249Z [jfrt ] [INFO ] [798229fd02c855ac] [.e.EventsLogCleanUpService:162] [d02c855ac|art-exec-6] - Cleanup of old events from event log finished
-2026-03-12T18:09:42.280Z [jfrt ] [INFO ] [18538911a31f4a16] [o.j.a.c.g.AccessGrpcClient:125] [ttp-nio-8081-exec-10] - Opened gRPC streams: 10
-2026-03-12T18:09:42.564Z [jfrt ] [WARN ] [18538911a31f4a16] [ArtifactoryCrowdClientImpl:639] [ttp-nio-8081-exec-10] - An error occurred while configuring a connection to Atlassian Crowd: java.net.UnknownHostException: conexus-crowd.edc.ds1.usda.gov: Name or service not known
-2026-03-12T18:09:43.482Z [jfrt ] [WARN ] [4d0b0bc5bc23136b] [ArtifactoryCrowdClientImpl:639] [http-nio-8081-exec-5] - An error occurred while configuring a connection to Atlassian Crowd: java.net.UnknownHostException: conexus-crowd.edc.ds1.usda.gov
-2026-03-12T18:17:18.806Z [jfrt ] [WARN ] [4729917b9645d26b] [ArtifactoryCrowdClientImpl:639] [http-nio-8081-exec-6] - An error occurred while configuring a connection to Atlassian Crowd: java.net.UnknownHostException: conexus-crowd.edc.ds1.usda.gov: Name or service not known
-
-onemodel.logging.application.rotation.maxAgeDays (Default Value): 365
-onemodel.logging.application.rotation.maxFiles (Default Value): 10
-onemodel.logging.application.rotation.maxSizeMb (Default Value): 25
-onemodel.logging.consoleLog.format (Default Value): jftext
-onemodel.logging.metrics.console (Default Value): false
-onemodel.logging.metrics.filePath (Default Value): onemodelregistry-metrics.log
-onemodel.logging.metrics.rotation.compress (Default Value): true
-onemodel.logging.metrics.rotation.intervalSecs (Default Value): 86400
-onemodel.logging.metrics.rotation.keepLastDecompressed (Default Value): 1
-onemodel.logging.metrics.rotation.maxAgeDays (Default Value): 365
-onemodel.logging.metrics.rotation.maxFiles (Default Value): 10
-onemodel.logging.metrics.rotation.maxSizeMb (Default Value): 25
-onemodel.logging.request.console (Default Value): false
-onemodel.logging.request.filePath (Default Value): onemodelregistry-request.log
-onemodel.logging.request.rotation.compress (Default Value): true
-onemodel.logging.request.rotation.intervalSecs (Default Value): 86400
-onemodel.logging.request.rotation.keepLastDecompressed (Default Value): 1
-onemodel.logging.request.rotation.maxAgeDays (Default Value): 365
-onemodel.logging.request.rotation.maxFiles (Default Value): 10
-onemodel.logging.request.rotation.maxSizeMb (Default Value): 25
-onemodel.metrics.enabled (Default Value): false
-onemodel.metrics.exclude (Default Value): []
-onemodel.metrics.intervalMillis (Default Value): 10000
-onemodel.metrics.logPeriodically (Default Value): true
-onemodel.metrics.tokenVerification.accessUrl (Default Value): 
-onemodel.metrics.tokenVerification.retryBackoffInitialIntervalMillis (Default Value): 500
-onemodel.metrics.tokenVerification.retryBackoffMaxElapsedTimeMillis (Default Value): 0
-onemodel.metrics.tokenVerification.retryBackoffMaxIntervalMillis (Default Value): 3600000
-onemodel.metrics.tokenVerification.revocableExpiryThresholdSeconds (Default Value): -1
-onemodel.metrics.triggers.enabled (Default Value): true
-onemodel.metrics.triggers.intervalMillis (Default Value): 20000
-onemodel.metrics.triggers.limit (Default Value): 1000000
-onemodel.port (Default Value): 8071
-onemodel.probes.liveness.failOnLongFailingReadiness.enabled (Default Value): true
-onemodel.probes.liveness.failOnLongFailingReadiness.failureDurationSecs (Default Value): 60
-onemodel.profiling.enabled (Default Value): false
-onemodel.storage.maxRecordsPerOwner (Default Value): 10
-onemodel.storage.supergraphsRetentionDays (Default Value): 365
-onemodel.supportBundle.nodeBundleAggregationTimeoutMillis (Default Value): 30000
-onemodel.supportBundle.serviceBundleAggregationTimeoutMillis (Default Value): 300000
-product.data.internal (Environment Variable: JF_PRODUCT_DATA_INTERNAL): /var/opt/jfrog/artifactory
-product.home (Environment Variable: JF_PRODUCT_HOME): /opt/jfrog/artifactory
-router.entrypoints.externalPort (File): 8082
-router.entrypoints.internalPort (Default Value): 8046
-router.topology.local.requiredservicetypes (Environment Variable: JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES): jfrt,jfac,jfmd,jffe,jfob,jfcon,jfevt,jftpl,jfomr
-shared.database.driver (File): org.postgresql.Driver
-shared.database.password (File): *****
-shared.database.type (File): postgresql
-shared.database.url (File): jdbc:postgresql://artifactory-postgres:5432/artifactory
-shared.database.username (File): artifactory
-shared.logging.consoleLog.format (Default Value): jftext
-shared.logging.enableJsonConsoleLogAppenders (Default Value): false
-shared.multiTenant.cellId (Default Value): 
-shared.multiTenant.enabled (Default Value): false
-shared.multiTenant.tenantRegistryClient.caCert (Default Value): 
-shared.multiTenant.tenantRegistryClient.cacheExpirationSecs (Default Value): 21600
-shared.multiTenant.tenantRegistryClient.clientCert (Default Value): 
-shared.multiTenant.tenantRegistryClient.clientCertKey (Default Value): *****
-shared.multiTenant.tenantRegistryClient.dialTimeoutSecs (Default Value): 10
-shared.multiTenant.tenantRegistryClient.endpoints (Default Value): []
-shared.multiTenant.tenantRegistryClient.password (Default Value): *****
-shared.multiTenant.tenantRegistryClient.pingCacheExpirationSecs (Default Value): 15
-shared.multiTenant.tenantRegistryClient.pingTimeoutSecs (Default Value): 1
-shared.multiTenant.tenantRegistryClient.requestTimeoutSecs (Default Value): 30
-shared.multiTenant.tenantRegistryClient.username (Default Value): 
-shared.newrelic.appName (Default Value): 
-shared.newrelic.distributedTracerEnabled (Default Value): true
-shared.newrelic.enableDebugLog (Default Value): false
-shared.newrelic.enabled (Default Value): false
-shared.newrelic.licenseKey (Default Value): *****
-shared.node.id (Environment Variable: JF_SHARED_NODE_ID): dc00bfc2ebf3
-shared.node.ip (Environment Variable: JF_SHARED_NODE_IP): 172.18.0.3
-shared.node.name (Environment Variable: JF_SHARED_NODE_NAME): dc00bfc2ebf3
-shared.restrictedmode.enabled (Environment Variable: JF_SHARED_RESTRICTEDMODE_ENABLED): true
-shared.runtime.isSaas (Default Value): false
-shared.security (File): <nil>
-shared.security.ExposeApplicationHeaders (Default Value): false
-shared.security.bootstrapKeysReadTimeoutSecs (Default Value): 120
-shared.security.joinKeyFile (Default Value): etc/security/join.key
-shared.security.masterKeyFile (Default Value): etc/security/master.key
-system.yaml (Environment Variable: JF_SYSTEM_YAML): /opt/jfrog/artifactory/var/etc/system.yaml [lifecycle]
-2026-02-11T16:30:54.754Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - frontend (jffe) service initialization started. Version: 1.113.3 Revision: 10000003 PID: 5223 Home: /opt/jfrog/artifactory
-2026-02-11T16:30:54.756Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - Starting FE server in ST mode
-2026-02-11T16:30:54.756Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - attempting pinging artifactory for 300 retires and 1.0s interval for total of 5 minutes
-2026-02-11T16:30:54.769Z [shell] [INFO ] [] [systemYamlHelper.sh:621       ] [main] - Resolved JF_PRODUCT_HOME (/opt/jfrog/artifactory) from environment variable
-onemodel-apollo-router started. PID: 6964
-{"timestamp":"2026-02-11T16:30:54.788232635Z","level":"INFO","message":"Apollo Router v1.58.1 // (c) Apollo Graph, Inc. // Licensed as ELv2 (https://go.apollo.dev/elv2)","target":"apollo_router::executable","resource":{}}
-{"timestamp":"2026-02-11T16:30:54.788358908Z","level":"INFO","message":"Anonymous usage data collection is disabled.","target":"apollo_router::executable","resource":{}}
-Starting jfconnect
-PID exists (7336), but jfconnect not running. Proceed to start it up.
-2026-02-11T16:30:54.860Z [shell] [INFO ] [] [systemYamlHelper.sh:981       ] [main] - Resolved ${access.tomcat.workDir||/opt/jfrog/artifactory/var/work/access/tomcat} to default value : /opt/jfrog/artifactory/var/work/access/tomcat
-{"timestamp":"2026-02-11T16:30:54.963296197Z","level":"INFO","message":"Health check exposed at http://0.0.0.0:8074/health","resource":{"process.executable.name":"router","service.version":"1.58.1","service.name":"unknown_service:router"}}
-{"timestamp":"2026-02-11T16:30:54.963896183Z","level":"INFO","message":"GraphQL endpoint exposed at http://127.0.0.1:8073/ 🚀","resource":{"process.executable.name":"router","service.version":"1.58.1","service.name":"unknown_service:router"}}
-
-========================
-JF Environment variables
-========================
-
-JF_ACCESS_PID                       : /opt/jfrog/artifactory/var/work/run/access.pidjfconnect started. PID: 7305
-
-JF_ARTIFACTORY_USER                 : artifactory
-JF_SHARED_RESTRICTEDMODE_ENABLED    : true
-JF_SHARED_NODE_ID                   : dc00bfc2ebf32026-02-11T16:30:55.020Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [bootstrap.go:57               ] [main                ] - JFConnect (jfcon) service initialization started. Version: 7.106.5 (revision: 0a4bebb37c, build date: 2025-03-20T08:52:47Z) PID: 7305 Home: /opt/jfrog/artifactory
-2026-02-11T16:30:55.020Z [jfcon] [DEBUG] [                ] [file_resolver.go:71           ] [main                ] - Resolved system configuration file path: /opt/jfrog/artifactory/var/etc/system.yaml
-2026/02/11 16:30:55 Interval log rotation should not be zero or a negative integer. Provided : 0. Log rotation interval has been set to 24 hours
-2026/02/11 16:30:55 Interval log rotation should not be zero or a negative integer. Provided : 0. Log rotation interval has been set to 24 hours
-2026/02/11 16:30:55 Interval log rotation should not be zero or a negative integer. Provided : 0. Log rotation interval has been set to 24 hours
-2026/02/11 16:30:55 Interval log rotation should not be zero or a negative integer. Provided : 0. Log rotation interval has been set to 24 hours
-2026/02/11 16:30:55 Interval log rotation should not be zero or a negative integer. Provided : 0. Log rotation interval has been set to 24 hours
-2026/02/11 16:30:55 Interval log rotation should not be zero or a negative integer. Provided : 0. Log rotation interval has been set to 24 hours
-
-JF_SHARED_NODE_IP                   : 172.18.0.3
-JF_ARTIFACTORY_PID                  : /opt/jfrog/artifactory/var/work/run/artifactory.pid
-JF_ACCESS_USEEXTERNALTOPOLOGY       : true
-JF_PRODUCT_DATA_INTERNAL            : /var/opt/jfrog/artifactory
-JF_LEGACY_ARTIFACTORY_PID           : /opt/jfrog/artifactory/app/run/artifactory.pid
-JF_SYSTEM_YAML                      : /opt/jfrog/artifactory/var/etc/system.yaml
-JF_LEGACY_ACCESS_PID                : /opt/jfrog/artifactory/app/run/access.pid
-JF_PRODUCT_HOME                     : /opt/jfrog/artifactory
-JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES : jfrt,jfac,jfmd,jffe,jfob,jfcon,jfevt,jftpl,jfomr
-JF_SHARED_NODE_NAME                 : dc00bfc2ebf3
-2026-02-11T16:30:55.135Z [shell] [INFO ] [] [installerCommon.sh:1292       ] [main] - Redirection is set to false. Skipping catalina log redirection
-2026-02-11T16:30:55.319Z [shell] [INFO ] [] [topology.sh:155               ] [main] - Final command:
-Starting topology...
-PID exists (8007), but topology not running. Proceed to start it up.
-topology started. PID: 8026
-2026-02-11T16:30:55.490L [tomct] [WARNING] [                ] [org.apache.tomcat.util.digester.Digester] [org.apache.tomcat.util.digester.SetPropertiesRule begin] - Match [Server/Service/Connector] failed to set property [sendReasonPhrase] to [false] 
-Logging configuration has both console=true and filepath='router-service.log'; ignoring console.
-2026-02-11T16:30:55.517Z [jfrou] [INFO ] [5b308a781921e0ac] [config_holder.go:130          ] [main                ] [] - Configuration update detected
-2026-02-11T16:30:55.639Z [shell] [INFO ] [] [installerCommon.sh:1292       ] [main] - Redirection is set to false. Skipping catalina log redirection
-2026-02-11T16:30:56.016L [tomct] [INFO ] [                ] [org.apache.coyote.http11.Http11NioProtocol] [org.apache.coyote.AbstractProtocol init] - Initializing ProtocolHandler ["http-nio-127.0.0.1-8040"] 
-2026-02-11T16:30:56.100L [tomct] [INFO ] [                ] [org.apache.catalina.core.StandardService] [org.apache.catalina.core.StandardService startInternal] - Starting service [Catalina] 
-2026-02-11T16:30:56.107L [tomct] [INFO ] [                ] [org.apache.catalina.core.StandardEngine] [org.apache.catalina.core.StandardEngine startInternal] - Starting Servlet engine: [Apache Tomcat/10.1.34] 
-2026-02-11T16:30:56.137L [tomct] [INFO ] [                ] [org.apache.catalina.startup.HostConfig] [org.apache.catalina.startup.HostConfig deployDescriptor] - Deploying deployment descriptor [/opt/jfrog/artifactory/app/access/tomcat/conf/Catalina/localhost/access.xml] 
-2026-02-11T16:30:56.184L [tomct] [WARNING] [                ] [org.apache.catalina.startup.HostConfig] [org.apache.catalina.startup.HostConfig deployDescriptor] - The path attribute with value [/access] in deployment descriptor [/opt/jfrog/artifactory/app/access/tomcat/conf/Catalina/localhost/access.xml] has been ignored 
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:30:56.608Z","service":"tomcat","loglevel":"WARNING","class":"org.apache.tomcat.util.digester.Digester","message":"Match [Server/Service/Connector] failed to set property [sendReasonPhrase] to [false]"}}
-Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:30:57.582Z","service":"tomcat","loglevel":"INFO","class":"org.apache.coyote.http11.Http11NioProtocol","message":"Initializing ProtocolHandler ["http-nio-8081"]"}}
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:30:57.621Z","service":"tomcat","loglevel":"INFO","class":"org.apache.coyote.http11.Http11NioProtocol","message":"Initializing ProtocolHandler ["http-nio-127.0.0.1-8091"]"}}
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:30:57.661Z","service":"tomcat","loglevel":"INFO","class":"org.apache.catalina.core.StandardService","message":"Starting service [Catalina]"}}
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:30:57.662Z","service":"tomcat","loglevel":"INFO","class":"org.apache.catalina.core.StandardEngine","message":"Starting Servlet engine: [Apache Tomcat/10.1.34]"}}
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:30:57.710Z","service":"tomcat","loglevel":"INFO","class":"org.apache.catalina.startup.HostConfig","message":"Deploying deployment descriptor [/opt/jfrog/artifactory/app/artifactory/tomcat/conf/Catalina/localhost/artifactory.xml]"}}
-2026-02-11T16:30:57.715Z [jfmd ] [INFO ] [                ] [access_client_bootstrap.go:256] [main                ] - Cluster join: Retry 5: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [access_client]
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:30:57.744Z","service":"tomcat","loglevel":"WARNING","class":"org.apache.catalina.startup.HostConfig","message":"The path attribute with value [/artifactory] in deployment descriptor [/opt/jfrog/artifactory/app/artifactory/tomcat/conf/Catalina/localhost/artifactory.xml] has been ignored"}}
-2026-02-11T16:30:57.810Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [access_thin_client.go:101     ] [main                ] [                ] - Cluster join: Retry 5: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:30:57.907Z","service":"tomcat","loglevel":"WARNING","class":"org.apache.tomcat.util.digester.Digester","message":"Match [Context/CookieProcessor] failed to set property [forwardSlashIsSeparator] to [false]"}}
-2026-02-11T16:30:59.031Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [access_thin_client.go:112     ] [main                ] [                ] - Cluster join: Retry 5: Service registry Ping failed, will retry. Error: failed connecting to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:00.328Z [jftpl] [INFO ] [                ] [plicationContextInitializer:78] [main                ] - topology (jftpl) service initialization started. Version: 1.76.2 Revision: 17602900 PID: 8026 Home: /opt/jfrog/artifactory
-2026-02-11T16:31:00.333Z [jftpl] [INFO ] [                ] [plicationContextInitializer:37] [main                ] - Topology service deployment type: OnPrem
-2026-02-11T16:31:00.378Z [jftpl] [INFO ] [                ] [plicationContextInitializer:48] [main                ] - shared.database.driver (File): org.postgresql.Driver
-shared.database.password (File): *****
-shared.database.type (File): postgresql
-shared.database.url (File): jdbc:postgresql://artifactory-postgres:5432/artifactory
-shared.database.username (File): artifactory
-shared.logging.enableJsonConsoleLogAppenders (Default Value): false
-shared.multiTenant.enabled (Default Value): false
-shared.node.id (Environment Variable: JF_SHARED_NODE_ID): dc00bfc2ebf3
-shared.runtime.isSaas (Default Value): false
-shared.security.bootstrapKeysReadTimeoutSecs (Default Value): 120
-topology.accessClient.connectionTimeoutSecs (Default Value): 5
-topology.accessClient.insecure (Default Value): false
-topology.accessClient.maxJoinRetries (Default Value): 90
-topology.accessClient.providerCacheTimeoutSecs (Default Value): 10800
-topology.accessClient.serverBypassMaxJoinRetries (Default Value): 5
-topology.accessClient.serverBypassUrl (Default Value): 
-topology.accessClient.socketTimeoutSecs (Default Value): 45
-topology.accessClient.versionCacheExpirationSecs (Default Value): 120
-topology.accessClient.waitJoinMillis (Default Value): 1000
-topology.cleanup.staleNodeInitialDelaySecs (Default Value): 3600
-topology.cleanup.staleNodeIntervalSecs (Default Value): 3600
-topology.cleanup.staleNodeThresholdSecs (Default Value): 604800
-topology.database.maxOpenConnections (Default Value): 100
-topology.database.maxWait (Default Value): 30000
-topology.database.metrics.enabled (Default Value): false
-topology.database.migrationRetry.backoff (Default Value): 1.5
-topology.database.migrationRetry.initialDelayMillis (Default Value): 2000
-topology.database.migrationRetry.maxIntervalSecs (Default Value): 900
-topology.database.timeoutSecs (Default Value): 600
-topology.grpc.maxInboundMetadataSize (Default Value): 8192
-topology.grpc.port (Default Value): 8021
-topology.healthCheck.initialDelaySecs (Default Value): 15
-topology.healthCheck.intervalSecs (Default Value): 10
-topology.healthCheck.tenantCacheExpirationSecs (Default Value): 30
-topology.kubernetesFetcher.cacheTimeoutSecs (Default Value): 120
-topology.kubernetesFetcher.clientTimeoutSecs (Default Value): 10
-topology.kubernetesFetcher.enabled (Default Value): false
-topology.logging.requestFilter.enabled (Default Value): false
-topology.logging.requestFilter.grpc.ignoreDurationThresholdMillis (Default Value): 100
-topology.logging.requestFilter.grpc.ignorePaths (Default Value): 
-topology.logging.requestFilter.grpc.ignoreStatusCodes (Default Value): 
-topology.logging.requestFilter.http.ignoreDurationThresholdMillis (Default Value): 100
-topology.logging.requestFilter.http.ignorePaths (Default Value): 
-topology.logging.requestFilter.http.ignoreStatusCodes (Default Value): 
-topology.metrics.enabled (Default Value): false
-topology.metrics.exclude (Default Value): 
-topology.metrics.intervalSecs (Default Value): 60
-topology.metrics.logPeriodically (Default Value): true
-topology.metrics.numberServicesCacheTimeoutSecs (Default Value): 600
-topology.multiTenant.parallelMigrationsCount (Default Value): 0
-topology.newrelic.enabled (Default Value): false
-topology.newrelic.environment (Default Value): devel
-topology.newrelic.licenseKey (Default Value): *****
-topology.newrelic.logLevel (Default Value): off
-topology.newrelic.namespace (Default Value): devel
-topology.port (Default Value): 8020
-topology.routerHost (Default Value): localhost
-topology.security.exposeApplicationHeaders (Default Value): false
-topology.tomcat.config (Default Value): 
-2026-02-11T16:31:01.305Z [jfrt ] [INFO ] [9ad977747185553b] [o.a.c.h.ArtifactoryHome:252   ] [Catalina-utility-1  ] - Creating Artifactory home at 'null'
-2026-02-11T16:31:01.686Z [jfrt ] [INFO ] [9ad977747185553b] [o.a.c.h.HaNodeProperties:65   ] [Catalina-utility-1  ] - Artifactory is running in non-clustered mode.
-2026-02-11T16:31:01.724Z [jfrt ] [INFO ] [9ad977747185553b] [tifactoryHomeConfigListener:85] [Catalina-utility-1  ] - Resolved Home: '/opt/jfrog/artifactory
-2026-02-11T16:31:02.388Z [jfrt ] [INFO ] [9ad977747185553b] [o.a.c.h.ArtifactoryHome:1022  ] [Catalina-utility-1  ] - Setting 'cocoapodsNew,alpineNew,condaNew,npmNew,vcsNew,vagrantNew,swiftNew,permissions-cache-legacy' to system property 'spring.profiles.active'
-2026-02-11T16:31:02.402Z [jfac ] [INFO ] [c03bad134f34e565] [licationContextInitializer:166] [main                ] - Access (jfac) service initialization started. Version: 7.134.6 Revision: 83406900 PID: 7746 Home: /opt/jfrog/artifactory FIPS Mode: none
-2026-02-11T16:31:02.621Z [jfac ] [INFO ] [c03bad134f34e565] [o.j.a.AccessApplication:53    ] [main                ] - Starting AccessApplication v7.134.6 using Java 21.0.5 with PID 7746 (/opt/jfrog/artifactory/app/access/tomcat/webapps/access/WEB-INF/lib/access-application-7.134.6.jar started by artifactory in /opt/jfrog/artifactory)
-2026-02-11T16:31:02.628Z [jfac ] [INFO ] [c03bad134f34e565] [o.j.a.AccessApplication:658   ] [main                ] - The following 1 profile is active: "production"
-2026-02-11T16:31:02.722Z [jfmd ] [INFO ] [                ] [access_client_bootstrap.go:256] [main                ] - Cluster join: Retry 10: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [access_client]
-2026-02-11T16:31:02.813Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [access_thin_client.go:101     ] [main                ] [                ] - Cluster join: Retry 10: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:02.977Z [jfrt ] [INFO ] [9ad977747185553b] [o.a.c.h.ArtifactoryHome:1022  ] [Catalina-utility-1  ] - Setting 'cocoapodsNew,alpineNew,condaNew,npmNew,vcsNew,vagrantNew,swiftNew,permissions-cache-legacy' to system property 'spring.profiles.active'
-2026-02-11T16:31:03.029Z [jfrt ] [INFO ] [                ] [o.j.c.w.FileWatcher:146       ] [file-watcher-poller ] - Starting watch of folder configurations
-2026-02-11T16:31:03.400Z [jfrt ] [INFO ] [9ad977747185553b] [.BasicConfigurationManager:197] [Catalina-utility-1  ] - Artifactory (jfrt) service initialization started. Version: 7.104.22 Revision: 80422900 PID: 8176 Home: /opt/jfrog/artifactory
-2026-02-11T16:31:03.408Z [jfrt ] [INFO ] [9ad977747185553b] [d.c.m.ConverterManagerImpl:214] [Catalina-utility-1  ] - Triggering PRE_INIT conversion, from 7.104.22 to 7.104.22
-2026-02-11T16:31:03.409Z [jfrt ] [INFO ] [9ad977747185553b] [d.c.m.ConverterManagerImpl:217] [Catalina-utility-1  ] - Finished PRE_INIT conversion, current version is: 7.104.22
-2026-02-11T16:31:03.409Z [jfrt ] [INFO ] [9ad977747185553b] [d.i.DbInitializationManager:48] [Catalina-utility-1  ] - Initializing DB Schema initialization manager
-2026-02-11T16:31:03.410Z [jfrt ] [INFO ] [9ad977747185553b] [.i.DbInitializationManager:177] [Catalina-utility-1  ] - Database: PostgreSQL 15.15. Driver: PostgreSQL JDBC Driver 42.7.4 Pool: postgresql
-2026-02-11T16:31:03.466Z [jfrt ] [INFO ] [9ad977747185553b] [d.i.DbInitializationManager:52] [Catalina-utility-1  ] - DB Schema initialization manager initialized
-2026-02-11T16:31:03.543Z [jfrt ] [INFO ] [9ad977747185553b] [SchemaInitializationManager:48] [Catalina-utility-1  ] - Initializing Post-DB initialization manager
-2026-02-11T16:31:03.570Z [jfrt ] [INFO ] [9ad977747185553b] [.c.ConfigurationManagerImpl:97] [Catalina-utility-1  ] - Starting file sync
-2026-02-11T16:31:03.769Z [jfrt ] [INFO ] [9ad977747185553b] [SchemaInitializationManager:51] [Catalina-utility-1  ] - Post-DB initialization manager initialized
-2026-02-11T16:31:04.039Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [access_thin_client.go:112     ] [main                ] [                ] - Cluster join: Retry 10: Service registry Ping failed, will retry. Error: failed connecting to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:04.084Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - pinging artifactory, attempt number 10
-2026-02-11T16:31:04.087Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - pinging artifactory attempt number 10 failed with code : ECONNREFUSED
-Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
-2026-02-11T16:31:04.696Z [jfrt ] [INFO ] [9ad977747185553b] [actoryContextConfigListener:88] [Catalina-utility-1  ] - Artifactory context initialization started for context: null
-2026-02-11T16:31:04.707Z [jfrt ] [INFO ] [                ] [ctoryContextConfigListener:114] [art-init            ] - Artifactory initialization thread started for home null
-2026-02-11T16:31:04.725Z [jfrt ] [INFO ] [f7b657d10e7179c8] [ctoryContextConfigListener:331] [art-init            ] - 
-                _   _  __           _                     _____
-     /\        | | (_)/ _|         | |                   |  __ \
-    /  \   _ __| |_ _| |_ __ _  ___| |_ ___  _ __ _   _  | |__) | __ ___
-   / /\ \ | '__| __| |  _/ _` |/ __| __/ _ \| '__| | | | |  ___/ '__/ _ \
-  / ____ \| |  | |_| | || (_| | (__| || (_) | |  | |_| | | |   | | | (_) |
- /_/    \_\_|   \__|_|_| \__,_|\___|\__\___/|_|   \__, | |_|   |_|  \___/
- Version:  7.104.22                                __/ |
- Revision: 80422900                               |___/
- Product Version:  7.104.14
- Product Revision: 80414900
- Artifactory Home: '/opt/jfrog/artifactory'
- Node ID: 'dc00bfc2ebf3'
-
-2026-02-11T16:31:04.727Z [jfrt ] [WARN ] [f7b657d10e7179c8] [o.a.f.l.ArtifactoryLockFile:65] [art-init            ] - Found existing lock file. Artifactory was not shutdown properly. [/opt/jfrog/artifactory/var/data/artifactory/.lock]
-2026-02-11T16:31:04.963Z [jfrt ] [INFO ] [f7b657d10e7179c8] [ifactoryApplicationContext:635] [art-init            ] - Artifactory application context set to NOT READY by refresh
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:31:05.046Z","service":"tomcat","loglevel":"INFO","class":"org.apache.catalina.startup.HostConfig","message":"Deployment of deployment descriptor [/opt/jfrog/artifactory/app/artifactory/tomcat/conf/Catalina/localhost/artifactory.xml] has finished in [7,335] ms"}}
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:31:05.057Z","service":"tomcat","loglevel":"INFO","class":"org.apache.catalina.startup.HostConfig","message":"Deploying web application directory [/opt/jfrog/artifactory/app/artifactory/tomcat/webapps/ROOT]"}}
-2026-02-11T16:31:05.057Z [jftpl] [INFO ] [                ] [c.j.t.s.l.RequestLogHelper:24 ] [main                ] - HttpRequestConfig: Config[filterPaths=[], filterStatusCodes=[], filterDurationThreshold=100]
-2026-02-11T16:31:05.076Z [jftpl] [INFO ] [                ] [c.j.t.s.l.RequestLogHelper:25 ] [main                ] - GrpcRequestConfig: Config[filterPaths=[], filterStatusCodes=[], filterDurationThreshold=100]
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:31:05.078Z","service":"tomcat","loglevel":"WARNING","class":"org.apache.tomcat.util.digester.Digester","message":"Match [Context/CookieProcessor] failed to set property [forwardSlashIsSeparator] to [false]"}}
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:31:05.142Z","service":"tomcat","loglevel":"INFO","class":"org.apache.catalina.startup.HostConfig","message":"Deployment of web application directory [/opt/jfrog/artifactory/app/artifactory/tomcat/webapps/ROOT] has finished in [85] ms"}}
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:31:05.173Z","service":"tomcat","loglevel":"INFO","class":"org.apache.coyote.http11.Http11NioProtocol","message":"Starting ProtocolHandler ["http-nio-8081"]"}}
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:31:05.331Z","service":"tomcat","loglevel":"INFO","class":"org.apache.coyote.http11.Http11NioProtocol","message":"Starting ProtocolHandler ["http-nio-127.0.0.1-8091"]"}}
-2026-02-11T16:31:05.995Z [jftpl] [INFO ] [                ] [c.j.t.s.g.GrpcServer:44       ] [main                ] - Starting gRPC Server on port 8021
-2026-02-11T16:31:06.371Z [jftpl] [INFO ] [                ] [c.j.t.s.l.RequestLogHelper:24 ] [main                ] - HttpRequestConfig: Config[filterPaths=[], filterStatusCodes=[], filterDurationThreshold=100]
-2026-02-11T16:31:06.372Z [jftpl] [INFO ] [                ] [c.j.t.s.l.RequestLogHelper:25 ] [main                ] - GrpcRequestConfig: Config[filterPaths=[], filterStatusCodes=[], filterDurationThreshold=100]
-2026-02-11T16:31:06.796Z [jftpl] [INFO ] [                ] [c.j.t.s.g.GrpcServer:66       ] [main                ] - gRPC Server started, listening on 8021
-2026-02-11T16:31:06.800Z [jftpl] [INFO ] [                ] [c.j.t.s.m.MetricsService:47   ] [main                ] - Metrics Framework Service is disabled
-2026-02-11T16:31:07.731Z [jfmd ] [INFO ] [                ] [access_client_bootstrap.go:256] [main                ] - Cluster join: Retry 15: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [access_client]
-2026-02-11T16:31:07.818Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [access_thin_client.go:101     ] [main                ] [                ] - Cluster join: Retry 15: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:09.043Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [access_thin_client.go:112     ] [main                ] [                ] - Cluster join: Retry 15: Service registry Ping failed, will retry. Error: failed connecting to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:09.691Z [jftpl] [INFO ] [                ] [c.j.t.s.c.FlywayFactory:59    ] [main                ] - Database migration started
-2026-02-11T16:31:09.813Z [jftpl] [INFO ] [                ] [c.j.t.s.c.FlywayFactory:67    ] [main                ] - Latest pending Flyway changelog: none
-2026-02-11T16:31:09.871Z [jftpl] [INFO ] [                ] [c.j.t.s.c.FlywayFactory:70    ] [main                ] - Current Flyway changelog: 1.2
-2026-02-11T16:31:09.871Z [jftpl] [INFO ] [                ] [c.j.t.s.c.FlywayFactory:72    ] [main                ] - Database migration in progress...
-2026-02-11T16:31:10.038Z [jftpl] [INFO ] [                ] [c.j.t.s.c.FlywayFactory:77    ] [main                ] - Current Flyway changelog: 1.2
-2026-02-11T16:31:10.042Z [jftpl] [INFO ] [                ] [c.j.t.s.c.FlywayFactory:79    ] [main                ] - Database migration done
-2026-02-11T16:31:10.044Z [jftpl] [INFO ] [                ] [t.s.TopologyStartupListener:42] [main                ] - topology (jftpl) service initialization completed in 14.562 seconds. Listening on port: 8020
-2026-02-11T16:31:12.744Z [jfmd ] [INFO ] [                ] [access_client_bootstrap.go:256] [main                ] - Cluster join: Retry 20: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [access_client]
-2026-02-11T16:31:12.822Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [access_thin_client.go:101     ] [main                ] [                ] - Cluster join: Retry 20: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:14.047Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [access_thin_client.go:112     ] [main                ] [                ] - Cluster join: Retry 20: Service registry Ping failed, will retry. Error: failed connecting to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:14.123Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - pinging artifactory, attempt number 20
-2026-02-11T16:31:14.126Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - pinging artifactory attempt number 20 failed with code : ECONNREFUSED
-2026-02-11T16:31:15.725Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.a.s.d.m.DbQueryMonitorImpl:91] [art-init            ] - Database cluster name=artifactory-postgres, hash=3221f742, db_name=artifactory
-2026-02-11T16:31:16.110Z [jfac ] [INFO ] [c03bad134f34e565] [alConfigurationServiceBase:151] [main                ] - Current configurations are the same as the new configurations, no need for an update. No action was taken.
-2026-02-11T16:31:16.429508435Z art-init ERROR Log4j API could not find a logging provider.
-2026-02-11T16:31:17.752Z [jfmd ] [INFO ] [                ] [access_client_bootstrap.go:256] [main                ] - Cluster join: Retry 25: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [access_client]
-2026-02-11T16:31:17.821Z [jfac ] [INFO ] [c03bad134f34e565] [.s.s.s.ServiceConfigFactory:47] [main                ] - Initializing task scheduler with 9 threads
-2026-02-11T16:31:17.828Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [access_thin_client.go:101     ] [main                ] [                ] - Cluster join: Retry 25: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:17.879Z [jfac ] [INFO ] [c03bad134f34e565] [j.a.s.s.t.TokenServiceImpl:247] [main                ] - Scheduling task for revoking expired tokens using cron expression: 12 12 0/1 * * ?
-2026-02-11T16:31:18.491Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.b.BinariesStoreBeansConfig:47] [art-init            ] - injecting spring beans for binary-store-code module
-2026-02-11T16:31:19.052Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [access_thin_client.go:112     ] [main                ] [                ] - Cluster join: Retry 25: Service registry Ping failed, will retry. Error: failed connecting to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:19.356Z [jfrt ] [INFO ] [f7b657d10e7179c8] [estRateLimiterServiceV2Impl:64] [art-init            ] - OutboundRequest rate limiter is disabled
-2026-02-11T16:31:19.418Z [jfrt ] [WARN ] [f7b657d10e7179c8] [c.z.h.HikariConfig:1095       ] [art-init            ] - JFrog HikariCP Main - idleTimeout has been set but has no effect because the pool is operating as a fixed size pool.
-2026-02-11T16:31:19.459Z [jfrt ] [WARN ] [f7b657d10e7179c8] [c.z.h.HikariConfig:1095       ] [art-init            ] - JFrog HikariCP Main - idleTimeout has been set but has no effect because the pool is operating as a fixed size pool.
-2026-02-11T16:31:19.488Z [jfrt ] [WARN ] [f7b657d10e7179c8] [c.z.h.HikariConfig:1095       ] [art-init            ] - JFrog HikariCP Main - idleTimeout has been set but has no effect because the pool is operating as a fixed size pool.
-2026-02-11T16:31:19.520Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.d.l.s.DbLocksServiceFacade:70] [art-init            ] - Automatic DB lock mechanism selected.
-2026-02-11T16:31:19.521Z [jfrt ] [INFO ] [                ] [veDbLocksConnRecoveryDaemon:35] [ Connection Recovery] - Native Locks Recovery daemon is started.
-2026-02-11T16:31:19.839Z [jfrt ] [INFO ] [f7b657d10e7179c8] [ritiesStorageServiceFactory:25] [art-init            ] - Initializing DB-based Priorities Storage Service
-2026-02-11T16:31:21.113Z [jfac ] [INFO ] [c03bad134f34e565] [b.AccessServerBootstrapImpl:54] [main                ] - [ACCESS BOOTSTRAP] Starting JFrog Access bootstrap...
-2026-02-11T16:31:21.315Z [jfac ] [INFO ] [c03bad134f34e565] [b.AccessServerBootstrapImpl:70] [main                ] - [ACCESS BOOTSTRAP] JFrog Access bootstrap finished.
-2026-02-11T16:31:21.322Z [jfac ] [INFO ] [c03bad134f34e565] [.s.j.JfConnectConfiguration:43] [main                ] - JFCON entitlements are disabled. jfconnect.enabled and jflink.enabled are false or undefined
-2026-02-11T16:31:21.389Z [jfrt ] [INFO ] [f7b657d10e7179c8] [acyAuthorizationServiceImpl:88] [art-init            ] - Active permissions cache type: LEGACY
-2026-02-11T16:31:21.462Z [jfrt ] [INFO ] [f7b657d10e7179c8] [o.a.a.c.c:20                  ] [art-init            ] - Cloud environment is NOT_SPECIFIED
-2026-02-11T16:31:21.464Z [jfrt ] [INFO ] [f7b657d10e7179c8] [o.a.a.c.c:20                  ] [art-init            ] - Cloud environment is NOT_SPECIFIED
-2026-02-11T16:31:21.548Z [jfrt ] [INFO ] [f7b657d10e7179c8] [ctoryStorageHandlerGCConfig:33] [art-init            ] - injecting spring beans for storage-handler-gc module
-2026-02-11T16:31:21.639Z [jfrt ] [INFO ] [f7b657d10e7179c8] [ueryRateLimiterServiceImpl:119] [art-init            ] - Query rate limiter is disabled
-2026-02-11T16:31:21.861Z [jftpl] [INFO ] [8bbcc52d47f0b478] [c.j.t.s.s.HealthCheckRunner:37] [topology-scheduler-1] - Service node has become healthy
-2026-02-11T16:31:21.911Z [jfrt ] [INFO ] [f7b657d10e7179c8] [sabledLoadHealerServiceImpl:60] [art-init            ] - Artifactory Load Healer running on DISABLED mode.
-2026-02-11T16:31:22.494Z [jfac ] [INFO ] [c03bad134f34e565] [o.j.a.s.s.JoinKeyAccess:316   ] [main                ] - Cluster join: Join key loaded successfully (from: /opt/jfrog/artifactory/var/etc/security/join.key)
-2026-02-11T16:31:22.505Z [jfac ] [WARN ] [c03bad134f34e565] [o.j.a.s.s.JoinKeyAccess:154   ] [main                ] - Will be adding main key with kid e6e46e3017da720dea0cdf1bb096dfab0916d5b06b2189c99f26e802cdb721f1 to the map
-2026-02-11T16:31:22.758Z [jfmd ] [INFO ] [                ] [access_client_bootstrap.go:256] [main                ] - Cluster join: Retry 30: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [access_client]
-2026-02-11T16:31:22.834Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [access_thin_client.go:101     ] [main                ] [                ] - Cluster join: Retry 30: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:23.050Z [jfrt ] [WARN ] [f7b657d10e7179c8] [lerDynamicActivitiesConfig:134] [art-init            ] - Failed to resolve dynamic value for key 'artifactory.lh.xrayBlockUnscanned.threshold.max'. Using default '${artifactory.tomcat.connector.maxThreads} * 0.8'
-2026-02-11T16:31:23.051Z [jfrt ] [WARN ] [f7b657d10e7179c8] [lerDynamicActivitiesConfig:177] [art-init            ] - Invalid number format for threshold.max: ${artifactory.tomcat.connector.maxThreads} * 0.8
-2026-02-11T16:31:23.051Z [jfrt ] [WARN ] [f7b657d10e7179c8] [lerDynamicActivitiesConfig:134] [art-init            ] - Failed to resolve dynamic value for key 'artifactory.lh.xrayBlockUnscanned.threshold.min'. Using default '${artifactory.tomcat.connector.maxThreads} * 0.5'
-2026-02-11T16:31:23.052Z [jfrt ] [WARN ] [f7b657d10e7179c8] [lerDynamicActivitiesConfig:177] [art-init            ] - Invalid number format for threshold.min: ${artifactory.tomcat.connector.maxThreads} * 0.5
-2026-02-11T16:31:23.053Z [jfrt ] [INFO ] [f7b657d10e7179c8] [lerDynamicActivitiesConfig:117] [art-init            ] - Loaded 2 activities:
-2026-02-11T16:31:23.053Z [jfrt ] [INFO ] [f7b657d10e7179c8] [lerDynamicActivitiesConfig:118] [art-init            ] - ActivityConfig[name=xrayBlockUnscanned, minThreshold=0, maxThreshold=0, healthyTimeout=60000]
-2026-02-11T16:31:23.058Z [jfrt ] [INFO ] [f7b657d10e7179c8] [lerDynamicActivitiesConfig:118] [art-init            ] - ActivityConfig[name=example, minThreshold=1, maxThreshold=2, healthyTimeout=300]
-2026-02-11T16:31:24.057Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [access_thin_client.go:112     ] [main                ] [                ] - Cluster join: Retry 30: Service registry Ping failed, will retry. Error: failed connecting to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:24.161Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - pinging artifactory, attempt number 30
-2026-02-11T16:31:24.163Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - pinging artifactory attempt number 30 failed with code : ECONNREFUSED
-2026-02-11T16:31:24.560Z [jfac ] [INFO ] [c03bad134f34e565] [a.s.b.AccessServerRegistrar:73] [main                ] - [ACCESS BOOTSTRAP] Starting JFrog Access registrar...
-2026-02-11T16:31:24.567Z [jfac ] [INFO ] [c03bad134f34e565] [.h.AccessNodeIdProviderImpl:96] [main                ] - Service id initialized: jfac@01edq5hh0d5ecy1rademfp01da, for tenant: single_tenant
-2026-02-11T16:31:24.637Z [jfac ] [INFO ] [fa823596ee99c3e7] [a.c.RefreshableScheduledJob:53] [main                ] - Scheduling loadCertificates task to run every 30 seconds
-2026-02-11T16:31:24.660Z [jfac ] [INFO ] [fa823596ee99c3e7] [a.c.RefreshableScheduledJob:53] [main                ] - Scheduling federationCleanupService task to run every 1209600 seconds
-2026-02-11T16:31:24.699Z [jfac ] [INFO ] [33ef1ee4f141c490] [a.c.RefreshableScheduledJob:53] [main                ] - Scheduling heartbeat task to run every 5 seconds
-2026-02-11T16:31:24.705Z [jfac ] [INFO ] [33ef1ee4f141c490] [a.c.RefreshableScheduledJob:53] [main                ] - Scheduling KeepAliveFederationServers task to run every 86400 seconds
-2026-02-11T16:31:24.760Z [jfac ] [INFO ] [                ] [.j.a.s.s.SystemScheduledJob:37] [main                ] - Scheduling Readiness task to run with 15000 milliseconds fixed delay
-2026-02-11T16:31:24.779Z [jfac ] [INFO ] [                ] [a.c.RefreshableScheduledJob:53] [main                ] - Scheduling unusedLicensesCleanup task to run every 86400 seconds
-2026-02-11T16:31:24.845Z [jfac ] [INFO ] [                ] [a.c.RefreshableScheduledJob:53] [main                ] - Scheduling StaleTokenCleanupJob task to run every 3600 seconds
-2026-02-11T16:31:24.871Z [jfac ] [INFO ] [                ] [.s.t.NotifyTokenExpiryTask:136] [main                ] - New cron schedule expression for notifying user of expiring tokens - 0 00 8 * * ?
-2026-02-11T16:31:24.877Z [jfac ] [INFO ] [                ] [a.c.RefreshableScheduledJob:53] [main                ] - Scheduling EmailsLogCleanup task to run every 86400 seconds
-2026-02-11T16:31:24.896Z [jfac ] [INFO ] [                ] [a.c.RefreshableScheduledJob:53] [main                ] - Scheduling PasswordExpiryEmailReminder task to run every 86400 seconds
-2026-02-11T16:31:25.334Z [jfac ] [INFO ] [                ] [o.j.a.s.r.s.GrpcServerImpl:100] [main                ] - Starting gRPC Server on port 8045
-2026-02-11T16:31:25.715Z [jfac ] [INFO ] [                ] [o.j.a.s.r.s.GrpcServerImpl:133] [main                ] - gRPC Server started, listening on 8045
-2026-02-11T16:31:25.777Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.p.t.TomcatReadinessMonitor:53] [art-init            ] - TomcatReadinessMonitor properties mode: monitor, maxFailedMetricsCount: 3, minProcessedRequestsCount: 15
-2026-02-11T16:31:25.778Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.p.t.TomcatReadinessMonitor:77] [art-init            ] - Server readiness monitor mode MONITOR
-2026-02-11T16:31:26.585Z [jfrt ] [INFO ] [f7b657d10e7179c8] [oryBinariesStoreBeansConfig:21] [art-init            ] - injecting spring beans for storage-handler-b2a-bridge module
-2026-02-11T16:31:27.205Z [jfac ] [INFO ] [                ] [o.j.a.AccessApplication:59    ] [main                ] - Started AccessApplication in 27.284 seconds (process running for 32.029)
-2026-02-11T16:31:27.221Z [jfac ] [INFO ] [                ] [s.d.u.AccessJdbcHelperImpl:155] [main                ] - Notifying tenants on DB migration completion
-2026-02-11T16:31:27.224Z [jfac ] [ERROR] [                ] [PropertiesMigrationListener:99] [main                ] - 
-The use of configuration keys that are no longer supported was found in the environment:
-
-Property source 'Config resource 'class path resource [application.yaml]' via location 'optional:classpath:/'':
-        Key: management.endpoint.health.enabled
-                Line: 30
-                Reason: Replacement key 'management.endpoint.health.access' uses an incompatible target type
-        Key: management.endpoint.info.enabled
-                Line: 33
-                Reason: Replacement key 'management.endpoint.info.access' uses an incompatible target type
-        Key: management.endpoint.metrics.enabled
-                Line: 32
-                Reason: Replacement key 'management.endpoint.metrics.access' uses an incompatible target type
-        Key: management.endpoints.enabled-by-default
-                Line: 20
-                Reason: Replacement key 'management.endpoints.access.default' uses an incompatible target type
-
-
-Please refer to the release notes or reference guide for potential alternatives.
-
-WARN freemarker.log.LoggerFactory: Logger library was already set earlier to "auto"; change to "none" won't effect loggers created earlier.
-2026-02-11T16:31:27.340L [tomct] [INFO ] [                ] [org.apache.catalina.startup.HostConfig] [org.apache.catalina.startup.HostConfig deployDescriptor] - Deployment of deployment descriptor [/opt/jfrog/artifactory/app/access/tomcat/conf/Catalina/localhost/access.xml] has finished in [31,203] ms 
-2026-02-11T16:31:27.341L [tomct] [INFO ] [                ] [org.apache.catalina.startup.HostConfig] [org.apache.catalina.startup.HostConfig deployDirectory] - Deploying web application directory [/opt/jfrog/artifactory/app/access/tomcat/webapps/ROOT] 
-2026-02-11T16:31:27.354L [tomct] [INFO ] [                ] [org.apache.catalina.startup.HostConfig] [org.apache.catalina.startup.HostConfig deployDirectory] - Deployment of web application directory [/opt/jfrog/artifactory/app/access/tomcat/webapps/ROOT] has finished in [11] ms 
-2026-02-11T16:31:27.365L [tomct] [INFO ] [                ] [org.apache.coyote.http11.Http11NioProtocol] [org.apache.coyote.AbstractProtocol start] - Starting ProtocolHandler ["http-nio-127.0.0.1-8040"] 
-2026-02-11T16:31:27.620Z [jfrou] [INFO ] [5b308a781921e0ac] [join_executor.go:174          ] [main                ] [] - Cluster join: Retry 5: Access Service ping failed, will retry. Error: do secure: Get "http://localhost:8040/access/api/v1/system/ping": context deadline exceeded
-2026-02-11T16:31:27.765Z [jfmd ] [INFO ] [                ] [access_client_bootstrap.go:256] [main                ] - Cluster join: Retry 35: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [access_client]
-2026-02-11T16:31:27.841Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [access_thin_client.go:101     ] [main                ] [                ] - Cluster join: Retry 35: Service registry ping failed, will retry. Error: Error while trying to connect to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:27.989Z [jfrt ] [INFO ] [f7b657d10e7179c8] [HaRoleManagerServiceFactory:27] [art-init            ] - Initializing Task Affinity HA role manager
-2026-02-11T16:31:28.561Z [jfrt ] [INFO ] [f7b657d10e7179c8] [PolicySchedulerFactoryBean:729] [art-init            ] - Starting Quartz Scheduler now
-2026-02-11T16:31:28.562Z [jfrt ] [INFO ] [f7b657d10e7179c8] [actorySchedulerFactoryBean:729] [art-init            ] - Starting Quartz Scheduler now
-2026-02-11T16:31:28.562Z [jfrt ] [INFO ] [f7b657d10e7179c8] [actorySchedulerFactoryBean:729] [art-init            ] - Starting Quartz Scheduler now
-2026-02-11T16:31:28.687Z [jfrt ] [INFO ] [f7b657d10e7179c8] [ifactoryApplicationContext:302] [art-init            ] - Artifactory context starting up 99 Spring Beans...
-2026-02-11T16:31:28.780Z [jfrt ] [INFO ] [f7b657d10e7179c8] [o.a.s.a.AccessServiceImpl:664 ] [art-init            ] - Initialized new service id: jfrt@01edq5j0vmt7qq0ajg8ds610ez
-2026-02-11T16:31:28.823Z [jfrt ] [INFO ] [f7b657d10e7179c8] [oryAccessClientConfigStore:531] [art-init            ] - Using Access Server URL: http://localhost:8046/access source: System Config
-2026-02-11T16:31:29.062Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [access_thin_client.go:112     ] [main                ] [                ] - Cluster join: Retry 35: Service registry Ping failed, will retry. Error: failed connecting to local router at address 'http://localhost:8046/access/api/v1/system/ping': Get "http://localhost:8046/access/api/v1/system/ping": dial tcp 127.0.0.1:8046: connect: connection refused [startup]
-2026-02-11T16:31:29.189Z [jfrou] [INFO ] [5b308a781921e0ac] [join_executor.go:117          ] [main                ] [] - Cluster join: Trying to rejoin the cluster http://localhost:8040/access
-2026-02-11T16:31:29.288Z [jfac ] [INFO ] [2b9fb62e5b70c92d] [o.j.a.s.s.JoinKeyAccess:174   ] [27.0.0.1-8040-exec-3] - Cluster join: Join keys resolved successfully
-2026-02-11T16:31:29.289Z [jfac ] [WARN ] [2b9fb62e5b70c92d] [o.j.a.s.s.JoinKeyAccess:189   ] [27.0.0.1-8040-exec-3] - Adding join key with kid: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 to additional join keys
-2026-02-11T16:31:29.308Z [jfrt ] [INFO ] [34bb176617303566] [eyFixMemoryConsumptionHooks:49] [617303566|art-exec-1] - Install the ByteBuddy Java agent
-2026-02-11T16:31:29.442Z [jfac ] [INFO ] [2b9fb62e5b70c92d] [.j.a.s.s.r.JoinServiceImpl:109] [27.0.0.1-8040-exec-3] - Router join request: using external topology so skipping router NodeId and IP validation
-WARNING: A Java agent has been loaded dynamically (/opt/jfrog/artifactory/app/artifactory/tomcat/webapps/artifactory/WEB-INF/lib/byte-buddy-agent-1.14.18.jar)
-WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
-WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
-WARNING: Dynamic loading of agents will be disallowed by default in a future release
-2026-02-11T16:31:29.721Z [jfrt ] [INFO ] [34bb176617303566] [eyFixMemoryConsumptionHooks:52] [617303566|art-exec-1] - Hook the Jersey server initialization, improving memory consumption
-2026-02-11T16:31:29.759Z [jfac ] [INFO ] [2b9fb62e5b70c92d] [CertificateFileHandlerBase:200] [27.0.0.1-8040-exec-3] - [ACCESS BOOTSTRAP] Saved new root certificate at: /opt/jfrog/artifactory/var/etc/access/keys/root.crt
-2026-02-11T16:31:29.856Z [jfac ] [INFO ] [2b9fb62e5b70c92d] [.r.ServiceTokenProviderImpl:89] [27.0.0.1-8040-exec-3] - Cluster join: Successfully joined jfrou@01hntgce6bxjhmgsz8s70fj0p1 with node id dc00bfc2ebf3
-2026-02-11T16:31:29.964Z [jfac ] [INFO ] [2b9fb62e5b70c92d] [CertificateFileHandlerBase:200] [27.0.0.1-8040-exec-3] - [ACCESS BOOTSTRAP] Saved new ca certificate at: /opt/jfrog/artifactory/var/etc/access/keys/ca.crt
-2026-02-11T16:31:30.251Z [jfrt ] [INFO ] [34bb176617303566] [eyFixMemoryConsumptionHooks:78] [617303566|art-exec-1] - Registered the fillMediaTypes hook
-2026-02-11T16:31:30.292Z [jfrt ] [INFO ] [34bb176617303566] [o.a.r.s.JerseyApplication:84  ] [617303566|art-exec-1] - Apply additional JAX-RS filters (metrics, etc.)
-2026-02-11T16:31:30.377Z [jfrou] [INFO ] [5b308a781921e0ac] [join_executor.go:214          ] [main                ] [] - Cluster join: Successfully joined the cluster. Using token with id 4de7c14c-f428-4c59-8551-c3e0647b786f
-2026-02-11T16:31:30.377Z [jfrou] [INFO ] [5b308a781921e0ac] [trusted.go:36                 ] [main                ] [] - System cert pool contents were loaded as trusted CAs for TLS communication
-2026-02-11T16:31:30.378Z [jfrou] [INFO ] [5b308a781921e0ac] [trusted.go:56                 ] [main                ] [] - Following certificates were successfully loaded as trusted CAs for TLS communication:
-[/opt/jfrog/artifactory/var/data/router/keys/trusted/access-root-ca.crt]
-2026-02-11T16:31:30.494Z [jfrou] [INFO ] [5b308a781921e0ac] [traefik_config.go:116         ] [main                ] [] - Searching for Traefik configuration override values in file: /opt/jfrog/artifactory/var/etc/router/traefik.toml
-2026-02-11T16:31:30.494Z [jfrou] [INFO ] [5b308a781921e0ac] [mtls_client.go:180            ] [main                ] [] - Starting access config update job to run every 10m0s
-2026-02-11T16:31:30.494Z [jfrou] [INFO ] [5b308a781921e0ac] [cal_topology_broadcaster.go:70] [main                ] [] - Starting local node health status broadcaster...
-2026-02-11T16:31:30.499Z [jfrou] [INFO ] [5b308a781921e0ac] [registry_handler.go:114       ] [main                ] [] - Persisted local services: [service_id:"jfac@01edq5hh0d5ecy1rademfp01da" node_id:"dc00bfc2ebf3" endpoints:{port:8045 protocol:HTTP2 paths:{match:"/com\\.jfrog\\.access\\..*"}} endpoints:{port:8040 protocol:HTTP1 paths:{match:"access/.*"}} health_check_endpoint:{port:8040 path:"/access/api/v1/system/readiness"} version:"7.134.6" revision:"83406900" service_id:"jfcon@01edq5hh0d5ecy1rademfp01da" node_id:"dc00bfc2ebf3" endpoints:{port:8030 protocol:HTTP1 paths:{match:"/jfconnect/(.*)" replace:"/$1"}} endpoints:{port:8035 protocol:HTTP2 paths:{match:"/com\\.jfrog\\.jfconnect\\..*"}} health_check_endpoint:{port:8030 path:"/api/v1/system/readiness"} version:"7.106.5" revision:"0a4bebb37c" service_id:"jfevt@01edq5hh0d5ecy1rademfp01da" node_id:"dc00bfc2ebf3" endpoints:{port:8061 protocol:HTTP1 paths:{match:"/event/(.*)" replace:"/$1"}} endpoints:{port:8062 protocol:HTTP2 paths:{match:"/com\\.jfrog\\.event\\..*"}} health_check_endpoint:{port:8061 path:"/api/v1/system/readiness"} version:"7.155.0" revision:"18a98fd272" service_id:"jffe@01edq5hh0d5ecy1rademfp01da" node_id:"dc00bfc2ebf3" endpoints:{port:8070 protocol:HTTP1 paths:{match:"/ui/(.*)" replace:"/$1"} paths:{match:"/ui" replace:"/"} paths:{match:"/"}} health_check_endpoint:{port:8070 path:"/readiness"} service_id:"jfmd@01kh6q296n9sk60a4wzcxyjteb" node_id:"dc00bfc2ebf3" endpoints:{port:8086 protocol:HTTP1 paths:{match:"/metadata/(.*)" replace:"/$1"}} health_check_endpoint:{port:8086 path:"/api/v1/system/readiness"} version:"7.118.2" revision:"718437111a9" service_id:"jfob@01edq5j0vmt7qq0ajg8ds610ez" node_id:"dc00bfc2ebf3" endpoints:{port:8036 protocol:HTTP1 paths:{match:"/observability/(.*)" replace:"/$1"}} health_check_endpoint:{port:8036 path:"/api/v1/system/readiness"} version:"1.31.11" revision:"a761e9718c" service_id:"jfomr@01edq5hh0d5ecy1rademfp01da" node_id:"dc00bfc2ebf3" endpoints:{port:8071 protocol:HTTP1 paths:{match:"/onemodel/(.*)" replace:"/$1"}} endpoints:{port:8072 protocol:HTTP2 paths:{match:"/com\\.jfrog\\.onemodelregistry\\..*"}} health_check_endpoint:{port:8071 path:"/api/v1/system/readiness"} version:"1.25.4" revision:"865f206b26" service_id:"jfrt@01edq5j0vmt7qq0ajg8ds610ez" node_id:"dc00bfc2ebf3" endpoints:{port:8081 protocol:HTTP1 paths:{match:"/artifactory"} paths:{match:"/artifactory/(.*)"} paths:{match:"/v2/(.*)"} paths:{match:"/.well-known/terraform.json"} paths:{match:"/lifecycle/api/v2/release_bundle" replace:"/artifactory/api/v2/release_bundle"} paths:{match:"/lifecycle/api/v2/release_bundle/(.*)" replace:"/artifactory/api/v2/release_bundle/$1"} paths:{match:"/lifecycle/api/v2/promotion/(.*)" replace:"/artifactory/api/v2/promotion/$1"} paths:{match:"/lifecycle/api/v2/keys/(.*)" replace:"/artifactory/api/v2/keys/$1"} paths:{match:"/lifecycle/api/v2/audit" replace:"/artifactory/api/v2/audit"} paths:{match:"/lifecycle/api/v2/audit/(.*)" replace:"/artifactory/api/v2/audit/$1"} paths:{match:"/lifecycle/api/v1/evidence/(.*)" replace:"/artifactory/api/v1/evidence/$1"}} health_check_endpoint:{port:8091 path:"/artifactory/api/v1/system/readiness"} version:"7.104.22" revision:"80422900" service_id:"jftpl@0000" node_id:"dc00bfc2ebf3" endpoints:{port:8020 protocol:HTTP1 paths:{match:"topology/.*"}} endpoints:{port:8021 protocol:HTTP2 paths:{match:"/com\\.jfrog\\.topology\\..*"}} endpoints:{port:8020 protocol:HTTP1 paths:{match:"access/api/v1/topology" replace:"topology/api/v1/topology"}} endpoints:{port:8021 protocol:HTTP2 paths:{match:"/com\\.jfrog\\.access\\.v1\\.serviceregistry\\..*"}} health_check_endpoint:{port:8020 path:"/topology/api/v1/system/readiness"}]
-2026-02-11T16:31:30.499Z [jfrou] [INFO ] [5b308a781921e0ac] [server_handler.go:62          ] [main                ] [] - gRPC server listening on: localhost:8047
-2026-02-11T16:31:30.499Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfac@01edq5hh0d5ecy1rademfp01da , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.500Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfcon@01edq5hh0d5ecy1rademfp01da , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.501Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfevt@01edq5hh0d5ecy1rademfp01da , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.502Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jffe@01edq5hh0d5ecy1rademfp01da , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.504Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfmd@01kh6q296n9sk60a4wzcxyjteb , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.505Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfob@01edq5j0vmt7qq0ajg8ds610ez , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.506Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfomr@01edq5hh0d5ecy1rademfp01da , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.507Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfrt@01edq5j0vmt7qq0ajg8ds610ez , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.510Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jftpl@0000 , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.511Z [jfrou] [INFO ] [5b308a781921e0ac] [registry_handler.go:130       ] [main                ] [] - The following services were restored automatically based on persisted data: jfac@01edq5hh0d5ecy1rademfp01da, jfcon@01edq5hh0d5ecy1rademfp01da, jfevt@01edq5hh0d5ecy1rademfp01da, jffe@01edq5hh0d5ecy1rademfp01da, jfmd@01kh6q296n9sk60a4wzcxyjteb, jfob@01edq5j0vmt7qq0ajg8ds610ez, jfomr@01edq5hh0d5ecy1rademfp01da, jfrt@01edq5j0vmt7qq0ajg8ds610ez, jftpl@0000
-2026-02-11T16:31:30.511Z [jfrou] [INFO ] [5b308a781921e0ac] [service_registry.go:142       ] [main                ] [] - Registering Topology as local service
-2026-02-11T16:31:30.511Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jftpl@0000 , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:30.514Z [jfrou] [INFO ] [5b308a781921e0ac] [hot_paths_unix.go:25          ] [main                ] [] - Dump of the requests: start listening for SIGUSR2 signals
-2026-02-11T16:31:30.514Z [jfrou] [INFO ] [                ] [logger.go:58                  ] [main                ] [] - Starting provider aggregator *aggregator.ProviderAggregator
-2026-02-11T16:31:30.515Z [jfrou] [INFO ] [5b308a781921e0ac] [handler.go:161                ] [main                ] [] - Traefik server started on ports: 8082 (external), 8046 (internal), 8049 (Traefik API)
-2026-02-11T16:31:30.518Z [jfrou] [INFO ] [                ] [logger.go:58                  ] [main                ] [] - Starting provider *file.Provider
-2026-02-11T16:31:30.527Z [jfrou] [INFO ] [                ] [logger.go:58                  ] [main                ] [] - Starting provider *traefik.Provider
-2026-02-11T16:31:30.754Z [jfrou] [INFO ] [5b308a781921e0ac] [local_topology.go:136         ] [main                ] [] - Required service types: [jfrt jfac jfmd jffe jfob jfcon jfevt jftpl jfomr]
-2026-02-11T16:31:30.762Z [jfrou] [INFO ] [5b308a781921e0ac] [main.go:57                    ] [main                ] [] - Router (jfrou) service initialization completed in 37.248 seconds. Listening on port: 8082
-2026-02-11T16:31:30.763Z [jfrou] [INFO ] [5b308a781921e0ac] [pprof_server_unix.go:23       ] [main                ] [] - Starting SIGUSR2 listener for pprof server
-2026-02-11T16:31:30.764Z [jfrou] [WARN ] [4ffed9841d6f70ae] [healthcheck.go:65             ] [main                ] [] - Checking health of service 'jfob_01edq5j0vmt7qq0ajg8ds610ez-dc00bfc2ebf3' using URL 'http://localhost:8036/api/v1/system/readiness' returned an error: do secure: Get "http://localhost:8036/api/v1/system/readiness": dial tcp 127.0.0.1:8036: connect: connection refused
-2026-02-11T16:31:30.764Z [jfrou] [WARN ] [4ffed9841d6f70ae] [healthcheck.go:65             ] [main                ] [] - Checking health of service 'jffe_01edq5hh0d5ecy1rademfp01da-dc00bfc2ebf3' using URL 'http://localhost:8070/readiness' returned an error: do secure: Get "http://localhost:8070/readiness": dial tcp 127.0.0.1:8070: connect: connection refused
-2026-02-11T16:31:30.764Z [jfrou] [WARN ] [4ffed9841d6f70ae] [healthcheck.go:65             ] [main                ] [] - Checking health of service 'jfmd_01kh6q296n9sk60a4wzcxyjteb-dc00bfc2ebf3' using URL 'http://localhost:8086/api/v1/system/readiness' returned an error: do secure: Get "http://localhost:8086/api/v1/system/readiness": dial tcp 127.0.0.1:8086: connect: connection refused
-2026-02-11T16:31:30.765Z [jfrou] [WARN ] [4ffed9841d6f70ae] [healthcheck.go:65             ] [main                ] [] - Checking health of service 'jfomr_01edq5hh0d5ecy1rademfp01da-dc00bfc2ebf3' using URL 'http://localhost:8071/api/v1/system/readiness' returned an error: do secure: Get "http://localhost:8071/api/v1/system/readiness": dial tcp 127.0.0.1:8071: connect: connection refused
-2026-02-11T16:31:30.772Z [jfrou] [WARN ] [4ffed9841d6f70ae] [healthcheck.go:70             ] [main                ] [] - Checking health of service 'jfrt_01edq5j0vmt7qq0ajg8ds610ez-dc00bfc2ebf3' using URL 'http://localhost:8091/artifactory/api/v1/system/readiness' returned unexpected response status: 503
-2026-02-11T16:31:30.765Z [jfrou] [WARN ] [4ffed9841d6f70ae] [healthcheck.go:65             ] [main                ] [] - Checking health of service 'jfcon_01edq5hh0d5ecy1rademfp01da-dc00bfc2ebf3' using URL 'http://localhost:8030/api/v1/system/readiness' returned an error: do secure: Get "http://localhost:8030/api/v1/system/readiness": dial tcp 127.0.0.1:8030: connect: connection refused
-2026-02-11T16:31:30.765Z [jfrou] [WARN ] [4ffed9841d6f70ae] [healthcheck.go:65             ] [main                ] [] - Checking health of service 'jfevt_01edq5hh0d5ecy1rademfp01da-dc00bfc2ebf3' using URL 'http://localhost:8061/api/v1/system/readiness' returned an error: do secure: Get "http://localhost:8061/api/v1/system/readiness": dial tcp 127.0.0.1:8061: connect: connection refused
-2026-02-11T16:31:30.796Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:95                     ] [main                ] [                ] - Service ID: jfomr@01edq5hh0d5ecy1rademfp01da [lifecycle]
-2026-02-11T16:31:30.796Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:96                     ] [main                ] [                ] - Node ID: dc00bfc2ebf3 [lifecycle]
-2026-02-11T16:31:30.796Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [store.go:24                   ] [main                ] [                ] - Using JFrog Platform Config as datastore [datastore]
-2026-02-11T16:31:30.797Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [store.go:32                   ] [main                ] [                ] - Waiting for Access Client to be ready... [datastore]
-2026-02-11T16:31:30.796Z [jfrt ] [INFO ] [f7b657d10e7179c8] [o.j.c.ExecutionUtils:289      ] [jf-common-pool-0    ] - Cluster join: Retry 5: Service registry ping failed, will retry. Error while trying to connect to service registry (status = 404). Please review router request log for additional information
-2026-02-11T16:31:30.818Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [rover.go:122                  ] [main                ] [                ] - Using Apollo Federation version: 2.9.3 [rover]
-2026-02-11T16:31:30.818Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [rover.go:126                  ] [main                ] [                ] - Using Apollo Rover CLI version: Rover 0.26.3 [rover]
-2026-02-11T16:31:30.818Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [service.go:106                ] [main                ] [                ] - Starting health check background job... [system]
-2026-02-11T16:31:30.819Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [join.go:33                    ] [main                ] [                ] - Joining Access on port 8046 [access_client]
-2026-02-11T16:31:30.883Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [bootstrap.go:146              ] [main                ] [                ] - JFrog Event Service ID: jfevt@01edq5hh0d5ecy1rademfp01da [startup]
-2026-02-11T16:31:30.883Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [bootstrap.go:147              ] [main                ] [                ] - JFrog Event Node ID   : dc00bfc2ebf3 [startup]
-2026-02-11T16:31:30.883Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [bootstrap.go:148              ] [main                ] [                ] - JFrog Event Node IP   : 172.18.0.3 [startup]
-2026-02-11T16:31:30.885Z [jfrou] [WARN ] [4ffed9841d6f70ae] [healthcheck.go:70             ] [main                ] [] - Checking health of service 'jfac_01edq5hh0d5ecy1rademfp01da-dc00bfc2ebf3' using URL 'http://localhost:8040/access/api/v1/system/readiness' returned unexpected response status: 503
-2026-02-11T16:31:30.908Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [trusted.go:41                 ] [main                ] [                ] - System cert pool contents were loaded as trusted CAs for TLS communication [subscriptions]
-2026-02-11T16:31:30.908Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [trusted.go:24                 ] [main                ] [                ] - No certificate to be loaded as trusted CAs found in [] [subscriptions]
-2026-02-11T16:31:30.917Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [trusted.go:41                 ] [main                ] [                ] - System cert pool contents were loaded as trusted CAs for TLS communication [subscriptions]
-2026-02-11T16:31:30.917Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [trusted.go:24                 ] [main                ] [                ] - No certificate to be loaded as trusted CAs found in [] [subscriptions]
-2026/02/11 16:31:30 Interval log rotation should not be zero or a negative integer. Provided : 0. Log rotation interval has been set to 24 hours
-2026-02-11T16:31:31.030Z [jfac ] [INFO ] [48fac85881e67112] [.r.ServiceTokenProviderImpl:89] [27.0.0.1-8040-exec-7] - Cluster join: Successfully joined jfmd@01kh6rn58cn506df61g9wrrse4 with node id dc00bfc2ebf3
-2026-02-11T16:31:31.032Z [jfac ] [INFO ] [                ] [r.ServiceTokenProviderImpl:111] [jf-access-task9     ] - Cluster join: Revoking all old existing token for service jfmd@01kh6q296n9sk60a4wzcxyjteb with node id dc00bfc2ebf3
-2026-02-11T16:31:31.037Z [jfmd ] [INFO ] [                ] [join_executor.go:178          ] [main                ] - Cluster join: Successfully joined the cluster [access_client]
-2026-02-11T16:31:31.037Z [jfmd ] [INFO ] [                ] [join_executor.go:190          ] [main                ] - Cluster join: executing Router register at: localhost:8046 for service id jfmd@01kh6rn58cn506df61g9wrrse4 [access_client]
-2026-02-11T16:31:31.039Z [jfrou] [INFO ] [48fac85881e67112] [local_topology.go:264         ] [main                ] [] - Found existing service with same type: jfmd@01kh6q296n9sk60a4wzcxyjteb, deleting
-2026-02-11T16:31:31.040Z [jfrou] [INFO ] [48fac85881e67112] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfmd@01kh6rn58cn506df61g9wrrse4 , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:31.064Z [jfmd ] [INFO ] [                ] [async_converter.go:205        ] [main                ] - Starting async converter routine [async_converter] [workerNumber][1]
-2026-02-11T16:31:31.065Z [jfmd ] [INFO ] [                ] [router_middlewares.go:56      ] [main                ] - Metadata (jfmd) service initialization completed in 37.357 seconds. Listening on port: 8086 [router]
-2026-02-11T16:31:31.084Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [bootstrap.go:174              ] [main                ] [                ] - JFConnect Service ID: jfcon@01edq5hh0d5ecy1rademfp01da [startup]
-2026-02-11T16:31:31.085Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [bootstrap.go:175              ] [main                ] [                ] - JFConnect Node ID   : dc00bfc2ebf3 [startup]
-2026-02-11T16:31:31.085Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [bootstrap.go:176              ] [main                ] [                ] - JFConnect Node IP   : 172.18.0.3 [startup]
-2026-02-11T16:31:31.175Z [jfac ] [INFO ] [0fefedcdf8fb8bfa] [.r.ServiceTokenProviderImpl:89] [27.0.0.1-8040-exec-3] - Cluster join: Successfully joined jfevt@01edq5hh0d5ecy1rademfp01da with node id dc00bfc2ebf3
-2026-02-11T16:31:31.178Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [join_executor.go:178          ] [main                ] [                ] - Cluster join: Successfully joined the cluster [access_client]
-2026-02-11T16:31:31.179Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [join_executor.go:190          ] [main                ] [                ] - Cluster join: executing Router register at: localhost:8046 for service id jfevt@01edq5hh0d5ecy1rademfp01da [access_client]
-2026-02-11T16:31:31.181Z [jfrou] [INFO ] [0fefedcdf8fb8bfa] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfevt@01edq5hh0d5ecy1rademfp01da , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:31.183Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [application.go:200            ] [main                ] [                ] - JFrog Event (jfevt) service initialization completed in 37.383 seconds. HTTP server listening on 127.0.0.1:8061. GRPC server listening on 127.0.0.1:8062. [application]
-2026-02-11T16:31:31.183Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [trusted.go:41                 ] [main                ] [                ] - System cert pool contents were loaded as trusted CAs for TLS communication [events]
-2026-02-11T16:31:31.183Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [trusted.go:24                 ] [main                ] [                ] - No certificate to be loaded as trusted CAs found in [] [events]
-2026-02-11T16:31:31.183Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [trusted.go:41                 ] [main                ] [                ] - System cert pool contents were loaded as trusted CAs for TLS communication [events]
-2026-02-11T16:31:31.183Z [jfevt] [INFO ] [0fefedcdf8fb8bfa] [trusted.go:24                 ] [main                ] [                ] - No certificate to be loaded as trusted CAs found in [] [events]
-2026-02-11T16:31:31.260Z [jfac ] [INFO ] [50d7c87cbe3b3fbb] [.r.ServiceTokenProviderImpl:89] [27.0.0.1-8040-exec-9] - Cluster join: Successfully joined jfomr@01edq5hh0d5ecy1rademfp01da with node id dc00bfc2ebf3
-2026-02-11T16:31:31.265Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [join_executor.go:178          ] [main                ] [                ] - Cluster join: Successfully joined the cluster [access_client]
-2026-02-11T16:31:31.265Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [join_executor.go:190          ] [main                ] [                ] - Cluster join: executing Router register at: localhost:8046 for service id jfomr@01edq5hh0d5ecy1rademfp01da [access_client]
-2026-02-11T16:31:31.267Z [jfrou] [INFO ] [50d7c87cbe3b3fbb] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfomr@01edq5hh0d5ecy1rademfp01da , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:31.274Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:160                    ] [main                ] [                ] - Waiting for datastore to be ready... [lifecycle]
-2026-02-11T16:31:31.274Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [store.go:38                   ] [main                ] [                ] - Access Client is ready... [datastore]
-2026-02-11T16:31:31.274Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [store.go:275                  ] [main                ] [                ] - Initializing JFrog Platform Config store... [datastore]
-2026-02-11T16:31:31.293Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [store.go:300                  ] [main                ] [                ] - JFrog Platform Config store initialized [datastore]
-2026-02-11T16:31:31.293Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:165                    ] [main                ] [                ] - Datastore is ready [lifecycle]
-2026-02-11T16:31:31.294Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:206                    ] [main                ] [                ] - Registering embedded subgraph schemas... [lifecycle]
-2026-02-11T16:31:31.294Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:212                    ] [main                ] [                ] - Registration of the static subgraph for "jfomr" is enabled [lifecycle]
-2026-02-11T16:31:31.294Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [handler.go:41                 ] [main                ] [                ] - Received subgraph from jfomr with version 1.25.4 (length: 4036) [subgraph_grpc]
-2026-02-11T16:31:31.294Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [dedicated_grpc_connection.go:2] [main                ] [                ] - Creating a new dedicated gRPC connection for localhost:8046 [access_client]
-2026-02-11T16:31:31.293Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [platform_config_stream.go:49  ] [main                ] [                ] - Starting Platform Config stream connect goroutine [access_client]
-2026-02-11T16:31:31.294Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [platform_config_stream.go:62  ] [main                ] [                ] - Connecting to Platform Config stream [access_client]
-2026-02-11T16:31:31.319Z [jfac ] [INFO ] [66b08ceb06c6b4bc] [.r.ServiceTokenProviderImpl:89] [7.0.0.1-8040-exec-10] - Cluster join: Successfully joined jfcon@01edq5hh0d5ecy1rademfp01da with node id dc00bfc2ebf3
-2026-02-11T16:31:31.323Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [join_executor.go:178          ] [main                ] [                ] - Cluster join: Successfully joined the cluster [access_client]
-2026-02-11T16:31:31.323Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [join_executor.go:190          ] [main                ] [                ] - Cluster join: executing Router register at: localhost:8046 for service id jfcon@01edq5hh0d5ecy1rademfp01da [access_client]
-2026-02-11T16:31:31.325Z [jfrou] [INFO ] [66b08ceb06c6b4bc] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfcon@01edq5hh0d5ecy1rademfp01da , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:31.328Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_storage.go:46    ] [main                ] [                ] - EnforcementOn value is forced to the value 'false' [entitlements_storage]
-2026-02-11T16:31:31.354Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [dedicated_grpc_connection.go:2] [main                ] [                ] - Creating a new dedicated gRPC connection for localhost:8046 [access_client]
-2026-02-11T16:31:31.354Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [platform_config_stream.go:49  ] [main                ] [                ] - Starting Platform Config stream connect goroutine [access_client]
-2026-02-11T16:31:31.355Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [platform_config_stream.go:62  ] [main                ] [                ] - Connecting to Platform Config stream [access_client]
-2026-02-11T16:31:31.734Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [backoffice_metric_logger.go:74] [main                ] [                ] - Initializing BackOfficeMetricsService with usageDir: /opt/jfrog/artifactory/var/data/jfconnect/usage [backoffice_metrics_logger]
-2026-02-11T16:31:31.734Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:149   ] [main                ] [                ] - Registering listener for license/registration_token change [entitlement_service]
-2026-02-11T16:31:31.735Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [application.go:240            ] [main                ] [                ] - JFConnect (jfcon) service initialization completed in 36.715 seconds. HTTP server listening on 127.0.0.1:8030. GRPC server listening on 127.0.0.1:8035.  [application]
-2026-02-11T16:31:31.735Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [usage_service.go:141          ] [main                ] [                ] - Scheduling usage flow job with interval 4m0s [usage_service]
-2026-02-11T16:31:31.735Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:276   ] [main                ] [                ] - Starting synced actions loop [entitlement_service]
-2026-02-11T16:31:31.736Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:287   ] [main                ] [                ] - Finished synced actions loop [entitlement_service]
-2026-02-11T16:31:31.736Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [archival_service.go:117       ] [main                ] [                ] - Scheduling archival flow job with interval 4m10s [archival_service]
-2026-02-11T16:31:31.763Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [platform_config_stream.go:105 ] [main                ] [                ] - Starting Platform Config stream Recv loop [access_client]
-2026-02-11T16:31:31.764Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [platform_config_stream.go:137 ] [main                ] [                ] - Starting Platform Config checkKeepAlive [access_client]
-2026-02-11T16:31:31.764Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:209                    ] [main                ] [                ] - Registration of the static subgraph for "jfctlg-custom" is skipped [lifecycle]
-2026-02-11T16:31:31.764Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:209                    ] [main                ] [                ] - Registration of the static subgraph for "jfctlg-public" is skipped [lifecycle]
-2026-02-11T16:31:31.764Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:209                    ] [main                ] [                ] - Registration of the static subgraph for "jfevd" is skipped [lifecycle]
-2026-02-11T16:31:31.765Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [service.go:83                 ] [main                ] [                ] - Storage cleanup started [lifecycle]
-2026-02-11T16:31:31.789Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [service.go:85                 ] [main                ] [                ] - Storage cleanup finished [lifecycle]
-2026-02-11T16:31:31.790Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [run.go:178                    ] [main                ] [                ] - JFrog OneModel Schema Registry (jfomr) service initialization completed in 37.063 seconds. REST API available on 127.0.0.1:8071. GRPC API available on 127.0.0.1:8072. [lifecycle]
-2026-02-11T16:31:31.790Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [worker.go:75                  ] [main                ] [                ] - Composition worker started [composition]
-2026-02-11T16:31:31.790Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [worker.go:268                 ] [main                ] [                ] - Triggering initial composition [composition]
-2026-02-11T16:31:31.790Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [worker.go:273                 ] [main                ] [                ] - Initial composition triggered [composition]
-2026-02-11T16:31:31.791Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [worker.go:132                 ] [main                ] [                ] - Composition will be run with: [jfomr_1.25.4] [composition] [trigger][manual] [trigger_id][initial]
-2026-02-11T16:31:31.791Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [worker.go:211                 ] [main                ] [                ] - Preparing temporary working dir: /opt/jfrog/artifactory/var/work/onemodel/composition-1770827491791-970790572 [composition] [trigger][manual] [trigger_id][initial]
-2026-02-11T16:31:31.791Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [rover.go:64                   ] [main                ] [                ] - Running Apollo Rover [rover] [trigger][manual] [trigger_id][initial]
-2026-02-11T16:31:31.837Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:133   ] [main                ] [                ] - Running synced action 'register'  [entitlement_service]
-2026-02-11T16:31:31.837Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:298   ] [main                ] [                ] - Synced action 'register' triggered - acquiring lock [entitlement_service]
-2026-02-11T16:31:31.879Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:133   ] [main                ] [                ] - Running synced action 'authenticate'  [entitlement_service]
-2026-02-11T16:31:31.879Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:298   ] [main                ] [                ] - Synced action 'authenticate' triggered - acquiring lock [entitlement_service]
-2026-02-11T16:31:31.888Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:133   ] [main                ] [                ] - Running synced action 'fetch entitlements'  [entitlement_service]
-2026-02-11T16:31:31.888Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:298   ] [main                ] [                ] - Synced action 'fetch entitlements' triggered - acquiring lock [entitlement_service]
-2026-02-11T16:31:31.906Z [jfcon] [INFO ] [66b08ceb06c6b4bc] [entitlements_service.go:319   ] [main                ] [                ] - Synced action 'fetch entitlements' - executing [entitlement_service]
-2026-02-11T16:31:32.234Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [rover.go:153                  ] [main                ] [                ] - Rover stdout: <none> [rover] [trigger][manual] [trigger_id][initial]
-2026-02-11T16:31:32.234Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [rover.go:156                  ] [main                ] [                ] - Rover stderr:
-   INFO rover_std::fs: reading /opt/jfrog/artifactory/var/work/onemodel/apollo/machine.txt from disk
-    at crates/rover-std/src/fs.rs:32
-
-   INFO rover::utils::telemetry: Telemetry has been disabled.
-    at src/utils/telemetry.rs:87
-
-   INFO rover_std::fs: reading __rover.yaml from disk
-    at crates/rover-std/src/fs.rs:32
-
-   INFO rover_std::fs: reading jfomr.graphqls from disk
-    at crates/rover-std/src/fs.rs:32
-
-supergraph config loaded successfully
-   INFO rover_std::fs: checking existence of parent path in '/opt/jfrog/artifactory/var/work/onemodel/apollo/elv2_license.toml'
-    at crates/rover-std/src/fs.rs:57
-
-   INFO rover_std::fs: writing /var/opt/jfrog/artifactory/work/onemodel/apollo/elv2_license.toml to disk
-    at crates/rover-std/src/fs.rs:88
-
-composing supergraph with Federation v2.9.3
-HINT: [UNUSED_ENUM_TYPE]: Enum type "SortOrderDirection" is defined but unused. It will be included in the supergraph with all the values appearing in any subgraph ("as if" it was only used as an output type).
-
-   INFO rover_std::fs: checking existence of parent path in '/var/opt/jfrog/artifactory/work/onemodel/composition-1770827491791-970790572/__supergraph.graphqls'
-    at crates/rover-std/src/fs.rs:57
-
-   INFO rover_std::fs: writing /var/opt/jfrog/artifactory/work/onemodel/composition-1770827491791-970790572/__supergraph.graphqls to disk
-    at crates/rover-std/src/fs.rs:88
-
-Supergraph Schema was printed to /var/opt/jfrog/artifactory/work/onemodel/composition-1770827491791-970790572/__supergraph.graphqls
- [rover] [trigger][manual] [trigger_id][initial]
-2026-02-11T16:31:32.235Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [worker.go:161                 ] [main                ] [                ] - Successfully generated supergraph 8b3ac1932aa7cab4cbf055d1295be16180b549d5f6e0c08a0923a14e9f007a40 with Apollo Federation version 2.9.3 [composition] [trigger][manual] [trigger_id][initial]
-2026-02-11T16:31:32.260Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [worker.go:240                 ] [main                ] [                ] - Publishing new supergraph [composition] [trigger][manual] [trigger_id][initial]
-2026-02-11T16:31:32.262Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [worker.go:306                 ] [main                ] [                ] - Cleaning 1 old composition folder(s) [composition] [trigger][manual] [trigger_id][initial]
-2026-02-11T16:31:32.262Z [jfomr] [INFO ] [50d7c87cbe3b3fbb] [worker.go:316                 ] [main                ] [                ] - Cleaning old composition folder: composition-1745186859799-1081914261 [composition] [trigger][manual] [trigger_id][initial]
-2026-02-11T16:31:32.359Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.a.c.AccessClientBootstrap:179] [art-init            ] - Cluster join: Executing join on 'http://localhost:8046/access'
-2026-02-11T16:31:32.766Z [jfac ] [INFO ] [50bf8c83bf2122ea] [.r.ServiceTokenProviderImpl:89] [27.0.0.1-8040-exec-7] - Cluster join: Successfully joined jfrt@01edq5j0vmt7qq0ajg8ds610ez with node id dc00bfc2ebf3
-2026-02-11T16:31:32.807Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.a.c.AccessClientBootstrap:190] [art-init            ] - Cluster join: Successfully joined the cluster
-2026-02-11T16:31:32.818Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.a.u.ListeningPortDetector:113] [art-init            ] - Tomcat connectors: [Catalina:type=Connector,port=8081, Catalina:type=Connector,port=8091,address="127.0.0.1"]
-2026-02-11T16:31:32.819Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.a.u.ListeningPortDetector:116] [art-init            ] - Found Tomcat main connector: Catalina:type=Connector,port=8081
-2026-02-11T16:31:32.833Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.a.u.ListeningPortDetector:113] [art-init            ] - Tomcat connectors: [Catalina:type=Connector,port=8081, Catalina:type=Connector,port=8091,address="127.0.0.1"]
-2026-02-11T16:31:32.834Z [jfrt ] [INFO ] [f7b657d10e7179c8] [.a.u.ListeningPortDetector:116] [art-init            ] - Found Tomcat main connector: Catalina:type=Connector,port=8081
-2026-02-11T16:31:33.554Z [jfrou] [INFO ] [2f0c22bd2d27d661] [local_topology.go:249         ] [main                ] [] - Adding local service. Service ID: jfac@01edq5hh0d5ecy1rademfp01da , Node ID: dc00bfc2ebf3
-2026-02-11T16:31:33.579Z [jfac ] [INFO ] [c03bad134f34e565] [.AccessWithRouterRegistrar:124] [jf-common-pool-0    ] - Access Server successfully registered on Router on URL: http://localhost:8046
-2026-02-11T16:31:33.587Z [jfac ] [INFO ] [c03bad134f34e565] [.s.b.AccessServerRegistrar:155] [jf-common-pool-0    ] - [ACCESS BOOTSTRAP] Updating server 'dc00bfc2ebf3' private key finger print to: 805f863439545d17a1baedea09ec5cb8f1c220e76ec536c0a69a2ad8fa59443b ca private key finger print to: 1f74de0b31ae0dcaea4660088f8b1838dac2bb607b087612711dd3937e02aa2c
-2026-02-11T16:31:33.622Z [jfac ] [INFO ] [c03bad134f34e565] [o.j.m.MetricsHelper:64        ] [jf-common-pool-0    ] - Initializing Metrics collector and logger for feature adoption...
-2026-02-11T16:31:33.636Z [jfac ] [INFO ] [c03bad134f34e565] [FeatureAdoptionServiceImpl:140] [jf-common-pool-0    ] - FeatureAdoption Framework service is started and is running in background...
-{"timestamp":"2026-02-11T16:31:33.795930740Z","level":"INFO","message":"processing event","new_schema":true,"new_license":false,"new_configuration":false,"event":"state change","resource":{"process.executable.name":"router","service.version":"1.58.1","service.name":"unknown_service:router"}}
-{"timestamp":"2026-02-11T16:31:33.902261251Z","level":"INFO","message":"Health check exposed at http://0.0.0.0:8074/health","resource":{"service.version":"1.58.1","process.executable.name":"router","service.name":"unknown_service:router"}}
-{"timestamp":"2026-02-11T16:31:33.902455086Z","level":"INFO","message":"GraphQL endpoint exposed at http://127.0.0.1:8073/ 🚀","resource":{"service.version":"1.58.1","process.executable.name":"router","service.name":"unknown_service:router"}}
-{"timestamp":"2026-02-11T16:31:33.905579000Z","level":"INFO","message":"reload complete","new_schema":true,"new_license":false,"new_configuration":false,"event":"state change","resource":{"service.version":"1.58.1","process.executable.name":"router","service.name":"unknown_service:router"}}
-2026-02-11T16:31:34.041Z [jfac ] [WARN ] [c03bad134f34e565] [.CrowdAuthenticationFilter:129] [jf-common-pool-0    ] - Failed to authenticate - this might be due to misconfiguration, make sure you are working against Crowd server for sso, or select 'JIRA' to use direct authentication with JIRA server
-{"log_name":"tomcat-catalina.log","app":{"datetime":"2026-02-11T16:31:34.149Z","service":"tomcat","loglevel":"SEVERE","class":"org.glassfish.jersey.server.spring.SpringComponentProvider","message":"None or multiple beans found in Spring context for type class org.artifactory.rest.resource.federation.FederatedStatusResource, skipping the type."}}
-2026-02-11T16:31:34.179Z 35[jfob ] [INFO ] [6362a76d9ba85aa9] [bootstrap.go:276              ] [main                ] - Platform services enabled false [startup]
-2026-02-11T16:31:34.179Z 35[jfob ] [INFO ] [6362a76d9ba85aa9] [bootstrap.go:283              ] [main                ] - Num of router services : 9 [startup]
-2026-02-11T16:31:34.179Z 35[jfob ] [INFO ] [6362a76d9ba85aa9] [bootstrap.go:284              ] [main                ] - Services registered with router : [{ServiceId:jfac@01edq5hh0d5ecy1rademfp01da} {ServiceId:jfcon@01edq5hh0d5ecy1rademfp01da} {ServiceId:jfevt@01edq5hh0d5ecy1rademfp01da} {ServiceId:jffe@01edq5hh0d5ecy1rademfp01da} {ServiceId:jfmd@01kh6rn58cn506df61g9wrrse4} {ServiceId:jfob@01edq5j0vmt7qq0ajg8ds610ez} {ServiceId:jfomr@01edq5hh0d5ecy1rademfp01da} {ServiceId:jfrt@01edq5j0vmt7qq0ajg8ds610ez} {ServiceId:jftpl@0000}] [startup]
-2026-02-11T16:31:34.179Z 35[jfob ] [INFO ] [6362a76d9ba85aa9] [bootstrap.go:313              ] [main                ] - Obtained parent instance Id: 01edq5j0vmt7qq0ajg8ds610ez [startup]
-2026-02-11T16:31:34.179Z 35[jfob ] [INFO ] [6362a76d9ba85aa9] [bootstrap.go:89               ] [main                ] - JFrog Observability Service ID: jfob@01edq5j0vmt7qq0ajg8ds610ez [startup]
-2026-02-11T16:31:34.179Z 35[jfob ] [INFO ] [6362a76d9ba85aa9] [bootstrap.go:90               ] [main                ] - JFrog Observability Node ID   : dc00bfc2ebf3 [startup]
-2026-02-11T16:31:34.179Z 35[jfob ] [INFO ] [6362a76d9ba85aa9] [bootstrap.go:91               ] [main                ] - JFrog Observability Node IP   : 172.18.0.3 [startup]
-2026-02-11T16:31:34.180Z 35[jfob ] [INFO ] [6362a76d9ba85aa9] [application.go:84             ] [main                ] - Is service running as Multi tenant? false [application]
-2026-02-11T16:31:34.220Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - pinging artifactory, attempt number 40
-2026-02-11T16:31:34.226Z [jffe ] [INFO ] [] [frontend-service.log] [main                ] - pinging artifactory attempt number 40 failed with code : ERR_BAD_RESPONSE
-{"log_name":"tomcat-catalina.log","app"^C
-[root@ip-10-56-112-243 ec2-user]# ^C
-
-
-[root@ip-10-56-112-243 ec2-user]# aws s3 ls s3://conexus-artifactory-filestore/artifactory-prod-filestore/ --recursive | head
-2026-03-12 16:21:28      22742 artifactory-prod-filestore/00/00002e8a8491d300464c0e7593c58d603f6ba89e
-2026-03-12 16:21:28     120359 artifactory-prod-filestore/00/00012e36d12f47b4648e2cfe0b12bdcc2c4649bf
-2026-03-12 16:21:28        782 artifactory-prod-filestore/00/00016b2cb442eb3ede388b5ed21501c402e59299
-2026-03-12 16:21:28        504 artifactory-prod-filestore/00/00025d24940dbd7645d41fdc0461331085bf3a4d
-2026-03-12 16:21:28        841 artifactory-prod-filestore/00/000272ae18e7952f23e5e3d6bdc7bbc99ef460fa
-2026-03-12 16:21:28       1038 artifactory-prod-filestore/00/0002efcc788566350d53be1dd0ea6f8b496afa7a
-2026-03-12 16:21:28        633 artifactory-prod-filestore/00/0002f05592735ffb8555b91582215ae8dcae0bdb
-2026-03-12 16:21:28        174 artifactory-prod-filestore/00/0002f5713bccd3f174418e215504b760742a4929
-2026-03-12 16:21:28       6006 artifactory-prod-filestore/00/000368060df8159954d5d6d942b7b6f42a07edfe
-2026-03-12 16:21:28       6151 artifactory-prod-filestore/00/0004569b37c7c74ba39c43f3ced78d1ad94140be
-
-[Errno 32] Broken pipe
-Exception ignored in: <_io.TextIOWrapper name='<stdout>' mode='w' encoding='utf-8'>
-BrokenPipeError: [Errno 32] Broken pipe
+<config version="2">
+    <chain template="s3-storage-v3-direct"/>
+    <provider id="s3-storage-v3" type="s3-storage-v3">
+        <bucketName>conexus-artifactory-filestore</bucketName>
+        <path>artifactory-prod-filestore</path>
+        <region>us-east-1</region>
+        <useInstanceCredentials>true</useInstanceCredentials>
+        <testConnection>true</testConnection>
+    </provider>
+</config>
