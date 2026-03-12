@@ -1,1 +1,106 @@
-curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/
+TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+
+curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/iam/security-credentials/
+
+
+
+
+ROLE_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/iam/security-credentials/)
+
+curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE_NAME
+
+
+
+aws sts get-caller-identity
+
+
+docker inspect artifactory --format '{{json .Mounts}}' | jq
+
+
+
+export AWS_REGION=us-east-1
+export JFROG_BUCKET=artifactory-filestore
+export JFROG_PATH=artifactory-prod-filestore
+
+aws s3api create-bucket \
+  --bucket "$JFROG_BUCKET" \
+  --region "$AWS_REGION"
+
+
+
+aws s3api put-bucket-versioning \
+  --bucket "$JFROG_BUCKET" \
+  --versioning-configuration Status=Enabled
+
+
+
+aws s3api put-bucket-encryption \
+  --bucket "$JFROG_BUCKET" \
+  --server-side-encryption-configuration '{
+    "Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]
+  }'
+
+
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<config version="2">
+    <chain template="s3-storage-v3-direct"/>
+    <provider id="s3-storage-v3" type="s3-storage-v3">
+        <bucketName>artifactory-filestore</bucketName>
+        <path>artifactory-prod-filestore</path>
+        <region>us-east-1</region>
+        <useInstanceCredentials>true</useInstanceCredentials>
+        <testConnection>true</testConnection>
+    </provider>
+</config>
+
+
+
+
+
+cp -p /app/jfrog/artifactory/var/etc/artifactory/binarystore.xml \
+      /app/jfrog/artifactory/var/etc/artifactory/binarystore.xml.bak.$(date +%F-%H%M%S)
+
+
+
+
+docker stop artifactory
+docker stop artifactory-nginx
+
+
+
+echo test > /tmp/jfrog-s3-test.txt
+aws s3 cp /tmp/jfrog-s3-test.txt s3://artifactory-filestore/artifactory-prod-filestore/_connectivity/jfrog-s3-test.txt
+aws s3 ls s3://artifactory-filestore/artifactory-prod-filestore/_connectivity/
+
+
+
+
+aws s3 sync \
+  /app/jfrog/artifactory/var/data/artifactory/filestore/ \
+  s3://artifactory-filestore/artifactory-prod-filestore/ \
+  --only-show-errors
+
+
+
+
+docker start artifactory
+docker start artifactory-nginx
+
+
+tail -f /app/jfrog/artifactory/var/log/artifactory-service.log
+
+
+
+
+
+docker logs -f artifactory
+
+
+
+aws s3 ls s3://artifactory-filestore/artifactory-prod-filestore/ --recursive | head
