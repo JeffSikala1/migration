@@ -1,5 +1,18 @@
-SAML login is working now. Thanks for fixing the ACS endpoint and entityID mismatch.
+mkdir -p /opt/bamboo-keys/bitbucket_ci
+sudo mkdir -p /opt/bamboo-keys
+sudo chmod 700 /opt/bamboo-keys
+sudo chown bamboo:bamboo /opt/bamboo-keys
+sudo chmod 700 /opt/bamboo-keys/bitbucket_ci
+sudo chown bamboo:bamboo /opt/bamboo-keys/bitbucket_ci  
+sudo ssh-keygen -t rsa -b 4096 -C "bamboo-bitbucket-ci" -f /opt/bamboo-keys/bitbucket_ci
+sudo chmod 600 /opt/bamboo-keys/bitbucket_ci
+sudo chmod 644 /opt/bamboo-keys/bitbucket_ci.pub
+sudo ls -al /opt/bamboo-keys
 
-Next we will be enabling group based authorization from Okta/SailPoint so we don’t have to manage users manually in Artifactory.
 
-Could you confirm what attribute name GSAuth/Okta sends for groups in the SAML assertion? Once I know that, I’ll configure the Group Attribute on the Artifactory side.
+sudo cat /opt/bamboo-keys/bitbucket_ci.pub
+
+
+sudo ssh -T -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+GIT_SSH_COMMAND="ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+git ls-remote ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/sr/env.git
