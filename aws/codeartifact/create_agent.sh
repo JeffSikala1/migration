@@ -11,15 +11,17 @@ NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
 
 HOST_CACHE_BASE="${HOST_CACHE_BASE:-/app/cache/bamboo}"
 DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
-SSH_KEY_PATH="${SSH_KEY_PATH:-/opt/bamboo-keys/bitbucket_ci}"
+SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
 
 SKIP_PULL="${SKIP_PULL:-1}"
 
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
 systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
 
-[ -f "$SSH_KEY_PATH" ] || { echo "ERROR: SSH key not found at $SSH_KEY_PATH"; exit 1; }
-chmod 600 "$SSH_KEY_PATH" || true
+[ -d "$SSH_KEYS_DIR" ] || { echo "ERROR: SSH key directory not found at $SSH_KEYS_DIR"; exit 1; }
+[ -f "$SSH_KEYS_DIR/bitbucket_ci" ] || { echo "ERROR: SSH key not found at $SSH_KEYS_DIR/bitbucket_ci"; exit 1; }
+chmod 600 "$SSH_KEYS_DIR/bitbucket_ci" || true
+[ -f "$SSH_KEYS_DIR/bitbucket_ci_jgit" ] && chmod 600 "$SSH_KEYS_DIR/bitbucket_ci_jgit" || true
 
 mkdir -p "$HOST_CACHE_BASE"
 
@@ -62,7 +64,7 @@ for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
     --net="$NETWORK_NAME" \
     -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
     -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
-    -v "${SSH_KEY_PATH}:/opt/bamboo-keys/bitbucket_ci:ro" \
+    -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
     --name="$AGENT_NAME" \
     -h "$AGENT_NAME" \
     --init \

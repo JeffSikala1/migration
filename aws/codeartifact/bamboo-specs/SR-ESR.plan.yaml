@@ -514,6 +514,57 @@ Delete release branch if failed:
 
     - script:
         interpreter: SHELL
+        description: Write Maven settings for current Artifactory
+        scripts:
+          - |
+            set -eu
+            cat > settings-artifactory.xml <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <mirrors>
+                <mirror>
+                  <id>artifactory</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <profiles>
+                <profile>
+                  <id>use-artifactory</id>
+                  <repositories>
+                    <repository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles>
+                <activeProfile>use-artifactory</activeProfile>
+              </activeProfiles>
+              <servers>
+                <server>
+                  <id>artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
+
+    - script:
+        interpreter: SHELL
         description: Cleanup on failure
         scripts:
           - |
@@ -521,8 +572,13 @@ Delete release branch if failed:
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
             if [ "${bamboo.buildFailed}" = "true" ]; then
-              RELEASE_BRANCH="${bamboo.release.targetReleaseBranch}"
+              CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s settings-artifactory.xml help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+              [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+              RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
               [ -n "$RELEASE_BRANCH" ] || { echo "ERROR: release branch is empty"; exit 1; }
+
+              echo "Recomputed release branch: ${RELEASE_BRANCH}"
 
               git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
               git fetch origin
