@@ -45,14 +45,13 @@ Gitflow release start:
 
     - script:
         interpreter: SHELL
-        description: Validate SSH key mount
+        description: Validate SSH key mounts
         scripts:
           - |
             set -eu
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
             test -s /opt/bamboo-keys/bitbucket_ci_jgit || { echo "ERROR: JGit SSH key missing"; exit 1; }
             ls -l /opt/bamboo-keys/bitbucket_ci*
-            head -n 1 /opt/bamboo-keys/bitbucket_ci_jgit
 
     - script:
         interpreter: SHELL
@@ -154,26 +153,29 @@ Gitflow release start:
 
     - script:
         interpreter: SHELL
-        description: Cleanup matching release branch only
+        description: Cleanup all remote release branches for cutover
         scripts:
           - |
             set -eu
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
-            TARGET_RELEASE_BRANCH="${bamboo.release.targetReleaseBranch}"
-            [ -n "$TARGET_RELEASE_BRANCH" ] || { echo "ERROR: targetReleaseBranch is empty"; exit 1; }
-
-            echo "Checking for existing ${TARGET_RELEASE_BRANCH}"
-
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin
+            git fetch origin --prune
 
-            if git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${TARGET_RELEASE_BRANCH}$"; then
-              echo "Deleting existing ${TARGET_RELEASE_BRANCH}"
-              git push origin --delete "${TARGET_RELEASE_BRANCH}"
-            else
-              echo "No matching existing release branch"
+            RELEASE_BRANCHES=$(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin/release || true)
+
+            if [ -z "${RELEASE_BRANCHES}" ]; then
+              echo "No remote release branches found"
+              exit 0
             fi
+
+            echo "Remote release branches found:"
+            printf '%s\n' "${RELEASE_BRANCHES}"
+
+            for branch in ${RELEASE_BRANCHES}; do
+              echo "Deleting remote branch: ${branch}"
+              git push origin --delete "${branch}" || true
+            done
 
     - script:
         interpreter: SHELL
