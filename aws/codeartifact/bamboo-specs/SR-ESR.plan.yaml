@@ -59,7 +59,9 @@ Gitflow release start:
         scripts:
           - |
             set -eu
-            cat > settings-artifactory.xml <<XML
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+
+            cat > "${SETTINGS_FILE}" <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                       xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
@@ -104,13 +106,23 @@ Gitflow release start:
             </settings>
             XML
 
+            echo "settingsFile=${SETTINGS_FILE}" > /tmp/build-env-${bamboo.buildResultKey}.properties
+
+    - inject-variables:
+        file: /tmp/build-env-${bamboo.buildResultKey}.properties
+        scope: RESULT
+        namespace: buildenv
+        description: Inject temp build environment variables
+
     - script:
         interpreter: SHELL
         description: Determine Maven version
         scripts:
           - |
             set -eu
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s settings-artifactory.xml help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            RELEASE_PROPS=/tmp/release-${bamboo.buildResultKey}.properties
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${bamboo.buildenv.settingsFile}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
             [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
             RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
@@ -118,13 +130,13 @@ Gitflow release start:
             {
               echo "currentVersion=${CURRENT_VERSION}"
               echo "targetReleaseBranch=${RELEASE_BRANCH}"
-            } > release.properties
+            } > "${RELEASE_PROPS}"
 
             echo "Detected version: ${CURRENT_VERSION}"
             echo "Target release branch: ${RELEASE_BRANCH}"
 
     - inject-variables:
-        file: release.properties
+        file: /tmp/release-${bamboo.buildResultKey}.properties
         scope: RESULT
         namespace: release
         description: Inject release variables
@@ -243,6 +255,19 @@ Gitflow release start:
 
     - script:
         interpreter: SHELL
+        description: Validate clean git working tree before jgitflow
+        scripts:
+          - |
+            set -eu
+            git status --short
+            if [ -n "$(git status --porcelain)" ]; then
+              echo "ERROR: working tree is not clean before jgitflow"
+              exit 1
+            fi
+            echo "Working tree is clean"
+
+    - script:
+        interpreter: SHELL
         description: Start Gitflow release
         scripts:
           - |
@@ -250,7 +275,7 @@ Gitflow release start:
             export HOME="${HOME:-/root}"
 
             /usr/share/maven/bin/mvn -U -B \
-              -s settings-artifactory.xml \
+              -s "${bamboo.buildenv.settingsFile}" \
               external.atlassian.jgitflow:jgitflow-maven-plugin:release-start \
               -DpushReleases=true \
               -DallowSnapshots=true \
@@ -319,7 +344,9 @@ Deploy RC:
         scripts:
           - |
             set -eu
-            cat > settings-artifactory.xml <<XML
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+
+            cat > "${SETTINGS_FILE}" <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                       xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
@@ -364,6 +391,14 @@ Deploy RC:
             </settings>
             XML
 
+            echo "settingsFile=${SETTINGS_FILE}" > /tmp/build-env-${bamboo.buildResultKey}.properties
+
+    - inject-variables:
+        file: /tmp/build-env-${bamboo.buildResultKey}.properties
+        scope: RESULT
+        namespace: buildenv
+        description: Inject temp build environment variables
+
     - script:
         interpreter: SHELL
         description: Checkout release branch
@@ -392,7 +427,7 @@ Deploy RC:
         goal: >-
           -U clean deploy
           -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local
-          -s settings-artifactory.xml
+          -s ${bamboo.buildenv.settingsFile}
         description: Deploy RC to RC repo
 
   artifact-subscriptions: []
@@ -424,7 +459,9 @@ Snapshot Maven Deploy:
         scripts:
           - |
             set -eu
-            cat > settings-artifactory.xml <<XML
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+
+            cat > "${SETTINGS_FILE}" <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                       xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
@@ -469,6 +506,14 @@ Snapshot Maven Deploy:
             </settings>
             XML
 
+            echo "settingsFile=${SETTINGS_FILE}" > /tmp/build-env-${bamboo.buildResultKey}.properties
+
+    - inject-variables:
+        file: /tmp/build-env-${bamboo.buildResultKey}.properties
+        scope: RESULT
+        namespace: buildenv
+        description: Inject temp build environment variables
+
     - script:
         interpreter: SHELL
         description: Sync develop branch
@@ -488,7 +533,7 @@ Snapshot Maven Deploy:
         goal: >-
           -U clean deploy
           -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
-          -s settings-artifactory.xml
+          -s ${bamboo.buildenv.settingsFile}
         description: Maven Deploy to Artifactory
 
   artifact-subscriptions: []
@@ -520,7 +565,9 @@ Delete release branch if failed:
         scripts:
           - |
             set -eu
-            cat > settings-artifactory.xml <<XML
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+
+            cat > "${SETTINGS_FILE}" <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                       xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
@@ -565,6 +612,14 @@ Delete release branch if failed:
             </settings>
             XML
 
+            echo "settingsFile=${SETTINGS_FILE}" > /tmp/build-env-${bamboo.buildResultKey}.properties
+
+    - inject-variables:
+        file: /tmp/build-env-${bamboo.buildResultKey}.properties
+        scope: RESULT
+        namespace: buildenv
+        description: Inject temp build environment variables
+
     - script:
         interpreter: SHELL
         description: Cleanup on failure
@@ -574,7 +629,7 @@ Delete release branch if failed:
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
             if [ "${bamboo.buildFailed}" = "true" ]; then
-              CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s settings-artifactory.xml help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+              CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${bamboo.buildenv.settingsFile}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
               [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
               RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
