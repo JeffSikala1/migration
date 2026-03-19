@@ -147,8 +147,7 @@ REGION="${AZ::-1}"
 VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
   --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
 
-# Map volume IDs to mount purpose using NVMe serial mapping (common on Nitro)
-# This is best-effort; if it can't map, we still snapshot.
+# Map volume IDs to mount purpose using NVMe serial mapping
 declare -A VOL_PURPOSE
 VOL_PURPOSE["vol-08f7bca75e08f0d3f"]="root"
 VOL_PURPOSE["vol-05ebadfa92a493533"]="app"
