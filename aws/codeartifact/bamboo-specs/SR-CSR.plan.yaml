@@ -18,11 +18,11 @@ stages:
       jobs:
         - Deploy RC
 
-  - update dependencies to latest snapshot versions:
+  - Update dependencies to latest snapshot versions:
       manual: false
       final: false
       jobs:
-        - update dependencies to latest snapshot versions
+        - Update dependencies to latest snapshot versions
 
   - Delete release branch if failed:
       manual: false
@@ -212,8 +212,7 @@ Gitflow release start:
             ssh-keyscan -p 7999 bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
             chmod 644 "${HOME}/.ssh/known_hosts"
 
-            echo "SSH files prepared for JGit/JSch"
-            ls -la "${HOME}/.ssh"
+            echo "SSH files prepared for JGit"
 
     - script:
         interpreter: SHELL
@@ -410,7 +409,7 @@ Deploy RC:
   artifact-subscriptions: []
 
 
-update dependencies to latest snapshot versions:
+Update dependencies to latest snapshot versions:
   key: SMD
   other:
     clean-working-dir: true
@@ -504,15 +503,11 @@ update dependencies to latest snapshot versions:
           -DallowSnapshots=true
           -DgenerateBackupPoms=false
           -s /tmp/settings-artifactory-${bamboo.buildResultKey}.xml
-        environment: >-
-          bamboo.inject.BranchName=release
-          bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
-          bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
-        description: update dependencies to latest snapshot versions
+        description: Update dependencies to latest snapshot versions
 
     - script:
         interpreter: SHELL
-        description: Commit updated dependency versions
+        description: Commit updated dependency versions if changed
         scripts:
           - |
             set -eu
@@ -521,14 +516,12 @@ update dependencies to latest snapshot versions:
             git config user.name "bamboo"
             git config user.email "bamboo@local"
 
-            git status --short
-
             if ! git diff --quiet; then
               git add --all
               git commit -m "updated-parent-and-properties"
               git push origin HEAD:develop
             else
-              echo "No dependency version changes to commit"
+              echo "No dependency updates to commit"
             fi
 
     - maven:
@@ -538,10 +531,6 @@ update dependencies to latest snapshot versions:
           -U clean deploy
           -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
           -s /tmp/settings-artifactory-${bamboo.buildResultKey}.xml
-        environment: >-
-          bamboo.inject.BranchName=release
-          bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
-          bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
         description: Maven Deploy to Artifactory
 
   artifact-subscriptions: []
@@ -558,14 +547,6 @@ Delete release branch if failed:
     - checkout:
         force-clean-build: true
         description: Checkout Default Repository
-
-    - script:
-        interpreter: SHELL
-        description: Mark workspace as safe for git
-        scripts:
-          - |
-            set -eu
-            git config --global --add safe.directory "$(pwd)" || true
 
     - script:
         interpreter: SHELL
@@ -663,6 +644,7 @@ Delete release branch if failed:
             fi
 
   artifact-subscriptions: []
+
 
 repositories:
   - Common:
