@@ -5,253 +5,666 @@ plan:
   key: CMSR
   name: (11) Contract Mod - Start Release
   description: EIS Contract Mod start release
+
 stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Gitflow release start
-- Deploy RC:
-    manual: false
-    final: false
-    jobs:
-    - Deploy RC
-- Update Dependencies to latest Snapshot versions:
-    manual: false
-    final: false
-    jobs:
-    - Snapshot Maven Deploy
-- Check build plan result:
-    manual: false
-    final: true
-    jobs:
-    - Delete release branch if failed
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Gitflow release start
+
+  - Deploy RC:
+      manual: false
+      final: false
+      jobs:
+        - Deploy RC
+
+  - Update dependencies to latest snapshot versions:
+      manual: false
+      final: false
+      jobs:
+        - Update dependencies to latest snapshot versions
+
+  - Delete release branch if failed:
+      manual: false
+      final: true
+      jobs:
+        - Delete release branch if failed
+
+
 Gitflow release start:
   key: JOB1
+  other:
+    clean-working-dir: true
+
   tasks:
-  - clean
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - clean
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 400 ~/.ssh/id_rsa
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
 
-        # Configure git to use this key
-        echo "Host *" &gt; ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
-      description: Install SSH key
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: currentVersion
-        removeSnapshot: 'true'
-        variableScope: JOB
-      description: Get current version
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-        echo "Checking for tag version ${bamboo_currentVersion}"
+    - script:
+        interpreter: SHELL
+        description: Validate SSH key mounts
+        scripts:
+          - |
+            set -eu
+            test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
+            test -s /opt/bamboo-keys/bitbucket_ci_jgit || { echo "ERROR: JGit SSH key missing"; exit 1; }
+            ls -l /opt/bamboo-keys/bitbucket_ci*
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+    - script:
+        interpreter: SHELL
+        description: Write Maven settings for current Artifactory
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
 
-        # If the currentVersionm, from the previous Maven version variable
-        # extractor, is also a tag version, then the tag version/name will be in
-        # the variable $does_tag_exist
-        # Else $does_tag_exist will be a null string
-        does_tag_exist=$(git tag -l ${bamboo.currentVersion})
-        echo $does_tag_exist
+            cat > "${SETTINGS_FILE}" <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <mirrors>
+                <mirror>
+                  <id>artifactory</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <profiles>
+                <profile>
+                  <id>use-artifactory</id>
+                  <repositories>
+                    <repository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles>
+                <activeProfile>use-artifactory</activeProfile>
+              </activeProfiles>
+              <servers>
+                <server>
+                  <id>artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
 
-        if [ $does_tag_exist ]; then
-          echo "Deleting the tag $does_tag_exist"
-          echo "git tag -d $does_tag_exist"
-          git tag -d $does_tag_exist
-          echo "git push --delete origin $does_tag_exist"
-          git push --delete origin $does_tag_exist
-        else
-            echo "No tag found"
-        fi
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Delete tag, if it already exists
-  - script:
-      interpreter: SHELL
-      scripts:
-      - "#!/usr/bin/env bash\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\ngit pull\nrelease_branch=$(git branch -r | grep -oP '(?&lt;=origin\\/)release\\/.*')\n\n# Handle the case of more than one release branch\nif [ -n \"${release_branch}\" ]; then\n  for i in \"${release_branch[@]}\"; do\n    echo \"Deleting the release branch $i\"\n        git push origin --delete $i\n        git branch -D $i\n        git fetch\n  done\nelse\n        echo \"No release branch\"\n        exit 0 \nfi"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Delete Release Branch
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -B -U external.atlassian.jgitflow:jgitflow-maven-plugin:release-start -DpushReleases=true -DallowSnapshots=true -DenableSshAgent=true -DdefaultOriginUrl=${bamboo.planRepository.repositoryUrl} -s /usr/share/maven/conf/settings-release.xml
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: GitFlow Release Start
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - script:
+        interpreter: SHELL
+        description: Determine Maven version
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
-        git branch
+            RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
 
-        find . -type f -name pom.xml -exec sed -i 's/SNAPSHOT/RC/g' {} +
-        git commit -a -m "Updated versions from SNAPSHOT to RC"
-        git config --global push.default simple
-        git push
-        #git push --set-upstream origin $BRANCH_NAME
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Update SNAPSHOT with RC
+            echo "Detected version: ${CURRENT_VERSION}"
+            echo "Target release branch: ${RELEASE_BRANCH}"
+
+    - script:
+        interpreter: SHELL
+        description: Cleanup existing tag
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
+            VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "$VERSION" ] || { echo "ERROR: currentVersion is empty"; exit 1; }
+
+            CLEAN_VERSION="${VERSION%-SNAPSHOT}"
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch --tags origin
+
+            if git tag -l "${CLEAN_VERSION}" | grep -q .; then
+              echo "Deleting tag ${CLEAN_VERSION}"
+              git tag -d "${CLEAN_VERSION}" || true
+              git push origin ":refs/tags/${CLEAN_VERSION}"
+            else
+              echo "No existing tag"
+            fi
+
+    - script:
+        interpreter: SHELL
+        description: Cleanup all remote release branches for cutover
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin --prune
+
+            RELEASE_BRANCHES=$(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin/release || true)
+
+            if [ -z "${RELEASE_BRANCHES}" ]; then
+              echo "No remote release branches found"
+              exit 0
+            fi
+
+            echo "Remote release branches found:"
+            printf '%s\n' "${RELEASE_BRANCHES}"
+
+            for branch in ${RELEASE_BRANCHES}; do
+              echo "Deleting remote branch: ${branch}"
+              git push origin --delete "${branch}" || true
+            done
+
+    - script:
+        interpreter: SHELL
+        description: Sync develop branch
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin
+            git checkout develop
+            git reset --hard origin/develop
+
+    - script:
+        interpreter: SHELL
+        description: Prepare SSH environment for JGit/JSch
+        scripts:
+          - |
+            set -eu
+            export HOME="${HOME:-/root}"
+
+            mkdir -p "${HOME}/.ssh"
+            chmod 700 "${HOME}/.ssh"
+
+            cp /opt/bamboo-keys/bitbucket_ci_jgit "${HOME}/.ssh/id_rsa"
+            chmod 600 "${HOME}/.ssh/id_rsa"
+
+            cat > "${HOME}/.ssh/config" <<EOF
+            Host bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+              HostName bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+              User git
+              Port 7999
+              IdentityFile ${HOME}/.ssh/id_rsa
+              IdentitiesOnly yes
+              StrictHostKeyChecking accept-new
+            EOF
+            chmod 600 "${HOME}/.ssh/config"
+
+            ssh-keyscan -p 7999 bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+            chmod 644 "${HOME}/.ssh/known_hosts"
+
+            echo "SSH files prepared for JGit"
+
+    - script:
+        interpreter: SHELL
+        description: Validate SSH auth to Bitbucket
+        scripts:
+          - |
+            set -eu
+            export HOME="${HOME:-/root}"
+            ssh -i "${HOME}/.ssh/id_rsa" \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=accept-new \
+              -p 7999 \
+              -T git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov || RC=$?
+
+            if [ "${RC:-0}" -ne 0 ]; then
+              echo "SSH returned code ${RC}; check output above."
+            fi
+
+    - script:
+        interpreter: SHELL
+        description: Validate clean git working tree before jgitflow
+        scripts:
+          - |
+            set -eu
+            git status --short
+            if [ -n "$(git status --porcelain)" ]; then
+              echo "ERROR: working tree is not clean before jgitflow"
+              exit 1
+            fi
+            echo "Working tree is clean"
+
+    - script:
+        interpreter: SHELL
+        description: Start Gitflow release
+        scripts:
+          - |
+            set -eu
+            export HOME="${HOME:-/root}"
+
+            /usr/share/maven/bin/mvn -U -B \
+              -s "/tmp/settings-artifactory-${bamboo.buildResultKey}.xml" \
+              external.atlassian.jgitflow:jgitflow-maven-plugin:release-start \
+              -DpushReleases=true \
+              -DallowSnapshots=true \
+              -DdefaultOriginUrl="${bamboo.planRepository.repositoryUrl}"
+
+    - script:
+        interpreter: SHELL
+        description: Convert SNAPSHOT to RC
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+            RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin
+
+            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+              echo "ERROR: expected release branch ${RELEASE_BRANCH} was not created"
+              git branch -r
+              exit 1
+            fi
+
+            git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
+
+            find . -type f -name pom.xml -exec sed -i 's/SNAPSHOT/RC/g' {} +
+
+            git config user.name "bamboo"
+            git config user.email "bamboo@local"
+
+            if ! git diff --quiet; then
+              git commit -am "Update SNAPSHOT to RC"
+              git push origin HEAD:"$RELEASE_BRANCH"
+            else
+              echo "No SNAPSHOT values needed updating"
+            fi
+
   artifact-subscriptions: []
+
+
 Deploy RC:
   key: DR
+  other:
+    clean-working-dir: true
+
   tasks:
-  - checkout:
-      force-clean-build: true
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - clean
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 400 ~/.ssh/id_rsa
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
 
-        # Configure git to use this key
-        echo "Host *" &gt; ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
-      description: Obtain SSH Key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - script:
+        interpreter: SHELL
+        description: Validate SSH key mount
+        scripts:
+          - |
+            set -eu
+            test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+    - script:
+        interpreter: SHELL
+        description: Write Maven settings for current Artifactory
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
 
-        release_branch=$(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*')
+            cat > "${SETTINGS_FILE}" <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <mirrors>
+                <mirror>
+                  <id>artifactory</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <profiles>
+                <profile>
+                  <id>use-artifactory</id>
+                  <repositories>
+                    <repository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles>
+                <activeProfile>use-artifactory</activeProfile>
+              </activeProfiles>
+              <servers>
+                <server>
+                  <id>artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
 
-        echo "Release branch is set from grep above is $release_branch"
+    - script:
+        interpreter: SHELL
+        description: Checkout release branch
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Checkout release branch
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Deploy RC to RC repo
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+            RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin
+
+            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+              echo "ERROR: expected release branch ${RELEASE_BRANCH} not found"
+              git branch -r
+              exit 1
+            fi
+
+            git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
+
+    - maven:
+        executable: Maven 3
+        jdk: JDK 17
+        goal: >-
+          -U clean deploy
+          -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local
+          -s /tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+        description: Deploy RC to RC repo
+
   artifact-subscriptions: []
-Snapshot Maven Deploy:
+
+
+Update dependencies to latest snapshot versions:
   key: SMD
+  other:
+    clean-working-dir: true
+
   tasks:
-  - checkout:
-      force-clean-build: true
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - clean
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 400 ~/.ssh/id_rsa
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
 
-        # Configure git to use this key
-        echo "Host *" &gt; ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
-      description: Obtain SSH Key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - script:
+        interpreter: SHELL
+        description: Validate SSH key mount
+        scripts:
+          - |
+            set -eu
+            test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull origin develop
-        git fetch
-        git checkout develop
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Pull Latest Develop branch
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U versions:update-parent versions:update-properties -DpushChanges=true -DincludeProperties=version.conexus-domain,version.conexus-common,version.conexus-ws,version.conexus-ws-client,version.conexus-pricing,version.conexus-webservices,version.conexus-task,version.billingsftp -DallowSnapshots=true -DgenerateBackupPoms=false
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
-      description: update-parent update-properties
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: org.apache.maven.plugins:maven-scm-plugin:checkin -Dmessage=updated-parent-and-properties -DpushChanges=true -DdeveloperConnectionUrl=scm:git:${bamboo.planRepository.repositoryUrl}
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
-      description: Checkin changes
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      description: Maven Deploy to Artifactory
+    - script:
+        interpreter: SHELL
+        description: Write Maven settings for current Artifactory
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+
+            cat > "${SETTINGS_FILE}" <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <mirrors>
+                <mirror>
+                  <id>artifactory</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <profiles>
+                <profile>
+                  <id>use-artifactory</id>
+                  <repositories>
+                    <repository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles>
+                <activeProfile>use-artifactory</activeProfile>
+              </activeProfiles>
+              <servers>
+                <server>
+                  <id>artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
+
+    - script:
+        interpreter: SHELL
+        description: Sync develop branch
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin develop
+            git checkout develop
+            git reset --hard origin/develop
+
+    - maven:
+        executable: Maven 3
+        jdk: JDK 17
+        goal: >-
+          -U versions:update-parent versions:update-properties
+          -DallowSnapshots=true
+          -DgenerateBackupPoms=false
+          -DincludeProperties=version.conexus-domain,version.conexus-common,version.conexus-ws,version.conexus-ws-client,version.conexus-pricing,version.conexus-webservices,version.conexus-task,version.billingsftp
+          -s /tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+        description: Update dependencies to latest snapshot versions
+
+    - script:
+        interpreter: SHELL
+        description: Commit updated dependency versions if changed
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+
+            git config user.name "bamboo"
+            git config user.email "bamboo@local"
+
+            if ! git diff --quiet; then
+              git add --all
+              git commit -m "updated-parent-and-properties"
+              git push origin HEAD:develop
+            else
+              echo "No dependency updates to commit"
+            fi
+
+    - maven:
+        executable: Maven 3
+        jdk: JDK 17
+        goal: >-
+          -U clean deploy
+          -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
+          -s /tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+        description: Maven Deploy to Artifactory
+
   artifact-subscriptions: []
+
+
 Delete release branch if failed:
   key: DRBIF
-  tasks:
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+  other:
+    clean-working-dir: true
 
-        if [ ${bamboo.buildFailed} == "true" ]; then
-          echo "Build failed"
-          # Delete the release branch
-          git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-          git pull
-          release_branch=$(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*')
-          echo "Deleting $release_branch"
-          git push origin --delete $release_branch
-          exit 1
-        fi
-      description: Delete release branch if previous stages failed
+  tasks:
+    - clean
+
+    - checkout:
+        force-clean-build: true
+        description: Checkout Default Repository
+
+    - script:
+        interpreter: SHELL
+        description: Validate SSH key mount
+        scripts:
+          - |
+            set -eu
+            test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
+
+    - script:
+        interpreter: SHELL
+        description: Write Maven settings for current Artifactory
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+
+            cat > "${SETTINGS_FILE}" <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <mirrors>
+                <mirror>
+                  <id>artifactory</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <profiles>
+                <profile>
+                  <id>use-artifactory</id>
+                  <repositories>
+                    <repository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles>
+                <activeProfile>use-artifactory</activeProfile>
+              </activeProfiles>
+              <servers>
+                <server>
+                  <id>artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
+
+    - script:
+        interpreter: SHELL
+        description: Cleanup on failure
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
+            if [ "${bamboo.buildFailed}" = "true" ]; then
+              CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+              [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+              RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
+              [ -n "$RELEASE_BRANCH" ] || { echo "ERROR: release branch is empty"; exit 1; }
+
+              echo "Recomputed release branch: ${RELEASE_BRANCH}"
+
+              git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+              git fetch origin
+
+              if git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+                echo "Deleting ${RELEASE_BRANCH}"
+                git push origin --delete "${RELEASE_BRANCH}" || true
+              else
+                echo "No matching release branch found to delete"
+              fi
+
+              exit 0
+            else
+              echo "Build did not fail, nothing to clean up"
+              exit 0
+            fi
+
   artifact-subscriptions: []
-variables:
-  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
+
+
 repositories:
-- ContractMod:
-    scope: global
+  - ContractMod:
+      scope: global
+
 triggers: []
+
 branches:
   create: manually
   delete: never
   link-to-jira: true
+
 notifications: []
+
 labels: []
+
 dependencies:
   require-all-stages-passing: false
   enabled-for-branches: true
