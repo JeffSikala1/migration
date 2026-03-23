@@ -243,7 +243,7 @@ class Promote(object):
             }
         }
         aql = 'items.find({0})' \
-              '.include("path", "name")' \
+              '.include("repo", "path", "name")' \
               '.sort({{"$asc":["name"]}})'.format(json.dumps(query))
 
         logger.debug('AQL query: %s', aql)
