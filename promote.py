@@ -116,6 +116,7 @@ class Promote(object):
         url = '-Durl={0}/artifactory/{1}'.format(self.server,
                                                  self.release_repo)
         settings_xml = self.settings_xml or '/usr/share/maven/conf/settings-release.xml'
+        logger.debug('Using Maven settings file: %s', settings_xml)
         repo_id = '-DrepositoryId=central'
         command = [mvn, deploy, file, url, repo_id, '-s', settings_xml]
 
@@ -186,6 +187,7 @@ class Promote(object):
         logger.info('Successfully promoted the following artifacts:\n{0}'.format('\n'.join(success)))
         if len(failed) > 0:
             logger.error('Failed to promote the following artifacts:\n{0}'.format('\n'.join(failed)))
+            raise RuntimeError('Artifact promotion failed')
 
     def _update_pom(self, path, file):
         """
