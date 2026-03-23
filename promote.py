@@ -210,7 +210,6 @@ class Promote(object):
         """
         Convenience method to call Artifactory
         """
-
         url = '{0}/artifactory/{1}'.format(self.server,
                                            uri.lstrip('/'))
         if 'auth' in self.__dict__:
@@ -218,6 +217,11 @@ class Promote(object):
                                            self.password)
         func = getattr(requests, method)
         resp = func(url, **kwargs)
+
+        if not resp.ok:
+            logger.error('Artifactory response status: %s', resp.status_code)
+            logger.error('Artifactory response body: %s', resp.text)
+
         resp.raise_for_status()
         return resp
 
@@ -246,7 +250,8 @@ class Promote(object):
 
         resp = self._call_artifactory('/api/search/aql/',
                                       'post',
-                                      data=aql)
+                                      data=aql,
+                                      headers={'Content-Type': 'text/plain'})
         return resp.json().get('results', [])
 
     def _download_artifact(self, path, artifact):
