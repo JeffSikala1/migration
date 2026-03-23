@@ -115,7 +115,7 @@ class Promote(object):
         )
         url = '-Durl={0}/artifactory/{1}'.format(self.server,
                                                  self.release_repo)
-        settings_xml = '/usr/share/maven/conf/settings-release.xml'
+        settings_xml = self.settings_xml or '/usr/share/maven/conf/settings-release.xml'
         repo_id = '-DrepositoryId=central'
         command = [mvn, deploy, file, url, repo_id, '-s', settings_xml]
 
@@ -314,6 +314,9 @@ if __name__ == '__main__':
     main_group.add_argument('--release-repo', dest='release_repo', nargs='?', metavar='Artifactory Maven Release Repo',
                             const='conexus-release-local', default='conexus-release-local',
                             help='The Maven Repository to publish release artifacts to')
+    main_group.add_argument('--settings-xml', dest='settings_xml', nargs='?', metavar='Maven settings.xml',
+                            default=None,
+                            help='Path to the Maven settings.xml file to use for deploy:deploy-file')
     main_group.add_argument('--override', action='store_true',
                             help="Define the version to use during promote to override pom file")
     main_group.add_argument('-D', dest='maven_args', nargs='?', action='append',
