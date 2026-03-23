@@ -51,8 +51,8 @@ class Promote(object):
             p = self._open_subprocess(arguments)
             stdout, stderr = p.communicate()
             retcode = p.returncode
-            if retcode != 0 and stdout:
-                logger.error(stdout.decode(errors='ignore'))
+            if stdout:
+                logger.info(stdout.decode(errors='ignore'))
             if stderr:
                 logger.error(stderr.decode(errors='ignore'))
             return stdout, stderr, retcode
