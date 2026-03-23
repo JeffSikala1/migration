@@ -6,13 +6,18 @@ plan:
   name: Env - Finish Release
 
 stages:
-  - Default Stage:
+  - Promote Release Artifacts:
       manual: false
       final: false
       jobs:
-        - Default Job
+        - Promote Job
+  - Finalize Git Release:
+      manual: false
+      final: false
+      jobs:
+        - Finalize Job
 
-Default Job:
+Promote Job:
   key: JOB1
   other:
     clean-working-dir: true
@@ -36,7 +41,7 @@ Default Job:
         description: Validate SSH key mounts
         scripts:
           - |
-            set -eu
+            set -euo pipefail
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
             ls -l /opt/bamboo-keys/bitbucket_ci*
 
@@ -45,7 +50,7 @@ Default Job:
         description: Write Maven settings for current Artifactory
         scripts:
           - |
-            set -eu
+            set -euo pipefail
             SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
 
             cat > "${SETTINGS_FILE}" <<XML
@@ -99,7 +104,7 @@ Default Job:
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -eu
+            set -euo pipefail
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
             CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
@@ -117,7 +122,7 @@ Default Job:
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -eu
+            set -euo pipefail
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
@@ -131,11 +136,15 @@ Default Job:
             git config user.email "bamboo@local"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune
+            git fetch origin --prune --tags
 
             if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
-              echo "ERROR: expected release branch ${RELEASE_BRANCH} not found"
-              git branch -r
+              if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+                echo "ERROR: release branch ${RELEASE_BRANCH} is already deleted and tag ${RELEASE_VERSION} already exists."
+                echo "This usually means finish release already completed for this version."
+              else
+                echo "ERROR: expected release branch ${RELEASE_BRANCH} not found"
+              fi
               exit 1
             fi
 
@@ -155,9 +164,40 @@ Default Job:
         description: Install USDA root certificate in system wide trusted certificate location
         scripts:
           - |
-            set -eu
+            set -euo pipefail
             curl -k "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
             update-ca-trust
+
+    - script:
+        interpreter: SHELL
+        description: Validate release state before promotion
+        working-dir: ${bamboo.module_name}
+        scripts:
+          - |
+            set -euo pipefail
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin --prune --tags
+
+            if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+              echo "ERROR: release tag ${RELEASE_VERSION} already exists."
+              echo "This suggests finish release may already have been completed."
+              exit 1
+            fi
+
+            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
+              exit 1
+            fi
+
+            echo "Release state validation passed."
 
     - script:
         interpreter: SHELL
@@ -165,7 +205,7 @@ Default Job:
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -eu
+            set -euo pipefail
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
             CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
@@ -199,13 +239,120 @@ Default Job:
               --password "${bamboo.artifactory_access_token_secret}" \
               --settings-xml "${SETTINGS_FILE}"
 
+  artifact-subscriptions: []
+
+Finalize Job:
+  key: JOB2
+  other:
+    clean-working-dir: true
+
+  tasks:
+    - clean
+
+    - checkout:
+        path: ${bamboo.module_name}
+        force-clean-build: true
+        description: Checkout Default Repository
+
+    - script:
+        interpreter: SHELL
+        description: Validate SSH key mounts
+        scripts:
+          - |
+            set -euo pipefail
+            test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
+            ls -l /opt/bamboo-keys/bitbucket_ci*
+
+    - script:
+        interpreter: SHELL
+        description: Write Maven settings for current Artifactory
+        scripts:
+          - |
+            set -euo pipefail
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
+
+            cat > "${SETTINGS_FILE}" <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <mirrors>
+                <mirror>
+                  <id>artifactory</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <profiles>
+                <profile>
+                  <id>use-artifactory</id>
+                  <repositories>
+                    <repository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles>
+                <activeProfile>use-artifactory</activeProfile>
+              </activeProfiles>
+              <servers>
+                <server>
+                  <id>artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
+
+    - script:
+        interpreter: SHELL
+        description: Validate release state before finalize
+        working-dir: ${bamboo.module_name}
+        scripts:
+          - |
+            set -euo pipefail
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin --prune --tags
+
+            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finalize cannot continue."
+              exit 1
+            fi
+
+            if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+              echo "ERROR: release tag ${RELEASE_VERSION} already exists. Finalize cannot continue."
+              exit 1
+            fi
+
+            echo "Finalize state validation passed."
+
     - script:
         interpreter: SHELL
         description: Merge release branch to main, set release versions, tag, and push
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -eu
+            set -euo pipefail
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
@@ -223,8 +370,12 @@ Default Job:
             git fetch origin --prune --tags
 
             if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
-              echo "ERROR: expected release branch ${RELEASE_BRANCH} not found before merge"
-              git branch -r
+              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finish release cannot continue."
+              exit 1
+            fi
+
+            if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_TAG}$"; then
+              echo "ERROR: release tag ${RELEASE_TAG} already exists. This release may already have been finished."
               exit 1
             fi
 
@@ -247,14 +398,6 @@ Default Job:
               echo "No SNAPSHOT versions found to remove before tagging"
             fi
 
-            if git tag -l "${RELEASE_TAG}" | grep -q .; then
-              git tag -d "${RELEASE_TAG}" || true
-            fi
-
-            if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_TAG}$"; then
-              git push origin ":refs/tags/${RELEASE_TAG}" || true
-            fi
-
             git tag "${RELEASE_TAG}"
 
             git push origin main
@@ -266,7 +409,7 @@ Default Job:
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -eu
+            set -euo pipefail
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
@@ -277,7 +420,12 @@ Default Job:
             RELEASE_BRANCH="release/${RELEASE_VERSION}"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune
+            git fetch origin --prune --tags
+
+            if ! git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+              echo "ERROR: release tag ${RELEASE_VERSION} does not exist; refusing to delete release branch."
+              exit 1
+            fi
 
             if git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
               echo "Deleting remote release branch ${RELEASE_BRANCH}"
