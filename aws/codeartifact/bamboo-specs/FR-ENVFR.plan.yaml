@@ -100,24 +100,6 @@ Promote Job:
 
     - script:
         interpreter: SHELL
-        description: Determine Maven version and exact release branch
-        working-dir: ${bamboo.module_name}
-        scripts:
-          - |
-            set -euo pipefail
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
-
-            echo "Detected version: ${CURRENT_VERSION}"
-            echo "Exact release branch: ${RELEASE_BRANCH}"
-
-    - script:
-        interpreter: SHELL
         description: Validate exact release branch exists and convert RC back to SNAPSHOT
         working-dir: ${bamboo.module_name}
         scripts:
@@ -225,12 +207,6 @@ Promote Job:
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
 
             mkdir -p working
-
-            echo "Using promote.py from:"
-            realpath ../release-scripts/promote.py
-
-            echo "Server default inside script:"
-            grep -i server ../release-scripts/promote.py
 
             python3 ../release-scripts/promote.py \
               conexus-rc-local \

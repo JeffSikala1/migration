@@ -11,7 +11,7 @@ import os
 from subprocess import PIPE, Popen
 from requests.auth import HTTPBasicAuth
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.INFO,
                     stream=sys.stdout,
                     format='%(asctime)-15s %(levelname)s - %(message)s')
 
@@ -47,17 +47,17 @@ class Promote(object):
         """
         Wrapper around open_subprocess to execute a command
         """
-        logger.debug('Running command {0}'.format(arguments))
         try:
             p = self._open_subprocess(arguments)
             stdout, stderr = p.communicate()
             retcode = p.returncode
-            logger.debug(stdout)
-            if len(stderr) > 0:
-                logger.error(stderr)
+            if retcode != 0 and stdout:
+                logger.error(stdout.decode(errors='ignore'))
+            if stderr:
+                logger.error(stderr.decode(errors='ignore'))
             return stdout, stderr, retcode
         except OSError:
-            raise RuntimeError('Failed to execute {0}'.format(''.join(arguments)))
+            raise RuntimeError('Failed to execute {0}'.format(' '.join(arguments)))
 
 
     def _hash_file(self, file):
@@ -116,7 +116,6 @@ class Promote(object):
         url = '-Durl={0}/artifactory/{1}'.format(self.server,
                                                  self.release_repo)
         settings_xml = self.settings_xml or '/usr/share/maven/conf/settings-release.xml'
-        logger.debug('Using Maven settings file: %s', settings_xml)
         repo_id = '-DrepositoryId=central'
         command = [mvn, deploy, file, url, repo_id, '-s', settings_xml]
 
@@ -166,7 +165,8 @@ class Promote(object):
         #                artifact['root'],
         #                artifact['file'])
         #    )
-        shutil.rmtree(self.staging_directory)
+        if os.path.isdir(self.staging_directory):
+            shutil.rmtree(self.staging_directory)
 
     def _publish_artifacts(self):
         """
@@ -247,8 +247,6 @@ class Promote(object):
         aql = 'items.find({0})' \
               '.include("repo", "path", "name")' \
               '.sort({{"$asc":["name"]}})'.format(json.dumps(query))
-
-        logger.debug('AQL query: %s', aql)
 
         resp = self._call_artifactory('/api/search/aql/',
                                       'post',
