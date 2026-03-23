@@ -4,148 +4,303 @@ plan:
   project-key: FR
   key: ENVFR
   name: Env - Finish Release
+
 stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
+  - Default Stage:
+      manual: false
+      final: false
+      jobs:
+        - Default Job
+
 Default Job:
   key: JOB1
+  other:
+    clean-working-dir: true
+
   tasks:
-  - checkout:
-      path: ${bamboo.module_name}
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: release-scripts
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - clean
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 400 ~/.ssh/id_rsa
+    - checkout:
+        path: ${bamboo.module_name}
+        force-clean-build: true
+        description: Checkout Default Repository
 
-        # Configure git to use this key
-        echo "Host *" &gt; ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
-      description: Install SSH key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - checkout:
+        repository: bamboo-deployment
+        path: release-scripts
+        force-clean-build: true
+        description: Checkout release-scripts repository
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+    - script:
+        interpreter: SHELL
+        description: Validate SSH key mounts
+        scripts:
+          - |
+            set -eu
+            test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
+            ls -l /opt/bamboo-keys/bitbucket_ci*
 
-        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
-        release_branch=${release_branches[0]}
+    - script:
+        interpreter: SHELL
+        description: Write Maven settings for current Artifactory
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
 
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
+            cat > "${SETTINGS_FILE}" <<XML
+            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+              <mirrors>
+                <mirror>
+                  <id>artifactory</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <profiles>
+                <profile>
+                  <id>use-artifactory</id>
+                  <repositories>
+                    <repository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </repository>
+                  </repositories>
+                  <pluginRepositories>
+                    <pluginRepository>
+                      <id>artifactory</id>
+                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                      <releases><enabled>true</enabled></releases>
+                      <snapshots><enabled>true</enabled></snapshots>
+                    </pluginRepository>
+                  </pluginRepositories>
+                </profile>
+              </profiles>
+              <activeProfiles>
+                <activeProfile>use-artifactory</activeProfile>
+              </activeProfiles>
+              <servers>
+                <server>
+                  <id>artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
 
+    - script:
+        interpreter: SHELL
+        description: Determine Maven version and exact release branch
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
-        find . -type f -name *.xml -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
-        git commit -a -m "Updated versions from release-candidate to release"
-        git push --set-upstream origin "${release_branch}"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      working-dir: ${bamboo.module_name}
-      description: Release script
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: maven.version
-        removeSnapshot: 'true'
-        variableScope: JOB
-        pomFile: ${bamboo.module_name}/pom.xml
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
-        curl -k "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        update-ca-trust
-      description: Install USDA root certificate in system wide trusted certificate location
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
 
-        mkdir working
-        #python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs ${bamboo.module_name} ${bamboo.maven.version} --username "${bamboo.artifactory_admin_username}" --password "${bamboo.artifactory_admin_password}" --override
+            echo "Detected version: ${CURRENT_VERSION}"
+            echo "Exact release branch: ${RELEASE_BRANCH}"
 
-        # Since env has two sub directories, I am running this twice with manual entries for artifactID
-        python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs bom ${bamboo.maven.version} --username "${bamboo.artifactory_admin_username}" --password "${bamboo.artifactory_admin_password}"
-      working-dir: ${bamboo.module_name}
-      description: Promote Artifacts
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - script:
+        interpreter: SHELL
+        description: Validate exact release branch exists and convert RC back to SNAPSHOT
+        working-dir: ${bamboo.module_name}
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
-        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
-        release_branch=${release_branches[0]}
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
 
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
+            git config user.name "bamboo"
+            git config user.email "bamboo@local"
 
-        git checkout main
-        git merge -s recursive -X theirs -m "Merge Release Branch" ${release_branch}
-        git tag ${bamboo.maven.version}
-        find . -type f -name *.xml -exec sed -i 's/-SNAPSHOT//g' {} +
-        git commit -a -m "Release Versions"
-        git push --set-upstream origin main
-        git push --set-upstream origin main --tags
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      working-dir: ${bamboo.module_name}
-      description: Merge Release branch
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin --prune
+
+            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+              echo "ERROR: expected release branch ${RELEASE_BRANCH} not found"
+              git branch -r
+              exit 1
+            fi
+
+            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}"
+
+            find . -type f -name "pom.xml" -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
+
+            if ! git diff --quiet; then
+              git commit -am "Updated versions from release-candidate to snapshot"
+              git push origin HEAD:"${RELEASE_BRANCH}"
+            else
+              echo "No RC versions found to convert back to SNAPSHOT"
+            fi
+
+    - script:
+        interpreter: SHELL
+        description: Install USDA root certificate in system wide trusted certificate location
+        scripts:
+          - |
+            set -eu
+            curl -k "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
+            update-ca-trust
+
+    - script:
+        interpreter: SHELL
+        description: Promote artifacts from RC repo
+        working-dir: ${bamboo.module_name}
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+
+            mkdir -p working
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs \
+              bom \
+              "${RELEASE_VERSION}" \
+              --username "${bamboo.artifactory_admin_username}" \
+              --password "${bamboo.artifactory_admin_password}"
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.bom \
+              env-base \
+              "${RELEASE_VERSION}" \
+              --username "${bamboo.artifactory_admin_username}" \
+              --password "${bamboo.artifactory_admin_password}"
+
+    - script:
+        interpreter: SHELL
+        description: Merge release branch to main, set release versions, tag, and push
+        working-dir: ${bamboo.module_name}
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            RELEASE_TAG="${RELEASE_VERSION}"
+
+            git config user.name "bamboo"
+            git config user.email "bamboo@local"
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin --prune --tags
+
+            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+              echo "ERROR: expected release branch ${RELEASE_BRANCH} not found before merge"
+              git branch -r
+              exit 1
+            fi
+
+            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/main$"; then
+              echo "ERROR: origin/main not found"
+              git branch -r
+              exit 1
+            fi
+
+            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}"
+            git checkout -B main origin/main
+
+            git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
+
+            find . -type f -name "pom.xml" -exec sed -i 's/-SNAPSHOT//g' {} +
+
+            if ! git diff --quiet; then
+              git commit -am "Release Versions"
+            else
+              echo "No SNAPSHOT versions found to remove before tagging"
+            fi
+
+            if git tag -l "${RELEASE_TAG}" | grep -q .; then
+              git tag -d "${RELEASE_TAG}" || true
+            fi
+
+            if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_TAG}$"; then
+              git push origin ":refs/tags/${RELEASE_TAG}" || true
+            fi
+
+            git tag "${RELEASE_TAG}"
+
+            git push origin main
+            git push origin "refs/tags/${RELEASE_TAG}"
+
+    - script:
+        interpreter: SHELL
+        description: Delete release branch after successful finish
+        working-dir: ${bamboo.module_name}
+        scripts:
+          - |
+            set -eu
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin --prune
+
+            if git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+              echo "Deleting remote release branch ${RELEASE_BRANCH}"
+              git push origin --delete "${RELEASE_BRANCH}"
+            else
+              echo "Release branch ${RELEASE_BRANCH} already absent"
+            fi
+
   artifact-subscriptions: []
+
 variables:
-  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
   maven.artifactId: env-base
   maven.groupId: gov.gsa.cnxs.bom
   module_name: env
+
 repositories:
-- Env:
-    scope: global
-- bamboo-deployment:
-    scope: global
+  - Env:
+      scope: global
+  - bamboo-deployment:
+      scope: global
+
 triggers: []
+
 branches:
   create: manually
   delete: never
   link-to-jira: true
+
 notifications: []
+
 labels: []
+
 dependencies:
   require-all-stages-passing: false
   enabled-for-branches: true
