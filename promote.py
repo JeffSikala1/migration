@@ -80,11 +80,17 @@ class Promote(object):
 
     def _get_packaging(self, artifact):
         """
-        Determine if the packaging should be test-jar
+        Determine packaging for artifacts that need an explicit type
         """
         packaging = None
+        if artifact.endswith('.tar'):
+            packaging = 'tar'
+        elif artifact.endswith('.zip'):
+            packaging = 'zip'
         if artifact.endswith('tests.jar'):
             packaging = 'test-jar'
+        elif artifact.endswith('.jar'):
+            packaging = 'jar'
         return packaging
 
     def _get_pom_file(self, path, artifact):
@@ -118,13 +124,19 @@ class Promote(object):
 
         is_pom = artifact.endswith('.pom')
 
-        if not is_pom and self.override:
+        if is_pom:
+            command.append('-DpomFile={0}'.format(os.path.join(path, artifact)))
+            return command
+
+        if self.override:
             command.append("-Dversion={}".format(self.version))
             command.append("-DgroupId={}".format(self.group))
             command.append("-DartifactId={}".format(self.component))
-            command.append("-DpomFile={0}".format(
-                self._get_pom_file(path, artifact)
-            ))
+            main_pom = os.path.join(
+                path,
+                "{0}-{1}-RC.pom".format(self.component, self.version)
+            )
+            command.append("-DpomFile={0}".format(main_pom))
             command.append("-DgeneratePom=false")
         else:
             command.append('-DpomFile={0}'.format(
