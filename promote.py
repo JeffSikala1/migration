@@ -109,36 +109,36 @@ class Promote(object):
         mvn = '/usr/bin/mvn'
         deploy = 'deploy:deploy-file'
         file = '-Dfile={0}'.format(
-                os.path.join(
-                        path,
-                        artifact)
+            os.path.join(path, artifact)
         )
-        url = '-Durl={0}/artifactory/{1}'.format(self.server,
-                                                 self.release_repo)
+        url = '-Durl={0}/artifactory/{1}'.format(self.server, self.release_repo)
         settings_xml = self.settings_xml or '/usr/share/maven/conf/settings-release.xml'
         repo_id = '-DrepositoryId=central'
         command = [mvn, deploy, file, url, repo_id, '-s', settings_xml]
 
-        # OPS-1870. Used to override the pom file when a circular dependency exists in the pom specified
-        # This does not cause problems when promoting the pom file from one maven repo to the release repo
-        # However this does affect the .tar file and needs the --override flag to get workaround it
         is_pom = artifact.endswith('.pom')
+
         if not is_pom and self.override:
             command.append("-Dversion={}".format(self.version))
             command.append("-DgroupId={}".format(self.group))
-            command.append('-DartifactId={}'.format(self.component))
+            command.append("-DartifactId={}".format(self.component))
+            command.append("-DpomFile={0}".format(
+                self._get_pom_file(path, artifact)
+            ))
+            command.append("-DgeneratePom=false")
         else:
             command.append('-DpomFile={0}'.format(
-                    self._get_pom_file(path,
-                                       artifact)
-            )
-            )
+                self._get_pom_file(path, artifact)
+            ))
+
         if not is_pom and self.maven_args:
             for argument in self.maven_args:
                 command.append('-D{0}'.format(argument))
+
         packaging = self._get_packaging(artifact)
         if packaging:
             command.append('-Dpackaging={0}'.format(packaging))
+
         return command
 
     def _artifacts_to_publish(self):
