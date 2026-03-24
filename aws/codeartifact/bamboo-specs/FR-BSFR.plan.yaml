@@ -195,13 +195,100 @@ Promote Job:
 
     - script:
         interpreter: SHELL
-        description: Promote artifacts from RC repo
+        description: Pre-check release artifacts in Artifactory
         working-dir: billing
         scripts:
           - |
             set -euo pipefail
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
+              exit 0
+            fi
+
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+            echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            GROUP_ID="${bamboo.maven.groupId}"
+            ARTIFACT_ID="${bamboo.maven.artifactId}"
+            GROUP_PATH="${GROUP_ID//./\/}"
+            EXPECTED_SUFFIXES="${bamboo.release_expected_suffixes}"
+
+            [ -n "${EXPECTED_SUFFIXES}" ] || { echo "ERROR: bamboo.release_expected_suffixes is empty"; exit 1; }
+
+            AQL=$(cat <<EOF
+            items.find({
+              "repo":{"\$eq":"conexus-release-local"},
+              "path":{"\$eq":"${GROUP_PATH}/${ARTIFACT_ID}/${RELEASE_VERSION}"},
+              "name":{"\$match":"${ARTIFACT_ID}-${RELEASE_VERSION}*"}
+            }).include("name","repo","path")
+            EOF
+            )
+
+            RESULT=$(curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+              -H "Content-Type: text/plain" \
+              -X POST \
+              "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+              --data "${AQL}")
+
+            echo "${RESULT}" > "${bamboo.build.working.directory}/release-check.json"
+
+            FOUND_TOTAL=0
+            EXPECTED_TOTAL=0
+            FOUND_SUMMARY=""
+
+            for suffix in ${EXPECTED_SUFFIXES}; do
+              EXPECTED_TOTAL=$((EXPECTED_TOTAL + 1))
+              expected_name="${ARTIFACT_ID}-${RELEASE_VERSION}.${suffix}"
+              found_count=$(echo "${RESULT}" | grep -F -c "\"name\" : \"${expected_name}\"" || true)
+              FOUND_TOTAL=$((FOUND_TOTAL + found_count))
+              FOUND_SUMMARY="${FOUND_SUMMARY}${suffix}=${found_count} "
+            done
+
+            if [ "${FOUND_TOTAL}" -eq 0 ]; then
+              echo "INFO: no release artifacts found for ${RELEASE_VERSION}; promotion may proceed."
+              exit 0
+            fi
+
+            if [ "${FOUND_TOTAL}" -eq "${EXPECTED_TOTAL}" ]; then
+              all_expected_found=true
+              for suffix in ${EXPECTED_SUFFIXES}; do
+                expected_name="${ARTIFACT_ID}-${RELEASE_VERSION}.${suffix}"
+                found_count=$(echo "${RESULT}" | grep -F -c "\"name\" : \"${expected_name}\"" || true)
+                if [ "${found_count}" -ne 1 ]; then
+                  all_expected_found=false
+                  break
+                fi
+              done
+
+              if [ "${all_expected_found}" = "true" ]; then
+                echo "INFO: release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
+                echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+                exit 0
+              fi
+            fi
+
+            echo "ERROR: partial release artifacts already exist for ${RELEASE_VERSION}."
+            echo "Expected release suffixes: ${EXPECTED_SUFFIXES}"
+            echo "Found counts: ${FOUND_SUMMARY% }"
+            exit 1
+
+    - inject-variables:
+        file: skip.properties
+        scope: LOCAL
+
+    - script:
+        interpreter: SHELL
+        description: Promote artifacts from RC repo
+        working-dir: billing
+        scripts:
+          - |
+            set -euo pipefail
+            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
+              echo "INFO: release artifacts already exist; skipping promotion."
               exit 0
             fi
 
@@ -442,6 +529,7 @@ Finalize Job:
 variables:
   maven.artifactId: billing-sftp
   maven.groupId: gov.gsa.cnxs.billingsftp
+  release_expected_suffixes: pom tar zip
 
 repositories:
   - billingsftp:
