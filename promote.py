@@ -82,16 +82,17 @@ class Promote(object):
         """
         Determine packaging for artifacts that need an explicit type
         """
-        packaging = None
-        if artifact.endswith('.tar'):
-            packaging = 'tar'
-        elif artifact.endswith('.zip'):
-            packaging = 'zip'
         if artifact.endswith('tests.jar'):
-            packaging = 'test-jar'
-        elif artifact.endswith('.jar'):
-            packaging = 'jar'
-        return packaging
+            return 'test-jar'
+        if artifact.endswith('.tar.gz'):
+            return 'tar.gz'
+        if artifact.endswith('.tar'):
+            return 'tar'
+        if artifact.endswith('.zip'):
+            return 'zip'
+        if artifact.endswith('.jar'):
+            return 'jar'
+        return None
 
     def _get_pom_file(self, path, artifact):
         """
@@ -114,9 +115,7 @@ class Promote(object):
         """
         mvn = '/usr/bin/mvn'
         deploy = 'deploy:deploy-file'
-        file = '-Dfile={0}'.format(
-            os.path.join(path, artifact)
-        )
+        file = '-Dfile={0}'.format(os.path.join(path, artifact))
         url = '-Durl={0}/artifactory/{1}'.format(self.server, self.release_repo)
         settings_xml = self.settings_xml or '/usr/share/maven/conf/settings-release.xml'
         repo_id = '-DrepositoryId=central'
@@ -125,30 +124,26 @@ class Promote(object):
         is_pom = artifact.endswith('.pom')
 
         if is_pom:
-            command.append('-DpomFile={0}'.format(os.path.join(path, artifact)))
-            return command
-
-        if self.override:
-            command.append("-Dversion={}".format(self.version))
-            command.append("-DgroupId={}".format(self.group))
-            command.append("-DartifactId={}".format(self.component))
-            main_pom = os.path.join(
-                path,
-                "{0}-{1}-RC.pom".format(self.component, self.version)
-            )
-            command.append("-DpomFile={0}".format(main_pom))
-            command.append("-DgeneratePom=false")
-        else:
             command.append('-DpomFile={0}'.format(
-                self._get_pom_file(path, artifact)
+                os.path.join(path, artifact)
             ))
+        else:
+            command.append('-Dversion={0}'.format(self.version))
+            command.append('-DgroupId={0}'.format(self.group))
+            command.append('-DartifactId={0}'.format(self.component))
+            command.append('-DgeneratePom=false')
 
-        if not is_pom and self.maven_args:
+        if self.maven_args:
             for argument in self.maven_args:
                 command.append('-D{0}'.format(argument))
 
+        has_packaging_arg = any(
+            str(argument).startswith('packaging=')
+            for argument in (self.maven_args or [])
+        )
+
         packaging = self._get_packaging(artifact)
-        if packaging:
+        if packaging and not has_packaging_arg:
             command.append('-Dpackaging={0}'.format(packaging))
 
         return command
