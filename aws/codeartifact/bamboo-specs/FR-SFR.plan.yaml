@@ -398,8 +398,9 @@ Finalize Job:
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1
+            git fetch origin --tags --force >/dev/null 2>&1
 
-            if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+            if git tag | grep -qx "${RELEASE_VERSION}"; then
               echo "INFO: release ${RELEASE_VERSION} already finalized; skipping."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
@@ -443,15 +444,17 @@ Finalize Job:
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1
+            git fetch origin --tags --force >/dev/null 2>&1
 
             if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finish release cannot continue."
               exit 1
             fi
 
-            if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_TAG}$"; then
-              echo "ERROR: release tag ${RELEASE_TAG} already exists. This release may already have been finished."
-              exit 1
+            if git tag | grep -qx "${RELEASE_TAG}"; then
+              echo "INFO: release tag ${RELEASE_TAG} already exists; skipping finalize merge/tag/push."
+              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+              exit 0
             fi
 
             if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/main$"; then
@@ -477,6 +480,10 @@ Finalize Job:
             git push origin main
             git push origin "refs/tags/${RELEASE_TAG}"
 
+    - inject-variables:
+        file: skip.properties
+        scope: LOCAL
+
     - script:
         interpreter: SHELL
         description: Delete release branch after successful finish
@@ -500,10 +507,9 @@ Finalize Job:
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1
-
             git fetch origin --tags --force >/dev/null 2>&1
 
-            if ! git tag | grep -q "^${RELEASE_VERSION}$"; then
+            if ! git tag | grep -qx "${RELEASE_VERSION}"; then
               echo "ERROR: release tag ${RELEASE_VERSION} does not exist locally after fetch; refusing to delete release branch."
               exit 1
             fi
