@@ -1,82 +1,154 @@
-[root@ip-10-56-112-34 ec2-user]# df -h
-Filesystem        Size  Used Avail Use% Mounted on
-devtmpfs          4.0M     0  4.0M   0% /dev
-tmpfs              16G     0   16G   0% /dev/shm
-tmpfs             6.3G  8.9M  6.2G   1% /run
-/dev/nvme0n1p1    150G   53G   98G  35% /
-tmpfs              16G     0   16G   0% /tmp
-/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
-tmpfs             3.2G     0  3.2G   0% /run/user/1000
-overlay           150G   53G   98G  35% /var/lib/docker/overlay2/ad037be38dcc74fb65ccaba34ada8418c58bce25ea85af6083d24cf626bea924/merged
-overlay           150G   53G   98G  35% /var/lib/docker/overlay2/2e22d5f3c5da8dd6be65f0e7939f9cc890ca83b8b8bb39cf1d4a2de6b096fe4e/merged
-overlay           150G   53G   98G  35% /var/lib/docker/overlay2/b2d07b19fd8471b4427c153aa05b7d9d77ad47f2aa12f91a0b4e2be0169aaebe/merged
-[root@ip-10-56-112-34 ec2-user]# lsblk
-NAME          MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
-nvme0n1       259:0    0  150G  0 disk 
-├─nvme0n1p1   259:3    0  150G  0 part /
-├─nvme0n1p127 259:4    0    1M  0 part 
-└─nvme0n1p128 259:5    0   10M  0 part /boot/efi
-nvme1n1       259:1    0  150G  0 disk 
-├─nvme1n1p1   259:8    0  150G  0 part 
-└─nvme1n1p128 259:9    0    1M  0 part 
-nvme2n1       259:2    0  150G  0 disk 
-
-[root@ip-10-56-112-34 ec2-user]# fdisk -l
-Disk /dev/nvme0n1: 150 GiB, 161061273600 bytes, 314572800 sectors
-Disk model: Amazon Elastic Block Store              
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-Disklabel type: gpt
-Disk identifier: 5DBF46BD-F807-41AE-8B58-9775A1036DF7
-
-Device           Start       End   Sectors  Size Type
-/dev/nvme0n1p1   24576 314572766 314548191  150G Linux filesystem
-/dev/nvme0n1p127 22528     24575      2048    1M BIOS boot
-/dev/nvme0n1p128  2048     22527     20480   10M EFI System
-
-Partition table entries are not in disk order.
-
-
-Disk /dev/nvme1n1: 150 GiB, 161061273600 bytes, 314572800 sectors
-Disk model: Amazon Elastic Block Store              
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-Disklabel type: gpt
-Disk identifier: A5EB8E0A-FC09-4423-BB29-047980350BDD
-
-Device           Start       End   Sectors  Size Type
-/dev/nvme1n1p1    4096 314572766 314568671  150G Linux filesystem
-/dev/nvme1n1p128  2048      4095      2048    1M BIOS boot
-
-Partition table entries are not in disk order.
-
-
-Disk /dev/nvme2n1: 150 GiB, 161061273600 bytes, 314572800 sectors
-Disk model: Amazon Elastic Block Store              
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 4096 bytes / 4096 bytes
-
+[root@ip-10-56-112-34 ec2-user]# vim /etc/fstab 
 [root@ip-10-56-112-34 ec2-user]# cat /etc/fstab 
 #
 UUID=e1f0d2ec-93af-4d46-8039-6fd7a938a4de     /           xfs    defaults,noatime  1   1
 UUID=E147-FCAD        /boot/efi       vfat    defaults,noatime,uid=0,gid=0,umask=0077,shortname=winnt,x-systemd.automount 0 2
 tmpfs /dev/shm tmpfs defaults,nodev,noexec,nosuid 0 0
-/dev/nvme1n1 /var/lib/docker ext4 defaults,nofail 0 2
+/dev/nvme1n1 /var/lib/docker ext4 defaults 0 2
+[root@ip-10-56-112-34 ec2-user]# mkdir /mnt/docker-ebs
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nv
+nvme0        nvme0n1p1    nvme0n1p128  nvme1n1      nvme1n1p128  nvme2n1      
+nvme0n1      nvme0n1p127  nvme1        nvme1n1p1    nvme2        nvram        
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nv
+nvme0        nvme0n1p1    nvme0n1p128  nvme1n1      nvme1n1p128  nvme2n1      
+nvme0n1      nvme0n1p127  nvme1        nvme1n1p1    nvme2        nvram        
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nvme
+nvme0        nvme0n1p1    nvme0n1p128  nvme1n1      nvme1n1p128  nvme2n1      
+nvme0n1      nvme0n1p127  nvme1        nvme1n1p1    nvme2        
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nvme
+nvme0        nvme0n1p1    nvme0n1p128  nvme1n1      nvme1n1p128  nvme2n1      
+nvme0n1      nvme0n1p127  nvme1        nvme1n1p1    nvme2        
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nvme1n1p1 /mnt/docker-ebs
+[root@ip-10-56-112-34 ec2-user]# ls /mnt/docker-ebs/
+\app           bin   build-artifacts  docker  home  lib64  media  opt   root  sbin  sys  usr
+bamboobackup  boot  dev              etc     lib   local  mnt    proc  run   srv   tmp  var
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/
+total 24
+dr-xr-xr-x. 22 root root 4096 Nov 26 22:59 .
+drwxr-xr-x.  6 root root   71 Mar 25 16:09 ..
+drwxr-xr-x.  3 root root   17 Mar  6  2025 app
+drwxr-x---.  2 root root    6 Nov 26 22:59 bamboobackup
+lrwxrwxrwx.  1 root root    7 Nov 12  2022 bin -> usr/bin
+dr-xr-xr-x.  4 root root 4096 Aug 29  2025 boot
+dr-x------.  3 root root  285 Oct 30  2024 build-artifacts
+drwxr-xr-x.  3 root root  136 Nov 12  2022 dev
+drwx--x---. 12 root root  171 Nov 26 20:16 docker
+drwxr-xr-x. 96 root root 8192 Sep 25 03:04 etc
+drwxr-xr-x.  5 root root   65 Oct 30  2024 home
+lrwxrwxrwx.  1 root root    7 Nov 12  2022 lib -> usr/lib
+lrwxrwxrwx.  1 root root    9 Nov 12  2022 lib64 -> usr/lib64
+drwxr-xr-x.  2 root root    6 Nov 12  2022 local
+drwxr-xr-x.  2 root root    6 Apr  9  2019 media
+drwxr-xr-x.  3 root root   20 Sep 25 02:50 mnt
+drwxr-xr-x. 11 root root  172 Sep 23  2025 opt
+drwxr-xr-x.  2 root root    6 Nov 12  2022 proc
+dr-xr-x---. 11 root root 4096 Sep 25 03:13 root
+drwxr-xr-x.  2 root root    6 Nov 12  2022 run
+lrwxrwxrwx.  1 root root    8 Nov 12  2022 sbin -> usr/sbin
+drwxr-xr-x.  2 root root    6 Apr  9  2019 srv
+drwxr-xr-x.  2 root root    6 Nov 12  2022 sys
+drwxrwxrwt.  8 root root  104 Sep 25 04:15 tmp
+drwxr-xr-x. 13 root root  155 Nov 12  2022 usr
+drwxr-xr-x. 20 root root  280 Oct 30  2024 var
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/bamboobackup/
+total 4
+drwxr-x---.  2 root root    6 Nov 26 22:59 .
+dr-xr-xr-x. 22 root root 4096 Nov 26 22:59 ..
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/app/
+total 4
+drwxr-xr-x.  3 root root   17 Mar  6  2025 .
+dr-xr-xr-x. 22 root root 4096 Nov 26 22:59 ..
+drwxr-x---.  2 root root    6 Mar  6  2025 efs
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/app/efs/
+total 0
+drwxr-x---. 2 root root  6 Mar  6  2025 .
+drwxr-xr-x. 3 root root 17 Mar  6  2025 ..
 
-
+[root@ip-10-56-112-34 ec2-user]# vim /etc/fstab 
 [root@ip-10-56-112-34 ec2-user]# cat /etc/fstab 
 #
 UUID=e1f0d2ec-93af-4d46-8039-6fd7a938a4de     /           xfs    defaults,noatime  1   1
 UUID=E147-FCAD        /boot/efi       vfat    defaults,noatime,uid=0,gid=0,umask=0077,shortname=winnt,x-systemd.automount 0 2
 tmpfs /dev/shm tmpfs defaults,nodev,noexec,nosuid 0 0
-/dev/nvme1n1 /var/lib/docker ext4 defaults,nofail 0 2
-[root@ip-10-56-112-34 ec2-user]# mount | grep docker
-overlay on /var/lib/docker/overlay2/ad037be38dcc74fb65ccaba34ada8418c58bce25ea85af6083d24cf626bea924/merged type overlay (rw,relatime,seclabel,lowerdir=/var/lib/docker/overlay2/l/FKWOZ3B66Z6VJEEWCQ4BTCWFQV:/var/lib/docker/overlay2/l/TDIUW77IYXX3IHR3HBE2NUCNZK:/var/lib/docker/overlay2/l/K67CADPFENRBXNUOM7XVXXMZFZ:/var/lib/docker/overlay2/l/SA27RWCDO7L463WS2RPLVY37ZK:/var/lib/docker/overlay2/l/P24K7IPYAR724BCSHYAOJCNLRB:/var/lib/docker/overlay2/l/AIOIL2KEBO3PCZGCA6IJU3ZBUT:/var/lib/docker/overlay2/l/CJ3WX2KBVA7MWMYKI7BR5LWIT7:/var/lib/docker/overlay2/l/MS4446KTKM2PAMNAWGIXKZI44C:/var/lib/docker/overlay2/l/KJW7C23HJAHJGPCOKQNNXH36MN:/var/lib/docker/overlay2/l/A2QNOQEG5SZT3FQXO4YJ323HSJ:/var/lib/docker/overlay2/l/PH4DGVAJYVKT7YDEGF3GK352JZ:/var/lib/docker/overlay2/l/2UZAAJAEEDJOGMKTYURQYUCA3E,upperdir=/var/lib/docker/overlay2/ad037be38dcc74fb65ccaba34ada8418c58bce25ea85af6083d24cf626bea924/diff,workdir=/var/lib/docker/overlay2/ad037be38dcc74fb65ccaba34ada8418c58bce25ea85af6083d24cf626bea924/work)
-nsfs on /run/docker/netns/de437c079ad8 type nsfs (rw)
-overlay on /var/lib/docker/overlay2/2e22d5f3c5da8dd6be65f0e7939f9cc890ca83b8b8bb39cf1d4a2de6b096fe4e/merged type overlay (rw,relatime,seclabel,lowerdir=/var/lib/docker/overlay2/l/Q3PD6D2N5P7JWIYKK2L6JO2XBQ:/var/lib/docker/overlay2/l/37ZRJ6AJZHWPRHHUQGLUFKLVFT:/var/lib/docker/overlay2/l/X2P2N2HQSXYXN3H52Y5VG2KKCT:/var/lib/docker/overlay2/l/BIDWHXIWOH7YH72WTZOM4HP3KF:/var/lib/docker/overlay2/l/7FWGCXM2AQRKJU22BBNAYMEAQR:/var/lib/docker/overlay2/l/5AYDNOWIP4PHAXMQB7GBN27N3B:/var/lib/docker/overlay2/l/QR3KYPYNWKMW5Y4NOPLBNU4M75:/var/lib/docker/overlay2/l/JNAP4KBUHTZD362QCXB6RT5ERC:/var/lib/docker/overlay2/l/GD2IYLHBSHI7ZLO7HIMHVQIAE2:/var/lib/docker/overlay2/l/4XAWISS7UYRE23NW6N26CS3H24:/var/lib/docker/overlay2/l/XOWDGZXGRFYGIAE3LCVEWJJDA7:/var/lib/docker/overlay2/l/YJ3O3I6Y2NYG223IXALCZJKDFV:/var/lib/docker/overlay2/l/AQ6ODFM45NM6ZL2VNRPQ67QWPN:/var/lib/docker/overlay2/l/Z65THL5NZ4JB3AG7KWZ25KHUSO,upperdir=/var/lib/docker/overlay2/2e22d5f3c5da8dd6be65f0e7939f9cc890ca83b8b8bb39cf1d4a2de6b096fe4e/diff,workdir=/var/lib/docker/overlay2/2e22d5f3c5da8dd6be65f0e7939f9cc890ca83b8b8bb39cf1d4a2de6b096fe4e/work)
-nsfs on /run/docker/netns/9786ed41b027 type nsfs (rw)
-overlay on /var/lib/docker/overlay2/b2d07b19fd8471b4427c153aa05b7d9d77ad47f2aa12f91a0b4e2be0169aaebe/merged type overlay (rw,relatime,seclabel,lowerdir=/var/lib/docker/overlay2/l/XFXTA6JHQQEZUHHA6M7PTFH6SK:/var/lib/docker/overlay2/l/64VLQ5PR5XMTNBIF35ADJDMQK4:/var/lib/docker/overlay2/l/XBAFIYSBDNU5BQOKV6EU3MYYDP:/var/lib/docker/overlay2/l/HZH5EYZJBBTAZ27QXSJE5VBALJ:/var/lib/docker/overlay2/l/LDO6EWWBSOU455JLH23NMDHCMY:/var/lib/docker/overlay2/l/OWHXPVZOQQS3SIRHA7R7OLYVGM:/var/lib/docker/overlay2/l/NSFOL6YMZSUGGGCICSUUQQKE5Q:/var/lib/docker/overlay2/l/WJ6IHHMDAM7336LKR4BAE7MKFM:/var/lib/docker/overlay2/l/C273L7HPXQQJNLDHZI4UORJNGB:/var/lib/docker/overlay2/l/G2SETULGEFB57SCCBZ3FYJPZHB:/var/lib/docker/overlay2/l/ANU7HT25LAO4XMTL2LS4CRCSVJ:/var/lib/docker/overlay2/l/B6OHRAKEQFD6SDTRLBNF6SMOUY:/var/lib/docker/overlay2/l/677FONOGTSF4UX5264PLLK2MBD:/var/lib/docker/overlay2/l/KNY6UNWV7TMRORDRZG357VZ2HI:/var/lib/docker/overlay2/l/G6LAMNPVDDXQCRNCQJU4NCP5LZ:/var/lib/docker/overlay2/l/EYWBZDNA7RVXJV7VZL2XBQKURP:/var/lib/docker/overlay2/l/WEVQMAD5FNPSLCWTSH3CZ5FUXL,upperdir=/var/lib/docker/overlay2/b2d07b19fd8471b4427c153aa05b7d9d77ad47f2aa12f91a0b4e2be0169aaebe/diff,workdir=/var/lib/docker/overlay2/b2d07b19fd8471b4427c153aa05b7d9d77ad47f2aa12f91a0b4e2be0169aaebe/work)
-nsfs on /run/docker/netns/13233338bebb type nsfs (rw)
+/dev/nvme1n1 /var/lib/docker ext4 defaults 0 2
+[root@ip-10-56-112-34 ec2-user]# mkdir /mnt/docker-ebs
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nv
+nvme0        nvme0n1p1    nvme0n1p128  nvme1n1      nvme1n1p128  nvme2n1      
+nvme0n1      nvme0n1p127  nvme1        nvme1n1p1    nvme2        nvram        
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nv
+nvme0        nvme0n1p1    nvme0n1p128  nvme1n1      nvme1n1p128  nvme2n1      
+nvme0n1      nvme0n1p127  nvme1        nvme1n1p1    nvme2        nvram        
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nvme
+nvme0        nvme0n1p1    nvme0n1p128  nvme1n1      nvme1n1p128  nvme2n1      
+nvme0n1      nvme0n1p127  nvme1        nvme1n1p1    nvme2        
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nvme
+nvme0        nvme0n1p1    nvme0n1p128  nvme1n1      nvme1n1p128  nvme2n1      
+nvme0n1      nvme0n1p127  nvme1        nvme1n1p1    nvme2        
+[root@ip-10-56-112-34 ec2-user]# mount /dev/nvme1n1p1 /mnt/docker-ebs
+[root@ip-10-56-112-34 ec2-user]# ls /mnt/docker-ebs/
+\app           bin   build-artifacts  docker  home  lib64  media  opt   root  sbin  sys  usr
+bamboobackup  boot  dev              etc     lib   local  mnt    proc  run   srv   tmp  var
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/
+total 24
+dr-xr-xr-x. 22 root root 4096 Nov 26 22:59 .
+drwxr-xr-x.  6 root root   71 Mar 25 16:09 ..
+drwxr-xr-x.  3 root root   17 Mar  6  2025 app
+drwxr-x---.  2 root root    6 Nov 26 22:59 bamboobackup
+lrwxrwxrwx.  1 root root    7 Nov 12  2022 bin -> usr/bin
+dr-xr-xr-x.  4 root root 4096 Aug 29  2025 boot
+dr-x------.  3 root root  285 Oct 30  2024 build-artifacts
+drwxr-xr-x.  3 root root  136 Nov 12  2022 dev
+drwx--x---. 12 root root  171 Nov 26 20:16 docker
+drwxr-xr-x. 96 root root 8192 Sep 25 03:04 etc
+drwxr-xr-x.  5 root root   65 Oct 30  2024 home
+lrwxrwxrwx.  1 root root    7 Nov 12  2022 lib -> usr/lib
+lrwxrwxrwx.  1 root root    9 Nov 12  2022 lib64 -> usr/lib64
+drwxr-xr-x.  2 root root    6 Nov 12  2022 local
+drwxr-xr-x.  2 root root    6 Apr  9  2019 media
+drwxr-xr-x.  3 root root   20 Sep 25 02:50 mnt
+drwxr-xr-x. 11 root root  172 Sep 23  2025 opt
+drwxr-xr-x.  2 root root    6 Nov 12  2022 proc
+dr-xr-x---. 11 root root 4096 Sep 25 03:13 root
+drwxr-xr-x.  2 root root    6 Nov 12  2022 run
+lrwxrwxrwx.  1 root root    8 Nov 12  2022 sbin -> usr/sbin
+drwxr-xr-x.  2 root root    6 Apr  9  2019 srv
+drwxr-xr-x.  2 root root    6 Nov 12  2022 sys
+drwxrwxrwt.  8 root root  104 Sep 25 04:15 tmp
+drwxr-xr-x. 13 root root  155 Nov 12  2022 usr
+drwxr-xr-x. 20 root root  280 Oct 30  2024 var
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/bamboobackup/
+total 4
+drwxr-x---.  2 root root    6 Nov 26 22:59 .
+dr-xr-xr-x. 22 root root 4096 Nov 26 22:59 ..
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/app/
+total 4
+drwxr-xr-x.  3 root root   17 Mar  6  2025 .
+dr-xr-xr-x. 22 root root 4096 Nov 26 22:59 ..
+drwxr-x---.  2 root root    6 Mar  6  2025 efs
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/app/efs/
+total 0
+drwxr-x---. 2 root root  6 Mar  6  2025 .
+drwxr-xr-x. 3 root root 17 Mar  6  2025 ..
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/
+app/             dev/             lib64/           proc/            sys/
+bamboobackup/    docker/          local/           root/            tmp/
+bin/             etc/             media/           run/             usr/
+boot/            home/            mnt/             sbin/            var/
+build-artifacts/ lib/             opt/             srv/             
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/docker/
+total 28
+drwx--x---. 12 root root  171 Nov 26 20:16 .
+dr-xr-xr-x. 22 root root 4096 Nov 26 22:59 ..
+drwx--x--x.  4 root root  138 Nov 25 19:34 buildkit
+drwx--x---.  7 root root 4096 Mar 11 20:22 containers
+-rw-------.  1 root root   36 Nov 25 19:34 engine-id
+drwx------.  3 root root   22 Nov 25 19:34 image
+drwxr-x---.  3 root root   19 Nov 25 19:34 network
+drwx--x---. 87 root root 8192 Mar 11 20:22 overlay2
+drwx------.  4 root root   32 Nov 25 19:34 plugins
+drwx------.  2 root root    6 Nov 26 20:16 runtimes
+drwx------.  2 root root    6 Nov 25 19:34 swarm
+drwx------.  2 root root    6 Mar 11 19:39 tmp
+drwx-----x.  9 root root 4096 Mar 11 20:21 volumes
+[root@ip-10-56-112-34 ec2-user]# ls -al /mnt/docker-ebs/docker/
+
