@@ -1,47 +1,25 @@
-mkdir -p /restore/apps
-mkdir -p /restore/nginx
-mkdir -p /restore/postgres
+find / -type f \( -name "nightly_backup.sh" -o -name "weekly_backup.sh" -o -name "secrets_backup_daily.sh" \) 2>/dev/null
 
-aws s3 cp s3://cnxs-atlassian-backups/apps/2026-03-19/ /restore/apps/ --recursive
-aws s3 cp s3://cnxs-atlassian-backups/nginx/2026-03-19/ /restore/nginx/ --recursive
-aws s3 cp s3://cnxs-atlassian-backups/postgres/2026-03-19/ /restore/postgres/ --recursive
 
-docker stop cnxs-mgmt-bitbucket prod-bamboo nginx prod-postgres
+find / -type d -name "atlassian-backups" 2>/dev/null
 
-rm -rf /var/lib/docker/volumes/bitbucketVolume/_data/*
+grep -Rni "/app/bamboobackup/atlassian-backups\|nightly_backup.sh\|weekly_backup.sh\|secrets_backup_daily.sh" /etc /root /home /app /var 2>/dev/null
 
-tar -xzf /restore/apps/bitbucket_20260319_021501.tar.gz \
-  -C /var/lib/docker/volumes/bitbucketVolume/_data
+find /mnt/temp -type d -name "atlassian-backups" 2>/dev/null
+find /mnt/temp -type f \( -name "nightly_backup.sh" -o -name "weekly_backup.sh" -o -name "secrets_backup_daily.sh" \) 2>/dev/null
 
-ls /var/lib/docker/volumes/bitbucketVolume/_data/shared
-cat /var/lib/docker/volumes/bitbucketVolume/_data/shared/bitbucket.properties
+crontab -l
+ls -al /var/spool/cron
+grep -Rni "bamboobackup\|nightly_backup" /var/spool/cron /etc/cron* 2>/dev/null
 
-rm -rf /var/lib/docker/volumes/bambooVolume/_data/*
+history | egrep 'bamboobackup|atlassian-backups|nightly_backup|weekly_backup|secrets_backup'
 
-tar -xzf /restore/apps/bamboo_20260319_021501.tar.gz \
-  -C /var/lib/docker/volumes/bambooVolume/_data
+ls -ld /var/lib/docker/volumes/* 2>/dev/null
+find /var/lib/docker/volumes -maxdepth 2 \( -name "_data.bak.*" -o -name "_data.pre-restore.*" -o -name "_data_broken" \) -print
+find /app -maxdepth 3 \( -name "*bak*" -o -name "*pre-restore*" -o -name "*broken*" \) -print
 
-cat /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
 
-rm -rf /var/lib/docker/volumes/nginxVolume/_data/*
-
-tar -xzf /restore/nginx/nginx_tls_20260319*.tar.gz \
-  -C /var/lib/docker/volumes/nginxVolume/_data
-
-openssl x509 -in /var/lib/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -dates
-
-docker start prod-postgres
-sleep 10
-
-docker start cnxs-mgmt-bitbucket
-docker start prod-bamboo
-sleep 20
-
-docker start nginx
-
-curl -I http://localhost:7990
-curl -I http://localhost:8085
-
-curl -Ik https://localhost -H "Host: bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov"
-curl -Ik https://localhost -H "Host: bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov"
-
+find / -type f \( -name "nightly_backup.sh" -o -name "weekly_backup.sh" -o -name "secrets_backup_daily.sh" \) 2>/dev/null
+find / -type d -name "atlassian-backups" 2>/dev/null
+grep -Rni "/app/bamboobackup/atlassian-backups\|nightly_backup.sh\|weekly_backup.sh\|secrets_backup_daily.sh" /etc /root /home /app /var 2>/dev/null
+find /mnt/temp -type f \( -name "nightly_backup.sh" -o -name "weekly_backup.sh" -o -name "secrets_backup_daily.sh" \) 2>/dev/null
