@@ -427,3 +427,323 @@ X-Content-Type-Options: nosniff
 Location: /bootstrap/selectSetupStep.action
 Transfer-Encoding: chunked
 Date: Wed, 25 Mar 2026 14:31:35 GMT
+
+
+
+[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/nginxVolume/_data -maxdepth 3 -type f \( \
+  -name "nginx.conf" -o \
+  -name "*.conf" -o \
+  -path "*/certificates/*" \
+\) | sort
+/var/lib/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
+/var/lib/docker/volumes/nginxVolume/_data/certificates/privatekey.key
+/var/lib/docker/volumes/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf
+/var/lib/docker/volumes/nginxVolume/_data/conf.d/default.conf
+/var/lib/docker/volumes/nginxVolume/_data/nginx.conf
+/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/nginx.conf
+[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data -maxdepth 3 -type f \( \
+  -name "nginx.conf" -o \
+  -name "*.conf" -o \
+  -path "*/certificates/*" \
+\) | sort
+/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/certificates/mgmt_wildcard.pem
+/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/certificates/privatekey.key
+/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf
+/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/conf.d/default.conf
+/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/nginx.conf
+
+
+
+[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/nginxVolume/_data/nginx.conf
+
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    include /etc/nginx/conf.d/*.conf;
+}
+[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/nginx.conf
+
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    include /etc/nginx/conf.d/*.conf;
+}
+[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/nginxVolume/_data/conf.d
+total 24K
+drwxr-xr-x.  2 root root   58 Nov 25 20:41 .
+drwxr-x---. 12 root root  16K Mar 25 13:11 ..
+-rw-r-----.  1 root root 1.1K Nov 25 20:41 cnxs-mgmt-bitbucket.conf
+-rw-r--r--.  1 root root 1.1K Mar 25 13:11 default.conf
+[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/conf.d
+total 8.0K
+drwxr-xr-x. 2 root root   58 Nov 25 20:41 .
+drwxr-xr-x. 4 root root  152 Nov 25 20:37 ..
+-rw-r-----. 1 root root 1.1K Nov 25 20:41 cnxs-mgmt-bitbucket.conf
+-rw-r--r--. 1 root root 1.1K Nov 25 19:44 default.conf
+[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf 
+server {
+    server_name bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+    listen 80;
+    return 301 https://$http_host/;
+
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    listen [::]:443 ssl;
+    server_name bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+    ssl_certificate /etc/nginx/certificates/mgmt_wildcard.pem;
+    ssl_certificate_key /etc/nginx/certificates/privatekey.key;
+#    include sites.common;
+    resolver 127.0.0.11 ipv6=off valid=30s;
+    location / {
+        set $stagingbitbucket http://cnxs-mgmt-bitbucket:7990;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_pass http://cnxs-mgmt-bitbucket:7990;
+        proxy_http_version 1.1;
+
+        # helpful for large pushes / long ops
+        client_max_body_size 0;
+        proxy_read_timeout  600s;
+        proxy_send_timeout  600s;
+        send_timeout        600s;
+    }
+
+}
+[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf 
+server {
+    server_name bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+    listen 80;
+    return 301 https://$http_host/;
+
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    listen [::]:443 ssl;
+    server_name bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+    ssl_certificate /etc/nginx/certificates/mgmt_wildcard.pem;
+    ssl_certificate_key /etc/nginx/certificates/privatekey.key;
+#    include sites.common;
+    resolver 127.0.0.11 ipv6=off valid=30s;
+    location / {
+        set $stagingbitbucket http://cnxs-mgmt-bitbucket:7990;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_pass http://cnxs-mgmt-bitbucket:7990;
+        proxy_http_version 1.1;
+
+        # helpful for large pushes / long ops
+        client_max_body_size 0;
+        proxy_read_timeout  600s;
+        proxy_send_timeout  600s;
+        send_timeout        600s;
+    }
+
+}
+[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/conf.d/default.conf 
+server {
+    listen       80;
+    listen  [::]:80;
+    server_name  localhost;
+
+    #access_log  /var/log/nginx/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+
+    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+    #
+    #location ~ \.php$ {
+    #    proxy_pass   http://127.0.0.1;
+    #}
+
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    #
+    #location ~ \.php$ {
+    #    root           html;
+    #    fastcgi_pass   127.0.0.1:9000;
+    #    fastcgi_index  index.php;
+    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+    #    include        fastcgi_params;
+    #}
+
+    # deny access to .htaccess files, if Apache's document root
+    # concurs with nginx's one
+    #
+    #location ~ /\.ht {
+    #    deny  all;
+    #}
+}
+
+[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/default.conf 
+server {
+    listen       80;
+    listen  [::]:80;
+    server_name  localhost;
+
+    #access_log  /var/log/nginx/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+
+    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+    #
+    #location ~ \.php$ {
+    #    proxy_pass   http://127.0.0.1;
+    #}
+
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    #
+    #location ~ \.php$ {
+    #    root           html;
+    #    fastcgi_pass   127.0.0.1:9000;
+    #    fastcgi_index  index.php;
+    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+    #    include        fastcgi_params;
+    #}
+
+    # deny access to .htaccess files, if Apache's document root
+    # concurs with nginx's one
+    #
+    #location ~ /\.ht {
+    #    deny  all;
+    #}
+}
+
+
+[root@ip-10-56-112-34 ec2-user]# openssl x509 -in /var/lib/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -subject -issuer -dates
+subject=CN=*.mgmt.cnxs.vpcaas.fcs.gsa.gov
+issuer=C=US, O=Let's Encrypt, CN=R13
+notBefore=Jan 20 20:22:33 2026 GMT
+notAfter=Apr 20 20:22:32 2026 GMT
+[root@ip-10-56-112-34 ec2-user]# openssl x509 -in /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -subject -issuer -dates
+subject=CN=*.mgmt.cnxs.vpcaas.fcs.gsa.gov
+issuer=C=US, O=Let's Encrypt, CN=R13
+notBefore=Aug 29 12:56:16 2025 GMT
+notAfter=Nov 27 12:56:15 2025 GMT
+
+[root@ip-10-56-112-34 ec2-user]# docker volume ls 
+DRIVER    VOLUME NAME
+local     bambooVolume
+local     bitbucketVolume
+local     nginxVolume
+local     optbambooVolume
+local     optbitbucketVolume
+local     pgdataVolume16
+[root@ip-10-56-112-34 ec2-user]# docker volume inspect nginxVolume
+[
+    {
+        "CreatedAt": "2026-03-25T13:02:15Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/nginxVolume/_data",
+        "Name": "nginxVolume",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+[root@ip-10-56-112-34 ec2-user]# ls -alh /var/lib/docker/volumes/
+total 24K
+drwx-----x.  8 root root    183 Mar 25 12:54 .
+drwx--x---. 12 root root    171 Mar 25 12:54 ..
+brw-------.  1 root root 259, 3 Mar 25 12:54 backingFsBlockDev
+drwx-----x.  5 root root     95 Mar 25 14:25 bambooVolume
+drwx-----x.  5 root root     95 Mar 25 14:25 bitbucketVolume
+-rw-------.  1 root root    32K Mar 25 12:54 metadata.db
+drwx-----x.  5 root root     72 Mar 25 13:02 nginxVolume
+drwx-----x.  3 root root     19 Nov 25 19:44 optbambooVolume
+drwx-----x.  3 root root     19 Nov 25 19:43 optbitbucketVolume
+drwx-----x.  3 root root     19 Nov 25 19:41 pgdataVolume16
+[root@ip-10-56-112-34 ec2-user]# ls -alh /var/lib/docker/volumes/nginxVolume/
+total 32K
+drwx-----x.  5 root root  72 Mar 25 13:02 .
+drwx-----x.  8 root root 183 Mar 25 12:54 ..
+drwxr-x---. 12 root root 16K Mar 25 13:11 _data
+drwxr-xr-x.  4 root root 152 Nov 25 20:37 _data.bak.2026-03-19-0503
+drwxr-x---. 12 root root 16K Mar 25 12:23 _data_broken
