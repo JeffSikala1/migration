@@ -1,471 +1,56 @@
-[ec2-user@ip-10-56-112-34 ~]$ curl -Ik https://localhost -k -H 'Host: bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov'
-HTTP/2 302 
-server: nginx/1.29.3
-date: Wed, 25 Mar 2026 13:50:13 GMT
-x-arequestid: @1DSP06Ox470x382x0
-x-xss-protection: 1; mode=block
-x-frame-options: SAMEORIGIN
-x-content-type-options: nosniff
-location: http://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup
+[root@ip-10-56-112-34 ec2-user]# TS=$(date +%F-%H%M%S)
 
-[ec2-user@ip-10-56-112-34 ~]$ curl -Ik https://localhost -k -H 'Host: bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov'
-HTTP/2 302 
-server: nginx/1.29.3
-date: Wed, 25 Mar 2026 13:50:18 GMT
-x-arequestid: @1DSP06Ox470x383x0
-x-xss-protection: 1; mode=block
-x-frame-options: SAMEORIGIN
-x-content-type-options: nosniff
-location: http://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup
+cp -a /var/lib/docker/volumes/bitbucketVolume/_data /var/lib/docker/volumes/bitbucketVolume/_data.pre-restore.$TS
+cp -a /var/lib/docker/volumes/bambooVolume/_data /var/lib/docker/volumes/bambooVolume/_data.pre-restore.$TS
+[root@ip-10-56-112-34 ec2-user]# ls -ld /var/lib/docker/volumes/bitbucketVolume/_data.pre-restore.$TS
+ls -ld /var/lib/docker/volumes/bambooVolume/_data.pre-restore.$TS
+drwx------. 15 2003 2003 16384 Mar 25 12:13 /var/lib/docker/volumes/bitbucketVolume/_data.pre-restore.2026-03-25-142508
+drwx------. 7 2005 2005 138 Mar 25 13:07 /var/lib/docker/volumes/bambooVolume/_data.pre-restore.2026-03-25-142508
+[root@ip-10-56-112-34 ec2-user]# rm -rf /var/lib/docker/volumes/bitbucketVolume/_data/*
+rm -rf /var/lib/docker/volumes/bitbucketVolume/_data/.[!.]* /var/lib/docker/volumes/bitbucketVolume/_data/..?* 2>/dev/null
 
-
-[root@ip-10-56-112-34 ec2-user]# docker exec nginx nginx -T
-nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
-nginx: configuration file /etc/nginx/nginx.conf test is successful
-# configuration file /etc/nginx/nginx.conf:
-
-user  nginx;
-worker_processes  auto;
-
-error_log  /var/log/nginx/error.log notice;
-pid        /run/nginx.pid;
-
-
-events {
-    worker_connections  1024;
-}
-
-
-http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
-
-    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-                      '$status $body_bytes_sent "$http_referer" '
-                      '"$http_user_agent" "$http_x_forwarded_for"';
-
-    access_log  /var/log/nginx/access.log  main;
-
-    sendfile        on;
-    #tcp_nopush     on;
-
-    keepalive_timeout  65;
-
-    #gzip  on;
-
-    include /etc/nginx/conf.d/*.conf;
-}
-
-# configuration file /etc/nginx/mime.types:
-
-types {
-    text/html                                        html htm shtml;
-    text/css                                         css;
-    text/xml                                         xml;
-    image/gif                                        gif;
-    image/jpeg                                       jpeg jpg;
-    application/javascript                           js;
-    application/atom+xml                             atom;
-    application/rss+xml                              rss;
-
-    text/mathml                                      mml;
-    text/plain                                       txt;
-    text/vnd.sun.j2me.app-descriptor                 jad;
-    text/vnd.wap.wml                                 wml;
-    text/x-component                                 htc;
-
-    image/avif                                       avif;
-    image/png                                        png;
-    image/svg+xml                                    svg svgz;
-    image/tiff                                       tif tiff;
-    image/vnd.wap.wbmp                               wbmp;
-    image/webp                                       webp;
-    image/x-icon                                     ico;
-    image/x-jng                                      jng;
-    image/x-ms-bmp                                   bmp;
-
-    font/woff                                        woff;
-    font/woff2                                       woff2;
-
-    application/java-archive                         jar war ear;
-    application/json                                 json;
-    application/mac-binhex40                         hqx;
-    application/msword                               doc;
-    application/pdf                                  pdf;
-    application/postscript                           ps eps ai;
-    application/rtf                                  rtf;
-    application/vnd.apple.mpegurl                    m3u8;
-    application/vnd.google-earth.kml+xml             kml;
-    application/vnd.google-earth.kmz                 kmz;
-    application/vnd.ms-excel                         xls;
-    application/vnd.ms-fontobject                    eot;
-    application/vnd.ms-powerpoint                    ppt;
-    application/vnd.oasis.opendocument.graphics      odg;
-    application/vnd.oasis.opendocument.presentation  odp;
-    application/vnd.oasis.opendocument.spreadsheet   ods;
-    application/vnd.oasis.opendocument.text          odt;
-    application/vnd.openxmlformats-officedocument.presentationml.presentation
-                                                     pptx;
-    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-                                                     xlsx;
-    application/vnd.openxmlformats-officedocument.wordprocessingml.document
-                                                     docx;
-    application/vnd.wap.wmlc                         wmlc;
-    application/wasm                                 wasm;
-    application/x-7z-compressed                      7z;
-    application/x-cocoa                              cco;
-    application/x-java-archive-diff                  jardiff;
-    application/x-java-jnlp-file                     jnlp;
-    application/x-makeself                           run;
-    application/x-perl                               pl pm;
-    application/x-pilot                              prc pdb;
-    application/x-rar-compressed                     rar;
-    application/x-redhat-package-manager             rpm;
-    application/x-sea                                sea;
-    application/x-shockwave-flash                    swf;
-    application/x-stuffit                            sit;
-    application/x-tcl                                tcl tk;
-    application/x-x509-ca-cert                       der pem crt;
-    application/x-xpinstall                          xpi;
-    application/xhtml+xml                            xhtml;
-    application/xspf+xml                             xspf;
-    application/zip                                  zip;
-
-    application/octet-stream                         bin exe dll;
-    application/octet-stream                         deb;
-    application/octet-stream                         dmg;
-    application/octet-stream                         iso img;
-    application/octet-stream                         msi msp msm;
-
-    audio/midi                                       mid midi kar;
-    audio/mpeg                                       mp3;
-    audio/ogg                                        ogg;
-    audio/x-m4a                                      m4a;
-    audio/x-realaudio                                ra;
-
-    video/3gpp                                       3gpp 3gp;
-    video/mp2t                                       ts;
-    video/mp4                                        mp4;
-    video/mpeg                                       mpeg mpg;
-    video/quicktime                                  mov;
-    video/webm                                       webm;
-    video/x-flv                                      flv;
-    video/x-m4v                                      m4v;
-    video/x-mng                                      mng;
-    video/x-ms-asf                                   asx asf;
-    video/x-ms-wmv                                   wmv;
-    video/x-msvideo                                  avi;
-}
-
-# configuration file /etc/nginx/conf.d/cnxs-mgmt-bitbucket.conf:
-server {
-    server_name bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov;
-    listen 80;
-    return 301 https://$http_host/;
-
-}
-
-server {
-    listen 443 ssl;
-    http2 on;
-    listen [::]:443 ssl;
-    server_name bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov;
-    ssl_certificate /etc/nginx/certificates/mgmt_wildcard.pem;
-    ssl_certificate_key /etc/nginx/certificates/privatekey.key;
-#    include sites.common;
-    resolver 127.0.0.11 ipv6=off valid=30s;
-    location / {
-        set $stagingbitbucket http://cnxs-mgmt-bitbucket:7990;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
-        proxy_set_header X-Forwarded-Proto https;
-        proxy_pass http://cnxs-mgmt-bitbucket:7990;
-        proxy_http_version 1.1;
-
-        # helpful for large pushes / long ops
-        client_max_body_size 0;
-        proxy_read_timeout  600s;
-        proxy_send_timeout  600s;
-        send_timeout        600s;
-    }
-
-}
-
-# configuration file /etc/nginx/conf.d/default.conf:
-server {
-    listen       80;
-    listen  [::]:80;
-    server_name  localhost;
-
-    #access_log  /var/log/nginx/host.access.log  main;
-
-    location / {
-        root   /usr/share/nginx/html;
-        index  index.html index.htm;
-    }
-
-    #error_page  404              /404.html;
-
-    # redirect server error pages to the static page /50x.html
-    #
-    error_page   500 502 503 504  /50x.html;
-    location = /50x.html {
-        root   /usr/share/nginx/html;
-    }
-
-    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
-    #
-    #location ~ \.php$ {
-    #    proxy_pass   http://127.0.0.1;
-    #}
-
-    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
-    #
-    #location ~ \.php$ {
-    #    root           html;
-    #    fastcgi_pass   127.0.0.1:9000;
-    #    fastcgi_index  index.php;
-    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
-    #    include        fastcgi_params;
-    #}
-
-    # deny access to .htaccess files, if Apache's document root
-    # concurs with nginx's one
-    #
-    #location ~ /\.ht {
-    #    deny  all;
-    #}
-}
-
-
-[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/nginxVolume/_data -maxdepth 3 -type f | sort
-/var/lib/docker/volumes/nginxVolume/_data/README
-/var/lib/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
-/var/lib/docker/volumes/nginxVolume/_data/certificates/privatekey.key
-/var/lib/docker/volumes/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf
-/var/lib/docker/volumes/nginxVolume/_data/conf.d/default.conf
-/var/lib/docker/volumes/nginxVolume/_data/edk2/README
-/var/lib/docker/volumes/nginxVolume/_data/edk2/cacerts.bin
-/var/lib/docker/volumes/nginxVolume/_data/fastcgi_params
-/var/lib/docker/volumes/nginxVolume/_data/java/README
-/var/lib/docker/volumes/nginxVolume/_data/java/cacerts
-/var/lib/docker/volumes/nginxVolume/_data/mime.types
-/var/lib/docker/volumes/nginxVolume/_data/nginx.conf
-/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/fastcgi_params
-/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/mime.types
-/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/nginx.conf
-/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/scgi_params
-/var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/uwsgi_params
-/var/lib/docker/volumes/nginxVolume/_data/openssl/README
-/var/lib/docker/volumes/nginxVolume/_data/openssl/ca-bundle.trust.crt
-/var/lib/docker/volumes/nginxVolume/_data/pem/README
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/ACCVRAIZ1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/AC_RAIZ_FNMT-RCM.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/AC_RAIZ_FNMT-RCM_SERVIDORES_SEGUROS.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/ANF_Secure_Server_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Actalis_Authentication_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/AffirmTrust_Commercial.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/AffirmTrust_Networking.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/AffirmTrust_Premium.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/AffirmTrust_Premium_ECC.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Amazon_Root_CA_1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Amazon_Root_CA_2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Amazon_Root_CA_3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Amazon_Root_CA_4.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Atos_TrustedRoot_2011.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Atos_TrustedRoot_Root_CA_ECC_TLS_2021.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Atos_TrustedRoot_Root_CA_RSA_TLS_2021.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Autoridad_de_Certificacion_Firmaprofesional_CIF_A62634068.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/BJCA_Global_Root_CA1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/BJCA_Global_Root_CA2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Buypass_Class_2_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Buypass_Class_3_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/CA_Disig_Root_R2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/CFCA_EV_ROOT.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/COMODO_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/COMODO_ECC_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/COMODO_RSA_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Certainly_Root_E1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Certainly_Root_R1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Certigna.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Certigna_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Certum_EC-384_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Certum_Trusted_Network_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Certum_Trusted_Network_CA_2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Certum_Trusted_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/CommScope_Public_Trust_ECC_Root-01.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/CommScope_Public_Trust_ECC_Root-02.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/CommScope_Public_Trust_RSA_Root-01.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/CommScope_Public_Trust_RSA_Root-02.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/D-TRUST_BR_Root_CA_1_2020.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/D-TRUST_BR_Root_CA_2_2023.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/D-TRUST_EV_Root_CA_1_2020.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/D-TRUST_EV_Root_CA_2_2023.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/D-TRUST_Root_Class_3_CA_2_2009.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/D-TRUST_Root_Class_3_CA_2_EV_2009.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_Assured_ID_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_Assured_ID_Root_G2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_Assured_ID_Root_G3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_Global_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_Global_Root_G2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_Global_Root_G3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_High_Assurance_EV_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_TLS_ECC_P384_Root_G5.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_TLS_RSA4096_Root_G5.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/DigiCert_Trusted_Root_G4.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Entrust_Root_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Entrust_Root_Certification_Authority_-_EC1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Entrust_Root_Certification_Authority_-_G2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/FIRMAPROFESIONAL_CA_ROOT-A_WEB.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GDCA_TrustAUTH_R5_ROOT.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GTS_Root_R1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GTS_Root_R2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GTS_Root_R3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GTS_Root_R4.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GlobalSign_ECC_Root_CA_-_R4.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GlobalSign_ECC_Root_CA_-_R5.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GlobalSign_Root_CA_-_R3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GlobalSign_Root_CA_-_R6.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GlobalSign_Root_E46.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/GlobalSign_Root_R46.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Go_Daddy_Root_Certificate_Authority_-_G2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/HARICA_TLS_ECC_Root_CA_2021.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/HARICA_TLS_RSA_Root_CA_2021.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Hellenic_Academic_and_Research_Institutions_ECC_RootCA_2015.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Hellenic_Academic_and_Research_Institutions_RootCA_2015.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/HiPKI_Root_CA_-_G1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Hongkong_Post_Root_CA_3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/ISRG_Root_X1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/ISRG_Root_X2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/IdenTrust_Commercial_Root_CA_1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/IdenTrust_Public_Sector_Root_CA_1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Izenpe.com.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Microsec_e-Szigno_Root_CA_2009.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Microsoft_ECC_Root_Certificate_Authority_2017.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Microsoft_RSA_Root_Certificate_Authority_2017.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/NAVER_Global_Root_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/NetLock_Arany__Class_Gold__F__tan__s__tv__ny.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/OISTE_WISeKey_Global_Root_GB_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/OISTE_WISeKey_Global_Root_GC_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/QuoVadis_Root_CA_1_G3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/QuoVadis_Root_CA_2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/QuoVadis_Root_CA_2_G3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/QuoVadis_Root_CA_3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/QuoVadis_Root_CA_3_G3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SSL.com_EV_Root_Certification_Authority_ECC.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SSL.com_EV_Root_Certification_Authority_RSA_R2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SSL.com_Root_Certification_Authority_ECC.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SSL.com_Root_Certification_Authority_RSA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SSL.com_TLS_ECC_Root_CA_2022.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SSL.com_TLS_RSA_Root_CA_2022.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SZAFIR_ROOT_CA2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Sectigo_Public_Server_Authentication_Root_E46.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Sectigo_Public_Server_Authentication_Root_R46.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SecureSign_Root_CA12.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SecureSign_Root_CA14.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SecureSign_Root_CA15.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SecureTrust_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Secure_Global_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Security_Communication_ECC_RootCA1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Security_Communication_RootCA2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Starfield_Class_2_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Starfield_Root_Certificate_Authority_-_G2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Starfield_Services_Root_Certificate_Authority_-_G2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/SwissSign_Gold_CA_-_G2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/T-TeleSec_GlobalRoot_Class_2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/T-TeleSec_GlobalRoot_Class_3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/TUBITAK_Kamu_SM_SSL_Kok_Sertifikasi_-_Surum_1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/TWCA_CYBER_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/TWCA_Global_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/TWCA_Root_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Telekom_Security_TLS_ECC_Root_2020.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Telekom_Security_TLS_RSA_Root_2023.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/TeliaSonera_Root_CA_v1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Telia_Root_CA_v2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/TrustAsia_Global_Root_CA_G3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/TrustAsia_Global_Root_CA_G4.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Trustwave_Global_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Trustwave_Global_ECC_P256_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/Trustwave_Global_ECC_P384_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/TunTrust_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/UCA_Extended_Validation_Root.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/UCA_Global_G2_Root.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/USERTrust_ECC_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/USERTrust_RSA_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/certSIGN_ROOT_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/certSIGN_Root_CA_G2.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/e-Szigno_Root_CA_2017.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/ePKI_Root_Certification_Authority.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/emSign_ECC_Root_CA_-_C3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/emSign_ECC_Root_CA_-_G3.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/emSign_Root_CA_-_C1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/emSign_Root_CA_-_G1.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/vTrus_ECC_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/directory-hash/vTrus_Root_CA.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/email-ca-bundle.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/objsign-ca-bundle.pem
-/var/lib/docker/volumes/nginxVolume/_data/pem/tls-ca-bundle.pem
-/var/lib/docker/volumes/nginxVolume/_data/scgi_params
-/var/lib/docker/volumes/nginxVolume/_data/uwsgi_params
-
-
-
-
-[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/bitbucketVolume/_data -maxdepth 3 \( -name "bitbucket.properties" -o -name "home.properties" -o -name "shared" \) -print
-/var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/shared
-/var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/home.properties
-/var/lib/docker/volumes/bitbucketVolume/_data/shared
-/var/lib/docker/volumes/bitbucketVolume/_data/home.properties
-
-
-[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/bitbucketVolume/_data -maxdepth 3 \( -name "bitbucket.properties" -o -name "home.properties" -o -name "shared" \) -print
-/var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/shared
-/var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/home.properties
-/var/lib/docker/volumes/bitbucketVolume/_data/shared
-/var/lib/docker/volumes/bitbucketVolume/_data/home.properties
-[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456 -maxdepth 3 \( -name "bitbucket.properties" -o -name "home.properties" -o -name "shared" \) -print
-/var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/shared
-/var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/shared/bitbucket.properties
-/var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/home.properties
-[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data -maxdepth 3 \( -name "bitbucket.properties" -o -name "home.properties" -o -name "shared" \) -print
-/var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/shared
-/var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/shared/bitbucket.properties
-/var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/home.properties
-
-[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/bitbucketVolume/_data/home.properties
-#Wed Mar 25 06:12:58 MDT 2026
-home.build=8.19.9
-home.layout=12.0.0
-[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/bitbucketVolume/_data/bitbucket.properties
-cat: /var/lib/docker/volumes/bitbucketVolume/_data/bitbucket.properties: No such file or directory
-[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/bitbucketVolume/_data/
-.cache/             bin/                export/             mesh/               tmp/
-.lock               bitbucketVolume/    home.properties     optbitbucketVolume/ 
-.version            caches/             lib/                plugins/            
-analytics-logs/     docker-app.pid      log/                shared/             
-[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/bitbucketVolume/_data/home.properties
-#Wed Mar 25 06:12:58 MDT 2026
-home.build=8.19.9
-home.layout=12.0.0
-[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/
-.cache/          analytics-logs/  docker-app.pid   lib/             plugins/         
-.lock            bin/             export/          log/             shared/          
-.version         caches/          home.properties  mesh/            tmp/             
-[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/
-.cache/          analytics-logs/  docker-app.pid   lib/             plugins/         
-.lock            bin/             export/          log/             shared/          
-.version         caches/          home.properties  mesh/            tmp/             
-[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/home.properties 
-#Tue Nov 25 12:43:39 MST 2025
-home.build=8.19.9
-home.layout=12.0.0
-[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/home.properties 
-
-
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/shared
+rm -rf /var/lib/docker/volumes/bambooVolume/_data/*
+rm -rf /var/lib/docker/volumes/bambooVolume/_data/.[!.]* /var/lib/docker/volumes/bambooVolume/_data/..?* 2>/dev/null
+[root@ip-10-56-112-34 ec2-user]# 
+[root@ip-10-56-112-34 ec2-user]# olume/_data/*
+rm -rf /var/lib/docker/volumes^C
+[root@ip-10-56-112-34 ec2-user]# ^C
+[root@ip-10-56-112-34 ec2-user]# ^C
+[root@ip-10-56-112-34 ec2-user]# ^C
+[root@ip-10-56-112-34 ec2-user]# ^C
+[root@ip-10-56-112-34 ec2-user]# ^C
+[root@ip-10-56-112-34 ec2-user]# ls -la /var/lib/docker/volumes/bitbucketVolume/_data
+ls -la /var/lib/docker/volumes/bambooVolume/_data
+total 0
+drwx------. 2 2003 2003  6 Mar 25 14:25 .
+drwx-----x. 5 root root 95 Mar 25 14:25 ..
+total 0
+drwx------. 2 2005 2005  6 Mar 25 14:25 .
+drwx-----x. 5 root root 95 Mar 25 14:25 ..
+[root@ip-10-56-112-34 ec2-user]# cp -a /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/. /var/lib/docker/volumes/bitbucketVolume/_data/
+cp -a /var/lib/docker/volumes/bambooVolume/_data.bak.2026-03-19-0456/. /var/lib/docker/volumes/bambooVolume/_data/
+[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bitbucketVolume/_data
+ls -lah /var/lib/docker/volumes/bitbucketVolume/_data/shared
+cat /var/lib/docker/volumes/bitbucketVolume/_data/shared/bitbucket.properties
+cat /var/lib/docker/volumes/bitbucketVolume/_data/home.properties
+total 64K
+drwxr-xr-x. 13 2003 2003 16K Nov 25 19:44 .
+drwx-----x.  5 root root  95 Mar 25 14:25 ..
+drwxr-xr-x.  3 2003 2003  17 Nov 25 19:43 .cache
+-rw-r--r--.  1 2003 2003  17 Nov 25 19:43 .lock
+-rw-r--r--.  1 2003 2003  62 Nov 25 19:43 .version
+drwxr-xr-x.  2 2003 2003 16K Nov 26 07:01 analytics-logs
+drwxr-xr-x.  4 2003 2003  42 Nov 25 19:44 bin
+drwxr-xr-x.  7 2003 2003  79 Nov 25 22:20 caches
+-rw-r--r--.  1 2003 2003   1 Nov 25 19:43 docker-app.pid
+drwxr-xr-x.  2 2003 2003  55 Nov 25 21:42 export
+-rw-r--r--.  1 2003 2003  67 Nov 25 19:43 home.properties
+drwxr-xr-x.  3 2003 2003  20 Nov 25 19:43 lib
+drwxr-xr-x.  5 2003 2003 16K Nov 26 07:09 log
+drwxr-xr-x.  6 2003 2003 155 Nov 25 19:44 mesh
+drwxr-xr-x.  3 2003 2003  25 Nov 25 19:43 plugins
+drwxr-xr-x.  6 2003 2003 102 Nov 25 21:57 shared
+drwxr-xr-x.  7 2003 2003 121 Nov 25 21:59 tmp
 total 20K
 drwxr-xr-x.  6 2003 2003 102 Nov 25 21:57 .
 drwxr-xr-x. 13 2003 2003 16K Nov 25 19:44 ..
@@ -475,7 +60,6 @@ drwxr-xr-x.  5 2003 2003 117 Nov 25 22:00 config
 drwxr-xr-x.  9 2003 2003 163 Nov 25 21:42 data
 drwxr-xr-x.  3 2003 2003  31 Nov 25 19:43 plugins
 drwxr-xr-x.  4 2003 2003  32 Nov 25 19:43 search
-[root@ip-10-56-112-34 ec2-user]# cat /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/shared/bitbucket.properties 
 #>*******************************************************
 #> Migrated to database at jdbc:postgresql://prod-postgres:5432/bitbucket?targetServerType=master
 #> Updated on 2025-11-25T14:42:05.295-07:00
@@ -484,106 +68,362 @@ jdbc.driver=org.postgresql.Driver
 jdbc.url=jdbc:postgresql://prod-postgres:5432/bitbucket?targetServerType=master
 jdbc.user=bitbucketuser
 jdbc.password=sdifhbIHSDBVipydbfv8345go458g03
+#Tue Nov 25 12:43:39 MST 2025
+home.build=8.19.9
+home.layout=12.0.0
 
 
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/shared 
-total 20K
-drwx------.  6 2003 2003 102 Nov 25 21:57 .
-drwx------. 13 2003 2003 16K Nov 25 19:44 ..
--rwx------.  1 2003 2003   0 Nov 25 21:57 .lock
--rwx------.  1 2003 2003 442 Nov 25 21:42 bitbucket.properties
-drwx------.  5 2003 2003 117 Nov 25 22:00 config
-drwx------.  9 2003 2003 163 Nov 25 21:42 data
-drwx------.  3 2003 2003  31 Nov 25 19:43 plugins
-drwx------.  4 2003 2003  32 Nov 25 19:43 search
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/shared/
-.lock                 config/               plugins/              
-bitbucket.properties  data/                 search/               
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/shared/
-.lock                 config/               plugins/              
-bitbucket.properties  data/                 search/               
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/shared/
-
-
-
-[root@ip-10-56-112-34 ec2-user]# docker exec -it prod-postgres psql -U postgres -lqt
- bitbucket | bitbucketuser | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | 
- postgres  | postgres      | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | 
- template0 | postgres      | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =c/postgres          +
-           |               |          |                 |            |            |            |           | postgres=CTc/postgres
- template1 | postgres      | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =c/postgres          +
-           |               |          |                 |            |            |            |           | postgres=CTc/postgres
-
-
-
-           [root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume
-total 0
-drwx-----x. 4 root root  52 Mar 19 04:57 .
-drwx-----x. 8 root root 183 Mar 25 12:54 ..
-drwx------. 7 2005 2005 138 Mar 25 13:07 _data
-drwxr-xr-x. 5 2005 2005  95 Nov 25 19:44 _data.bak.2026-03-19-0456
 [root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume/_data
-total 8.0K
-drwx------. 7 2005 2005 138 Mar 25 13:07 .
-drwx-----x. 4 root root  52 Mar 19 04:57 ..
-drwx------. 2 2005 2005  48 Mar 25 12:12 __pycache__
--rw-r-----. 1 2005 2005 532 Mar 25 13:07 bamboo.cfg.xml
-drwx------. 3 2005 2005  19 Mar 19 04:58 bambooVolume
--rw-r--r--. 1 2005 2005   1 Mar 25 13:06 docker-app.pid
-drwxr-x---. 2 2005 2005 138 Mar 25 12:13 logs
-drwx------. 3 2005 2005  19 Mar 19 04:58 optbambooVolume
-drwxr-x---. 2 2005 2005   6 Mar 25 12:13 shared
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume/_data
-_data/                     _data.bak.2026-03-19-0456/ 
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume/_data/
-__pycache__/     bambooVolume/    logs/            shared/          
-bamboo.cfg.xml   docker-app.pid   optbambooVolume/ 
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume/_data/bamboo
-bamboo.cfg.xml  bambooVolume/   
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume/_data/bamboo
-bamboo.cfg.xml  bambooVolume/   
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume/_data/bambooVolume/
-total 0
-drwx------. 3 2005 2005  19 Mar 19 04:58 .
-drwx------. 7 2005 2005 138 Mar 25 13:07 ..
-drwx------. 5 2005 2005  95 Nov 25 19:44 _data
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume/_data/bambooVolume/_data/
-total 8.0K
-drwx------. 5 2005 2005  95 Nov 25 19:44 .
-drwx------. 3 2005 2005  19 Mar 19 04:58 ..
-drwx------. 2 2005 2005  48 Nov 25 19:44 __pycache__
--rwx------. 1 2005 2005 532 Nov 25 19:44 bamboo.cfg.xml
--rwx------. 1 2005 2005   1 Nov 25 19:44 docker-app.pid
-drwx------. 2 2005 2005 138 Nov 25 19:44 logs
-drwx------. 2 2005 2005   6 Nov 25 19:44 shared
-[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume/_data.bak.2026-03-19-0456/
+cat /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
 total 8.0K
 drwxr-xr-x. 5 2005 2005  95 Nov 25 19:44 .
-drwx-----x. 4 root root  52 Mar 19 04:57 ..
+drwx-----x. 5 root root  95 Mar 25 14:25 ..
 drwxr-xr-x. 2 root root  48 Nov 25 19:44 __pycache__
 -rw-r-----. 1 2005 2005 532 Nov 25 19:44 bamboo.cfg.xml
 -rw-r--r--. 1 2005 2005   1 Nov 25 19:44 docker-app.pid
 drwxr-x---. 2 2005 2005 138 Nov 25 19:44 logs
 drwxr-x---. 2 2005 2005   6 Nov 25 19:44 shared
+<?xml version="1.0" encoding="UTF-8"?>
+
+<application-configuration>
+  <setupStep>setupLicense</setupStep>
+  <setupType>initial</setupType>
+  <buildNumber>90607</buildNumber>
+  <properties>
+    <property name="bamboo.jms.broker.client.uri">failover:(ssl://2148cf010041:54663?socket.verifyHostName=false&amp;wireFormat.maxInactivityDuration=90000)?maxReconnectAttempts=10&amp;initialReconnectDelay=15000</property>
+    <property name="bamboo.jms.broker.uri">nio://0.0.0.0:54663</property>
+  </properties>
+</application-configuration>
 
 
+[root@ip-10-56-112-34 ec2-user]# ls -lah /var/lib/docker/volumes/bambooVolume/_data
+cat /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+total 8.0K
+drwxr-xr-x. 5 2005 2005  95 Nov 25 19:44 .
+drwx-----x. 5 root root  95 Mar 25 14:25 ..
+drwxr-xr-x. 2 root root  48 Nov 25 19:44 __pycache__
+-rw-r-----. 1 2005 2005 532 Nov 25 19:44 bamboo.cfg.xml
+-rw-r--r--. 1 2005 2005   1 Nov 25 19:44 docker-app.pid
+drwxr-x---. 2 2005 2005 138 Nov 25 19:44 logs
+drwxr-x---. 2 2005 2005   6 Nov 25 19:44 shared
+<?xml version="1.0" encoding="UTF-8"?>
 
-[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/bambooVolume/_data -maxdepth 3 -type d | sort | head -100
+<application-configuration>
+  <setupStep>setupLicense</setupStep>
+  <setupType>initial</setupType>
+  <buildNumber>90607</buildNumber>
+  <properties>
+    <property name="bamboo.jms.broker.client.uri">failover:(ssl://2148cf010041:54663?socket.verifyHostName=false&amp;wireFormat.maxInactivityDuration=90000)?maxReconnectAttempts=10&amp;initialReconnectDelay=15000</property>
+    <property name="bamboo.jms.broker.uri">nio://0.0.0.0:54663</property>
+  </properties>
+</application-configuration>
+[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/bitbucketVolume/_data -maxdepth 2 -type d | sort
+find /var/lib/docker/volumes/bambooVolume/_data -maxdepth 2 -type d | sort
+/var/lib/docker/volumes/bitbucketVolume/_data
+/var/lib/docker/volumes/bitbucketVolume/_data/.cache
+/var/lib/docker/volumes/bitbucketVolume/_data/.cache/JNA
+/var/lib/docker/volumes/bitbucketVolume/_data/analytics-logs
+/var/lib/docker/volumes/bitbucketVolume/_data/bin
+/var/lib/docker/volumes/bitbucketVolume/_data/bin/git-hooks
+/var/lib/docker/volumes/bitbucketVolume/_data/bin/git-scripts
+/var/lib/docker/volumes/bitbucketVolume/_data/caches
+/var/lib/docker/volumes/bitbucketVolume/_data/caches/commit-graph
+/var/lib/docker/volumes/bitbucketVolume/_data/caches/hooks
+/var/lib/docker/volumes/bitbucketVolume/_data/caches/pack
+/var/lib/docker/volumes/bitbucketVolume/_data/caches/scm
+/var/lib/docker/volumes/bitbucketVolume/_data/caches/tag-index
+/var/lib/docker/volumes/bitbucketVolume/_data/export
+/var/lib/docker/volumes/bitbucketVolume/_data/lib
+/var/lib/docker/volumes/bitbucketVolume/_data/lib/native
+/var/lib/docker/volumes/bitbucketVolume/_data/log
+/var/lib/docker/volumes/bitbucketVolume/_data/log/audit
+/var/lib/docker/volumes/bitbucketVolume/_data/log/jfr
+/var/lib/docker/volumes/bitbucketVolume/_data/log/search
+/var/lib/docker/volumes/bitbucketVolume/_data/mesh
+/var/lib/docker/volumes/bitbucketVolume/_data/mesh/bin
+/var/lib/docker/volumes/bitbucketVolume/_data/mesh/config
+/var/lib/docker/volumes/bitbucketVolume/_data/mesh/log
+/var/lib/docker/volumes/bitbucketVolume/_data/mesh/tmp
+/var/lib/docker/volumes/bitbucketVolume/_data/plugins
+/var/lib/docker/volumes/bitbucketVolume/_data/plugins/.osgi-cache
+/var/lib/docker/volumes/bitbucketVolume/_data/shared
+/var/lib/docker/volumes/bitbucketVolume/_data/shared/config
+/var/lib/docker/volumes/bitbucketVolume/_data/shared/data
+/var/lib/docker/volumes/bitbucketVolume/_data/shared/plugins
+/var/lib/docker/volumes/bitbucketVolume/_data/shared/search
+/var/lib/docker/volumes/bitbucketVolume/_data/tmp
+/var/lib/docker/volumes/bitbucketVolume/_data/tmp/2025_11_25_14_59_06_238
+/var/lib/docker/volumes/bitbucketVolume/_data/tmp/git
+/var/lib/docker/volumes/bitbucketVolume/_data/tmp/search
+/var/lib/docker/volumes/bitbucketVolume/_data/tmp/tomcat.7990.6860990633530447795
+/var/lib/docker/volumes/bitbucketVolume/_data/tmp/webresources
 /var/lib/docker/volumes/bambooVolume/_data
 /var/lib/docker/volumes/bambooVolume/_data/__pycache__
-/var/lib/docker/volumes/bambooVolume/_data/bambooVolume
-/var/lib/docker/volumes/bambooVolume/_data/bambooVolume/_data
-/var/lib/docker/volumes/bambooVolume/_data/bambooVolume/_data/__pycache__
-/var/lib/docker/volumes/bambooVolume/_data/bambooVolume/_data/logs
-/var/lib/docker/volumes/bambooVolume/_data/bambooVolume/_data/shared
 /var/lib/docker/volumes/bambooVolume/_data/logs
-/var/lib/docker/volumes/bambooVolume/_data/optbambooVolume
-/var/lib/docker/volumes/bambooVolume/_data/optbambooVolume/_data
-/var/lib/docker/volumes/bambooVolume/_data/optbambooVolume/_data/bamboo
-/var/lib/docker/volumes/bambooVolume/_data/optbambooVolume/_data/etc
-/var/lib/docker/volumes/bambooVolume/_data/optbambooVolume/_data/support
 /var/lib/docker/volumes/bambooVolume/_data/shared
 
-[root@ip-10-56-112-34 ec2-user]# find /var/lib/docker/volumes/bambooVolume/_data -maxdepth 3 \( -name "bamboo.cfg.xml" -o -name "bamboo-init.properties" \) -print
-/var/lib/docker/volumes/bambooVolume/_data/bambooVolume/_data/bamboo.cfg.xml
-/var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+
+[root@ip-10-56-112-34 ec2-user]# docker ps
+CONTAINER ID   IMAGE                  COMMAND                  CREATED        STATUS             PORTS                     NAMES
+17e4e4448ebf   postgres:16.5-alpine   "docker-entrypoint.s…"   3 months ago   Up About an hour   0.0.0.0:32768->5432/tcp   prod-postgres
+[root@ip-10-56-112-34 ec2-user]# docker logs --tail 20 prod-postgres
+2026-03-25 12:17:40.715 UTC [27] LOG:  checkpoint starting: time
+2026-03-25 12:17:41.527 UTC [27] LOG:  checkpoint complete: wrote 10 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.804 s, sync=0.003 s, total=0.813 s; sync files=9, longest=0.002 s, average=0.001 s; distance=30 kB, estimate=30 kB; lsn=0/C388CC0, redo lsn=0/C388C88
+2026-03-25 12:53:42.425 UTC [1] LOG:  received fast shutdown request
+2026-03-25 12:53:42.429 UTC [1] LOG:  aborting any active transactions
+2026-03-25 12:53:42.432 UTC [1] LOG:  background worker "logical replication launcher" (PID 32) exited with exit code 1
+2026-03-25 12:53:42.434 UTC [27] LOG:  shutting down
+2026-03-25 12:53:42.436 UTC [27] LOG:  checkpoint starting: shutdown immediate
+2026-03-25 12:53:42.444 UTC [27] LOG:  checkpoint complete: wrote 0 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.011 s; sync files=0, longest=0.000 s, average=0.000 s; distance=0 kB, estimate=27 kB; lsn=0/C388D70, redo lsn=0/C388D70
+2026-03-25 12:53:42.461 UTC [1] LOG:  database system is shut down
+
+PostgreSQL Database directory appears to contain a database; Skipping initialization
+
+2026-03-25 13:07:00.482 UTC [1] LOG:  starting PostgreSQL 16.5 on x86_64-pc-linux-musl, compiled by gcc (Alpine 13.2.1_git20240309) 13.2.1 20240309, 64-bit
+2026-03-25 13:07:00.482 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-03-25 13:07:00.482 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-03-25 13:07:00.487 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-03-25 13:07:00.494 UTC [29] LOG:  database system was shut down at 2026-03-25 12:53:42 UTC
+2026-03-25 13:07:00.517 UTC [1] LOG:  database system is ready to accept connections
+2026-03-25 13:12:00.594 UTC [27] LOG:  checkpoint starting: time
+2026-03-25 13:12:00.604 UTC [27] LOG:  checkpoint complete: wrote 2 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.003 s, total=0.010 s; sync files=2, longest=0.003 s, average=0.002 s; distance=0 kB, estimate=0 kB; lsn=0/C388E58, redo lsn=0/C388E20
+
+[root@ip-10-56-112-34 ec2-user]# docker start cnxs-mgmt-bitbucket
+cnxs-mgmt-bitbucket
+[root@ip-10-56-112-34 ec2-user]# docker start prod-bamboo
+prod-bamboo
+
+
+[root@ip-10-56-112-34 ec2-user]# docker start cnxs-mgmt-bitbucket
+cnxs-mgmt-bitbucket
+[root@ip-10-56-112-34 ec2-user]# docker logs --tail 100 -f cnxs-mgmt-bitbucket
+2026-03-25 07:28:30,554 WARN  [http-nio-7990-exec-3] @1DSP06Ox448x193x0 2scfy8 172.27.225.25,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 07:28:32,650 WARN  [http-nio-7990-exec-10] @1DSP06Ox448x198x0 2scfy8 172.27.225.25,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 07:30:47,793 INFO  [http-nio-7990-exec-7] @1DSP06Ox450x220x0 172.27.225.151,172.18.0.4 "GET / HTTP/1.1" c.a.s.i.a.DefaultRememberMeService Invalid remember-me cookie detected (expired) - canceling the cookie
+2026-03-25 07:30:48,991 WARN  [http-nio-7990-exec-6] @1DSP06Ox450x232x0 1wu291z 172.27.225.151,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 07:31:04,720 WARN  [http-nio-7990-exec-2] @1DSP06Ox451x244x0 1wu291z 172.27.225.151,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 07:31:08,129 WARN  [http-nio-7990-exec-7] @1DSP06Ox451x250x0 1wu291z 172.27.225.151,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 07:40:33,184 WARN  [http-nio-7990-exec-7] @1DSP06Ox460x311x0 1wu291z 172.27.225.153,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 07:45:47,461 WARN  [http-nio-7990-exec-5] @1DSP06Ox465x348x0 1wu291z 172.27.225.153,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 07:45:51,333 WARN  [http-nio-7990-exec-1] @1DSP06Ox465x353x0 1wu291z 172.27.225.153,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 08:02:17,621 WARN  [http-nio-7990-exec-2] @1DSP06Ox482x465x0 55jshi 172.27.225.27,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 08:02:28,534 WARN  [http-nio-7990-exec-1] @1DSP06Ox482x475x0 55jshi 172.27.225.27,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 08:02:40,734 WARN  [http-nio-7990-exec-10] @1DSP06Ox482x482x0 55jshi 172.27.225.27,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 08:02:58,790 WARN  [http-nio-7990-exec-6] @1DSP06Ox482x487x0 55jshi 172.27.225.27,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+2026-03-25 08:04:09,728 WARN  [http-nio-7990-exec-1] @1DSP06Ox484x506x0 55jshi 172.27.225.27,172.18.0.4 "POST /rest/wrm/2.0/resources HTTP/1.1" c.a.p.r.c.s.j.XsrfResourceFilter Additional XSRF checks failed for request: http://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/wrm/2.0/resources , origin: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov , referrer: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/setup , credentials in request: true , allowed via CORS: false
+INFO:root:User is currently root. Will downgrade run user to bitbucket
+INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
+Starting Atlassian Bitbucket as the current user
+
+Starting the bundled search server
+        Hint: Run start-bitbucket.sh --no-search to skip starting the bundled search server
+Bundled search server started successfully
+
+Bitbucket is being run with a umask that contains potentially unsafe settings.
+The following issues were found with the mask "u=rwx,g=rx,o=rx" (0022):
+ - Access is allowed to 'others'. It is recommended that 'others' be denied
+   all access for security reasons.
+The recommended umask for Bitbucket is "u=,g=w,o=rwx" (0027) and can be
+configured in _start-webapp.sh
+
+Starting Bitbucket webapp at http://localhost:7990
+WARNING: A terminally deprecated method in java.lang.System has been called
+WARNING: System::setSecurityManager has been called by org.opensearch.bootstrap.OpenSearch (file:/opt/atlassian/bitbucket/opensearch/lib/opensearch-1.3.19.jar)
+WARNING: Please consider reporting this to the maintainers of org.opensearch.bootstrap.OpenSearch
+WARNING: System::setSecurityManager will be removed in a future release
+08:29:16.387 [main] INFO com.atlassian.security.serialfilter.DeserializationFilterConfigurator - Global serial filter set to JDK 11 DeserializationFilter
+WARNING: A terminally deprecated method in java.lang.System has been called
+WARNING: System::setSecurityManager has been called by org.opensearch.bootstrap.Security (file:/opt/atlassian/bitbucket/opensearch/lib/opensearch-1.3.19.jar)
+WARNING: Please consider reporting this to the maintainers of org.opensearch.bootstrap.Security
+WARNING: System::setSecurityManager will be removed in a future release
+2026-03-25 08:29:17,689 INFO  [main]  c.a.b.i.b.BitbucketServerApplication Starting BitbucketServerApplication v8.19.9 using Java 17.0.16 on eff20fb88ca7 with PID 237 (/opt/atlassian/bitbucket/app/WEB-INF/classes started by bitbucket in /var/atlassian/application-data/bitbucket)
+2026-03-25 08:29:17,695 INFO  [main]  c.a.b.i.b.BitbucketServerApplication No active profile set, falling back to 1 default profile: "default"
+2026-03-25 08:29:18,981 INFO  [main]  c.a.b.i.boot.log.BuildInfoLogger Starting Bitbucket 8.19.9 (3b7ca66 built on Sun Sep 08 20:53:55 MDT 2024)
+2026-03-25 08:29:18,981 INFO  [main]  c.a.b.i.boot.log.BuildInfoLogger JVM: Eclipse Adoptium OpenJDK 64-Bit Server VM 17.0.16+8
+2026-03-25 08:29:20,507 INFO  [main]  c.a.b.i.b.BitbucketServerApplication Started BitbucketServerApplication in 3.962 seconds (JVM running for 4.856)
+2026-03-25 08:29:21,211 WARN  [spring-startup]  o.s.s.core.SpringSecurityCoreVersion **** You are advised to use Spring 5.3.39 or later with this version. You are running: 5.3.38-atlassian-2
+2026-03-25 08:29:24,165 INFO  [spring-startup]  c.a.s.internal.home.HomeLockAcquirer Successfully acquired lock on home directory /var/atlassian/application-data/bitbucket
+2026-03-25 08:29:27,703 INFO  [spring-startup]  c.a.s.internal.home.HomeLockAcquirer Successfully acquired lock on home directory /var/atlassian/application-data/bitbucket/shared
+2026-03-25 08:29:28,946 WARN  [spring-startup]  com.hazelcast.instance.impl.Node [172.18.0.2]:5701 [bitbucket] [5.2.5] No join method is enabled! Starting standalone.
+2026-03-25 08:29:49,515 INFO  [spring-startup]  c.a.s.i.s.g.m.DefaultSidecarManager Sidecar started after 8621ms
+2026-03-25 08:29:53,504 INFO  [spring-startup]  c.a.s.i.hook.DefaultHookService Hook callback socket listening on 127.0.0.1:38793
+2026-03-25 08:29:56,957 INFO  [hz.hazelcast.event-1]  c.a.s.i.s.g.m.DefaultMeshSidebandRegistry Sidecar#0 (http://localhost:7777): Opening sideband channel
+2026-03-25 08:30:00,387 WARN  [FelixStartLevel]  o.e.g.b.e.i.s.ExtenderConfiguration Gemini Blueprint extensions bundle not present, annotation processing disabled.
+2026-03-25 08:30:06,774 WARN  [ThreadPoolAsyncTaskExecutor::Thread 7]  c.a.p.s.s.r.i.ComponentImportBeanFactoryPostProcessor Unable to load class 'com.atlassian.confluence.admin.criteria.WritableDirectoryExistsCriteria' for component importation purposes. Skipping...
+2026-03-25 08:30:06,775 WARN  [ThreadPoolAsyncTaskExecutor::Thread 7]  c.a.p.s.s.r.i.ComponentImportBeanFactoryPostProcessor Unable to load class 'com.atlassian.confluence.security.CaptchaManager' for component importation purposes. Skipping...
+2026-03-25 08:30:06,776 WARN  [ThreadPoolAsyncTaskExecutor::Thread 7]  c.a.p.s.s.r.i.ComponentImportBeanFactoryPostProcessor Unable to load class 'com.atlassian.confluence.security.login.LoginManager' for component importation purposes. Skipping...
+2026-03-25 08:30:06,776 WARN  [ThreadPoolAsyncTaskExecutor::Thread 7]  c.a.p.s.s.r.i.ComponentImportBeanFactoryPostProcessor Unable to load class 'com.atlassian.confluence.setup.settings.SettingsManager' for component importation purposes. Skipping...
+2026-03-25 08:30:06,776 WARN  [ThreadPoolAsyncTaskExecutor::Thread 7]  c.a.p.s.s.r.i.ComponentImportBeanFactoryPostProcessor Unable to load class 'com.atlassian.confluence.user.SignupManager' for component importation purposes. Skipping...
+2026-03-25 08:30:06,776 WARN  [ThreadPoolAsyncTaskExecutor::Thread 7]  c.a.p.s.s.r.i.ComponentImportBeanFactoryPostProcessor Unable to load class 'com.atlassian.confluence.util.UserChecker' for component importation purposes. Skipping...
+WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impact performance.
+2026-03-25 08:30:08,941 INFO  [ThreadPoolAsyncTaskExecutor::Thread 3]  c.a.b.p.b.m.MigrationServiceClient migration service migration url : https://api-private.atlassian.com/migrations/
+2026-03-25 08:30:08,941 INFO  [ThreadPoolAsyncTaskExecutor::Thread 3]  c.a.b.p.b.m.MigrationServiceClient bitbucket migration service url : https://api-private.atlassian.com/migration/bitbucket/
+2026-03-25 08:30:08,941 INFO  [ThreadPoolAsyncTaskExecutor::Thread 3]  c.a.b.p.b.m.MigrationServiceClient analytics service url : https://api-private.atlassian.com/migration/analytics/bitbucketMigration/
+2026-03-25 08:30:09,913 INFO  [ThreadPoolAsyncTaskExecutor::Thread 21]  c.a.b.i.g.GpgSystemSigningKeyProvider Using signing key with fingerprint b04911e931bf6f4d2ca071f5476c8f8d822a2f12
+2026-03-25 08:30:12,700 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle com.atlassian.bitbucket.server.bitbucket-frontend; it does not exist
+2026-03-25 08:30:13,436 WARN  [spring-startup]  c.a.p.c.r.OsgiBundledPathScanner Cannot scan directory /page/ in bundle com.atlassian.bitbucket.server.bitbucket-policies as it does not exist
+2026-03-25 08:30:13,461 WARN  [spring-startup]  c.a.p.c.r.StaticPluginPathScanner Cannot scan directory /static/bitbucket/internal/feature/admin/ratelimit/ in web static as it does not exist
+2026-03-25 08:30:14,599 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle com.atlassian.oauth.atlassian-oauth-service-provider-plugin; it does not exist
+2026-03-25 08:30:14,764 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-25 08:30:14,764 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle tac.bitbucket.languages.de_DE; it does not exist
+2026-03-25 08:30:14,770 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-25 08:30:14,771 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle tac.bitbucket.languages.fr_FR; it does not exist
+2026-03-25 08:30:14,776 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /com/atlassian/oauth/shared/servlet/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-25 08:30:14,777 WARN  [spring-startup]  c.a.s.i.p.s.OsgiBundledPathScanner Cannot scan directory /extension/build-status/ in bundle tac.bitbucket.languages.ja_JP; it does not exist
+2026-03-25 08:30:14,879 INFO  [spring-startup]  c.a.s.internal.scm.PluginScmService Bitbucket is using /usr/bin/git version 2.46.4
+2026-03-25 08:30:15,341 INFO  [spring-startup]  c.a.b.plugin.bcma.PluginLifecycle Bitbucket Migration Plugin 1.3.138 initialising..
+2026-03-25 08:30:15,344 INFO  [spring-startup]  c.a.b.p.b.a.AnalyticsEventDispatcher Successfully registered analytics event dispatcher job
+2026-03-25 08:30:15,344 INFO  [spring-startup]  c.a.b.plugin.bcma.PluginLifecycle Bitbucket Migration Plugin 1.3.138 initialised
+2026-03-25 08:30:15,345 INFO  [spring-startup]  c.a.b.plugin.bcma.PluginLifecycle Re-validating migration plans stuck in VALIDATING state (if any)..
+2026-03-25 08:30:15,350 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollingSetup Acquired lock and no node which initiated PollingSetup is currently active
+2026-03-25 08:30:15,350 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollingSetup initializing pollers
+2026-03-25 08:30:15,353 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating task poller poller-AllUserUpload-e77caf4c-06fc-40e3-ab74-d7be5566bfa7 for AllUserUpload
+2026-03-25 08:30:15,358 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating task poller poller-BitbucketUserCreationReport-cd7715eb-aa68-49e5-a76a-8f7e52084167 for BitbucketUserCreationReport
+2026-03-25 08:30:15,359 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating task poller poller-BitbucketRepositoryUpload-45d99a68-d144-4a7a-b3f8-30654949dfea for BitbucketRepositoryUpload
+2026-03-25 08:30:15,359 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating task poller poller-BitbucketRepositoryUpload-b11334c2-f0e6-45f6-a213-f8fa033f54ec for BitbucketRepositoryUpload
+2026-03-25 08:30:15,360 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating task poller poller-BitbucketRepositoryDataUpload-f5011c60-d76b-46f9-a0c5-08f08dbf6e69 for BitbucketRepositoryDataUpload
+2026-03-25 08:30:15,360 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating task poller poller-BitbucketRepositoryDataUpload-acd6be01-5b3c-468c-a6f6-6eca9d945d16 for BitbucketRepositoryDataUpload
+2026-03-25 08:30:15,360 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating task poller poller-BitbucketRepositoryPullRequestUpload-168bf107-3827-4ec8-af82-28c0f1b63cf9 for BitbucketRepositoryPullRequestUpload
+2026-03-25 08:30:15,360 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating task poller poller-BitbucketRepositoryPullRequestUpload-a7cce8af-4a0f-421b-b464-27381d049df7 for BitbucketRepositoryPullRequestUpload
+2026-03-25 08:30:15,362 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating status poller StatusPoller-7046657a-77ef-4fe1-8bd1-3629acf23ee4
+2026-03-25 08:30:15,362 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollerTracker Creating task heartbeat poller TaskHeartbeater-856357af-ef2a-49da-aa28-9b1872a1900b
+2026-03-25 08:30:15,362 INFO  [bcma-0]  c.a.b.p.bcma.polling.PollingSetup pollers were successfully initialized!
+2026-03-25 08:30:15,382 INFO  [spring-startup]  c.a.b.internal.ssh.server.SshServer Starting SSH server on port 7999...
+2026-03-25 08:30:15,475 INFO  [spring-startup]  c.a.b.internal.ssh.server.SshServer Started SSH server successfully.
+2026-03-25 08:30:15,549 INFO  [spring-startup]  c.a.b.i.s.c.j.c.HealthCheckRunner New health check registered: AuthenticationCheck
+2026-03-25 08:30:15,598 INFO  [spring-startup]  c.a.b.i.s.i.e.DefaultIndexEventQueueProcessor Event queue processor has been started
+2026-03-25 08:30:15,599 INFO  [spring-startup]  c.a.b.i.s.c.c.DefaultClusterJobManager Registering job for StartupChecksJob
+2026-03-25 08:30:15,614 INFO  [spring-startup]  c.a.b.i.s.c.j.c.HealthCheckRunner New health check registered: SearchIndexCheck
+2026-03-25 08:30:15,621 INFO  [spring-startup]  c.a.b.i.s.c.j.c.HealthCheckRunner New health check registered: VersionCheck
+2026-03-25 08:30:15,621 INFO  [spring-startup]  c.a.b.i.s.c.c.DefaultClusterJobManager Registering job for SearchSynchronizeJob
+2026-03-25 08:30:15,621 INFO  [spring-startup]  c.a.b.i.s.c.j.c.HealthCheckRunner New health check registered: KnownIssueCheck
+2026-03-25 08:30:30,609 INFO  [Caesium-1-4]  c.a.b.i.s.i.jobs.StartupChecksJob Running startup jobs for search
+2026-03-25 08:30:47,463 INFO  [async-upgrade-thread]  c.a.s.i.u.LiquibaseAsyncMigrationDao Starting async db upgrade. This can be a slow operation (no further logging will happen until upgrade is done), the system should be responsive and handle requests while this is in progress
+2026-03-25 08:30:47,524 INFO  [async-upgrade-thread]  c.a.s.i.u.LiquibaseAsyncMigrationDao Async upgrade completed
+
+
+[root@ip-10-56-112-34 ec2-user]# docker logs --tail 100 -f prod-bamboo
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+25-Mar-2026 06:13:07.202 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-8085"]
+25-Mar-2026 06:13:07.241 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in [25904] milliseconds
+25-Mar-2026 06:53:42.435 INFO [Thread-1] org.apache.coyote.AbstractProtocol.pause Pausing ProtocolHandler ["http-nio-8085"]
+25-Mar-2026 06:53:42.436 INFO [Thread-1] org.apache.catalina.core.StandardService.stopInternal Stopping service [Catalina]
+25-Mar-2026 06:53:42.615 WARNING [Thread-1] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesThreads The web application [ROOT] appears to have started a thread named [acquireClusterLock.quartz_Worker-1] but has failed to stop it. This is very likely to create a memory leak. Stack trace of thread:
+ java.base@17.0.17/java.lang.Object.wait(Native Method)
+ org.quartz.simpl.SimpleThreadPool$WorkerThread.run(SimpleThreadPool.java:568)
+25-Mar-2026 06:53:42.616 WARNING [Thread-1] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesThreads The web application [ROOT] appears to have started a thread named [nodeHeartbeat.quartz_Worker-1] but has failed to stop it. This is very likely to create a memory leak. Stack trace of thread:
+ java.base@17.0.17/java.lang.Object.wait(Native Method)
+ org.quartz.simpl.SimpleThreadPool$WorkerThread.run(SimpleThreadPool.java:568)
+25-Mar-2026 06:53:42.618 WARNING [Thread-1] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesThreads The web application [ROOT] appears to have started a thread named [acquireClusterLock.quartz_QuartzSchedulerThread] but has failed to stop it. This is very likely to create a memory leak. Stack trace of thread:
+ java.base@17.0.17/java.lang.Object.wait(Native Method)
+ org.quartz.core.QuartzSchedulerThread.run(QuartzSchedulerThread.java:427)
+25-Mar-2026 06:53:42.618 WARNING [Thread-1] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesThreads The web application [ROOT] appears to have started a thread named [nodeHeartbeat.quartz_QuartzSchedulerThread] but has failed to stop it. This is very likely to create a memory leak. Stack trace of thread:
+ java.base@17.0.17/java.lang.Object.wait(Native Method)
+ org.quartz.core.QuartzSchedulerThread.run(QuartzSchedulerThread.java:254)
+25-Mar-2026 06:53:42.635 INFO [Thread-1] org.apache.coyote.AbstractProtocol.stop Stopping ProtocolHandler ["http-nio-8085"]
+25-Mar-2026 06:53:42.639 INFO [Thread-1] org.apache.coyote.AbstractProtocol.destroy Destroying ProtocolHandler ["http-nio-8085"]
+INFO:root:Generating /opt/atlassian/bamboo/conf/server.xml from template server.xml.j2
+INFO:root:Generating /opt/atlassian/bamboo/atlassian-bamboo/WEB-INF/classes/seraph-config.xml from template seraph-config.xml.j2
+INFO:root:Generating /opt/atlassian/bamboo/atlassian-bamboo/WEB-INF/classes/bamboo-init.properties from template bamboo-init.properties.j2
+INFO:root:/var/atlassian/application-data/bamboo/bamboo.cfg.xml exists; skipping.
+INFO:root:User is currently root. Will downgrade run user to bamboo
+INFO:root:Running Bamboo with command '/opt/atlassian/bamboo/bin/start-bamboo.sh', arguments ['/opt/atlassian/bamboo/bin/start-bamboo.sh', '-fg']
+
+Server startup logs are located in /opt/atlassian/bamboo/logs/catalina.out
+
+Bamboo Data Center
+   Version : 9.6.6
+                  
+
+If you encounter issues starting or stopping Bamboo Server, please see the Troubleshooting guide at https://confluence.atlassian.com/display/BAMBOO/Installing+and+upgrading+Bamboo
+
+Using BAMBOO_HOME:       /var/atlassian/application-data/bamboo
+NOTE: Picked up JDK_JAVA_OPTIONS:  --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+25-Mar-2026 07:07:00.407 WARNING [main] org.apache.tomcat.util.digester.SetPropertiesRule.begin Match [Server] failed to set property [port] to []
+25-Mar-2026 07:07:00.682 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent The Apache Tomcat Native library which allows using OpenSSL was not found on the java.library.path: [/usr/java/packages/lib:/usr/lib64:/lib64:/lib:/usr/lib]
+25-Mar-2026 07:07:01.091 INFO [main] org.apache.coyote.http11.AbstractHttp11Protocol.configureUpgradeProtocol The ["http-nio-8085"] connector has been configured to support HTTP upgrade to [h2c]
+25-Mar-2026 07:07:01.092 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["http-nio-8085"]
+25-Mar-2026 07:07:01.115 INFO [main] org.apache.catalina.startup.Catalina.load Server initialization in [869] milliseconds
+25-Mar-2026 07:07:01.153 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service [Catalina]
+25-Mar-2026 07:07:01.153 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet engine: [Apache Tomcat/9.0.91]
+25-Mar-2026 07:07:20.497 INFO [main] org.apache.jasper.servlet.TldScanner.scanJars At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/opt/atlassian/bamboo/atlassian-bamboo/WEB-INF/lib/log4j-slf4j-impl-2.17.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/opt/atlassian/bamboo/lib/atlassian-secrets-cli-3.2.6.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+25-Mar-2026 07:07:26.893 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-8085"]
+25-Mar-2026 07:07:26.952 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in [25837] milliseconds
+25-Mar-2026 08:18:53.561 INFO [Thread-1] org.apache.coyote.AbstractProtocol.pause Pausing ProtocolHandler ["http-nio-8085"]
+25-Mar-2026 08:18:53.562 INFO [Thread-1] org.apache.catalina.core.StandardService.stopInternal Stopping service [Catalina]
+25-Mar-2026 08:18:53.698 WARNING [Thread-1] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesThreads The web application [ROOT] appears to have started a thread named [acquireClusterLock.quartz_Worker-1] but has failed to stop it. This is very likely to create a memory leak. Stack trace of thread:
+ java.base@17.0.17/java.lang.Object.wait(Native Method)
+ org.quartz.simpl.SimpleThreadPool$WorkerThread.run(SimpleThreadPool.java:568)
+25-Mar-2026 08:18:53.699 WARNING [Thread-1] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesThreads The web application [ROOT] appears to have started a thread named [nodeHeartbeat.quartz_Worker-1] but has failed to stop it. This is very likely to create a memory leak. Stack trace of thread:
+ java.base@17.0.17/java.lang.Object.wait(Native Method)
+ org.quartz.simpl.SimpleThreadPool$WorkerThread.run(SimpleThreadPool.java:568)
+25-Mar-2026 08:18:53.699 WARNING [Thread-1] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesThreads The web application [ROOT] appears to have started a thread named [acquireClusterLock.quartz_QuartzSchedulerThread] but has failed to stop it. This is very likely to create a memory leak. Stack trace of thread:
+ java.base@17.0.17/java.lang.Object.wait(Native Method)
+ org.quartz.core.QuartzSchedulerThread.run(QuartzSchedulerThread.java:427)
+25-Mar-2026 08:18:53.700 WARNING [Thread-1] org.apache.catalina.loader.WebappClassLoaderBase.clearReferencesThreads The web application [ROOT] appears to have started a thread named [nodeHeartbeat.quartz_QuartzSchedulerThread] but has failed to stop it. This is very likely to create a memory leak. Stack trace of thread:
+ java.base@17.0.17/java.lang.Object.wait(Native Method)
+ org.quartz.core.QuartzSchedulerThread.run(QuartzSchedulerThread.java:254)
+25-Mar-2026 08:18:53.715 INFO [Thread-1] org.apache.coyote.AbstractProtocol.stop Stopping ProtocolHandler ["http-nio-8085"]
+25-Mar-2026 08:18:53.718 INFO [Thread-1] org.apache.coyote.AbstractProtocol.destroy Destroying ProtocolHandler ["http-nio-8085"]
+INFO:root:Generating /opt/atlassian/bamboo/conf/server.xml from template server.xml.j2
+INFO:root:Generating /opt/atlassian/bamboo/atlassian-bamboo/WEB-INF/classes/seraph-config.xml from template seraph-config.xml.j2
+INFO:root:Generating /opt/atlassian/bamboo/atlassian-bamboo/WEB-INF/classes/bamboo-init.properties from template bamboo-init.properties.j2
+INFO:root:/var/atlassian/application-data/bamboo/bamboo.cfg.xml exists; skipping.
+INFO:root:User is currently root. Will downgrade run user to bamboo
+INFO:root:Running Bamboo with command '/opt/atlassian/bamboo/bin/start-bamboo.sh', arguments ['/opt/atlassian/bamboo/bin/start-bamboo.sh', '-fg']
+
+Server startup logs are located in /opt/atlassian/bamboo/logs/catalina.out
+
+Bamboo Data Center
+   Version : 9.6.6
+                  
+
+If you encounter issues starting or stopping Bamboo Server, please see the Troubleshooting guide at https://confluence.atlassian.com/display/BAMBOO/Installing+and+upgrading+Bamboo
+
+Using BAMBOO_HOME:       /var/atlassian/application-data/bamboo
+NOTE: Picked up JDK_JAVA_OPTIONS:  --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+25-Mar-2026 08:29:40.599 WARNING [main] org.apache.tomcat.util.digester.SetPropertiesRule.begin Match [Server] failed to set property [port] to []
+25-Mar-2026 08:29:40.839 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent The Apache Tomcat Native library which allows using OpenSSL was not found on the java.library.path: [/usr/java/packages/lib:/usr/lib64:/lib64:/lib:/usr/lib]
+25-Mar-2026 08:29:41.211 INFO [main] org.apache.coyote.http11.AbstractHttp11Protocol.configureUpgradeProtocol The ["http-nio-8085"] connector has been configured to support HTTP upgrade to [h2c]
+25-Mar-2026 08:29:41.212 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["http-nio-8085"]
+25-Mar-2026 08:29:41.253 INFO [main] org.apache.catalina.startup.Catalina.load Server initialization in [740] milliseconds
+25-Mar-2026 08:29:41.295 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service [Catalina]
+25-Mar-2026 08:29:41.295 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet engine: [Apache Tomcat/9.0.91]
+25-Mar-2026 08:29:54.830 INFO [main] org.apache.jasper.servlet.TldScanner.scanJars At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/opt/atlassian/bamboo/atlassian-bamboo/WEB-INF/lib/log4j-slf4j-impl-2.17.2.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/opt/atlassian/bamboo/lib/atlassian-secrets-cli-3.2.6.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [org.apache.logging.slf4j.Log4jLoggerFactory]
+25-Mar-2026 08:30:00.592 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-8085"]
+25-Mar-2026 08:30:00.635 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in [19381] milliseconds
+
+
+[root@ip-10-56-112-34 ec2-user]# curl -I http://localhost:7990
+curl -I http://localhost:8085
+HTTP/1.1 302 
+X-AREQUESTID: @10D0IVZx511x1x0
+x-xss-protection: 1; mode=block
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+Pragma: no-cache
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+Cache-Control: no-cache
+Cache-Control: no-store
+Location: http://localhost:7990/dashboard
+Content-Language: en-US
+Transfer-Encoding: chunked
+Date: Wed, 25 Mar 2026 14:31:34 GMT
+
+HTTP/1.1 302 
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+Location: /bootstrap/selectSetupStep.action
+Transfer-Encoding: chunked
+Date: Wed, 25 Mar 2026 14:31:35 GMT
