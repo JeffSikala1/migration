@@ -1,69 +1,40 @@
-TS=$(date +%F-%H%M%S)
-
-cp -a /var/lib/docker/volumes/bitbucketVolume/_data /var/lib/docker/volumes/bitbucketVolume/_data.pre-restore.$TS
-cp -a /var/lib/docker/volumes/bambooVolume/_data /var/lib/docker/volumes/bambooVolume/_data.pre-restore.$TS
-
-
-
-
-ls -ld /var/lib/docker/volumes/bitbucketVolume/_data.pre-restore.$TS
-ls -ld /var/lib/docker/volumes/bambooVolume/_data.pre-restore.$TS
+find /var/lib/docker/volumes/nginxVolume/_data -maxdepth 3 -type f \( \
+  -name "nginx.conf" -o \
+  -name "*.conf" -o \
+  -path "*/certificates/*" \
+\) | sort
 
 
-rm -rf /var/lib/docker/volumes/bitbucketVolume/_data/*
-rm -rf /var/lib/docker/volumes/bitbucketVolume/_data/.[!.]* /var/lib/docker/volumes/bitbucketVolume/_data/..?* 2>/dev/null
-
-rm -rf /var/lib/docker/volumes/bambooVolume/_data/*
-rm -rf /var/lib/docker/volumes/bambooVolume/_data/.[!.]* /var/lib/docker/volumes/bambooVolume/_data/..?* 2>/dev/null
+find /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data -maxdepth 3 -type f \( \
+  -name "nginx.conf" -o \
+  -name "*.conf" -o \
+  -path "*/certificates/*" \
+\) | sort
 
 
 
-ls -la /var/lib/docker/volumes/bitbucketVolume/_data
-ls -la /var/lib/docker/volumes/bambooVolume/_data
+echo "=== TOP nginx.conf ==="
+cat /var/lib/docker/volumes/nginxVolume/_data/nginx.conf
+
+echo "=== NESTED nginx.conf ==="
+cat /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/nginx.conf
 
 
 
 
-cp -a /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/. /var/lib/docker/volumes/bitbucketVolume/_data/
-cp -a /var/lib/docker/volumes/bambooVolume/_data.bak.2026-03-19-0456/. /var/lib/docker/volumes/bambooVolume/_data/
+
+echo "=== TOP conf.d ==="
+ls -lah /var/lib/docker/volumes/nginxVolume/_data/conf.d
+
+echo "=== NESTED conf.d ==="
+ls -lah /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/conf.d
 
 
 
-ls -lah /var/lib/docker/volumes/bitbucketVolume/_data
-ls -lah /var/lib/docker/volumes/bitbucketVolume/_data/shared
-cat /var/lib/docker/volumes/bitbucketVolume/_data/shared/bitbucket.properties
-cat /var/lib/docker/volumes/bitbucketVolume/_data/home.properties
 
 
+echo "=== TOP CERT ==="
+openssl x509 -in /var/lib/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -subject -issuer -dates
 
-ls -lah /var/lib/docker/volumes/bambooVolume/_data
-cat /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
-
-
-find /var/lib/docker/volumes/bitbucketVolume/_data -maxdepth 2 -type d | sort
-find /var/lib/docker/volumes/bambooVolume/_data -maxdepth 2 -type d | sort
-
-
-
-docker start prod-postgres
-docker logs --tail 20 prod-postgres
-
-
-docker start cnxs-mgmt-bitbucket
-docker logs --tail 100 -f cnxs-mgmt-bitbucket
-
-
-docker start prod-bamboo
-docker logs --tail 100 -f prod-bamboo
-
-
-
-docker start nginx
-docker logs --tail 100 -f nginx
-
-
-
-curl -I http://localhost:7990
-curl -I http://localhost:8085
-
-
+echo "=== NESTED CERT ==="
+openssl x509 -in /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -subject -issuer -dates
