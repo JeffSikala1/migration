@@ -501,8 +501,10 @@ Finalize Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1
 
-            if ! git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
-              echo "ERROR: release tag ${RELEASE_VERSION} does not exist; refusing to delete release branch."
+            git fetch origin --tags --force >/dev/null 2>&1
+
+            if ! git tag | grep -q "^${RELEASE_VERSION}$"; then
+              echo "ERROR: release tag ${RELEASE_VERSION} does not exist locally after fetch; refusing to delete release branch."
               exit 1
             fi
 
