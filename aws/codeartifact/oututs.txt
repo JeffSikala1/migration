@@ -1,40 +1,591 @@
-[root@ip-10-56-112-34 ec2-user]# history | grep nightly
-  236  cat /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-  255  tail -150 /app/bamboobackup/atlassian-backups/logs/nightly-$(date +%F).log || tail -150 /app/bamboobackup/atlassian-backups/logs/nightly-$(date -d 'yesterday' +%F).log
-  335  cat /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-  535  cat /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-  540  cat /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-  851  cat /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-  855  cat /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-  995  history | grep nightly
-[root@ip-10-56-112-34 ec2-user]# cat /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-cat: /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh: No such file or directory
-[root@ip-10-56-112-34 ec2-user]# ll /app/
-total 20
-drwxr-xr-x.  3 root root   17 Mar  6  2025 app
-drwxr-x---.  2 root root    6 Nov 26 22:59 bamboobackup
-lrwxrwxrwx.  1 root root    7 Nov 12  2022 bin -> usr/bin
-dr-xr-xr-x.  4 root root 4096 Aug 29  2025 boot
-dr-x------.  3 root root  285 Oct 30  2024 build-artifacts
-drwxr-xr-x.  3 root root  136 Nov 12  2022 dev
-drwx--x---. 12 root root  171 Mar 25 16:24 docker
-drwxr-xr-x. 96 root root 8192 Sep 25 03:04 etc
-drwxr-xr-x.  5 root root   65 Oct 30  2024 home
-lrwxrwxrwx.  1 root root    7 Nov 12  2022 lib -> usr/lib
-lrwxrwxrwx.  1 root root    9 Nov 12  2022 lib64 -> usr/lib64
-drwxr-xr-x.  2 root root    6 Nov 12  2022 local
-drwxr-xr-x.  2 root root    6 Apr  9  2019 media
-drwxr-xr-x.  3 root root   20 Sep 25 02:50 mnt
-drwxr-xr-x. 11 root root  172 Sep 23  2025 opt
-drwxr-xr-x.  2 root root    6 Nov 12  2022 proc
-dr-xr-x---. 11 root root 4096 Sep 25 03:13 root
-drwxr-xr-x.  2 root root    6 Nov 12  2022 run
-lrwxrwxrwx.  1 root root    8 Nov 12  2022 sbin -> usr/sbin
-drwxr-xr-x.  2 root root    6 Apr  9  2019 srv
-drwxr-xr-x.  2 root root    6 Nov 12  2022 sys
-drwxrwxrwt.  8 root root  104 Sep 25 04:15 tmp
-drwxr-xr-x. 13 root root  155 Nov 12  2022 usr
-drwxr-xr-x. 20 root root  280 Oct 30  2024 var
-[root@ip-10-56-112-34 ec2-user]# ll /app/bamboobackup/
+[root@ip-10-56-112-34 ec2-user]# find / -type f \( -name "nightly_backup.sh" -o -name "weekly_backup.sh" -o -name "secrets_backup_daily.sh" \) 2>/dev/null
+/mnt/temp/atlassian-backups/bin/secrets_backup_daily.sh
+/mnt/temp/atlassian-backups/bin/nightly_backup.sh
+/mnt/temp/atlassian-backups/bin/weekly_backup.sh
+
+[root@ip-10-56-112-34 ec2-user]# find / -type d -name "atlassian-backups" 2>/dev/null
+/mnt/temp/atlassian-backups
+/opt/atlassian-backups
+
+
+[root@ip-10-56-112-34 ec2-user]# find / -type d -name "atlassian-backups" 2>/dev/null
+/mnt/temp/atlassian-backups
+/opt/atlassian-backups
+[root@ip-10-56-112-34 ec2-user]# ll /opt/atlassian-backups/
 total 0
-[root@ip-10-56-112-34 ec2-user]# ll /app/bamboobackup/
+drwxr-x---. 2 root root 60 Jan  6 01:23 bin
+drwxr-x---. 2 root root  6 Jan  6 01:20 logs
+drwxr-x---. 2 root root  6 Jan  6 01:20 staging
+[root@ip-10-56-112-34 ec2-user]# ll /opt/atlassian-backups/bin/
+total 12
+-rwxr-x---. 1 root root 4724 Jan  6 01:22 nightly-backup.sh
+-rwxr-x---. 1 root root  405 Jan  6 01:23 weekly-backup-copy.sh
+[root@ip-10-56-112-34 ec2-user]# ll /mnt/temp/atlassian-backups/bin/
+total 20
+-rwxr-x---. 1 root root 5442 Jan 15 18:21 nightly_backup.sh
+-rwxr-x---. 1 root root 6508 Jan 15 18:23 secrets_backup_daily.sh
+-rwxr-x---. 1 root root  409 Jan  6 01:56 weekly_backup.sh
+[root@ip-10-56-112-34 ec2-user]# cat /opt/atlassian-backups/bin/nightly-backup.sh 
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ===== Config =====
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+STAGE="/opt/atlassian-backups/staging/${DATE}"
+LOGDIR="/opt/atlassian-backups/logs"
+LOG="${LOGDIR}/nightly-${DATE}.log"
+HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+
+PG_CONTAINER="${PG_CONTAINER:-prod-postgres}"
+DB_LIST=(${DB_LIST:-bitbucket bamboo})   # space-separated, override if needed
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+echo "==== Nightly backup start: ${TS} host=${HOSTNAME} ===="
+
+# ===== Helpers =====
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
+need aws
+need docker
+need tar
+
+have_jq=0
+if command -v jq >/dev/null 2>&1; then
+  have_jq=1
+else
+  echo "WARN: jq not found; metadata.json will be minimal."
+fi
+
+s3_put_dir() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest" --recursive
+}
+
+s3_put_file() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest"
+}
+
+# ===== 1) Postgres dumps (logical) =====
+echo "[1/6] Postgres dumps..."
+mkdir -p "$STAGE/postgres"
+
+# quick sanity check container exists
+if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
+  echo "ERROR: Postgres container '$PG_CONTAINER' not running. Aborting."
+  exit 3
+fi
+
+# Dump globals (roles, grants) - optional but recommended
+echo "  - dumping globals (roles/grants)"
+docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
+  > "$STAGE/postgres/globals_${TS}.sql"
+
+for DB in "${DB_LIST[@]}"; do
+  echo "  - dumping ${DB}"
+  docker exec "$PG_CONTAINER" pg_dump -U postgres -Fc "$DB" \
+    > "$STAGE/postgres/${DB}_${TS}.dump"
+done
+
+# ===== 2) Atlassian volumes (tar) =====
+echo "[2/6] Atlassian volume backups..."
+mkdir -p "$STAGE/apps"
+
+tar -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bitbucketVolume/_data \
+  /var/lib/docker/volumes/optbitbucketVolume/_data
+
+tar -czf "$STAGE/apps/bamboo_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bambooVolume/_data \
+  /var/lib/docker/volumes/optbambooVolume/_data
+
+# ===== 3) NGINX + TLS/certs/config =====
+echo "[3/6] NGINX + TLS backup..."
+mkdir -p "$STAGE/nginx"
+
+# Include common cert locations; ignore missing
+tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
+  /etc/nginx \
+  /var/lib/docker/volumes/nginxVolume/_data \
+  /etc/ssl \
+  /etc/pki \
+  2>/dev/null || true
+
+# ===== 4) Bamboo keystores (explicit safety net) =====
+echo "[4/6] Bamboo keystore safety backup..."
+mkdir -p "$STAGE/crypto"
+
+tar -czf "$STAGE/crypto/bamboo_keystores_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bambooVolume/_data \
+  /var/lib/docker/volumes/optbambooVolume/_data \
+  2>/dev/null || true
+
+# ===== 5) Metadata =====
+echo "[5/6] Metadata..."
+if [[ "$have_jq" -eq 1 ]]; then
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
+  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]')
+}
+JSON
+else
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "note": "jq not installed; container/volume inventory omitted"
+}
+JSON
+fi
+
+# ===== 6) Upload to S3 =====
+echo "[6/6] Uploading to S3..."
+s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
+s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
+s3_put_dir  "$STAGE/nginx"    "${BUCKET}/nginx/${DATE}/"
+s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
+s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
+
+# ===== EBS snapshots (same run) =====
+echo "[EXTRA] EBS snapshots..."
+INSTANCE_ID="$(curl -s http://169.254.169.254/latest/meta-data/instance-id)"
+AZ="$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)"
+REGION="${AZ::-1}"
+
+# Find attached EBS volume IDs
+VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
+  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
+
+for VOL in $VOL_IDS; do
+  echo "  - snapshotting volume $VOL"
+  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
+    --description "Nightly Atlassian backup ${HOSTNAME} ${TS}" \
+    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-atlassian-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=atlassian-backup}]" \
+    --query SnapshotId --output text)"
+  echo "    created snapshot: $SNAP_ID"
+done
+
+echo "==== Nightly backup completed OK ===="
+[root@ip-10-56-112-34 ec2-user]# cat /opt/atlassian-backups/bin/weekly-backup-copy.sh 
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%F)"
+
+aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
+aws s3 sync "${BUCKET}/apps/${DATE}/"     "${BUCKET}/weekly/apps/${DATE}/"
+aws s3 sync "${BUCKET}/nginx/${DATE}/"    "${BUCKET}/weekly/nginx/${DATE}/"
+aws s3 sync "${BUCKET}/metadata/${DATE}/" "${BUCKET}/weekly/metadata/${DATE}/"
+[root@ip-10-56-112-34 ec2-user]# ll /mnt/temp/atlassian-backups/bin/nightly_backup.sh 
+-rwxr-x---. 1 root root 5442 Jan 15 18:21 /mnt/temp/atlassian-backups/bin/nightly_backup.sh
+[root@ip-10-56-112-34 ec2-user]# cat /mnt/temp/atlassian-backups/bin/nightly_backup.sh 
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ===== Config =====
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+BASE="/app/bamboobackup/atlassian-backups"
+STAGE="${BASE}/staging/${DATE}/${TS}"
+LOGDIR="${BASE}/logs"
+LOG="${LOGDIR}/nightly-${DATE}.log"
+HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+
+PG_CONTAINER="${PG_CONTAINER:-prod-postgres}"
+DB_LIST=(${DB_LIST:-bitbucket bamboo})   # space-separated, override if needed
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+echo "==== Nightly backup start: ${TS} host=${HOSTNAME} ===="
+
+# ===== Helpers =====
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
+need aws
+need docker
+need tar
+
+have_jq=0
+if command -v jq >/dev/null 2>&1; then
+  have_jq=1
+else
+  echo "WARN: jq not found; metadata.json will be minimal."
+fi
+
+s3_put_dir() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest" --recursive
+}
+
+s3_put_file() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest"
+}
+
+# ===== 1) Postgres dumps (logical) =====
+echo "[1/6] Postgres dumps..."
+mkdir -p "$STAGE/postgres"
+
+# quick sanity check container exists
+if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
+  echo "ERROR: Postgres container '$PG_CONTAINER' not running. Aborting."
+  exit 3
+fi
+
+# Dump globals (roles, grants) - optional but recommended
+echo "  - dumping globals (roles/grants)"
+docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
+  > "$STAGE/postgres/globals_${TS}.sql"
+
+for DB in "${DB_LIST[@]}"; do
+  echo "  - dumping ${DB}"
+  docker exec "$PG_CONTAINER" pg_dump -U postgres -Fc "$DB" \
+    > "$STAGE/postgres/${DB}_${TS}.dump"
+done
+
+# ===== 2) Atlassian volumes (tar) =====
+echo "[2/6] Atlassian volume backups..."
+mkdir -p "$STAGE/apps"
+
+tar -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bitbucketVolume/_data \
+  /var/lib/docker/volumes/optbitbucketVolume/_data
+
+tar -czf "$STAGE/apps/bamboo_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bambooVolume/_data \
+  /var/lib/docker/volumes/optbambooVolume/_data
+
+# ===== 3) NGINX + TLS/certs/config =====
+echo "[3/6] NGINX + TLS backup..."
+mkdir -p "$STAGE/nginx"
+
+# Include common cert locations; ignore missing
+tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
+  /etc/nginx \
+  /var/lib/docker/volumes/nginxVolume/_data \
+  /etc/ssl \
+  /etc/pki \
+  2>/dev/null || true
+
+# ===== 4) Bamboo keystores (explicit safety net) =====
+echo "[4/6] Bamboo keystore safety backup..."
+mkdir -p "$STAGE/crypto"
+
+tar -czf "$STAGE/crypto/bamboo_keystores_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bambooVolume/_data \
+  /var/lib/docker/volumes/optbambooVolume/_data \
+  2>/dev/null || true
+
+# ===== 5) Metadata =====
+echo "[5/6] Metadata..."
+if [[ "$have_jq" -eq 1 ]]; then
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
+  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]')
+}
+JSON
+else
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "note": "jq not installed; container/volume inventory omitted"
+}
+JSON
+fi
+
+# ===== 6) Upload to S3 =====
+echo "[6/6] Uploading to S3..."
+s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
+s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
+s3_put_dir  "$STAGE/nginx"    "${BUCKET}/nginx/${DATE}/"
+s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
+s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
+
+# ===== EBS snapshots (same run) =====
+echo "[EXTRA] EBS snapshots..."
+TOKEN_IMDS="$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")"
+
+INSTANCE_ID="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/instance-id)"
+
+AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/placement/availability-zone)"
+
+REGION="${AZ::-1}"
+
+# Find attached EBS volume IDs
+VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
+  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
+
+# Map volume IDs to mount purpose using NVMe serial mapping (common on Nitro)
+# This is best-effort; if it can't map, we still snapshot.
+declare -A VOL_PURPOSE
+VOL_PURPOSE["vol-08f7bca75e08f0d3f"]="root"
+VOL_PURPOSE["vol-05ebadfa92a493533"]="app"
+VOL_PURPOSE["vol-04e3115aea57b5c70"]="backup"
+
+for VOL in $VOL_IDS; do
+  echo "  - snapshotting volume $VOL"
+  PURPOSE_TAG="${VOL_PURPOSE[$VOL]:-unknown}"
+  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
+    --description "Nightly Atlassian backup ${HOSTNAME} ${TS}" \
+    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-atlassian-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=atlassian-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
+    --query SnapshotId --output text)"
+  echo "    created snapshot: $SNAP_ID"
+done
+
+echo "==== Nightly backup completed OK ===="
+
+# Cleanup local staging after successful upload
+echo "Cleaning up local staging..."
+rm -rf "$STAGE"
+[root@ip-10-56-112-34 ec2-user]# cat /mnt/temp/atlassian-backups/bin/weekly_backup.sh 
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%G-W%V)"
+
+aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
+aws s3 sync "${BUCKET}/apps/${DATE}/"     "${BUCKET}/weekly/apps/${DATE}/"
+aws s3 sync "${BUCKET}/nginx/${DATE}/"    "${BUCKET}/weekly/nginx/${DATE}/"
+aws s3 sync "${BUCKET}/metadata/${DATE}/" "${BUCKET}/weekly/metadata/${DATE}/"
+[root@ip-10-56-112-34 ec2-user]# cat /mnt/temp/atlassian-backups/bin/secrets_backup_daily.sh 
+#!/usr/bin/env bash
+set -euo pipefail
+
+AWS_REGION="${AWS_REGION:-us-east-1}"
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+HOST="$(hostname -f 2>/dev/null || hostname)"
+
+BASE="/app/bamboobackup/atlassian-backups"
+STAGE="${BASE}/staging/secrets/${DATE}/${TS}"
+LOGDIR="${BASE}/logs"
+LOG="${LOGDIR}/secrets-backup-${DATE}.log"
+
+# KMS key used ONLY to encrypt the exported payload we store in S3
+KMS_KEY_ARN="arn:aws:kms:${AWS_REGION}:339713019047:key/ae797822-83c9-4752-89f1-eb9d3fc53b68"
+
+# Optional: only back up secrets with tag Backup=true
+TAG_FILTER_ENABLED="${TAG_FILTER_ENABLED:-0}"
+TAG_KEY="${TAG_KEY:-Backup}"
+TAG_VALUE="${TAG_VALUE:-true}"
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing $1"; exit 2; }; }
+need aws; need jq; need base64; need gzip
+
+OUT="${STAGE}/secrets_export_${HOST}_${TS}.ndjson"
+: > "$OUT"
+
+echo "==== Secrets backup start TS=${TS} host=${HOST} region=${AWS_REGION} ===="
+echo "Output file: $OUT"
+echo "Tag filter enabled: ${TAG_FILTER_ENABLED} (${TAG_KEY}=${TAG_VALUE})"
+echo "Export KMS key: ${KMS_KEY_ARN}"
+
+# Pagination + counters
+NEXT_TOKEN=""
+count=0
+kept=0
+skipped_tag=0
+failed_read=0
+failed_encrypt=0
+
+# Helper: write a record even when something fails (no plaintext)
+write_error_record() {
+  local name="$1" arn="$2" versionId="$3" errType="$4" errMsg="$5" sourceKms="$6"
+  jq -c -n \
+    --arg name "$name" \
+    --arg arn "$arn" \
+    --arg versionId "$versionId" \
+    --arg ts "$TS" \
+    --arg host "$HOST" \
+    --arg exportKms "$KMS_KEY_ARN" \
+    --arg sourceKms "$sourceKms" \
+    --arg errType "$errType" \
+    --arg errMsg "$errMsg" \
+    '{
+      name:$name,
+      arn:$arn,
+      versionId:($versionId // ""),
+      backedUpAt:$ts,
+      backupHost:$host,
+      exportKmsKey:$exportKms,
+      sourceKmsKey:($sourceKms // ""),
+      status:"error",
+      errorType:$errType,
+      error:$errMsg
+    }' >> "$OUT"
+}
+
+while :; do
+  if [[ -n "$NEXT_TOKEN" ]]; then
+    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100 --next-token "$NEXT_TOKEN")"
+  else
+    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100)"
+  fi
+
+  while read -r s; do
+    ((count++)) || true
+    ARN="$(echo "$s" | jq -r '.ARN')"
+    NAME="$(echo "$s" | jq -r '.Name')"
+    SOURCE_KMS="$(echo "$s" | jq -r '.KmsKeyId // empty')"
+
+    # Optional tag filter
+    if [[ "$TAG_FILTER_ENABLED" -eq 1 ]]; then
+      TAG_OK="$(aws secretsmanager describe-secret --region "$AWS_REGION" --secret-id "$ARN" \
+        --query "Tags[?Key=='${TAG_KEY}' && Value=='${TAG_VALUE}'] | length(@)" --output text 2>/dev/null || echo 0)"
+      if [[ "$TAG_OK" == "0" ]]; then
+        echo "SKIP (tag filter) $NAME"
+        ((skipped_tag++)) || true
+        continue
+      fi
+    fi
+
+    echo "BACKUP $NAME"
+
+    # Read secret value (can fail if Secrets Manager cannot decrypt w/ that secret's KMS key)
+    VAL_JSON=""
+    if ! VAL_JSON="$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$ARN" 2>/tmp/secret_err.$$)"; then
+      ERR="$(tr -d '\n' </tmp/secret_err.$$ | sed 's/"/'\''/g')"
+      rm -f /tmp/secret_err.$$
+      echo "  ERROR (GetSecretValue) $NAME -> $ERR"
+      ((failed_read++)) || true
+      write_error_record "$NAME" "$ARN" "" "GetSecretValueFailed" "$ERR" "$SOURCE_KMS"
+      continue
+    fi
+    rm -f /tmp/secret_err.$$
+
+    VERSION_ID="$(echo "$VAL_JSON" | jq -r '.VersionId // empty')"
+    SECRET_STRING="$(echo "$VAL_JSON" | jq -r '.SecretString // empty')"
+    SECRET_BINARY_B64="$(echo "$VAL_JSON" | jq -r '.SecretBinary // empty')"
+
+    # Prepare plaintext payload to encrypt (string or binary)
+    if [[ -n "$SECRET_STRING" ]]; then
+      PLAINTEXT_PAYLOAD="$(jq -n --arg t "string" --arg v "$SECRET_STRING" '{type:$t,value:$v}')"
+    elif [[ -n "$SECRET_BINARY_B64" ]]; then
+      PLAINTEXT_PAYLOAD="$(jq -n --arg t "binary_b64" --arg v "$SECRET_BINARY_B64" '{type:$t,value:$v}')"
+    else
+      echo "  WARN: no SecretString/SecretBinary for $NAME (skipping)"
+      ((failed_read++)) || true
+      write_error_record "$NAME" "$ARN" "$VERSION_ID" "EmptySecretValue" "No SecretString/SecretBinary present" "$SOURCE_KMS"
+      continue
+    fi
+
+    # Encrypt export payload with YOUR export key + encryption context
+    # (context makes ciphertext harder to misuse outside this backup flow)
+    CIPHERTEXT_B64=""
+    if ! CIPHERTEXT_B64="$(printf '%s' "$PLAINTEXT_PAYLOAD" | \
+      aws kms encrypt --region "$AWS_REGION" \
+        --key-id "$KMS_KEY_ARN" \
+        --plaintext fileb:///dev/stdin \
+        --encryption-context "purpose=secrets-backup,secretArn=${ARN},backupDate=${DATE},backupHost=${HOST}" \
+        --query CiphertextBlob --output text 2>/tmp/kms_err.$$)"; then
+      ERR="$(tr -d '\n' </tmp/kms_err.$$ | sed 's/"/'\''/g')"
+      rm -f /tmp/kms_err.$$
+      echo "  ERROR (KMS Encrypt) $NAME -> $ERR"
+      ((failed_encrypt++)) || true
+      write_error_record "$NAME" "$ARN" "$VERSION_ID" "KMSEncryptFailed" "$ERR" "$SOURCE_KMS"
+      continue
+    fi
+    rm -f /tmp/kms_err.$$
+
+    # Write success record (no plaintext)
+    jq -c -n \
+      --arg name "$NAME" \
+      --arg arn "$ARN" \
+      --arg versionId "$VERSION_ID" \
+      --arg ts "$TS" \
+      --arg host "$HOST" \
+      --arg bdate "$DATE" \
+      --arg exportKms "$KMS_KEY_ARN" \
+      --arg sourceKms "$SOURCE_KMS" \
+      --arg ciphertext "$CIPHERTEXT_B64" \
+      '{
+        name:$name,
+        arn:$arn,
+        versionId:$versionId,
+        backedUpAt:$ts,
+        backupDate:$bdate,
+        backupHost:$host,
+        exportKmsKey:$exportKms,
+        sourceKmsKey:($sourceKms // ""),
+        status:"ok",
+        ciphertextB64:$ciphertext
+      }' >> "$OUT"
+
+    ((kept++)) || true
+  done < <(echo "$RESP" | jq -c '.SecretList[]')
+
+  NEXT_TOKEN="$(echo "$RESP" | jq -r '.NextToken // empty')"
+  [[ -z "$NEXT_TOKEN" ]] && break
+done
+
+echo "==== SUMMARY ===="
+echo "Secrets enumerated: ${count}"
+echo "Backed up (ok):     ${kept}"
+echo "Skipped (tag):      ${skipped_tag}"
+echo "Failed (read):      ${failed_read}"
+echo "Failed (encrypt):   ${failed_encrypt}"
+
+# Compress and upload
+GZ="${OUT}.gz"
+gzip -c "$OUT" > "$GZ"
+
+DEST="${BUCKET}/secrets/daily/${DATE}/secrets_export_${HOST}_${TS}.ndjson.gz"
+echo "Uploading: $GZ -> $DEST"
+aws s3 cp "$GZ" "$DEST"
+
+echo "==== Secrets backup completed OK ===="
+
+# Cleanup local staging after successful upload
+echo "Cleaning up local staging..."
+rm -rf "$STAGE"
+
+[root@ip-10-56-112-34 ec2-user]# crontab -l
+#Ansible: CIS 1.3.2 - Run aide filesystem integrity check
+0 5 * * * /usr/sbin/aide --check
+
+0 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/aws_script.sh 2>&1
+15 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/cnxs_script.sh 2>&1
+30 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/devops_script.sh 2>&1
+45 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/docker_script.sh 2>&1
+
+
+# Nightly at 02:15
+15 2 * * * /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+
+# Weekly Sunday at 03:00
+0 3 * * 0 /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
+
+# Daily Secrets Manager backup (encrypted to S3)
+55 1 * * * /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
+
+0 4 * * * find /app/bamboobackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
