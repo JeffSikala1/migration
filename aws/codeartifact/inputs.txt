@@ -1,41 +1,69 @@
-docker exec nginx nginx -T
+TS=$(date +%F-%H%M%S)
 
-curl -Ik https://localhost -k -H 'Host: bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov'
-curl -Ik https://localhost -k -H 'Host: bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov'
-
-
-
-find /var/lib/docker/volumes/nginxVolume/_data -maxdepth 3 -type f | sort
+cp -a /var/lib/docker/volumes/bitbucketVolume/_data /var/lib/docker/volumes/bitbucketVolume/_data.pre-restore.$TS
+cp -a /var/lib/docker/volumes/bambooVolume/_data /var/lib/docker/volumes/bambooVolume/_data.pre-restore.$TS
 
 
 
-find /var/lib/docker/volumes/bitbucketVolume/_data -maxdepth 3 \( -name "bitbucket.properties" -o -name "home.properties" -o -name "shared" \) -print
-find /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456 -maxdepth 3 \( -name "bitbucket.properties" -o -name "home.properties" -o -name "shared" \) -print
-find /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data -maxdepth 3 \( -name "bitbucket.properties" -o -name "home.properties" -o -name "shared" \) -print
+
+ls -ld /var/lib/docker/volumes/bitbucketVolume/_data.pre-restore.$TS
+ls -ld /var/lib/docker/volumes/bambooVolume/_data.pre-restore.$TS
+
+
+rm -rf /var/lib/docker/volumes/bitbucketVolume/_data/*
+rm -rf /var/lib/docker/volumes/bitbucketVolume/_data/.[!.]* /var/lib/docker/volumes/bitbucketVolume/_data/..?* 2>/dev/null
+
+rm -rf /var/lib/docker/volumes/bambooVolume/_data/*
+rm -rf /var/lib/docker/volumes/bambooVolume/_data/.[!.]* /var/lib/docker/volumes/bambooVolume/_data/..?* 2>/dev/null
 
 
 
-cat /var/lib/docker/volumes/bitbucketVolume/_data/home.properties
-cat /var/lib/docker/volumes/bitbucketVolume/_data/bitbucket.properties
-cat /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/home.properties
+ls -la /var/lib/docker/volumes/bitbucketVolume/_data
+ls -la /var/lib/docker/volumes/bambooVolume/_data
 
 
 
+
+cp -a /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/. /var/lib/docker/volumes/bitbucketVolume/_data/
+cp -a /var/lib/docker/volumes/bambooVolume/_data.bak.2026-03-19-0456/. /var/lib/docker/volumes/bambooVolume/_data/
+
+
+
+ls -lah /var/lib/docker/volumes/bitbucketVolume/_data
 ls -lah /var/lib/docker/volumes/bitbucketVolume/_data/shared
-ls -lah /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/shared
-ls -lah /var/lib/docker/volumes/bitbucketVolume/_data/bitbucketVolume/_data/shared
+cat /var/lib/docker/volumes/bitbucketVolume/_data/shared/bitbucket.properties
+cat /var/lib/docker/volumes/bitbucketVolume/_data/home.properties
 
 
-docker exec -it prod-postgres psql -U postgres -lqt
 
-
-ls -lah /var/lib/docker/volumes/bambooVolume
 ls -lah /var/lib/docker/volumes/bambooVolume/_data
-find /var/lib/docker/volumes/bambooVolume/_data -maxdepth 3 -type d | sort | head -100
+cat /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+
+
+find /var/lib/docker/volumes/bitbucketVolume/_data -maxdepth 2 -type d | sort
+find /var/lib/docker/volumes/bambooVolume/_data -maxdepth 2 -type d | sort
 
 
 
-find /var/lib/docker/volumes/bambooVolume/_data -maxdepth 3 \( -name "bamboo.cfg.xml" -o -name "bamboo-init.properties" \) -print
+docker start prod-postgres
+docker logs --tail 20 prod-postgres
 
+
+docker start cnxs-mgmt-bitbucket
+docker logs --tail 100 -f cnxs-mgmt-bitbucket
+
+
+docker start prod-bamboo
+docker logs --tail 100 -f prod-bamboo
+
+
+
+docker start nginx
+docker logs --tail 100 -f nginx
+
+
+
+curl -I http://localhost:7990
+curl -I http://localhost:8085
 
 
