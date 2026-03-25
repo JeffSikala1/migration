@@ -1,35 +1,47 @@
+mkdir -p /restore/apps
+mkdir -p /restore/nginx
+mkdir -p /restore/postgres
+
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-03-19/ /restore/apps/ --recursive
+aws s3 cp s3://cnxs-atlassian-backups/nginx/2026-03-19/ /restore/nginx/ --recursive
+aws s3 cp s3://cnxs-atlassian-backups/postgres/2026-03-19/ /restore/postgres/ --recursive
+
+docker stop cnxs-mgmt-bitbucket prod-bamboo nginx prod-postgres
+
+rm -rf /var/lib/docker/volumes/bitbucketVolume/_data/*
+
+tar -xzf /restore/apps/bitbucket_20260319_021501.tar.gz \
+  -C /var/lib/docker/volumes/bitbucketVolume/_data
+
+ls /var/lib/docker/volumes/bitbucketVolume/_data/shared
+cat /var/lib/docker/volumes/bitbucketVolume/_data/shared/bitbucket.properties
+
+rm -rf /var/lib/docker/volumes/bambooVolume/_data/*
+
+tar -xzf /restore/apps/bamboo_20260319_021501.tar.gz \
+  -C /var/lib/docker/volumes/bambooVolume/_data
+
 cat /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
 
-cat /var/lib/docker/volumes/bambooVolume/_data.pre-restore.2026-03-25-142508/bamboo.cfg.xml
+rm -rf /var/lib/docker/volumes/nginxVolume/_data/*
 
-cat /var/lib/docker/volumes/bambooVolume/_data.pre-restore.2026-03-25-142508/bambooVolume/_data/bamboo.cfg.xml
+tar -xzf /restore/nginx/nginx_tls_20260319*.tar.gz \
+  -C /var/lib/docker/volumes/nginxVolume/_data
 
-cat /var/lib/docker/volumes/bambooVolume/_data.bak.2026-03-19-0456/bamboo.cfg.xml
+openssl x509 -in /var/lib/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -dates
 
-find /var/lib/docker/volumes -name bamboo.cfg.xml -o -name bamboo-init.properties | sort
+docker start prod-postgres
+sleep 10
 
-grep -R "setupType" /var/lib/docker/volumes 2>/dev/null | grep bamboo
+docker start cnxs-mgmt-bitbucket
+docker start prod-bamboo
+sleep 20
 
-grep -R "jdbc:" /var/lib/docker/volumes 2>/dev/null | grep -i bamboo
+docker start nginx
 
-grep -R "hibernate.connection.url\|jdbc.url\|hibernate.connection.username\|bamboo.cfg.xml" /var/lib/docker/volumes/bambooVolume /var/lib/docker/volumes/optbambooVolume 2>/dev/null
+curl -I http://localhost:7990
+curl -I http://localhost:8085
 
-
-
-----------
-
-# nginx configuration for Bamboo
-find /var/lib/docker/volumes/nginxVolume -type f | sort | egrep 'bamboo|conf$|\.conf$'
-
-grep -Rni 'bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov\|prod-bamboo\|:8085\|server_name.*bamboo' /var/lib/docker/volumes/nginxVolume 2>/dev/null
-
-find /var/lib -type f | egrep 'bamboo.*\.conf$|.*nginx.*\.conf$' 2>/dev/null
-
-grep -Rni 'bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov\|prod-bamboo\|:8085\|server_name.*bamboo' /var/lib 2>/dev/null
-
-find /var/lib/docker/volumes/nginxVolume/_data.bak.2026-03-19-0503 -maxdepth 4 -type f | sort
-
-find /var/lib/docker/volumes/nginxVolume/_data_broken -maxdepth 4 -type f | sort
-
-grep -Rni 'bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov\|prod-bamboo\|:8085\|server_name.*bamboo' /var/lib/docker/volumes/nginxVolume/_data.bak.2026-03-19-0503 /var/lib/docker/volumes/nginxVolume/_data_broken 2>/dev/null
+curl -Ik https://localhost -H "Host: bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov"
+curl -Ik https://localhost -H "Host: bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov"
 
