@@ -35,8 +35,10 @@ Default Job:
     - script:
         interpreter: SHELL
         scripts:
-          - rm -rf ~/.m2/repository/gov/gsa/
-        description: Remove existing cnxs maven repo directory
+          - |-
+            rm -rf .m2
+            mkdir -p .m2/repository
+        description: Prepare isolated Maven repo
 
     - script:
         interpreter: SHELL
@@ -130,6 +132,7 @@ Default Job:
         executable: Maven 3
         jdk: JDK 17
         goal: >
+          -Dmaven.repo.local=${bamboo.build.working.directory}/.m2/repository
           -s settings-artifactory.xml
           clean verify -B -U
           -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
@@ -143,7 +146,10 @@ Default Job:
         interpreter: SHELL
         scripts:
           - |-
-            MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1 | tr -d '\r\n')
+            MVN_VERSION=$(/usr/share/maven/bin/mvn \
+              -Dmaven.repo.local=${bamboo.build.working.directory}/.m2/repository \
+              -s settings-artifactory.xml \
+              -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1 | tr -d '\r\n')
             echo "mavenVersion=${MVN_VERSION}" >> file.properties
             echo "Detected mavenVersion=${MVN_VERSION}"
         description: Determine Maven version
