@@ -44,38 +44,12 @@ Default Job:
         file: bamboo-deployment/build-determination-migration.sh
         description: Determine parent branch and pass correct variables
 
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            echo "Contents of file.properties:"
-            cat file.properties
-        description: Show generated file.properties
-
     - inject-variables:
         file: file.properties
         scope: LOCAL
         namespace: inject
         description: Inject values
 
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            echo "Injected RawBranchName=${bamboo.inject.RawBranchName}"
-            echo "Injected BranchName=${bamboo.inject.BranchName}"
-            echo "Injected ParentBranchName=${bamboo.inject.ParentBranchName}"
-            echo "Injected ChildBranchName=${bamboo.inject.ChildBranchName}"
-            echo "Injected isLongLived=${bamboo.inject.isLongLived}"
-            echo "Injected pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}"
-            echo "Injected mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}"
-        description: Debug injected branch variables
-
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-        configuration: {}
-
-    # Write Artifactory settings (same pattern as WS)
     - script:
         interpreter: SHELL
         scripts:
@@ -142,6 +116,7 @@ Default Job:
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
+
                 <server>
                   <id>conexus-snapshot-local</id>
                   <username>sa_bamboo</username>
@@ -162,12 +137,8 @@ Default Job:
               </servers>
             </settings>
             XML
-          - grep -n "<id>" settings-artifactory.xml
-          - grep -n "<mirrorOf>" settings-artifactory.xml
-          - grep -n "<url>" settings-artifactory.xml
         description: Write Artifactory Maven settings
 
-    # BUILD: package only, skip unit tests + ITs
     - script:
         interpreter: SHELL
         scripts:
@@ -187,7 +158,6 @@ Default Job:
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         description: Build (package only, skip tests/ITs) using Artifactory settings
 
-    # Determine Maven version 
     - script:
         interpreter: SHELL
         scripts:
@@ -211,7 +181,6 @@ Default Job:
         namespace: inject
         description: Inject updated values (mavenVersion)
 
-    # DEPLOY: deploy only reconciliation-war (and deps) to snapshot-local
     - script:
         interpreter: SHELL
         scripts:
@@ -238,11 +207,6 @@ Default Job:
         namespace: inject
         description: Inject the build information to be used in Bamboo Deploy
 
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-        configuration: {}
-
-  # Since we’re bypassing integration tests, these artifacts won’t exist
   artifacts: []
 
   artifact-subscriptions: []
