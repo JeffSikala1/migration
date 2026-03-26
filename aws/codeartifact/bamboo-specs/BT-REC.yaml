@@ -155,10 +155,18 @@ Default Job:
         interpreter: SHELL
         scripts:
           - |-
-            MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version)
-            echo "mavenVersion=${MVN_VERSION}" >> file.properties
-            echo "Detected mavenVersion=${MVN_VERSION}"
-        description: Determine Maven version
+            ARTIFACT_ID=$(/usr/share/maven/bin/mvn -f war/pom.xml -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.artifactId | sed '/^\[/d' | grep -v '^$' | tail -1)
+            MVN_VERSION=$(/usr/share/maven/bin/mvn -f war/pom.xml -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version | sed '/^\[/d' | grep -v '^$' | tail -1)
+
+            [ -n "${ARTIFACT_ID}" ] || { echo "ERROR: could not determine artifactId"; exit 1; }
+            [ -n "${MVN_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+
+            echo "mavenVersion=${ARTIFACT_ID}-${MVN_VERSION}" >> file.properties
+            echo "mavenArtifactId=${ARTIFACT_ID}" >> file.properties
+            echo "mavenRawVersion=${MVN_VERSION}" >> file.properties
+
+            echo "Detected mavenVersion=${ARTIFACT_ID}-${MVN_VERSION}"
+        description: Determine deployable module version
 
     - inject-variables:
         file: file.properties
