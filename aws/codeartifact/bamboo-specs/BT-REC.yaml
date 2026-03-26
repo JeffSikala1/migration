@@ -44,11 +44,32 @@ Default Job:
         file: bamboo-deployment/build-determination-migration.sh
         description: Determine parent branch and pass correct variables
 
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
+            echo "Contents of file.properties:"
+            cat file.properties
+        description: Show generated file.properties
+
     - inject-variables:
         file: file.properties
         scope: LOCAL
         namespace: inject
         description: Inject values
+
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
+            echo "Injected RawBranchName=${bamboo.inject.RawBranchName}"
+            echo "Injected BranchName=${bamboo.inject.BranchName}"
+            echo "Injected ParentBranchName=${bamboo.inject.ParentBranchName}"
+            echo "Injected ChildBranchName=${bamboo.inject.ChildBranchName}"
+            echo "Injected isLongLived=${bamboo.inject.isLongLived}"
+            echo "Injected pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}"
+            echo "Injected mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}"
+        description: Debug injected branch variables
 
     - any-task:
         plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
@@ -158,6 +179,9 @@ Default Job:
             -pl :reconciliation-war -am
             -DskipTests -DskipITs=true -Dmaven.test.skip=true
             -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+            -Dbamboo.inject.RawBranchName=${bamboo.inject.RawBranchName}
+            -Dbamboo.inject.ParentBranchName=${bamboo.inject.ParentBranchName}
+            -Dbamboo.inject.ChildBranchName=${bamboo.inject.ChildBranchName}
             -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
             -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
@@ -200,6 +224,9 @@ Default Job:
             -DaltDeploymentRepository=artifactory::${bamboo.inject.mavenFeatureRepositoryUrl}
             -DskipTests -DskipITs=true -Dmaven.test.skip=true
             -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+            -Dbamboo.inject.RawBranchName=${bamboo.inject.RawBranchName}
+            -Dbamboo.inject.ParentBranchName=${bamboo.inject.ParentBranchName}
+            -Dbamboo.inject.ChildBranchName=${bamboo.inject.ChildBranchName}
             -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
             -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
