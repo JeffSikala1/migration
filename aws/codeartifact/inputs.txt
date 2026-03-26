@@ -1,9 +1,67 @@
-grep -RniE 'conexus-feature-repo|ArtifactoryPluginRepos' .
+cat > settings-artifactory.xml <<'XML'
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+  <profiles>
+    <profile>
+      <id>use-artifactory</id>
+
+      <repositories>
+        <repository>
+          <id>conexus-plugin-repository</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+
+      <pluginRepositories>
+        <pluginRepository>
+          <id>conexus-plugin-repository</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>use-artifactory</activeProfile>
+  </activeProfiles>
+
+  <servers>
+    <server>
+      <id>conexus-plugin-repository</id>
+      <username>sa_bamboo</username>
+      <password>REPLACE_WITH_TOKEN</password>
+    </server>
+    <server>
+      <id>conexus-feature-repo</id>
+      <username>sa_bamboo</username>
+      <password>REPLACE_WITH_TOKEN</password>
+    </server>
+    <server>
+      <id>ArtifactoryPluginRepos</id>
+      <username>sa_bamboo</username>
+      <password>REPLACE_WITH_TOKEN</password>
+    </server>
+  </servers>
+</settings>
+XML
 
 
-grep -RniE '<repositories>|<pluginRepositories>|<repository>|<pluginRepository>|<id>|<url>' .
 
 
 /usr/share/maven/bin/mvn -s settings-artifactory.xml help:effective-pom -Doutput=effective-pom.xml
 
+
 grep -nE 'conexus-feature-repo|ArtifactoryPluginRepos|conexus-snapshot-local|conexus-plugin-repository' effective-pom.xml
+
+
+grep -nE '<repositories>|</repositories>|<pluginRepositories>|</pluginRepositories>|<repository>|</repository>|<pluginRepository>|</pluginRepository>|<id>|<url>' effective-pom.xml
+
+
+grep -nE 'conexus-feature-repo|ArtifactoryPluginRepos|conexus-snapshot-local|conexus-plugin-repository' effective-pom.xml | cut -d: -f1
+
+
+grep -nE 'conexus-feature-repo|ArtifactoryPluginRepos|conexus-snapshot-local|conexus-plugin-repository' effective-pom.xml | cut -d: -f1 | xargs -I {} sed -n '{}p;{}q' effective-pom.xml
+
