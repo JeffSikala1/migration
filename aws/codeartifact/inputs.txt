@@ -1,67 +1,16 @@
-cat > settings-artifactory.xml <<'XML'
-<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
-  <profiles>
-    <profile>
-      <id>use-artifactory</id>
+Dependencies like OpenPDF and Selenium aren’t actually in the Conexus plugin repo, but Maven is trying to pull them from there and hitting 403s.
 
-      <repositories>
-        <repository>
-          <id>conexus-plugin-repository</id>
-          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/</url>
-          <releases><enabled>true</enabled></releases>
-          <snapshots><enabled>true</enabled></snapshots>
-        </repository>
-      </repositories>
+They’re coming from upstream repos (looks like the Jaspersoft cache in Artifactory), but our current setup isn’t routing or allowing access to those repos properly yet.
 
-      <pluginRepositories>
-        <pluginRepository>
-          <id>conexus-plugin-repository</id>
-          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/</url>
-          <releases><enabled>true</enabled></releases>
-          <snapshots><enabled>true</enabled></snapshots>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-  </profiles>
-
-  <activeProfiles>
-    <activeProfile>use-artifactory</activeProfile>
-  </activeProfiles>
-
-  <servers>
-    <server>
-      <id>conexus-plugin-repository</id>
-      <username>sa_bamboo</username>
-      <password>mypass.mypass</password>
-    </server>
-    <server>
-      <id>conexus-feature-repo</id>
-      <username>sa_bamboo</username>
-      <password>mypass.mypass</password>
-    </server>
-    <server>
-      <id>ArtifactoryPluginRepos</id>
-      <username>sa_bamboo</username>
-      <password>mypass.mypass</password>
-    </server>
-  </servers>
-</settings>
-XML
+I’m going to fix this at the repo/mirror level so we don’t have to change the builds. Once that’s wired correctly, both builds should resolve normally.
 
 
 
 
-/usr/share/maven/bin/mvn -s settings-artifactory.xml help:effective-pom -Doutput=effective-pom.xml
 
 
-grep -nE 'conexus-feature-repo|ArtifactoryPluginRepos|conexus-snapshot-local|conexus-plugin-repository' effective-pom.xml
 
 
-grep -nE '<repositories>|</repositories>|<pluginRepositories>|</pluginRepositories>|<repository>|</repository>|<pluginRepository>|</pluginRepository>|<id>|<url>' effective-pom.xml
 
-
-grep -nE 'conexus-feature-repo|ArtifactoryPluginRepos|conexus-snapshot-local|conexus-plugin-repository' effective-pom.xml | cut -d: -f1
-
-
-grep -nE 'conexus-feature-repo|ArtifactoryPluginRepos|conexus-snapshot-local|conexus-plugin-repository' effective-pom.xml | cut -d: -f1 | xargs -I {} sed -n '{}p;{}q' effective-pom.xml
-
+----------
+I found that the OpenPDF artifact is present in jaspersoft.jfrog.io-cache, but the Reporting build is still trying to resolve it through conexus-plugin-repository / inherited repo paths. Before I change the build further, do you know what the intended pattern is here? Should jaspersoft.jfrog.io-cache be routed behind the normal Conexus repo, or should that artifact be moved/copied into a repo already exposed to builds? I’d rather fix the repo wiring the right way than hardcode a one-off repo into the build if we can avoid it.
