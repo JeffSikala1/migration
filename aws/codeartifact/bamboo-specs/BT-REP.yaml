@@ -59,16 +59,6 @@ Default Job:
           - |-
             cat > settings-artifactory.xml <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
-              <!-- Only mirror the known legacy repo IDs (CodeArtifact/central),
-                   but allow our explicit snapshot repo below to be used as-is -->
-              <mirrors>
-                <mirror>
-                  <id>artifactory</id>
-                  <mirrorOf>*</mirrorOf>
-                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                </mirror>
-              </mirrors>
-
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
@@ -119,6 +109,24 @@ Default Job:
             </settings>
             XML
         description: Write Artifactory Maven settings
+
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
+            sed -E 's#<password>.*</password>#<password>***</password>#g' settings-artifactory.xml
+        description: Debug generated Maven settings
+
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
+            set -e
+            curl -sf -u sa_bamboo:${bamboo.artifactory_access_token_secret} \
+              "${bamboo.inject.pluginRepositoryUrl}gov/gsa/cnxs/bom/env/02.00.000.166-SNAPSHOT/maven-metadata.xml" \
+              >/dev/null
+            echo "Artifactory dependency auth check passed"
+        description: Validate Artifactory dependency access
 
     - maven:
         executable: Maven 3
