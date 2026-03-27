@@ -1,1 +1,11 @@
-I re-ran the validation and narrowed it down further. sa_bamboo can read the Selenium artifact from maven-central-cache, but it still gets a 403 on the OpenPDF/Jaspersoft artifact path. So the issue is specifically repo access to the Jaspersoft-backed cache content, not general authentication. I’m updating the Artifactory permissions to add the missing read access for that repo/path. Once that’s in place, please retry the Jasper/OpenPDF dependency pull.
+curl -I -u "sa_bamboo:${ARTIFACTORY_TOKEN}" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/wso2/maven/vscode-car-plugin/5.2.75/vscode-car-plugin-5.2.75.pom"
+
+curl -I -u "sa_bamboo:${ARTIFACTORY_TOKEN}" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/wso2/maven/vscode-car-plugin/5.2.75/vscode-car-plugin-5.2.75.jar"
+
+
+
+Thanks, that helps. It looks like the reporting/Jasper issue is resolved, but API Gateway is now failing on a different artifact path: org.wso2.maven:vscode-car-plugin:5.2.75, still with a 403 from Artifactory. That points to another missing read permission for the WSO2 artifact path/repo backing conexus-plugin-repository.
+
+I’m going to validate that path with the service account and update the Artifactory access the same way we did for the Jasper artifact. Once that’s adjusted, please retry the API Gateway build.
