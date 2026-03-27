@@ -1,16 +1,46 @@
-Dependencies like OpenPDF and Selenium aren’t actually in the Conexus plugin repo, but Maven is trying to pull them from there and hitting 403s.
+curl -I -u sa_bamboo:${TOKEN} \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/librepdf/openpdf/1.3.30.jaspersoft.3/openpdf-1.3.30.jaspersoft.3.pom"
 
-They’re coming from upstream repos (looks like the Jaspersoft cache in Artifactory), but our current setup isn’t routing or allowing access to those repos properly yet.
-
-I’m going to fix this at the repo/mirror level so we don’t have to change the builds. Once that’s wired correctly, both builds should resolve normally.
-
-
+curl -I -u sa_bamboo:${TOKEN} \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/librepdf/openpdf/1.3.30.jaspersoft.3/openpdf-1.3.30.jaspersoft.3.jar"
 
 
 
+curl -I -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/librepdf/openpdf/1.3.30.jaspersoft.3/openpdf-1.3.30.jaspersoft.3.pom"
+
+curl -I -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/librepdf/openpdf/1.3.30.jaspersoft.3/openpdf-1.3.30.jaspersoft.3.jar"
 
 
+curl -I -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/jaspersoft.jfrog.io-cache/com/github/librepdf/openpdf/1.3.30.jaspersoft.3/openpdf-1.3.30.jaspersoft.3.pom"
+
+curl -I -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/jaspersoft.jfrog.io-cache/com/github/librepdf/openpdf/1.3.30.jaspersoft.3/openpdf-1.3.30.jaspersoft.3.jar"
 
 
-----------
-I found that the OpenPDF artifact is present in jaspersoft.jfrog.io-cache, but the Reporting build is still trying to resolve it through conexus-plugin-repository / inherited repo paths. Before I change the build further, do you know what the intended pattern is here? Should jaspersoft.jfrog.io-cache be routed behind the normal Conexus repo, or should that artifact be moved/copied into a repo already exposed to builds? I’d rather fix the repo wiring the right way than hardcode a one-off repo into the build if we can avoid it.
+curl -I -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/seleniumhq/selenium/selenium-java/4.37.0/selenium-java-4.37.0.pom"
+
+curl -I -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/seleniumhq/selenium/selenium-java/4.37.0/selenium-java-4.37.0.jar"
+
+
+curl -I -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/maven-central-cache/org/seleniumhq/selenium/selenium-java/4.37.0/selenium-java-4.37.0.pom"
+
+curl -I -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/maven-central-cache/org/seleniumhq/selenium/selenium-java/4.37.0/selenium-java-4.37.0.jar"
+
+
+mvn -U -X \
+  -s /path/to/settings.xml \
+  dependency:get \
+  -Dartifact=com.github.librepdf:openpdf:1.3.30.jaspersoft.3
+
+
+mvn -U -X \
+  -s /path/to/settings.xml \
+  dependency:get \
+  -Dartifact=org.seleniumhq.selenium:selenium-java:4.37.0
