@@ -237,6 +237,7 @@ Promote Job:
             echo "${RESULT}" > "${bamboo.build.working.directory}/release-check.json"
 
             expected=(
+              "common-rest-aggregator-${RELEASE_VERSION}.pom"
               "common-rest-${RELEASE_VERSION}.pom"
               "common-rest-${RELEASE_VERSION}.jar"
               "common-rest-${RELEASE_VERSION}-tests.jar"
@@ -248,14 +249,27 @@ Promote Job:
               "common-rest-test-utils-${RELEASE_VERSION}-tests.jar"
             )
 
-            found_count=0
-            for f in "${expected[@]}"; do
-              if echo "${RESULT}" | grep -F -q "\"name\" : \"${f}\""; then
-                found_count=$((found_count + 1))
-              fi
-            done
+            found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            names = {item["name"] for item in data.get("results", [])}
+            expected = [
+              "common-rest-aggregator-${RELEASE_VERSION}.pom",
+              "common-rest-${RELEASE_VERSION}.pom",
+              "common-rest-${RELEASE_VERSION}.jar",
+              "common-rest-${RELEASE_VERSION}-tests.jar",
+              "common-rest-shiro-${RELEASE_VERSION}.pom",
+              "common-rest-shiro-${RELEASE_VERSION}.jar",
+              "common-rest-shiro-${RELEASE_VERSION}-tests.jar",
+              "common-rest-test-utils-${RELEASE_VERSION}.pom",
+              "common-rest-test-utils-${RELEASE_VERSION}.jar",
+              "common-rest-test-utils-${RELEASE_VERSION}-tests.jar",
+            ]
+            print(sum(1 for x in expected if x in names))
+            PY
+            )
 
-            total_expected=${#expected[@]}
+            total_expected=10
 
             echo "INFO: found ${found_count} of ${total_expected} expected CommonRest release artifacts"
 
@@ -302,7 +316,7 @@ Promote Job:
 
             python3 ../release-scripts/promote.py \
               conexus-rc-local \
-              gov.gsa.cnxs \
+              gov.gsa.cnxs.common-rest \
               common-rest \
               "${RELEASE_VERSION}" \
               --username "sa_bamboo" \
@@ -312,7 +326,7 @@ Promote Job:
 
             python3 ../release-scripts/promote.py \
               conexus-rc-local \
-              gov.gsa.cnxs \
+              gov.gsa.cnxs.common-rest \
               common-rest-shiro \
               "${RELEASE_VERSION}" \
               --username "sa_bamboo" \
@@ -322,8 +336,18 @@ Promote Job:
 
             python3 ../release-scripts/promote.py \
               conexus-rc-local \
-              gov.gsa.cnxs \
+              gov.gsa.cnxs.common-rest \
               common-rest-test-utils \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.common-rest \
+              common-rest-aggregator \
               "${RELEASE_VERSION}" \
               --username "sa_bamboo" \
               --password "${bamboo.artifactory_access_token_secret}" \
