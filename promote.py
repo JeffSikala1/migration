@@ -25,13 +25,12 @@ class Promote(object):
         """
         Update instance variables with those passed in from the command line
         """
-        if all (kwargs[k] for k in ('username', 'password')):
+        if all(kwargs[k] for k in ('username', 'password')):
             kwargs['auth'] = True
-        elif any (kwargs[k] for k in ('username', 'password')):
+        elif any(kwargs[k] for k in ('username', 'password')):
             raise AttributeError("Please provide both username and password when using basic auth")
         self.__dict__.update(kwargs)
-        self.staging_directory = os.path.join(os.getcwd(),
-                                              'working')
+        self.staging_directory = os.path.join(os.getcwd(), 'working')
 
     def _open_subprocess(self, arguments):
         """
@@ -59,12 +58,10 @@ class Promote(object):
         except OSError:
             raise RuntimeError('Failed to execute {0}'.format(' '.join(arguments)))
 
-
     def _hash_file(self, file):
         """
         Get the sha1 hash of a file
         """
-        # Take 64k at a time
         BLOCKSIZE = 65536
         hash = hashlib.sha1()
 
@@ -104,15 +101,13 @@ class Promote(object):
         """
         Determine the pom file to use when uploading an artifact
         """
-        # TODO handle artifacts that don't follow semantic version
         pieces = artifact.split('.')
         minor, _ = pieces[-2:]
         pieces = pieces[:-2]
         if minor.endswith('-tests'):
             minor = minor.rstrip('-tests')
-        pieces += [ minor, 'pom' ]
-        pom_file = os.path.join(path,
-                                '.'.join(pieces))
+        pieces += [minor, 'pom']
+        pom_file = os.path.join(path, '.'.join(pieces))
         return pom_file
 
     def _build_maven_cmd(self, path, artifact):
@@ -128,20 +123,24 @@ class Promote(object):
         command = [mvn, deploy, file, url, repo_id, '-s', settings_xml]
 
         is_pom = artifact.endswith('.pom')
+        classifier = self._get_classifier(artifact)
 
         if is_pom:
+            # Only pom-only modules should reach here.
             pom_path = os.path.join(path, artifact)
             command.append('-DpomFile={0}'.format(pom_path))
         else:
-            pom_file = self._get_pom_file(path, artifact)
             command.append('-Dversion={0}'.format(self.version))
             command.append('-DgroupId={0}'.format(self.group))
             command.append('-DartifactId={0}'.format(self.component))
-            command.append('-DpomFile={0}'.format(pom_file))
             command.append('-DgeneratePom=false')
 
-            classifier = self._get_classifier(artifact)
-            if classifier:
+            # Only the main artifact should carry the pom.
+            # Classified artifacts like -tests.jar should not re-upload the pom.
+            if classifier is None:
+                pom_file = self._get_pom_file(path, artifact)
+                command.append('-DpomFile={0}'.format(pom_file))
+            else:
                 command.append('-Dclassifier={0}'.format(classifier))
 
         if self.maven_args:
@@ -161,28 +160,50 @@ class Promote(object):
 
     def _artifacts_to_publish(self):
         """
-        Walk the staging area looking for artifacts to upload
+        Walk the staging area looking for artifacts to upload.
+
+        Rules:
+        - If a directory contains only a pom, publish the pom.
+        - If a directory contains a main artifact (jar/tar/zip/etc), publish that main artifact
+          and do not publish the standalone pom separately.
+        - If a directory contains classified artifacts like *-tests.jar, publish them after the
+          main artifact, but do not publish the pom separately.
         """
-        order = {'pom': 0}
         artifacts = []
+
+        def priority(filename):
+            if filename.endswith('.pom'):
+                return 99
+            if filename.endswith('-tests.jar'):
+                return 2
+            return 1
+
         for root, dirs, files in os.walk(self.staging_directory):
-            for file in files:
-                artifacts.append({
-                    'file': file,
-                    'root': root
-                })
-        return sorted(artifacts, key=lambda x: order.get(x['file'][-3:], 1))
+            if not files:
+                continue
+
+            poms = [f for f in files if f.endswith('.pom')]
+            non_poms = [f for f in files if not f.endswith('.pom')]
+
+            if non_poms:
+                for file in sorted(non_poms, key=priority):
+                    artifacts.append({
+                        'file': file,
+                        'root': root
+                    })
+            else:
+                for file in sorted(poms, key=priority):
+                    artifacts.append({
+                        'file': file,
+                        'root': root
+                    })
+
+        return artifacts
 
     def _remove_local_artifacts(self, artifacts):
         """
         Delete staged local artifacts
         """
-        #for artifact in artifacts:
-        #    os.remove(
-        #            os.path.join(
-        #                artifact['root'],
-        #                artifact['file'])
-        #    )
         if os.path.isdir(self.staging_directory):
             shutil.rmtree(self.staging_directory)
 
@@ -194,8 +215,8 @@ class Promote(object):
         failed = []
         artifacts = self._artifacts_to_publish()
         for artifact in artifacts:
-            command = self._build_maven_cmd(artifact['root'],
-                                            artifact['file'])
+            command = self._build_maven_cmd(artifact['root'], artifact['file'])
+            logger.info('Running Maven deploy command: %s', ' '.join(command))
             stdout, stderr, retcode = self._run_command(command)
             if retcode == 0:
                 success.append(artifact['file'])
@@ -209,13 +230,11 @@ class Promote(object):
 
     def _update_pom(self, path, file):
         """
-        Remoe the RC suffix from Maven versions
+        Remove the RC suffix from Maven versions
         """
         RC = '-RC'
         in_lst = []
-        local_file_path = os.path.join(self.staging_directory,
-                                       path,
-                                       file)
+        local_file_path = os.path.join(self.staging_directory, path, file)
         with open(local_file_path, 'r+') as fi:
             for line in fi:
                 if RC in line:
@@ -225,16 +244,13 @@ class Promote(object):
             for line in in_lst:
                 fo.write(line)
 
-
     def _call_artifactory(self, uri, method, **kwargs):
         """
         Convenience method to call Artifactory
         """
-        url = '{0}/artifactory/{1}'.format(self.server,
-                                           uri.lstrip('/'))
+        url = '{0}/artifactory/{1}'.format(self.server, uri.lstrip('/'))
         if 'auth' in self.__dict__:
-            kwargs['auth'] = HTTPBasicAuth(self.username,
-                                           self.password)
+            kwargs['auth'] = HTTPBasicAuth(self.username, self.password)
         func = getattr(requests, method)
         resp = func(url, **kwargs)
 
@@ -274,26 +290,18 @@ class Promote(object):
 
     def _download_artifact(self, path, artifact):
         """
-        Download an artifact and validate that the sha1 hash matches that of
-        Artifactory
+        Download an artifact and validate that the sha1 hash matches that of Artifactory
         """
-        local_file_path = os.path.join(self.staging_directory,
-                                       path,
-                                       artifact)
+        local_file_path = os.path.join(self.staging_directory, path, artifact)
         if not os.path.isdir(os.path.dirname(local_file_path)):
             os.makedirs(os.path.dirname(local_file_path))
-        url = '{0}/{1}/{2}'.format(self.repository,
-                                   path,
-                                   artifact)
-        resp = self._call_artifactory(url,
-                                      'get',
-                                      stream=True)
+        url = '{0}/{1}/{2}'.format(self.repository, path, artifact)
+        resp = self._call_artifactory(url, 'get', stream=True)
         with open(local_file_path, 'wb') as fd:
             for chunk in resp.iter_content(chunk_size=1024):
                 if chunk:
                     fd.write(chunk)
-        expected = self._call_artifactory('{0}.sha1'.format(url),
-                                          'get').text
+        expected = self._call_artifactory('{0}.sha1'.format(url), 'get').text
         actual = self._hash_file(local_file_path)
         if expected != actual:
             logger.error('Download of {0} failed'.format(artifact))
@@ -304,7 +312,7 @@ class Promote(object):
     def __call__(self):
         """
         Look for artifacts in the RC repo for a given module to promote to release status.
-        Fail hard on error
+        Fail hard on error.
         """
         artifacts = self._list_artifacts()
         for artifact in artifacts:
@@ -314,6 +322,7 @@ class Promote(object):
             if artifact_name.endswith('pom'):
                 self._update_pom(artifact_path, artifact_name)
         self._publish_artifacts()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Promote Artifacts In A Given Maven Repository To Release", formatter_class=argparse.RawTextHelpFormatter)
