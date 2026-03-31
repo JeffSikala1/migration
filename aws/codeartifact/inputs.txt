@@ -1,54 +1,11 @@
-read -r -d '' AQL <<'EOF'
-items.find({
-  "repo":{"$eq":"conexus-release-local"},
-  "$or":[
-    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest/02.00.000.132"}},
-    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest-shiro/02.00.000.132"}},
-    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest-test-utils/02.00.000.132"}},
-    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest-aggregator/02.00.000.132"}}
-  ]
-}).include("repo","path","name")
-EOF
+kubectl logs -n ingress-nginx portal-6df896c676-djj8c --since=2h
 
-curl -sku "jeff.sikala@gsa.gov:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data "${AQL}"
+kubectl logs -n ingress-nginx portal-6df896c676-djj8c | grep -Ei 'NightlyPriceRecalculationScheduler|timeout|datasource|pool|lock|deadlock|transaction|error|exception|stuck'
 
 
-TOKEN='YOUR_TOKEN_HERE'
-BASE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local'
-
-curl -sku "jeff.sikala@gsa.gov:${TOKEN}" -X DELETE \
-  "${BASE}/gov/gsa/cnxs/common-rest/common-rest/02.00.000.132"
-
-curl -sku "jeff.sikala@gsa.gov:${TOKEN}" -X DELETE \
-  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-shiro/02.00.000.132"
-
-curl -sku "jeff.sikala@gsa.gov:${TOKEN}" -X DELETE \
-  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-test-utils/02.00.000.132"
-
-curl -sku "jeff.sikala@gsa.gov:${TOKEN}" -X DELETE \
-  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-aggregator/02.00.000.132"
+kubectl exec -n ingress-nginx -it conexus-httpd-d4cc6c4df-2qkgn -- sh
+curl -vk http://portal:8080/secure/rest/users/me
 
 
-
-
-read -r -d '' AQL <<'EOF'
-items.find({
-  "repo":{"$eq":"conexus-release-local"},
-  "$or":[
-    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest/02.00.000.132"}},
-    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest-shiro/02.00.000.132"}},
-    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest-test-utils/02.00.000.132"}},
-    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest-aggregator/02.00.000.132"}}
-  ]
-}).include("repo","path","name")
-EOF
-
-curl -sku "sa_bamboo:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data "${AQL}"
+kubectl top pod -n ingress-nginx portal-6df896c676-djj8c
+kubectl describe pod -n ingress-nginx portal-6df896c676-djj8c
