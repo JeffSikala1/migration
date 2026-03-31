@@ -116,45 +116,47 @@ class Promote(object):
         """
         mvn = '/usr/bin/mvn'
         deploy = 'deploy:deploy-file'
-        file = '-Dfile={0}'.format(os.path.join(path, artifact))
+        file_arg = '-Dfile={0}'.format(os.path.join(path, artifact))
         url = '-Durl={0}/artifactory/{1}'.format(self.server, self.release_repo)
         settings_xml = self.settings_xml or '/usr/share/maven/conf/settings-release.xml'
         repo_id = '-DrepositoryId=central'
-        command = [mvn, deploy, file, url, repo_id, '-s', settings_xml]
+
+        command = [mvn, deploy, file_arg, url, repo_id, '-s', settings_xml]
 
         is_pom = artifact.endswith('.pom')
         classifier = self._get_classifier(artifact)
+        packaging = self._get_packaging(artifact)
 
         if is_pom:
-            # Only pom-only modules should reach here.
+            # pom-only component such as aggregator
             pom_path = os.path.join(path, artifact)
             command.append('-DpomFile={0}'.format(pom_path))
-        else:
-            command.append('-Dversion={0}'.format(self.version))
+
+        elif classifier:
+            # classified artifact like *-tests.jar
+            # DO NOT pass pomFile here or Maven will try to re-upload the pom
             command.append('-DgroupId={0}'.format(self.group))
             command.append('-DartifactId={0}'.format(self.component))
+            command.append('-Dversion={0}'.format(self.version))
+            command.append('-Dclassifier={0}'.format(classifier))
+            command.append('-Dpackaging={0}'.format(packaging or 'jar'))
+
+        else:
+            # primary artifact; publish the artifact together with its pom
+            command.append('-DgroupId={0}'.format(self.group))
+            command.append('-DartifactId={0}'.format(self.component))
+            command.append('-Dversion={0}'.format(self.version))
             command.append('-DgeneratePom=false')
 
-            # Only the main artifact should carry the pom.
-            # Classified artifacts like -tests.jar should not re-upload the pom.
-            if classifier is None:
-                pom_file = self._get_pom_file(path, artifact)
-                command.append('-DpomFile={0}'.format(pom_file))
-            else:
-                command.append('-Dclassifier={0}'.format(classifier))
+            pom_file = self._get_pom_file(path, artifact)
+            command.append('-DpomFile={0}'.format(pom_file))
+
+            if packaging:
+                command.append('-Dpackaging={0}'.format(packaging))
 
         if self.maven_args:
             for argument in self.maven_args:
                 command.append('-D{0}'.format(argument))
-
-        has_packaging_arg = any(
-            str(argument).startswith('packaging=')
-            for argument in (self.maven_args or [])
-        )
-
-        packaging = self._get_packaging(artifact)
-        if packaging and not has_packaging_arg:
-            command.append('-Dpackaging={0}'.format(packaging))
 
         return command
 
