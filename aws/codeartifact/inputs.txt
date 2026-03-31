@@ -1,7 +1,38 @@
-wso2-repo
-https://maven.wso2.org/nexus/content/groups/wso2-public/
+TOKEN='YOUR_TOKEN_HERE'
+
+read -r -d '' AQL <<'EOF'
+items.find({
+  "repo":{"$eq":"conexus-release-local"},
+  "$or":[
+    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest/02.00.000.132"}},
+    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest-shiro/02.00.000.132"}},
+    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest-test-utils/02.00.000.132"}},
+    {"path":{"$eq":"gov/gsa/cnxs/common-rest/common-rest-aggregator/02.00.000.132"}}
+  ]
+}).include("repo","path","name")
+EOF
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data "${AQL}"
 
 
 
-curl -I -u "sa_bamboo:${ARTIFACTORY_TOKEN}" \
-"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/wso2/maven/vscode-car-plugin/5.2.75/vscode-car-plugin-5.2.75.pom"
+
+
+TOKEN='YOUR_TOKEN_HERE'
+BASE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local'
+
+curl -sku "sa_bamboo:${TOKEN}" -X DELETE \
+  "${BASE}/gov/gsa/cnxs/common-rest/common-rest/02.00.000.132"
+
+curl -sku "sa_bamboo:${TOKEN}" -X DELETE \
+  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-shiro/02.00.000.132"
+
+curl -sku "sa_bamboo:${TOKEN}" -X DELETE \
+  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-test-utils/02.00.000.132"
+
+curl -sku "sa_bamboo:${TOKEN}" -X DELETE \
+  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-aggregator/02.00.000.132"

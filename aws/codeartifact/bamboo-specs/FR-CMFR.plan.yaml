@@ -196,11 +196,12 @@ Promote Job:
 
     - script:
         interpreter: SHELL
-        description: Pre-check release artifacts in Artifactory
+        description: Pre-check CommonRest release artifacts in Artifactory
         working-dir: ${bamboo.module_name}
         scripts:
           - |
             set -euo pipefail
+
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
@@ -213,17 +214,16 @@ Promote Job:
             [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            GROUP_ID="gov.gsa.cnxs"
-            ARTIFACT_ID="common-rest"
-            GROUP_PATH="${GROUP_ID//./\/}"
-
-            EXPECTED_POM="${ARTIFACT_ID}-${RELEASE_VERSION}.pom"
+            GROUP_PATH="gov/gsa/cnxs/common-rest"
 
             AQL=$(cat <<EOF
             items.find({
               "repo":{"\$eq":"conexus-release-local"},
-              "path":{"\$eq":"${GROUP_PATH}/${ARTIFACT_ID}/${RELEASE_VERSION}"},
-              "name":{"\$match":"${ARTIFACT_ID}-${RELEASE_VERSION}*"}
+              "\$or":[
+                {"path":{"\$eq":"${GROUP_PATH}/common-rest/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${GROUP_PATH}/common-rest-shiro/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${GROUP_PATH}/common-rest-test-utils/${RELEASE_VERSION}"}}
+              ]
             }).include("name","repo","path")
             EOF
             )
@@ -236,18 +236,44 @@ Promote Job:
 
             echo "${RESULT}" > "${bamboo.build.working.directory}/release-check.json"
 
-            pom_count=$(echo "${RESULT}" | grep -F -c "\"name\" : \"${EXPECTED_POM}\"" || true)
+            expected=(
+              "common-rest-${RELEASE_VERSION}.pom"
+              "common-rest-${RELEASE_VERSION}.jar"
+              "common-rest-${RELEASE_VERSION}-tests.jar"
+              "common-rest-shiro-${RELEASE_VERSION}.pom"
+              "common-rest-shiro-${RELEASE_VERSION}.jar"
+              "common-rest-shiro-${RELEASE_VERSION}-tests.jar"
+              "common-rest-test-utils-${RELEASE_VERSION}.pom"
+              "common-rest-test-utils-${RELEASE_VERSION}.jar"
+              "common-rest-test-utils-${RELEASE_VERSION}-tests.jar"
+            )
 
-            if [ "${pom_count}" -eq 0 ]; then
-              echo "INFO: no release artifacts found for ${RELEASE_VERSION}; promotion may proceed."
+            found_count=0
+            for f in "${expected[@]}"; do
+              if echo "${RESULT}" | grep -F -q "\"name\" : \"${f}\""; then
+                found_count=$((found_count + 1))
+              fi
+            done
+
+            total_expected=${#expected[@]}
+
+            echo "INFO: found ${found_count} of ${total_expected} expected CommonRest release artifacts"
+
+            if [ "${found_count}" -eq 0 ]; then
+              echo "INFO: no CommonRest release artifacts found for ${RELEASE_VERSION}; promotion may proceed."
               exit 0
             fi
 
-            if [ "${pom_count}" -ge 1 ]; then
-              echo "INFO: release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
+            if [ "${found_count}" -eq "${total_expected}" ]; then
+              echo "INFO: all CommonRest release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
+
+            echo "ERROR: partial CommonRest release already exists for ${RELEASE_VERSION}."
+            echo "Expected full artifact family:"
+            printf '  %s\n' "${expected[@]}"
+            exit 1
 
     - inject-variables:
         file: skip.properties
@@ -255,11 +281,12 @@ Promote Job:
 
     - script:
         interpreter: SHELL
-        description: Promote artifacts from RC repo
+        description: Promote CommonRest artifacts from RC repo
         working-dir: ${bamboo.module_name}
         scripts:
           - |
             set -euo pipefail
+
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release artifacts already exist; skipping promotion."
               exit 0
@@ -277,6 +304,26 @@ Promote Job:
               conexus-rc-local \
               gov.gsa.cnxs \
               common-rest \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs \
+              common-rest-shiro \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs \
+              common-rest-test-utils \
               "${RELEASE_VERSION}" \
               --username "sa_bamboo" \
               --password "${bamboo.artifactory_access_token_secret}" \
