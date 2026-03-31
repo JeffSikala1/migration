@@ -1,4 +1,40 @@
+read -r -d '' AQL <<'EOF'
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "$or":[
+    {"path":{"$match":"gov/gsa/cnxs/common-rest*02.00.000.132*"}},
+    {"name":{"$match":"*02.00.000.132-RC*common-rest*"}},
+    {"name":{"$match":"common-rest*02.00.000.132-RC*"}},
+    {"name":{"$match":"common-rest-shiro*02.00.000.132-RC*"}},
+    {"name":{"$match":"common-rest-test-utils*02.00.000.132-RC*"}}
+  ]
+}).include("repo","path","name")
+EOF
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data "${AQL}"
+
+
 TOKEN='YOUR_TOKEN_HERE'
+BASE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local'
+
+curl -sku "jeff.sikala@gsa.gov:${TOKEN}" -X DELETE \
+  "${BASE}/gov/gsa/cnxs/common-rest/common-rest/02.00.000.132"
+
+curl -sku "jeff.sikala@gsa.gov:${TOKEN}" -X DELETE \
+  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-shiro/02.00.000.132"
+
+curl -sku "jeff.sikala@gsa.gov:${TOKEN}" -X DELETE \
+  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-test-utils/02.00.000.132"
+
+curl -sku "jeff.sikala@gsa.gov:${TOKEN}" -X DELETE \
+  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-aggregator/02.00.000.132"
+
+
+
 
 read -r -d '' AQL <<'EOF'
 items.find({
@@ -17,22 +53,3 @@ curl -sku "sa_bamboo:${TOKEN}" \
   -X POST \
   "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
   --data "${AQL}"
-
-
-
-
-
-TOKEN='YOUR_TOKEN_HERE'
-BASE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local'
-
-curl -sku "sa_bamboo:${TOKEN}" -X DELETE \
-  "${BASE}/gov/gsa/cnxs/common-rest/common-rest/02.00.000.132"
-
-curl -sku "sa_bamboo:${TOKEN}" -X DELETE \
-  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-shiro/02.00.000.132"
-
-curl -sku "sa_bamboo:${TOKEN}" -X DELETE \
-  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-test-utils/02.00.000.132"
-
-curl -sku "sa_bamboo:${TOKEN}" -X DELETE \
-  "${BASE}/gov/gsa/cnxs/common-rest/common-rest-aggregator/02.00.000.132"
