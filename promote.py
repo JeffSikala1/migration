@@ -82,8 +82,6 @@ class Promote(object):
         """
         Determine packaging for artifacts that need an explicit type
         """
-        if artifact.endswith('tests.jar'):
-            return 'test-jar'
         if artifact.endswith('.tar.gz'):
             return 'tar.gz'
         if artifact.endswith('.tar'):
@@ -92,6 +90,14 @@ class Promote(object):
             return 'zip'
         if artifact.endswith('.jar'):
             return 'jar'
+        return None
+
+    def _get_classifier(self, artifact):
+        """
+        Determine classifier for artifacts that need one
+        """
+        if artifact.endswith('-tests.jar'):
+            return 'tests'
         return None
 
     def _get_pom_file(self, path, artifact):
@@ -124,14 +130,19 @@ class Promote(object):
         is_pom = artifact.endswith('.pom')
 
         if is_pom:
-            command.append('-DpomFile={0}'.format(
-                os.path.join(path, artifact)
-            ))
+            pom_path = os.path.join(path, artifact)
+            command.append('-DpomFile={0}'.format(pom_path))
         else:
+            pom_file = self._get_pom_file(path, artifact)
             command.append('-Dversion={0}'.format(self.version))
             command.append('-DgroupId={0}'.format(self.group))
             command.append('-DartifactId={0}'.format(self.component))
+            command.append('-DpomFile={0}'.format(pom_file))
             command.append('-DgeneratePom=false')
+
+            classifier = self._get_classifier(artifact)
+            if classifier:
+                command.append('-Dclassifier={0}'.format(classifier))
 
         if self.maven_args:
             for argument in self.maven_args:
