@@ -115,3 +115,110 @@ sh-5.1$ grep -nEi 'datasource|min-pool|max-pool|blocking-timeout|statistics-enab
 550:            <coordinator-environment statistics-enabled="${wildfly.transactions.statistics-enabled:${wildfly.statistics-enabled:true}}" default-timeout="300"/>
 553:        <subsystem xmlns="urn:jboss:domain:undertow:14.0" statistics-enabled="${wildfly.undertow.statistics-enabled:${wildfly.statistics-enabled:false}}">
 584:        <subsystem xmlns="urn:jboss:domain:webservices:2.0" statistics-enabled="${wildfly.webservices.statistics-enabled:${wildfly.statistics-enabled:false}}">
+
+
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ kubectl exec -n ingress-nginx -it portal-6665984d57-789jl -- sh
+sh-5.1$ sed -n '160,195p' /app/jboss-eap-8.0/standalone/configuration/standalone-full.xml
+            </thread-pool>
+        </subsystem>
+        <subsystem xmlns="urn:jboss:domain:bean-validation:1.0"/>
+        <subsystem xmlns="urn:jboss:domain:core-management:1.0"/>
+        <subsystem xmlns="urn:jboss:domain:datasources:7.0">
+            <datasources>
+                <xa-datasource jndi-name="java:jboss/datasources/XAConexusDS" pool-name="XAConexusDS" enabled="true" use-ccm="true">
+                    <xa-datasource-property name="URL">
+                        ${env.DB_ENDPOINT}
+                    </xa-datasource-property>
+                    <xa-datasource-class>org.postgresql.xa.PGXADataSource</xa-datasource-class>
+                    <driver>postgres</driver>
+                    <xa-pool>
+                        <max-pool-size>30</max-pool-size>
+                        <is-same-rm-override>false</is-same-rm-override>
+                        <no-tx-separate-pools>true</no-tx-separate-pools>
+                    </xa-pool>
+                    <security>
+                        <user-name>${env.DB_USER}</user-name>
+                        <password>${env.NSFS_APP_PASS}</password>
+                    </security>
+                    <validation>
+                        <valid-connection-checker class-name="org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker"/>
+                        <validate-on-match>true</validate-on-match>
+                        <background-validation>false</background-validation>
+                        <exception-sorter class-name="org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter"/>
+                    </validation>
+                    <timeout>
+                        <allocation-retry>600</allocation-retry>
+                        <allocation-retry-wait-millis>60000</allocation-retry-wait-millis>
+                    </timeout>
+                </xa-datasource>
+                <drivers>
+                    <driver name="postgres" module="org.postgres">
+                        <xa-datasource-class>org.postgresql.xa.PGXADataSource</xa-datasource-class>
+                    </driver>
+
+
+                    2026-03-31 13:08:28,368 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public default java.lang.String gov.gsa.nsfs.services.ApplicationPropertyService.getTokenKey() took 0 msecs to execute
+2026-03-31 13:08:28,369 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public void gov.gsa.nsfs.restcommon.jwt.ConexusJwtokenMgr.validateClaims(java.lang.String,gov.gsa.nsfs.domains.party.Person,gov.gsa.nsfs.restcommon.jwt.AuthenticationType,gov.gsa.nsfs.utils.UserAuthLevel) took 1 msecs to execute
+2026-03-31 13:08:28,375 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public java.util.List gov.gsa.nsfs.managers.user.UserScopeManagerBean.findScopesForUserId(long) took 2 msecs to execute
+2026-03-31 13:08:28,390 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public gov.gsa.nsfs.restcommon.resources.GetAllList gov.gsa.nsfs.managers.agreement.AgreementManagerBean.findTaskOrdersForUser(java.lang.Long,gov.gsa.nsfs.restcommon.queryDsl.RestRequestBuilder,java.util.List) took 11 msecs to execute
+2026-03-31 13:08:28,391 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-7) *** x-request-id acwNnPucuondlcOAEt2uEQAAAEk took 50 ms ***
+2026-03-31 13:08:28,509 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public boolean gov.gsa.nsfs.beans.order.TaskOrderServiceBean.verifyIfLoggedInUserIsCoCor() took 3 msecs to execute
+2026-03-31 13:08:28,511 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-7) *** x-request-id acwNnPucuondlcOAEt2uEgAAAFE GET /secure/rest/users/me/permissions ***
+2026-03-31 13:08:28,516 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public boolean gov.gsa.nsfs.beans.order.TaskOrderServiceBean.verifyIfLoggedInUserIsCoCor() took 2 msecs to execute
+2026-03-31 13:08:28,516 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public boolean gov.gsa.nsfs.beans.order.TaskOrderServiceBean.verifyIfLoggedInUserIsCoCor() took 2 msecs to execute
+2026-03-31 13:08:28,517 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-8) *** x-request-id acwNnAqqC_gyk3XQS9Q0zQAAAMo GET /secure/rest/users/me/preference ***
+2026-03-31 13:08:28,518 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-9) *** x-request-id acwNnK3r7VI5VrjuKExbeAAAAJQ GET /secure/rest/taskOrderScoped/users/me/permissions ***
+2026-03-31 13:08:28,530 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public boolean gov.gsa.nsfs.beans.ApplicationPropertyServiceBean.isDevEnvironment() took 0 msecs to execute
+2026-03-31 13:08:28,530 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public boolean gov.gsa.nsfs.beans.ApplicationPropertyServiceBean.isDevEnvironment() took 0 msecs to execute
+2026-03-31 13:08:28,535 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public boolean gov.gsa.nsfs.managers.user.UserRestrictedHierarchyCodeManagerBean.doesUserHaveUnrestrictedAhcAccess() took 3 msecs to execute
+2026-03-31 13:08:28,538 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public boolean gov.gsa.nsfs.managers.user.UserRestrictedHierarchyCodeManagerBean.doesUserHaveUnrestrictedAhcAccess() took 6 msecs to execute
+2026-03-31 13:08:28,539 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public default java.lang.String gov.gsa.nsfs.services.ApplicationPropertyService.getTokenKey() took 1 msecs to execute
+2026-03-31 13:08:28,542 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public void gov.gsa.nsfs.restcommon.jwt.ConexusJwtokenMgr.validateClaims(java.lang.String,gov.gsa.nsfs.domains.party.Person,gov.gsa.nsfs.restcommon.jwt.AuthenticationType,gov.gsa.nsfs.utils.UserAuthLevel) took 4 msecs to execute
+2026-03-31 13:08:28,543 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public default java.lang.String gov.gsa.nsfs.services.ApplicationPropertyService.getTokenKey() took 0 msecs to execute
+2026-03-31 13:08:28,545 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public void gov.gsa.nsfs.restcommon.jwt.ConexusJwtokenMgr.validateClaims(java.lang.String,gov.gsa.nsfs.domains.party.Person,gov.gsa.nsfs.restcommon.jwt.AuthenticationType,gov.gsa.nsfs.utils.UserAuthLevel) took 2 msecs to execute
+2026-03-31 13:08:28,548 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public java.util.Optional gov.gsa.nsfs.managers.user.UserManagerBean.getUserPreference(java.lang.Long) took 2 msecs to execute
+2026-03-31 13:08:28,549 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-8) *** x-request-id acwNnAqqC_gyk3XQS9Q0zQAAAMo took 32 ms ***
+2026-03-31 13:08:28,551 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public java.util.List gov.gsa.nsfs.managers.security.PermissionTypeManagerBean.permissionNamesForPerson(java.lang.Long,gov.gsa.nsfs.domains.core.ScopeType) took 4 msecs to execute
+2026-03-31 13:08:28,552 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public boolean gov.gsa.nsfs.beans.ApplicationPropertyServiceBean.isDevEnvironment() took 1 msecs to execute
+2026-03-31 13:08:28,552 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-7) public java.util.List gov.gsa.nsfs.rest.services.validation.UserRSMgrBean.getPermissionsList(java.lang.Long) took 6 msecs to execute
+2026-03-31 13:08:28,552 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-7) *** x-request-id acwNnPucuondlcOAEt2uEgAAAFE took 41 ms ***
+2026-03-31 13:08:28,554 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public boolean gov.gsa.nsfs.managers.user.UserRestrictedHierarchyCodeManagerBean.doesUserHaveUnrestrictedAhcAccess() took 2 msecs to execute
+2026-03-31 13:08:28,558 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public boolean gov.gsa.nsfs.beans.order.TaskOrderServiceBean.verifyIfLoggedInUserIsCoCor() took 2 msecs to execute
+2026-03-31 13:08:28,558 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public default java.lang.String gov.gsa.nsfs.services.ApplicationPropertyService.getTokenKey() took 0 msecs to execute
+2026-03-31 13:08:28,559 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-10) *** x-request-id acwNnPucuondlcOAEt2uFAAAAEc GET /secure/rest/taskOrderScoped/users/me ***
+2026-03-31 13:08:28,560 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public void gov.gsa.nsfs.restcommon.jwt.ConexusJwtokenMgr.validateClaims(java.lang.String,gov.gsa.nsfs.domains.party.Person,gov.gsa.nsfs.restcommon.jwt.AuthenticationType,gov.gsa.nsfs.utils.UserAuthLevel) took 2 msecs to execute
+2026-03-31 13:08:28,565 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public java.util.List gov.gsa.nsfs.managers.security.PermissionTypeManagerBean.permissionNamesForPerson(java.lang.Long,gov.gsa.nsfs.domains.core.ScopeType) took 4 msecs to execute
+2026-03-31 13:08:28,566 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public java.util.List gov.gsa.nsfs.rest.services.validation.UserRSMgrBean.getPermissionsList(java.lang.Long,gov.gsa.nsfs.domains.core.ScopeType) took 5 msecs to execute
+2026-03-31 13:08:28,567 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-9) *** x-request-id acwNnK3r7VI5VrjuKExbeAAAAJQ took 49 ms ***
+2026-03-31 13:08:28,569 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public boolean gov.gsa.nsfs.beans.ApplicationPropertyServiceBean.isDevEnvironment() took 0 msecs to execute
+2026-03-31 13:08:28,573 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public boolean gov.gsa.nsfs.managers.user.UserRestrictedHierarchyCodeManagerBean.doesUserHaveUnrestrictedAhcAccess() took 3 msecs to execute
+2026-03-31 13:08:28,577 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public default java.lang.String gov.gsa.nsfs.services.ApplicationPropertyService.getTokenKey() took 0 msecs to execute
+2026-03-31 13:08:28,578 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public void gov.gsa.nsfs.restcommon.jwt.ConexusJwtokenMgr.validateClaims(java.lang.String,gov.gsa.nsfs.domains.party.Person,gov.gsa.nsfs.restcommon.jwt.AuthenticationType,gov.gsa.nsfs.utils.UserAuthLevel) took 1 msecs to execute
+2026-03-31 13:08:28,585 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public java.util.List gov.gsa.nsfs.managers.user.UserScopeManagerBean.findScopesForUserId(long) took 3 msecs to execute
+2026-03-31 13:08:28,595 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-10) *** x-request-id acwNnPucuondlcOAEt2uFAAAAEc took 36 ms ***
+2026-03-31 13:08:28,748 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public boolean gov.gsa.nsfs.beans.order.TaskOrderServiceBean.verifyIfLoggedInUserIsCoCor() took 2 msecs to execute
+2026-03-31 13:08:28,748 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public boolean gov.gsa.nsfs.beans.order.TaskOrderServiceBean.verifyIfLoggedInUserIsCoCor() took 3 msecs to execute
+2026-03-31 13:08:28,749 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public boolean gov.gsa.nsfs.beans.order.TaskOrderServiceBean.verifyIfLoggedInUserIsCoCor() took 2 msecs to execute
+2026-03-31 13:08:28,749 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-9) *** x-request-id acwNnK3r7VI5VrjuKExbeQAAAIU GET /secure/rest/taskOrderScoped/users/me/permissions ***
+2026-03-31 13:08:28,750 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-10) *** x-request-id acwNnPucuondlcOAEt2uFQAAAFU GET /secure/rest/users/me/permissions ***
+2026-03-31 13:08:28,752 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-8) *** x-request-id acwNnAqqC_gyk3XQS9Q0zwAAAM4 GET /secure/rest/bulletins ***
+2026-03-31 13:08:28,784 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public boolean gov.gsa.nsfs.beans.ApplicationPropertyServiceBean.isDevEnvironment() took 0 msecs to execute
+2026-03-31 13:08:28,784 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public boolean gov.gsa.nsfs.beans.ApplicationPropertyServiceBean.isDevEnvironment() took 0 msecs to execute
+2026-03-31 13:08:28,787 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public boolean gov.gsa.nsfs.managers.user.UserRestrictedHierarchyCodeManagerBean.doesUserHaveUnrestrictedAhcAccess() took 2 msecs to execute
+2026-03-31 13:08:28,788 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public boolean gov.gsa.nsfs.beans.ApplicationPropertyServiceBean.isDevEnvironment() took 0 msecs to execute
+2026-03-31 13:08:28,790 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public boolean gov.gsa.nsfs.managers.user.UserRestrictedHierarchyCodeManagerBean.doesUserHaveUnrestrictedAhcAccess() took 3 msecs to execute
+2026-03-31 13:08:28,792 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public boolean gov.gsa.nsfs.managers.user.UserRestrictedHierarchyCodeManagerBean.doesUserHaveUnrestrictedAhcAccess() took 2 msecs to execute
+2026-03-31 13:08:28,792 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public default java.lang.String gov.gsa.nsfs.services.ApplicationPropertyService.getTokenKey() took 0 msecs to execute
+2026-03-31 13:08:28,794 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public void gov.gsa.nsfs.restcommon.jwt.ConexusJwtokenMgr.validateClaims(java.lang.String,gov.gsa.nsfs.domains.party.Person,gov.gsa.nsfs.restcommon.jwt.AuthenticationType,gov.gsa.nsfs.utils.UserAuthLevel) took 2 msecs to execute
+2026-03-31 13:08:28,796 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public default java.lang.String gov.gsa.nsfs.services.ApplicationPropertyService.getTokenKey() took 0 msecs to execute
+2026-03-31 13:08:28,796 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public default java.lang.String gov.gsa.nsfs.services.ApplicationPropertyService.getTokenKey() took 0 msecs to execute
+2026-03-31 13:08:28,802 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public java.util.List gov.gsa.nsfs.managers.security.PermissionTypeManagerBean.permissionNamesForPerson(java.lang.Long,gov.gsa.nsfs.domains.core.ScopeType) took 6 msecs to execute
+2026-03-31 13:08:28,803 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-9) public java.util.List gov.gsa.nsfs.rest.services.validation.UserRSMgrBean.getPermissionsList(java.lang.Long,gov.gsa.nsfs.domains.core.ScopeType) took 7 msecs to execute
+2026-03-31 13:08:28,804 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-9) *** x-request-id acwNnK3r7VI5VrjuKExbeQAAAIU took 54 ms ***
+2026-03-31 13:08:28,806 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public void gov.gsa.nsfs.restcommon.jwt.ConexusJwtokenMgr.validateClaims(java.lang.String,gov.gsa.nsfs.domains.party.Person,gov.gsa.nsfs.restcommon.jwt.AuthenticationType,gov.gsa.nsfs.utils.UserAuthLevel) took 10 msecs to execute
+2026-03-31 13:08:28,809 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public void gov.gsa.nsfs.restcommon.jwt.ConexusJwtokenMgr.validateClaims(java.lang.String,gov.gsa.nsfs.domains.party.Person,gov.gsa.nsfs.restcommon.jwt.AuthenticationType,gov.gsa.nsfs.utils.UserAuthLevel) took 13 msecs to execute
+2026-03-31 13:08:28,812 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public java.util.List gov.gsa.nsfs.managers.security.PermissionTypeManagerBean.permissionNamesForPerson(java.lang.Long,gov.gsa.nsfs.domains.core.ScopeType) took 5 msecs to execute
+2026-03-31 13:08:28,813 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-10) public java.util.List gov.gsa.nsfs.rest.services.validation.UserRSMgrBean.getPermissionsList(java.lang.Long) took 7 msecs to execute
+2026-03-31 13:08:28,815 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-10) *** x-request-id acwNnPucuondlcOAEt2uFQAAAFU took 65 ms ***
+2026-03-31 13:08:28,823 INFO  [gov.gsa.nsfs.interceptors.PerformanceLog] (default task-8) public gov.gsa.nsfs.restcommon.resources.GetAllList gov.gsa.nsfs.managers.bulletin.BulletinBoardManagerBean.findAllBulletinBoards(gov.gsa.nsfs.restcommon.queryDsl.RestRequestBuilder) took 5 msecs to execute
+2026-03-31 13:08:28,824 INFO  [gov.gsa.nsfs.restcommon.filters.ConexusSubjectFilter] (default task-8) *** x-request-id acwNnAqqC_gyk3XQS9Q0zwAAAM4 took 72 ms ***
