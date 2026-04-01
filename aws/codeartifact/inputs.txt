@@ -1,13 +1,26 @@
-kubectl exec -it webservice-6cb7884d94-jvd6n -n ingress-nginx -- printenv | grep -i -E 'jms|artemis|remotefuse|broker'
+kubectl get volumeattachments
 
-kubectl exec -it webservice-6cb7884d94-jvd6n -n ingress-nginx -- sh
-grep -R "RemoteFuseJMS\|artemis\|jms\|connection-factory" /opt /deployments /app 2>/dev/null
-
-kubectl exec -it jms-695485c495-nf9gm -n ingress-nginx -- ss -ltnp
+kubectl get volumeattachments.storage.k8s.io
+kubectl describe volumeattachments.storage.k8s.io
 
 
+kubectl get events -A --sort-by=.lastTimestamp | egrep -i 'volume|mount|attach|detach|failedmount|failedattach'
+
+kubectl get volumeattachments.storage.k8s.io
+kubectl describe volumeattachments.storage.k8s.io
+
+kubectl describe pod webservice-6cb7884d94-jvd6n -n ingress-nginx
 kubectl describe pod jms-695485c495-nf9gm -n ingress-nginx
-kubectl describe svc jms -n ingress-nginx
 
-kubectl logs jms-695485c495-nf9gm -n ingress-nginx --since=2h | egrep -i 'xa|artemis|rollback|prepare|session|connection|consumer|error|warn'
+kubectl logs -n kube-system deploy/efs-csi-controller --since=2h
+kubectl logs -n kube-system daemonset/efs-csi-node --since=2h
 
+kubectl get pods -n kube-system | grep efs-csi
+kubectl logs -n kube-system <efs-csi-controller-pod> --since=2h
+kubectl logs -n kube-system <efs-csi-node-pod> --since=2h
+
+
+kubectl exec -it jms-695485c495-nf9gm -n ingress-nginx -- sh -c 'touch /app/jboss_temp/.mount_test && ls -l /app/jboss_temp/.mount_test && rm -f /app/jboss_temp/.mount_test'
+
+
+kubectl exec -it jms-695485c495-nf9gm -n ingress-nginx -- sh -c 'touch /app/conexus/reports/.mount_test && ls -l /app/conexus/reports/.mount_test && rm -f /app/conexus/reports/.mount_test'
