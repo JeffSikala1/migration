@@ -1,23 +1,26 @@
-kubectl logs -n ingress-nginx jms-596b9697cd-nqck7 | grep -i "AMQ"
-
-
 kubectl exec -it jms-596b9697cd-nqck7 -n ingress-nginx -- bash
 
-ss -tulnp | grep 8080
 
-kubectl exec -it webservice-6cb7884d94-jvd6n -n ingress-nginx -- bash
-
-curl -v http://jms:8080
-
-kubectl get svc -n ingress-nginx
+ls -ld /app/jboss-eap-8.0/standalone/data/activemq
 
 
-kubectl get svc -n ingress-nginx | grep jms
+df -h | grep -i jboss
+
+mount | grep -i efs
 
 
-cat /app/jboss-eap-8.0/standalone/configuration/standalone-full.xml | grep -i acceptor -A 5
+time dd if=/dev/zero of=/app/jboss-eap-8.0/standalone/data/activemq/testfile bs=1M count=50 oflag=dsync
 
 
-kubectl delete pod jms-596b9697cd-nqck7 -n ingress-nginx
+time dd if=/app/jboss-eap-8.0/standalone/data/activemq/testfile of=/dev/null bs=1M
 
-kubectl rollout restart deployment webservice -n ingress-nginx
+rm -f /app/jboss-eap-8.0/standalone/data/activemq/testfile
+
+ls -l /app/jboss-eap-8.0/standalone/data/activemq/lock
+
+lsof | grep activemq
+
+
+kubectl get pvc -n ingress-nginx | grep jbosstemp
+
+kubectl describe pvc jbosstemp -n ingress-nginx
