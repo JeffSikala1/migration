@@ -516,7 +516,12 @@ Finalize Job:
             RELEASE_BRANCH="release/${RELEASE_VERSION}"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1 || true
+
+            # Explicitly fetch the refs we care about instead of assuming origin/main exists locally
+            git fetch origin \
+              "+refs/heads/main:refs/remotes/origin/main" \
+              "+refs/tags/*:refs/tags/*" \
+              >/dev/null 2>&1 || true
 
             if ! git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
               echo "ERROR: release tag ${RELEASE_VERSION} does not exist in remote; refusing to delete release branch."
@@ -529,12 +534,21 @@ Finalize Job:
               exit 1
             fi
 
+            MAIN_COMMIT="$(git rev-parse origin/main 2>/dev/null || true)"
+            if [ -z "${MAIN_COMMIT}" ]; then
+              echo "ERROR: could not resolve origin/main after explicit fetch"
+              exit 1
+            fi
+
+            echo "INFO: tag=${RELEASE_VERSION} tag_commit=${TAG_COMMIT} origin/main=${MAIN_COMMIT}"
+
             if ! git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
               echo "ERROR: tag commit ${TAG_COMMIT} is not contained in origin/main; refusing to delete release branch."
               exit 1
             fi
 
             if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
+              echo "Deleting remote release branch ${RELEASE_BRANCH}"
               git push origin --delete "${RELEASE_BRANCH}"
             else
               echo "Release branch ${RELEASE_BRANCH} already absent"
