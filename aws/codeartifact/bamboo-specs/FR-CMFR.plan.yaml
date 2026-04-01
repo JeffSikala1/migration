@@ -454,13 +454,31 @@ Finalize Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1
 
-            if git tag | grep -qx "${RELEASE_VERSION}"; then
-              echo "INFO: release ${RELEASE_VERSION} already finalized; skipping."
+            TAG_EXISTS=false
+            MAIN_HAS_TAG=false
+            BRANCH_EXISTS=false
+
+            if git rev-parse -q --verify "refs/tags/${RELEASE_VERSION}" >/dev/null 2>&1; then
+              TAG_EXISTS=true
+            fi
+
+            if [ "${TAG_EXISTS}" = "true" ] && git branch -r --contains "${RELEASE_VERSION}" | sed 's/^[[:space:]]*//' | grep -q '^origin/main$'; then
+              MAIN_HAS_TAG=true
+            fi
+
+            if git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
+              BRANCH_EXISTS=true
+            fi
+
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${MAIN_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
+              echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            echo "INFO: tag_exists=${TAG_EXISTS}, main_has_tag=${MAIN_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
+
+            if ! git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finalize cannot continue."
               exit 1
             fi
@@ -504,10 +522,10 @@ Finalize Job:
               exit 1
             fi
 
-            if git tag | grep -qx "${RELEASE_TAG}"; then
-              echo "INFO: release tag ${RELEASE_TAG} already exists; skipping finalize merge/tag/push."
-              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
-              exit 0
+            TAG_EXISTS=false
+            if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+              TAG_EXISTS=true
+              echo "INFO: release tag ${RELEASE_TAG} already exists; will reuse it if merge is still needed."
             fi
 
             if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/main$"; then
@@ -528,10 +546,17 @@ Finalize Job:
               echo "No SNAPSHOT versions found to remove before tagging"
             fi
 
-            git tag "${RELEASE_TAG}"
+            if [ "${TAG_EXISTS}" = "false" ]; then
+              git tag "${RELEASE_TAG}"
+            else
+              echo "INFO: tag ${RELEASE_TAG} already exists; not recreating."
+            fi
 
             git push origin main
-            git push origin "refs/tags/${RELEASE_TAG}"
+
+            if [ "${TAG_EXISTS}" = "false" ]; then
+              git push origin "refs/tags/${RELEASE_TAG}"
+            fi
 
     - inject-variables:
         file: skip.properties
