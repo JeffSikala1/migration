@@ -214,17 +214,20 @@ Promote Job:
             [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            GROUP_ID="${bamboo.maven.groupId}"
-            ARTIFACT_ID="${bamboo.maven.artifactId}"
-            GROUP_PATH="${GROUP_ID//./\/}"
-
-            EXPECTED_POM="${ARTIFACT_ID}-${RELEASE_VERSION}.pom"
+            DOMAIN_GROUP_PATH="gov/gsa/cnxs/domain"
+            DOMAIN_TEST_GROUP_PATH="gov/gsa/cnxs/domain/test"
 
             AQL=$(cat <<EOF
             items.find({
               "repo":{"\$eq":"conexus-release-local"},
-              "path":{"\$eq":"${GROUP_PATH}/${ARTIFACT_ID}/${RELEASE_VERSION}"},
-              "name":{"\$match":"${ARTIFACT_ID}-${RELEASE_VERSION}*"}
+              "\$or":[
+                {"path":{"\$eq":"${DOMAIN_GROUP_PATH}/domain-aggregator/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${DOMAIN_GROUP_PATH}/domain/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${DOMAIN_TEST_GROUP_PATH}/domain-test-aggregator/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${DOMAIN_TEST_GROUP_PATH}/domain-test-api/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${DOMAIN_TEST_GROUP_PATH}/domain-test-ear/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${DOMAIN_TEST_GROUP_PATH}/domain-integration/${RELEASE_VERSION}"}}
+              ]
             }).include("name","repo","path")
             EOF
             )
@@ -237,18 +240,67 @@ Promote Job:
 
             echo "${RESULT}" > "${bamboo.build.working.directory}/release-check.json"
 
-            pom_count=$(echo "${RESULT}" | grep -F -c "\"name\" : \"${EXPECTED_POM}\"" || true)
+            expected=(
+              "domain-aggregator-${RELEASE_VERSION}.pom"
+              "domain-${RELEASE_VERSION}.pom"
+              "domain-${RELEASE_VERSION}.jar"
+              "domain-${RELEASE_VERSION}-tests.jar"
+              "domain-test-aggregator-${RELEASE_VERSION}.pom"
+              "domain-test-api-${RELEASE_VERSION}.pom"
+              "domain-test-api-${RELEASE_VERSION}.jar"
+              "domain-test-api-${RELEASE_VERSION}-tests.jar"
+              "domain-test-ear-${RELEASE_VERSION}.pom"
+              "domain-test-ear-${RELEASE_VERSION}.ear"
+              "domain-integration-${RELEASE_VERSION}.pom"
+              "domain-integration-${RELEASE_VERSION}.jar"
+              "domain-integration-${RELEASE_VERSION}-tests.jar"
+            )
 
-            if [ "${pom_count}" -eq 0 ]; then
-              echo "INFO: no release artifacts found for ${RELEASE_VERSION}; promotion may proceed."
+            found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            
+            items = {(item["path"], item["name"]) for item in data.get("results", [])}
+            
+            expected = [
+                ("gov/gsa/cnxs/domain/domain-aggregator/${RELEASE_VERSION}", "domain-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/domain/domain/${RELEASE_VERSION}", "domain-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/domain/domain/${RELEASE_VERSION}", "domain-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/domain/domain/${RELEASE_VERSION}", "domain-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/domain/test/domain-test-aggregator/${RELEASE_VERSION}", "domain-test-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/domain/test/domain-test-api/${RELEASE_VERSION}", "domain-test-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/domain/test/domain-test-api/${RELEASE_VERSION}", "domain-test-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/domain/test/domain-test-api/${RELEASE_VERSION}", "domain-test-api-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/domain/test/domain-test-ear/${RELEASE_VERSION}", "domain-test-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/domain/test/domain-test-ear/${RELEASE_VERSION}", "domain-test-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/domain/test/domain-integration/${RELEASE_VERSION}", "domain-integration-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/domain/test/domain-integration/${RELEASE_VERSION}", "domain-integration-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/domain/test/domain-integration/${RELEASE_VERSION}", "domain-integration-${RELEASE_VERSION}-tests.jar"),
+            ]
+            
+            print(sum(1 for x in expected if x in items))
+            PY
+            )
+
+            total_expected=13
+
+            echo "INFO: found ${found_count} of ${total_expected} expected Domain release artifacts"
+
+            if [ "${found_count}" -eq 0 ]; then
+              echo "INFO: no Domain release artifacts found for ${RELEASE_VERSION}; promotion may proceed."
               exit 0
             fi
 
-            if [ "${pom_count}" -ge 1 ]; then
-              echo "INFO: release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
+            if [ "${found_count}" -eq "${total_expected}" ]; then
+              echo "INFO: all Domain release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
+
+            echo "ERROR: partial Domain release already exists for ${RELEASE_VERSION}."
+            echo "Expected full artifact family:"
+            printf '  %s\n' "${expected[@]}"
+            exit 1
 
     - inject-variables:
         file: skip.properties
@@ -277,8 +329,58 @@ Promote Job:
 
             python3 ../release-scripts/promote.py \
               conexus-rc-local \
-              ${bamboo.maven.groupId} \
-              ${bamboo.maven.artifactId} \
+              gov.gsa.cnxs.domain \
+              domain-aggregator \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.domain \
+              domain \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.domain.test \
+              domain-test-aggregator \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.domain.test \
+              domain-test-api \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.domain.test \
+              domain-test-ear \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.domain.test \
+              domain-integration \
               "${RELEASE_VERSION}" \
               --username "sa_bamboo" \
               --password "${bamboo.artifactory_access_token_secret}" \
