@@ -17,26 +17,42 @@ curl -sku "$auth" -X DELETE \
 
 git fetch origin --prune --tags
 
-echo "=== origin/main ==="
+echo "=== verify current state before tag cleanup ==="
 git rev-parse origin/main
-
-echo "=== release branch tip ==="
 git rev-parse origin/release/02.00.000.132
-
-echo "=== tag commit ==="
 git rev-parse 02.00.000.132
-
-echo "=== tag commit subject ==="
+git log -1 --oneline origin/release/02.00.000.132
 git log -1 --oneline 02.00.000.132
 
-echo "=== release tip subject ==="
-git log -1 --oneline origin/release/02.00.000.132
 
-echo "=== is tag commit ancestor of release branch? ==="
-git merge-base --is-ancestor 02.00.000.132 origin/release/02.00.000.132 && echo YES || echo NO
+git tag -d 02.00.000.132
+git push origin :refs/tags/02.00.000.132
+git fetch origin --prune --tags
 
-echo "=== is tag commit ancestor of main? ==="
-git merge-base --is-ancestor 02.00.000.132 origin/main && echo YES || echo NO
 
-echo "=== commits on release not in main ==="
-git log --oneline origin/main..origin/release/02.00.000.132
+echo "=== local tag check ==="
+git tag | grep '^02\.00\.000\.132$' || echo "local tag removed"
+
+echo "=== remote tag check ==="
+git ls-remote --tags origin | grep 'refs/tags/02\.00\.000\.132$' || echo "remote tag removed"
+
+echo "=== release branch still exists ==="
+git ls-remote --heads origin "refs/heads/release/02.00.000.132"
+
+
+=== verify current state after tag cleanup ==="
+
+git fetch origin --prune --tags
+
+echo "=== tag exists again ==="
+git tag | grep '^02\.00\.000\.132$'
+
+echo "=== tag target ==="
+git rev-parse 02.00.000.132
+git log -1 --oneline 02.00.000.132
+
+echo "=== main contains tag commit ==="
+git branch -r --contains 02.00.000.132
+
+echo "=== release branch removed ==="
+git ls-remote --heads origin "refs/heads/release/02.00.000.132" || true
