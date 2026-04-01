@@ -485,7 +485,12 @@ Finalize Job:
             RELEASE_BRANCH="release/${RELEASE_VERSION}"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
+
+            # Explicitly fetch the refs we care about
+            git fetch origin \
+              "+refs/heads/main:refs/remotes/origin/main" \
+              "+refs/tags/*:refs/tags/*" \
+              >/dev/null 2>&1 || true
 
             TAG_EXISTS=false
             MAIN_HAS_TAG=false
@@ -495,13 +500,22 @@ Finalize Job:
               TAG_EXISTS=true
             fi
 
-            if [ "${TAG_EXISTS}" = "true" ] && git branch -r --contains "${RELEASE_VERSION}" | sed 's/^[[:space:]]*//' | grep -q '^origin/main$'; then
-              MAIN_HAS_TAG=true
+            if [ "${TAG_EXISTS}" = "true" ]; then
+              TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}" 2>/dev/null || true)"
+              MAIN_COMMIT="$(git rev-parse origin/main 2>/dev/null || true)"
+
+              if [ -n "${TAG_COMMIT}" ] && [ -n "${MAIN_COMMIT}" ]; then
+                if git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
+                  MAIN_HAS_TAG=true
+                fi
+              fi
             fi
 
             if git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
               BRANCH_EXISTS=true
             fi
+
+            echo "INFO: tag_exists=${TAG_EXISTS}, main_has_tag=${MAIN_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
 
             if [ "${TAG_EXISTS}" = "true" ] && [ "${MAIN_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
               echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
@@ -509,10 +523,8 @@ Finalize Job:
               exit 0
             fi
 
-            echo "INFO: tag_exists=${TAG_EXISTS}, main_has_tag=${MAIN_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
-
-            if ! git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
-              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finalize cannot continue."
+            if [ "${BRANCH_EXISTS}" != "true" ]; then
+              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist and release is not proven finalized on main."
               exit 1
             fi
 
