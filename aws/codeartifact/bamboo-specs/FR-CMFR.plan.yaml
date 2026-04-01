@@ -587,30 +587,23 @@ Finalize Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1 || true
 
-            tag_exists=false
-            main_has_tag=false
-            branch_exists=false
-
-            if git rev-parse -q --verify "refs/tags/${RELEASE_VERSION}" >/dev/null; then
-              tag_exists=true
-            fi
-
-            if [ "${tag_exists}" = "true" ] && git branch -r --contains "${RELEASE_VERSION}" | sed 's/^[[:space:]]*//' | grep -q '^origin/main$'; then
-              main_has_tag=true
-            fi
-
-            if git ls-remote --heads origin "${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
-              branch_exists=true
-            fi
-
-            echo "INFO: tag_exists=${tag_exists}, main_has_tag=${main_has_tag}, branch_exists=${branch_exists}"
-
-            if [ "${tag_exists}" != "true" ] || [ "${main_has_tag}" != "true" ]; then
-              echo "ERROR: release ${RELEASE_VERSION} is not fully finalized on main; refusing to delete release branch."
+            if ! git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+              echo "ERROR: release tag ${RELEASE_VERSION} does not exist in remote; refusing to delete release branch."
               exit 1
             fi
 
-            if [ "${branch_exists}" = "true" ]; then
+            TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}")"
+            if [ -z "${TAG_COMMIT}" ]; then
+              echo "ERROR: could not resolve tag commit for ${RELEASE_VERSION}"
+              exit 1
+            fi
+
+            if ! git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
+              echo "ERROR: tag commit ${TAG_COMMIT} is not contained in origin/main; refusing to delete release branch."
+              exit 1
+            fi
+
+            if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
               echo "Deleting remote release branch ${RELEASE_BRANCH}"
               git push origin --delete "${RELEASE_BRANCH}"
             else
