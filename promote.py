@@ -110,97 +110,129 @@ class Promote(object):
         pom_file = os.path.join(path, '.'.join(pieces))
         return pom_file
 
-    def _build_maven_cmd(self, path, artifact):
+    def _strip_version_suffixes(self, filename):
         """
-        Build the Maven command to upload an artifact
+        Remove version suffixes from a filename stem so related artifacts
+        can be grouped together.
+        """
+        stem = filename
+
+        if stem.endswith('.tar.gz'):
+            stem = stem[:-7]
+        else:
+            stem = os.path.splitext(stem)[0]
+
+        suffixes = [
+            f'-{self.version}-RC-tests',
+            f'-{self.version}-tests',
+            f'-{self.version}-RC',
+            f'-{self.version}',
+        ]
+
+        for suffix in suffixes:
+            if stem.endswith(suffix):
+                return stem[:-len(suffix)]
+
+        return stem
+
+    def _group_artifacts_to_publish(self):
+        """
+        Group staged artifacts by directory + logical artifact base name so that
+        a main jar, pom, and tests jar can be deployed in a single Maven command.
+        """
+        grouped = {}
+
+        for root, dirs, files in os.walk(self.staging_directory):
+            for file in files:
+                key = (root, self._strip_version_suffixes(file))
+                if key not in grouped:
+                    grouped[key] = {
+                        'root': root,
+                        'base': key[1],
+                        'pom': None,
+                        'main': None,
+                        'tests': None,
+                        'others': []
+                    }
+
+                entry = grouped[key]
+
+                if file.endswith('.pom'):
+                    entry['pom'] = file
+                elif file.endswith('-tests.jar'):
+                    entry['tests'] = file
+                elif file.endswith('.jar'):
+                    entry['main'] = file
+                else:
+                    entry['others'].append(file)
+
+        return list(grouped.values())
+
+    def _build_group_maven_cmd(self, artifact_group):
+        """
+        Build a single Maven deploy-file command for one logical artifact group.
         """
         mvn = '/usr/bin/mvn'
         deploy = 'deploy:deploy-file'
-        file_arg = '-Dfile={0}'.format(os.path.join(path, artifact))
-        url = '-Durl={0}/artifactory/{1}'.format(self.server, self.release_repo)
         settings_xml = self.settings_xml or '/usr/share/maven/conf/settings-release.xml'
+        url = f'-Durl={self.server}/artifactory/{self.release_repo}'
         repo_id = '-DrepositoryId=central'
 
-        command = [mvn, deploy, file_arg, url, repo_id, '-s', settings_xml]
+        root = artifact_group['root']
+        pom = artifact_group['pom']
+        main = artifact_group['main']
+        tests = artifact_group['tests']
 
-        is_pom = artifact.endswith('.pom')
-        classifier = self._get_classifier(artifact)
-        packaging = self._get_packaging(artifact)
+        command = [mvn, deploy, url, repo_id, '-s', settings_xml]
 
-        if is_pom:
-            # pom-only component such as aggregator
-            pom_path = os.path.join(path, artifact)
-            command.append('-DpomFile={0}'.format(pom_path))
+        if pom and not main and not tests:
+            pom_path = os.path.join(root, pom)
+            command.extend([
+                f'-Dfile={pom_path}',
+                f'-DpomFile={pom_path}'
+            ])
+            return command
 
-        elif classifier:
-            # classified artifact like *-tests.jar
-            # DO NOT pass pomFile here or Maven will try to re-upload the pom
-            command.append('-DgroupId={0}'.format(self.group))
-            command.append('-DartifactId={0}'.format(self.component))
-            command.append('-Dversion={0}'.format(self.version))
-            command.append('-Dclassifier={0}'.format(classifier))
-            command.append('-Dpackaging={0}'.format(packaging or 'jar'))
+        if not pom:
+            raise RuntimeError(
+                f"Missing pom file for artifact group '{artifact_group['base']}' in {root}"
+            )
 
+        pom_path = os.path.join(root, pom)
+
+        if main:
+            main_path = os.path.join(root, main)
+            command.extend([
+                f'-Dfile={main_path}',
+                f'-DpomFile={pom_path}',
+                '-DgeneratePom=false'
+            ])
         else:
-            # primary artifact; publish the artifact together with its pom
-            command.append('-DgroupId={0}'.format(self.group))
-            command.append('-DartifactId={0}'.format(self.component))
-            command.append('-Dversion={0}'.format(self.version))
-            command.append('-DgeneratePom=false')
+            raise RuntimeError(
+                f"Missing main artifact for artifact group '{artifact_group['base']}' in {root}"
+            )
 
-            pom_file = self._get_pom_file(path, artifact)
-            command.append('-DpomFile={0}'.format(pom_file))
+        attached_files = []
+        attached_classifiers = []
+        attached_types = []
 
-            if packaging:
-                command.append('-Dpackaging={0}'.format(packaging))
+        if tests:
+            attached_files.append(os.path.join(root, tests))
+            attached_classifiers.append('tests')
+            attached_types.append('jar')
+
+        if attached_files:
+            command.extend([
+                f"-Dfiles={','.join(attached_files)}",
+                f"-Dclassifiers={','.join(attached_classifiers)}",
+                f"-Dtypes={','.join(attached_types)}"
+            ])
 
         if self.maven_args:
             for argument in self.maven_args:
-                command.append('-D{0}'.format(argument))
+                command.append(f'-D{argument}')
 
         return command
-
-    def _artifacts_to_publish(self):
-        """
-        Walk the staging area looking for artifacts to upload.
-
-        Rules:
-        - If a directory contains only a pom, publish the pom.
-        - If a directory contains a main artifact (jar/tar/zip/etc), publish that main artifact
-          and do not publish the standalone pom separately.
-        - If a directory contains classified artifacts like *-tests.jar, publish them after the
-          main artifact, but do not publish the pom separately.
-        """
-        artifacts = []
-
-        def priority(filename):
-            if filename.endswith('.pom'):
-                return 99
-            if filename.endswith('-tests.jar'):
-                return 2
-            return 1
-
-        for root, dirs, files in os.walk(self.staging_directory):
-            if not files:
-                continue
-
-            poms = [f for f in files if f.endswith('.pom')]
-            non_poms = [f for f in files if not f.endswith('.pom')]
-
-            if non_poms:
-                for file in sorted(non_poms, key=priority):
-                    artifacts.append({
-                        'file': file,
-                        'root': root
-                    })
-            else:
-                for file in sorted(poms, key=priority):
-                    artifacts.append({
-                        'file': file,
-                        'root': root
-                    })
-
-        return artifacts
 
     def _remove_local_artifacts(self, artifacts):
         """
@@ -211,23 +243,64 @@ class Promote(object):
 
     def _publish_artifacts(self):
         """
-        Publish artifacts to Artifactory
+        Publish artifacts to Artifactory as grouped Maven deploy operations.
         """
         success = []
         failed = []
-        artifacts = self._artifacts_to_publish()
-        for artifact in artifacts:
-            command = self._build_maven_cmd(artifact['root'], artifact['file'])
-            logger.info('Running Maven deploy command: %s', ' '.join(command))
-            stdout, stderr, retcode = self._run_command(command)
-            if retcode == 0:
-                success.append(artifact['file'])
-            else:
-                failed.append(artifact['file'])
-        self._remove_local_artifacts(artifacts)
-        logger.info('Successfully promoted the following artifacts:\n{0}'.format('\n'.join(success)))
+
+        artifact_groups = self._group_artifacts_to_publish()
+
+        for artifact_group in artifact_groups:
+            try:
+                command = self._build_group_maven_cmd(artifact_group)
+                logger.info('Running Maven deploy command: %s', ' '.join(command))
+                stdout, stderr, retcode = self._run_command(command)
+
+                display_names = []
+                if artifact_group.get('pom'):
+                    display_names.append(artifact_group['pom'])
+                if artifact_group.get('main'):
+                    display_names.append(artifact_group['main'])
+                if artifact_group.get('tests'):
+                    display_names.append(artifact_group['tests'])
+
+                if retcode == 0:
+                    success.extend(display_names)
+                else:
+                    failed.extend(display_names)
+
+            except Exception as exc:
+                logger.exception(
+                    "Failed while preparing/publishing artifact group '%s' from %s",
+                    artifact_group.get('base'),
+                    artifact_group.get('root')
+                )
+
+                display_names = []
+                if artifact_group.get('pom'):
+                    display_names.append(artifact_group['pom'])
+                if artifact_group.get('main'):
+                    display_names.append(artifact_group['main'])
+                if artifact_group.get('tests'):
+                    display_names.append(artifact_group['tests'])
+
+                if not display_names:
+                    display_names = [artifact_group.get('base', 'unknown-artifact-group')]
+
+                failed.extend(display_names)
+
+        self._remove_local_artifacts([])
+
+        logger.info(
+            'Successfully promoted the following artifacts:\n{0}'.format(
+                '\n'.join(success) if success else '(none)'
+            )
+        )
+
         if len(failed) > 0:
-            logger.error('Failed to promote the following artifacts:\n{0}'.format('\n'.join(failed)))
+            logger.error(
+                'Failed to promote the following artifacts:\n{0}'.format('\n'.join(failed))
+            )
             raise RuntimeError('Artifact promotion failed')
 
     def _update_pom(self, path, file):
@@ -314,15 +387,17 @@ class Promote(object):
     def __call__(self):
         """
         Look for artifacts in the RC repo for a given module to promote to release status.
-        Fail hard on error.
+        Fail hard on error
         """
         artifacts = self._list_artifacts()
+
         for artifact in artifacts:
             artifact_name = artifact.get('name')
             artifact_path = artifact.get('path')
             self._download_artifact(artifact_path, artifact_name)
-            if artifact_name.endswith('pom'):
+            if artifact_name.endswith('.pom'):
                 self._update_pom(artifact_path, artifact_name)
+
         self._publish_artifacts()
 
 
