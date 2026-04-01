@@ -1,3 +1,14 @@
-service:conexus-jboss-webservice host:ip-10-56-194-142.ec2.internal-cnxsprod-selfmanaged (java:/RemoteFuseJMS OR AMQ212012 OR AMQ152003 OR AMQ152006 OR AMQ219010 OR ARJUNA016041 OR ARJUNA016045 OR ARJUNA016053 OR "Connection is destroyed" OR "Could not commit transaction")
+kubectl exec -it webservice-6cb7884d94-jvd6n -n ingress-nginx -- curl -v jms:8080
 
-service:conexus-jboss-webservice host:ip-10-56-194-142.ec2.internal-cnxsprod-selfmanaged (AMQ219010 OR "Connection is destroyed" OR AMQ152003 OR AMQ152006 OR java:/RemoteFuseJMS)
+nc -vz jms 61616
+
+kubectl -n kube-system exec -it cilium-kpzvc -- cilium endpoint list
+
+kubectl -n kube-system exec -it cilium-kpzvc -- cilium monitor
+
+kubectl -n kube-system exec -it cilium-kpzvc -- cilium metrics list | grep drop
+
+kubectl -n kube-system exec -it hubble-relay-697879c474-8fnx8 -- \
+hubble observe --from-pod ingress-nginx/webservice-6cb7884d94-jvd6n --to-service jms
+
+kubectl get endpoints jms -n ingress-nginx -o wide
