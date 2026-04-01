@@ -17,14 +17,26 @@ curl -sku "$auth" -X DELETE \
 
 git fetch origin --prune --tags
 
-echo "=== TAG ==="
-git tag | grep '^02\.00\.000\.132$' || true
+echo "=== origin/main ==="
+git rev-parse origin/main
 
-echo "=== TAG TARGET ==="
-git rev-list -n 1 02.00.000.132 || true
+echo "=== release branch tip ==="
+git rev-parse origin/release/02.00.000.132
 
-echo "=== MAIN CONTAINS TAG COMMIT? ==="
-git branch -r --contains 02.00.000.132
+echo "=== tag commit ==="
+git rev-parse 02.00.000.132
 
-echo "=== RELEASE BRANCH EXISTS? ==="
-git ls-remote --heads origin "refs/heads/release/02.00.000.132"
+echo "=== tag commit subject ==="
+git log -1 --oneline 02.00.000.132
+
+echo "=== release tip subject ==="
+git log -1 --oneline origin/release/02.00.000.132
+
+echo "=== is tag commit ancestor of release branch? ==="
+git merge-base --is-ancestor 02.00.000.132 origin/release/02.00.000.132 && echo YES || echo NO
+
+echo "=== is tag commit ancestor of main? ==="
+git merge-base --is-ancestor 02.00.000.132 origin/main && echo YES || echo NO
+
+echo "=== commits on release not in main ==="
+git log --oneline origin/main..origin/release/02.00.000.132
