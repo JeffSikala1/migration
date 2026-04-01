@@ -1,20 +1,219 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ kubectl get pods -n ingress-nginx -o wide | egrep 'jms|webservice'
-jms-596b9697cd-nqck7                                     1/1     Running     0          58m     192.168.3.118   ip-10-56-194-142.ec2.internal   <none>           <none>
-webservice-6cb7884d94-jvd6n                              1/1     Running     0          122m    192.168.0.37    ip-10-56-194-33.ec2.internal    <none>           <none>
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ kubectl logs -n ingress-nginx jms-596b9697cd-nqck7 --tail=100 | egrep 'AMQ221007|AMQ221001|AMQ221002|AMQ224081|AMQ144009|AMQ142005'
-2026-04-01 11:50:19,922 WARN  [org.apache.activemq.artemis.journal] (Thread-4 (ActiveMQ-IO-server-org.apache.activemq.artemis.core.server.impl.ActiveMQServerImpl$8@194dc657)) AMQ142005: Inconsistency during compacting: Delete record being read on an existent record (id=4693026271)
-2026-04-01 11:50:49,712 WARN  [org.apache.activemq.artemis.journal] (Thread-4 (ActiveMQ-IO-server-org.apache.activemq.artemis.core.server.impl.ActiveMQServerImpl$8@194dc657)) AMQ142005: Inconsistency during compacting: Delete record being read on an existent record (id=4693021828)
-2026-04-01 11:50:49,715 WARN  [org.apache.activemq.artemis.journal] (Thread-4 (ActiveMQ-IO-server-org.apache.activemq.artemis.core.server.impl.ActiveMQServerImpl$8@194dc657)) AMQ142005: Inconsistency during compacting: Delete record being read on an existent record (id=4693198313)
-2026-04-01 11:53:14,761 INFO  [org.apache.activemq.artemis.core.server] (ServerService Thread Pool -- 74) AMQ221002: Apache ActiveMQ Artemis Message Broker version 2.33.0.redhat-00018 [0fb144c4-a7a6-11ef-b478-005056bdac54] stopped, uptime 13 minutes
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ kubectl exec -it webservice-6cb7884d94-jvd6n -n ingress-nginx -- curl -sv http://jms:8080
-*   Trying 172.20.45.18:8080...
-* connect to 172.20.45.18 port 8080 failed: Connection refused
-* Failed to connect to jms port 8080: Connection refused
-* Closing connection 0
-command terminated with exit code 7
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ kubectl exec -it webservice-6cb7884d94-jvd6n -n ingress-nginx -- curl -sv http://jms:8080
-*   Trying 172.20.45.18:8080...
-* connect to 172.20.45.18 port 8080 failed: Connection refused
-* Failed to connect to jms port 8080: Connection refused
-* Closing connection 0
-command terminated with exit code 7
+Added user 'jmsuser' to file '/app/jboss-eap-8.0/standalone/configuration/application-users.properties'
+Added user 'jmsuser' to file '/app/jboss-eap-8.0/domain/configuration/application-users.properties'
+Added user 'jmsuser' with groups guest to file '/app/jboss-eap-8.0/standalone/configuration/application-roles.properties'
+Added user 'jmsuser' with groups guest to file '/app/jboss-eap-8.0/domain/configuration/application-roles.properties'
+=========================================================================
+  JBoss Bootstrap Environment
+  JBOSS_HOME: /app/jboss-eap-8.0
+  JAVA: java
+  JAVA_OPTS:  -Xlog:gc*:file="/app/jboss-eap-8.0/standalone/log/gc.log":time,uptimemillis:filecount=5,filesize=3M -Djdk.serialFilter="maxbytes=10485760;maxdepth=128;maxarray=100000;maxrefs=300000" -Djava.io.tmpdir=/app/jboss_temp/ -Djboss.bind.address.management=${MY_POD_IP} -Xms6g -Xmx6g -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=1303m -Djava.net.preferIPv4Stack=true -Djboss.modules.system.pkgs=org.jboss.byteman -Djava.awt.headless=true  --add-exports=java.desktop/sun.awt=ALL-UNNAMED --add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED --add-exports=java.naming/com.sun.jndi.url.ldap=ALL-UNNAMED --add-exports=java.naming/com.sun.jndi.url.ldaps=ALL-UNNAMED --add-exports=jdk.naming.dns/com.sun.jndi.dns=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.security=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.management/javax.management=ALL-UNNAMED --add-opens=java.naming/javax.naming=ALL-UNNAMED
+=========================================================================
+12:38:40,144 INFO  [org.jboss.modules] (main) JBoss Modules version 2.1.6.Final-redhat-00001
+12:38:40,585 INFO  [org.jboss.msc] (main) JBoss MSC version 1.5.5.Final-redhat-00001
+12:38:40,593 INFO  [org.jboss.threads] (main) JBoss Threads version 2.4.0.Final-redhat-00001
+12:38:40,704 INFO  [org.jboss.as] (MSC service thread 1-4) WFLYSRV0049: JBoss EAP 8.0 Update 10.0 (WildFly Core 21.0.17.Final-redhat-00001) starting
+12:38:42,071 INFO  [org.wildfly.security] (ServerService Thread Pool -- 14) ELY00001: WildFly Elytron version 2.2.12.Final-redhat-00001
+12:38:43,125 INFO  [org.jboss.as.controller.management-deprecated] (ServerService Thread Pool -- 17) WFLYCTL0028: Attribute 'use-transaction-setup-provider' in the resource at address '/subsystem=ee/context-service=default' is deprecated, and may be removed in a future version. See the attribute description in the output of the read-resource-description operation to learn more about the deprecation.
+12:38:43,167 INFO  [org.jboss.as.controller.management-deprecated] (ServerService Thread Pool -- 11) WFLYCTL0028: Attribute 'cluster' in the resource at address '/subsystem=ejb3/service=remote' is deprecated, and may be removed in a future version. See the attribute description in the output of the read-resource-description operation to learn more about the deprecation.
+12:39:45,044 INFO  [org.jboss.as.server] (Controller Boot Thread) WFLYSRV0039: Creating http management service using socket-binding (management-http)
+12:39:45,052 INFO  [org.xnio] (MSC service thread 1-6) XNIO version 3.8.16.Final-redhat-00001
+12:39:45,057 INFO  [org.xnio.nio] (MSC service thread 1-6) XNIO NIO Implementation Version 3.8.16.Final-redhat-00001
+12:39:45,087 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 52) WFLYCLINF0001: Activating Infinispan subsystem.
+12:39:45,089 INFO  [org.wildfly.extension.health] (ServerService Thread Pool -- 50) WFLYHEALTH0001: Activating Base Health Subsystem
+12:39:45,089 INFO  [org.jboss.as.jaxrs] (ServerService Thread Pool -- 54) WFLYRS0016: RESTEasy version 6.2.12.Final-redhat-00001
+12:39:45,090 INFO  [org.wildfly.extension.io] (ServerService Thread Pool -- 53) WFLYIO001: Worker 'default' has auto-configured to 32 IO threads with 256 max task threads based on your 16 available processors
+12:39:45,098 INFO  [org.wildfly.iiop.openjdk] (ServerService Thread Pool -- 51) WFLYIIOP0001: Activating IIOP Subsystem
+12:39:45,098 INFO  [org.jboss.as.naming] (ServerService Thread Pool -- 63) WFLYNAM0001: Activating Naming Subsystem
+12:39:45,101 INFO  [org.jboss.remoting] (MSC service thread 1-2) JBoss Remoting version 5.0.31.Final-redhat-00001
+12:39:45,102 INFO  [org.jboss.as.jsf] (ServerService Thread Pool -- 59) WFLYJSF0007: Activated the following Jakarta Server Faces Implementations: [main]
+12:39:45,105 INFO  [org.jboss.as.webservices] (ServerService Thread Pool -- 72) WFLYWS0002: Activating WebServices Extension
+12:39:45,106 INFO  [org.wildfly.extension.metrics] (ServerService Thread Pool -- 62) WFLYMETRICS0001: Activating Base Metrics Subsystem
+12:39:45,120 INFO  [org.jboss.as.server.deployment] (MSC service thread 1-8) WFLYSRV0027: Starting deployment of "task-ear.ear" (runtime-name: "task-ear.ear")
+12:39:45,120 INFO  [org.jboss.as.connector] (MSC service thread 1-7) WFLYJCA0009: Starting Jakarta Connectors Subsystem (WildFly/IronJacamar 3.0.14.Final-redhat-00001)
+12:39:45,131 INFO  [org.wildfly.extension.undertow] (MSC service thread 1-3) WFLYUT0003: Undertow 2.3.18.SP1-redhat-00001 starting
+12:39:45,133 INFO  [org.jboss.as.naming] (MSC service thread 1-3) WFLYNAM0003: Starting Naming Service
+12:39:45,144 INFO  [org.jboss.as.connector.subsystems.datasources] (ServerService Thread Pool -- 42) WFLYJCA0005: Deploying non-JDBC-compliant driver class org.postgresql.Driver (version 42.7)
+12:39:45,153 WARN  [org.wildfly.extension.elytron] (MSC service thread 1-5) WFLYELY00023: KeyStore file '/app/jboss-eap-8.0/standalone/configuration/application.keystore' does not exist. Used blank.
+12:39:45,156 INFO  [org.jboss.as.connector.deployers.jdbc] (MSC service thread 1-6) WFLYJCA0018: Started Driver service with driver-name = postgres
+12:39:45,156 INFO  [org.jboss.as.mail.extension] (MSC service thread 1-1) WFLYMAIL0001: Bound mail session [java:jboss/mail/Conexus]
+12:39:45,157 INFO  [org.jboss.as.mail.extension] (MSC service thread 1-2) WFLYMAIL0001: Bound mail session [java:jboss/mail/Default]
+12:39:45,183 INFO  [org.wildfly.extension.undertow] (ServerService Thread Pool -- 71) WFLYUT0014: Creating file handler for path '/app/jboss-eap-8.0/welcome-content' with options [directory-listing: 'false', follow-symlink: 'false', case-sensitive: 'true', safe-symlink-paths: '[]']
+12:39:45,188 INFO  [org.wildfly.extension.undertow] (MSC service thread 1-2) WFLYUT0012: Started server default-server.
+12:39:45,189 INFO  [org.wildfly.extension.undertow] (MSC service thread 1-2) Queuing requests.
+12:39:45,190 INFO  [org.wildfly.extension.undertow] (MSC service thread 1-2) WFLYUT0018: Host default-host starting
+12:39:45,203 WARN  [org.jboss.as.ejb3] (ServerService Thread Pool -- 48) WFLYEJB0531: No client mappings registry provider found for ejb; using legacy provider based on static configuration
+12:39:45,203 INFO  [org.jboss.as.ejb3] (MSC service thread 1-1) WFLYEJB0481: Strict pool slsb-strict-max-pool is using a max instance size of 256 (per class), which is derived from thread worker pool sizing.
+12:39:45,284 INFO  [org.jboss.as.ejb3] (MSC service thread 1-3) WFLYEJB0482: Strict pool mdb-strict-max-pool is using a max instance size of 64 (per class), which is derived from the number of CPUs on this host.
+12:39:45,312 INFO  [org.wildfly.extension.undertow] (MSC service thread 1-4) WFLYUT0006: Undertow HTTP listener default listening on 0.0.0.0:8080
+12:39:45,341 INFO  [org.jboss.as.ejb3] (MSC service thread 1-2) WFLYEJB0493: Jakarta Enterprise Beans subsystem suspension complete
+12:39:45,379 INFO  [org.jboss.as.connector.subsystems.datasources] (MSC service thread 1-6) WFLYJCA0001: Bound data source [java:jboss/datasources/XAConexusDS]
+12:39:45,403 INFO  [org.wildfly.prospero] (Controller Boot Thread)  version: 1.1.19.Final-redhat-00002
+12:39:45,413 INFO  [org.jboss.ws.common.management] (MSC service thread 1-4) JBWS022052: Starting JBossWS 7.3.4.Final-redhat-00001 (Apache CXF 4.0.9.redhat-00002) 
+12:39:45,414 INFO  [org.wildfly.iiop.openjdk] (MSC service thread 1-1) WFLYIIOP0009: CORBA ORB Service started
+12:39:45,423 INFO  [org.jboss.as.server.deployment.scanner] (MSC service thread 1-1) WFLYDS0013: Started FileSystemDeploymentService for directory /app/jboss-eap-8.0/standalone/deployments
+2026-04-01 12:39:45,441 INFO  [org.apache.activemq.artemis.core.server] (ServerService Thread Pool -- 74) AMQ221000: Primary message broker is starting with configuration Broker Configuration (clustered=false,journalDirectory=/app/jboss-eap-8.0/standalone/data/activemq/journal,bindingsDirectory=/app/jboss-eap-8.0/standalone/data/activemq/bindings,largeMessagesDirectory=/app/jboss-eap-8.0/standalone/data/activemq/largemessages,pagingDirectory=/app/jboss-eap-8.0/standalone/data/activemq/paging)
+2026-04-01 12:39:45,475 INFO  [org.apache.activemq.artemis.core.server] (ServerService Thread Pool -- 74) AMQ221012: Using AIO Journal
+2026-04-01 12:39:45,820 INFO  [org.wildfly.core.installationmanager] (MSC service thread 1-5) WFLYIM0023: Installation provisioning is using the following channel versions: '[ManifestVersion{channelId='org.jboss.eap.channels:eap-8.0', description='EAP 8.0 Update 10.0', version='1.10.0.GA-redhat-00002'}]'
+2026-04-01 12:39:50,233 INFO  [org.apache.activemq.artemis.core.server] (ServerService Thread Pool -- 74) AMQ221043: Protocol module found: [artemis-server]. Adding protocol support for: CORE
+2026-04-01 12:39:50,234 INFO  [org.apache.activemq.artemis.core.server] (ServerService Thread Pool -- 74) AMQ221043: Protocol module found: [artemis-hornetq-protocol]. Adding protocol support for: HORNETQ
+2026-04-01 12:40:05,143 INFO  [org.apache.activemq.artemis.core.server] (ServerService Thread Pool -- 74) AMQ221034: Waiting indefinitely to obtain primary lock
+2026-04-01 12:40:05,824 INFO  [org.apache.activemq.artemis.core.server] (ServerService Thread Pool -- 74) AMQ221035: Primary Server Obtained primary lock
+2026-04-01 12:40:07,374 INFO  [org.jboss.as.server.deployment] (MSC service thread 1-5) WFLYSRV0207: Starting subdeployment (runtime-name: "task-core.jar")
+2026-04-01 12:40:07,374 INFO  [org.jboss.as.server.deployment] (MSC service thread 1-3) WFLYSRV0207: Starting subdeployment (runtime-name: "domain.jar")
+2026-04-01 12:40:07,511 INFO  [org.jboss.as.jpa] (MSC service thread 1-6) WFLYJPA0002: Read persistence.xml for nsfsApp
+2026-04-01 12:40:07,657 INFO  [org.jipijapa] (MSC service thread 1-7) JIPIORMV6020260: Second level cache enabled for task-ear.ear/domain.jar#nsfsApp
+2026-04-01 12:40:07,664 INFO  [org.jboss.weld.deployer] (MSC service thread 1-5) WFLYWELD0003: Processing weld deployment task-ear.ear
+2026-04-01 12:40:07,733 INFO  [org.hibernate.validator.internal.util.Version] (MSC service thread 1-5) HV000001: Hibernate Validator 8.0.1.Final-redhat-00001
+2026-04-01 12:40:07,871 INFO  [org.jboss.weld.deployer] (MSC service thread 1-5) WFLYWELD0003: Processing weld deployment domain.jar
+2026-04-01 12:40:07,872 INFO  [org.jboss.weld.deployer] (MSC service thread 1-7) WFLYWELD0003: Processing weld deployment task-core.jar
+2026-04-01 12:40:07,875 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'EmailServiceHelperBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/EmailServiceHelperBean!gov.gsa.nsfs.services.email.helper.EmailServiceHelper
+	java:app/domain/EmailServiceHelperBean!gov.gsa.nsfs.services.email.helper.EmailServiceHelper
+	java:module/EmailServiceHelperBean!gov.gsa.nsfs.services.email.helper.EmailServiceHelper
+	java:global/task-ear/domain/EmailServiceHelperBean
+	java:app/domain/EmailServiceHelperBean
+	java:module/EmailServiceHelperBean
+2026-04-01 12:40:07,875 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-7) WFLYEJB0473: JNDI bindings for session bean named 'DirectoryWatch' in deployment unit 'subdeployment "task-core.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/task-core/DirectoryWatch!gov.gsa.nsfs.services.schedules.DirectoryWatch
+	java:app/task-core/DirectoryWatch!gov.gsa.nsfs.services.schedules.DirectoryWatch
+	java:module/DirectoryWatch!gov.gsa.nsfs.services.schedules.DirectoryWatch
+	java:global/task-ear/task-core/DirectoryWatch
+	java:app/task-core/DirectoryWatch
+	java:module/DirectoryWatch
+2026-04-01 12:40:07,875 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'ConexusOrderBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/ConexusOrderBean!gov.gsa.nsfs.services.order.ConexusOrderService
+	java:app/domain/ConexusOrderBean!gov.gsa.nsfs.services.order.ConexusOrderService
+	java:module/ConexusOrderBean!gov.gsa.nsfs.services.order.ConexusOrderService
+	java:global/task-ear/domain/ConexusOrderBean
+	java:app/domain/ConexusOrderBean
+	java:module/ConexusOrderBean
+2026-04-01 12:40:07,875 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-7) WFLYEJB0473: JNDI bindings for session bean named 'UserPendingRegistration' in deployment unit 'subdeployment "task-core.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/task-core/UserPendingRegistration!gov.gsa.nsfs.services.schedules.UserPendingRegistration
+	java:app/task-core/UserPendingRegistration!gov.gsa.nsfs.services.schedules.UserPendingRegistration
+	java:module/UserPendingRegistration!gov.gsa.nsfs.services.schedules.UserPendingRegistration
+	java:global/task-ear/task-core/UserPendingRegistration
+	java:app/task-core/UserPendingRegistration
+	java:module/UserPendingRegistration
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'ApplicationPropertyServiceBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/ApplicationPropertyServiceBean!gov.gsa.nsfs.services.ApplicationPropertyService
+	java:app/domain/ApplicationPropertyServiceBean!gov.gsa.nsfs.services.ApplicationPropertyService
+	java:module/ApplicationPropertyServiceBean!gov.gsa.nsfs.services.ApplicationPropertyService
+	java:global/task-ear/domain/ApplicationPropertyServiceBean
+	java:app/domain/ApplicationPropertyServiceBean
+	java:module/ApplicationPropertyServiceBean
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-7) WFLYEJB0473: JNDI bindings for session bean named 'EmailQueuePoller' in deployment unit 'subdeployment "task-core.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/task-core/EmailQueuePoller!gov.gsa.nsfs.services.email.EmailQueuePoller
+	java:app/task-core/EmailQueuePoller!gov.gsa.nsfs.services.email.EmailQueuePoller
+	java:module/EmailQueuePoller!gov.gsa.nsfs.services.email.EmailQueuePoller
+	java:global/task-ear/task-core/EmailQueuePoller
+	java:app/task-core/EmailQueuePoller
+	java:module/EmailQueuePoller
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'ConexusHelperServiceBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/ConexusHelperServiceBean!gov.gsa.nsfs.services.security.ConexusHelperService
+	java:app/domain/ConexusHelperServiceBean!gov.gsa.nsfs.services.security.ConexusHelperService
+	java:module/ConexusHelperServiceBean!gov.gsa.nsfs.services.security.ConexusHelperService
+	java:global/task-ear/domain/ConexusHelperServiceBean
+	java:app/domain/ConexusHelperServiceBean
+	java:module/ConexusHelperServiceBean
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-7) WFLYEJB0473: JNDI bindings for session bean named 'InactiveUser' in deployment unit 'subdeployment "task-core.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/task-core/InactiveUser!gov.gsa.nsfs.services.schedules.InactiveUser
+	java:app/task-core/InactiveUser!gov.gsa.nsfs.services.schedules.InactiveUser
+	java:module/InactiveUser!gov.gsa.nsfs.services.schedules.InactiveUser
+	java:global/task-ear/task-core/InactiveUser
+	java:app/task-core/InactiveUser
+	java:module/InactiveUser
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'TaskServiceBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/TaskServiceBean!gov.gsa.nsfs.services.task.TaskService
+	java:app/domain/TaskServiceBean!gov.gsa.nsfs.services.task.TaskService
+	java:module/TaskServiceBean!gov.gsa.nsfs.services.task.TaskService
+	java:global/task-ear/domain/TaskServiceBean
+	java:app/domain/TaskServiceBean
+	java:module/TaskServiceBean
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-7) WFLYEJB0473: JNDI bindings for session bean named 'ScheduleServiceBean' in deployment unit 'subdeployment "task-core.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/task-core/ScheduleServiceBean!gov.gsa.nsfs.services.ScheduleService
+	java:app/task-core/ScheduleServiceBean!gov.gsa.nsfs.services.ScheduleService
+	java:module/ScheduleServiceBean!gov.gsa.nsfs.services.ScheduleService
+	java:global/task-ear/task-core/ScheduleServiceBean
+	java:app/task-core/ScheduleServiceBean
+	java:module/ScheduleServiceBean
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'PermissionScopeServiceBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/PermissionScopeServiceBean!gov.gsa.nsfs.services.security.PermissionScopeService
+	java:app/domain/PermissionScopeServiceBean!gov.gsa.nsfs.services.security.PermissionScopeService
+	java:module/PermissionScopeServiceBean!gov.gsa.nsfs.services.security.PermissionScopeService
+	java:global/task-ear/domain/PermissionScopeServiceBean
+	java:app/domain/PermissionScopeServiceBean
+	java:module/PermissionScopeServiceBean
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-7) WFLYEJB0473: JNDI bindings for session bean named 'EmailQueueDbHelper' in deployment unit 'subdeployment "task-core.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/task-core/EmailQueueDbHelper!gov.gsa.nsfs.services.email.EmailQueueDbHelper
+	java:app/task-core/EmailQueueDbHelper!gov.gsa.nsfs.services.email.EmailQueueDbHelper
+	java:module/EmailQueueDbHelper!gov.gsa.nsfs.services.email.EmailQueueDbHelper
+	java:global/task-ear/task-core/EmailQueueDbHelper
+	java:app/task-core/EmailQueueDbHelper
+	java:module/EmailQueueDbHelper
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'LocationDuplicationCheckerServiceBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/LocationDuplicationCheckerServiceBean!gov.gsa.nsfs.services.LocationDuplicationCheckerService
+	java:app/domain/LocationDuplicationCheckerServiceBean!gov.gsa.nsfs.services.LocationDuplicationCheckerService
+	java:module/LocationDuplicationCheckerServiceBean!gov.gsa.nsfs.services.LocationDuplicationCheckerService
+	java:global/task-ear/domain/LocationDuplicationCheckerServiceBean
+	java:app/domain/LocationDuplicationCheckerServiceBean
+	java:module/LocationDuplicationCheckerServiceBean
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-7) WFLYEJB0473: JNDI bindings for session bean named 'TablePruning' in deployment unit 'subdeployment "task-core.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/task-core/TablePruning!gov.gsa.nsfs.services.schedules.TablePruning
+	java:app/task-core/TablePruning!gov.gsa.nsfs.services.schedules.TablePruning
+	java:module/TablePruning!gov.gsa.nsfs.services.schedules.TablePruning
+	java:global/task-ear/task-core/TablePruning
+	java:app/task-core/TablePruning
+	java:module/TablePruning
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'TaskOrderServiceBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/TaskOrderServiceBean!gov.gsa.nsfs.services.order.TaskOrderService
+	java:app/domain/TaskOrderServiceBean!gov.gsa.nsfs.services.order.TaskOrderService
+	java:module/TaskOrderServiceBean!gov.gsa.nsfs.services.order.TaskOrderService
+	java:global/task-ear/domain/TaskOrderServiceBean
+	java:app/domain/TaskOrderServiceBean
+	java:module/TaskOrderServiceBean
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'BootStrap' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/BootStrap!gov.gsa.nsfs.bootStrap.BootStrap
+	java:app/domain/BootStrap!gov.gsa.nsfs.bootStrap.BootStrap
+	java:module/BootStrap!gov.gsa.nsfs.bootStrap.BootStrap
+	java:global/task-ear/domain/BootStrap
+	java:app/domain/BootStrap
+	java:module/BootStrap
+2026-04-01 12:40:07,876 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'OrderAttachmentServiceBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/OrderAttachmentServiceBean!gov.gsa.nsfs.services.attachment.OrderAttachmentService
+	java:app/domain/OrderAttachmentServiceBean!gov.gsa.nsfs.services.attachment.OrderAttachmentService
+	java:module/OrderAttachmentServiceBean!gov.gsa.nsfs.services.attachment.OrderAttachmentService
+	java:global/task-ear/domain/OrderAttachmentServiceBean!gov.gsa.nsfs.services.attachment.AttachmentVersioning
+	java:app/domain/OrderAttachmentServiceBean!gov.gsa.nsfs.services.attachment.AttachmentVersioning
+	java:module/OrderAttachmentServiceBean!gov.gsa.nsfs.services.attachment.AttachmentVersioning
+2026-04-01 12:40:07,877 INFO  [org.jboss.as.ejb3.deployment] (MSC service thread 1-5) WFLYEJB0473: JNDI bindings for session bean named 'EmailServiceBean' in deployment unit 'subdeployment "domain.jar" of deployment "task-ear.ear"' are as follows:
+	java:global/task-ear/domain/EmailServiceBean!gov.gsa.nsfs.services.email.EmailService
+	java:app/domain/EmailServiceBean!gov.gsa.nsfs.services.email.EmailService
+	java:module/EmailServiceBean!gov.gsa.nsfs.services.email.EmailService
+	java:global/task-ear/domain/EmailServiceBean
+	java:app/domain/EmailServiceBean
+	java:module/EmailServiceBean
+2026-04-01 12:40:07,932 INFO  [org.jboss.weld.Version] (MSC service thread 1-5) WELD-000900: 5.1.6 (redhat)
+2026-04-01 12:40:07,987 INFO  [org.infinispan.CONTAINER] (ServerService Thread Pool -- 78) ISPN000556: Starting user marshaller 'org.wildfly.clustering.infinispan.marshall.InfinispanProtoStreamMarshaller'
+2026-04-01 12:40:07,987 INFO  [org.infinispan.CONTAINER] (ServerService Thread Pool -- 77) ISPN000556: Starting user marshaller 'org.wildfly.clustering.infinispan.marshalling.jboss.JBossMarshaller'
+2026-04-01 12:40:08,102 INFO  [org.jipijapa] (MSC service thread 1-6) JIPIORMV6020260: Second level cache enabled for task-ear.ear/domain.jar#nsfsApp
+2026-04-01 12:40:08,333 INFO  [org.jboss.as.jpa] (ServerService Thread Pool -- 77) WFLYJPA0010: Starting Persistence Unit (phase 1 of 2) Service 'task-ear.ear/domain.jar#nsfsApp'
+2026-04-01 12:40:08,338 INFO  [org.infinispan.CONFIG] (MSC service thread 1-3) ISPN000152: Passivation configured without an eviction policy being selected. Only manually evicted entities will be passivated.
+2026-04-01 12:40:08,339 INFO  [org.infinispan.CONFIG] (MSC service thread 1-3) ISPN000152: Passivation configured without an eviction policy being selected. Only manually evicted entities will be passivated.
+2026-04-01 12:40:08,345 INFO  [org.hibernate.jpa.internal.util.LogHelper] (ServerService Thread Pool -- 77) HHH000204: Processing PersistenceUnitInfo [name: nsfsApp]
+2026-04-01 12:40:08,353 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 78) WFLYCLINF0002: Started http-remoting-connector cache from ejb container
+2026-04-01 12:40:08,385 INFO  [org.hibernate.Version] (ServerService Thread Pool -- 77) HHH000412: Hibernate ORM core version 6.2.45.redhat-00001
+2026-04-01 12:40:08,387 INFO  [org.hibernate.cfg.Environment] (ServerService Thread Pool -- 77) HHH000406: Using bytecode reflection optimizer
+2026-04-01 12:40:08,754 INFO  [org.hibernate.envers.boot.internal.EnversServiceImpl] (ServerService Thread Pool -- 77) Envers integration enabled? : true
+2026-04-01 12:40:08,921 INFO  [org.jboss.as.jpa] (ServerService Thread Pool -- 77) WFLYJPA0010: Starting Persistence Unit (phase 2 of 2) Service 'task-ear.ear/domain.jar#nsfsApp'
+2026-04-01 12:40:10,037 WARN  [org.infinispan.hibernate.cache.v62.InfinispanRegionFactory] (ServerService Thread Pool -- 77) HHH025030: Transactional caches are not supported. The configuration option will be ignored; please unset.
+2026-04-01 12:40:10,038 WARN  [org.infinispan.hibernate.cache.v62.InfinispanRegionFactory] (ServerService Thread Pool -- 77) HHH025030: Transactional caches are not supported. The configuration option will be ignored; please unset.
+2026-04-01 12:40:10,038 WARN  [org.infinispan.hibernate.cache.v62.InfinispanRegionFactory] (ServerService Thread Pool -- 77) HHH025030: Transactional caches are not supported. The configuration option will be ignored; please unset.
+2026-04-01 12:40:10,038 WARN  [org.infinispan.hibernate.cache.v62.InfinispanRegionFactory] (ServerService Thread Pool -- 77) HHH025030: Transactional caches are not supported. The configuration option will be ignored; please unset.
+2026-04-01 12:40:10,521 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 77) WFLYCLINF0002: Started task-ear.ear/domain.jar#nsfsApp.gov.gsa.nsfs.domains.agreement.AgreementClin cache from hibernate container
+2026-04-01 12:40:10,536 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 77) WFLYCLINF0002: Started task-ear.ear/domain.jar#nsfsApp.gov.gsa.nsfs.domains.agreement.AgreementClin-pending-puts cache from hibernate container
+2026-04-01 12:40:10,546 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 77) WFLYCLINF0002: Started task-ear.ear/domain.jar#nsfsApp.gov.gsa.nsfs.domains.agreement.MasterClin cache from hibernate container
+2026-04-01 12:40:10,549 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 77) WFLYCLINF0002: Started task-ear.ear/domain.jar#nsfsApp.gov.gsa.nsfs.domains.agreement.MasterClin-pending-puts cache from hibernate container
+2026-04-01 12:40:10,555 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 77) WFLYCLINF0002: Started task-ear.ear/domain.jar#nsfsApp.gov.gsa.nsfs.domains.party.Agency cache from hibernate container
+2026-04-01 12:40:10,558 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 77) WFLYCLINF0002: Started task-ear.ear/domain.jar#nsfsApp.gov.gsa.nsfs.domains.party.Agency-pending-puts cache from hibernate container
+2026-04-01 12:40:10,563 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 77) WFLYCLINF0002: Started task-ear.ear/domain.jar#nsfsApp.gov.gsa.nsfs.domains.agreement.Agreement cache from hibernate container
+2026-04-01 12:40:10,567 INFO  [org.jboss.as.clustering.infinispan] (ServerService Thread Pool -- 77) WFLYCLINF0002: Started task-ear.ear/domain.jar#nsfsApp.gov.gsa.nsfs.domains.agreement.Agreement-pending-puts cache from hibernate container
