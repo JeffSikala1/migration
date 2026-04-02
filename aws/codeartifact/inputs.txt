@@ -1,23 +1,26 @@
-aws ssm start-session --target <instance-id>
+git fetch origin --prune --tags
 
-sudo dmesg | grep -i -E 'nfs|timeout|tcp|error'
+echo "=== remote main ==="
+git ls-remote origin refs/heads/main
 
-sudo journalctl -xe | grep -i nfs
+echo "=== remote tag ==="
+git ls-remote origin refs/tags/02.00.000.172
 
-sudo journalctl -u nfs-client.target
+echo "=== local tag target ==="
+git rev-parse 02.00.000.172
+git log -1 --oneline 02.00.000.172
 
-cat /var/log/messages | grep -i nfs
-
-sar -n DEV 1 5
-
-netstat -s | grep retrans
-
-iostat -x 1 5
-
-top
-
-mpstat -P ALL 1
+echo "=== local origin/main ==="
+git rev-parse origin/main || true
+git log -1 --oneline origin/main || true
 
 
-kubectl describe node ip-10-56-194-142.ec2.internal
 
+
+
+git checkout main
+git fetch origin --prune --tags
+git reset --hard origin/main
+
+git merge --ff-only 02.00.000.172
+git push origin main
