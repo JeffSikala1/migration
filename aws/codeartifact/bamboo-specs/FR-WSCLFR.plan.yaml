@@ -1,0 +1,150 @@
+---
+version: 2
+plan:
+  project-key: FR
+  key: WSCLFR
+  name: WS-Client - Finish Release
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - checkout:
+      path: ${bamboo.module_name}
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: release-scripts
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        # Copy in the SSH Key
+        echo "Writing private key"
+        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 400 ~/.ssh/id_rsa
+
+        # Configure git to use this key
+        echo "Host *" &gt; ~/.ssh/config
+        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
+      description: Install SSH key
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+        git pull
+
+        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
+        release_branch=${release_branches[0]}
+
+        if [ -z "${release_branch}" ]; then
+            echo "Failed to match release branch from the following: "
+            git branch -r
+            exit 1
+        else
+            echo "Checking out ${release_branch}"
+            git checkout "${release_branch}"
+        fi
+
+
+        find . -type f -name *.xml -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
+        git commit -a -m "Updated versions from release-candidate to release"
+        git push --set-upstream origin "${release_branch}"
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      working-dir: ${bamboo.module_name}
+      description: Release script
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
+      configuration:
+        variable: maven.version
+        removeSnapshot: 'true'
+        variableScope: JOB
+        pomFile: ${bamboo.module_name}/pom.xml
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        curl -k "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
+        update-ca-trust
+      description: Install USDA root certificate in system wide trusted certificate location
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        mkdir working
+        python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs ${bamboo.module_name} ${bamboo.maven.version} --username "${bamboo.artifactory_admin_username}" --password "${bamboo.artifactory_admin_password}" --override
+      working-dir: ${bamboo.module_name}
+      description: Promote Artifacts
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+        git pull
+
+        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
+        release_branch=${release_branches[0]}
+
+        if [ -z "${release_branch}" ]; then
+            echo "Failed to match release branch from the following: "
+            git branch -r
+            exit 1
+        else
+            echo "Checking out ${release_branch}"
+            git checkout "${release_branch}"
+        fi
+
+        git checkout main
+        git merge -s recursive -X theirs -m "Merge Release Branch" ${release_branch}
+        git tag ${bamboo.maven.version}
+        find . -type f -name *.xml -exec sed -i 's/-SNAPSHOT//g' {} +
+        git commit -a -m "Release Versions"
+        git push --set-upstream origin main
+        git push --set-upstream origin main --tags
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      working-dir: ${bamboo.module_name}
+      description: Merge Release branch
+  artifact-subscriptions: []
+variables:
+  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
+  maven.artifactId: ws-client-aggregator
+  maven.groupId: gov.gsa.cnxs.ws-client
+  module_name: ws-client
+repositories:
+- WS-Client:
+    scope: global
+- bamboo-deployment:
+    scope: global
+triggers: []
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+notifications: []
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
