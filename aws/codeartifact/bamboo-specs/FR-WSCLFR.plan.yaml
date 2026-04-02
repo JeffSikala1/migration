@@ -214,12 +214,16 @@ Promote Job:
             [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            GROUP_PATH="gov/gsa/cnxs/ws-client/ws-client-aggregator"
 
             AQL=$(cat <<EOF
             items.find({
               "repo":{"\$eq":"conexus-release-local"},
-              "path":{"\$eq":"${GROUP_PATH}/${RELEASE_VERSION}"}
+              "\$or":[
+                {"path":{"\$eq":"gov/gsa/cnxs/ws-client/ws-client-aggregator/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/ws-client/ws-client-common/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/ws-client/order-services/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/ws-client/health-check/${RELEASE_VERSION}"}}
+              ]
             }).include("name","repo","path")
             EOF
             )
@@ -232,22 +236,27 @@ Promote Job:
 
             echo "${RESULT}" > "${bamboo.build.working.directory}/release-check.json"
 
-            expected=(
-              "ws-client-aggregator-${RELEASE_VERSION}.pom"
-            )
-
             found_count=$(python3 - <<PY
             import json
             data = json.loads('''${RESULT}''')
+
             items = {(item["path"], item["name"]) for item in data.get("results", [])}
+
             expected = [
-              ("gov/gsa/cnxs/ws-client/ws-client-aggregator/${RELEASE_VERSION}", "ws-client-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/ws-client/ws-client-aggregator/${RELEASE_VERSION}", "ws-client-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/ws-client/ws-client-common/${RELEASE_VERSION}", "ws-client-common-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/ws-client/ws-client-common/${RELEASE_VERSION}", "ws-client-common-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/ws-client/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/ws-client/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/ws-client/health-check/${RELEASE_VERSION}", "health-check-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/ws-client/health-check/${RELEASE_VERSION}", "health-check-${RELEASE_VERSION}.jar"),
             ]
+
             print(sum(1 for x in expected if x in items))
             PY
             )
 
-            total_expected=1
+            total_expected=7
 
             echo "INFO: found ${found_count} of ${total_expected} expected WS-Client release artifacts"
 
@@ -263,8 +272,6 @@ Promote Job:
             fi
 
             echo "ERROR: partial WS-Client release already exists for ${RELEASE_VERSION}."
-            echo "Expected full artifact family:"
-            printf '  %s\n' "${expected[@]}"
             exit 1
 
     - inject-variables:
@@ -296,6 +303,36 @@ Promote Job:
               conexus-rc-local \
               gov.gsa.cnxs.ws-client \
               ws-client-aggregator \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.ws-client \
+              ws-client-common \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.ws-client \
+              order-services \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.ws-client \
+              health-check \
               "${RELEASE_VERSION}" \
               --username "sa_bamboo" \
               --password "${bamboo.artifactory_access_token_secret}" \
