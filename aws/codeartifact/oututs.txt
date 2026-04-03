@@ -1,3 +1,136 @@
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ ./build_image.sh 
+############################ Caching JBoss Installer and Patch ##############################################
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/jboss/8.1/jboss-eap-8.1.0.zip
+############################################################################################################################ 100.0%
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/jboss/8.1/patches/jboss-eap-8.1.3-runtime-maven-repository.zip
+############################################################################################################################ 100.0%
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/postgresql/postgresql/42.7.8/postgresql-42.7.8.jar
+############################################################################################################################ 100.0%
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/fonts/dejavu-fonts-ttf.tar.gz
+############################################################################################################################ 100.0%
+############################ Building Jboss ubi8-minimal Docker Image ##############################################
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from jboss.ubi8-minimal.Dockerfile
+#1 transferring dockerfile: 4.24kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/redhat/ubi8-minimal:latest
+#2 DONE 0.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 137B done
+#3 DONE 0.0s
+
+#4 [ 1/25] FROM docker.io/redhat/ubi8-minimal:latest@sha256:815d4b55a154d9863c84f37298f4ebd2ae131bb244824996824138fc6c4b4b7d
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 478.75MB 3.4s done
+#5 DONE 3.5s
+
+#6 [ 7/25] RUN unzip -q jboss-eap.zip &&     rm jboss-eap.zip
+#6 CACHED
+
+#7 [16/25] RUN fc-cache /usr/share/fonts/
+#7 CACHED
+
+#8 [17/25] WORKDIR /app/jboss_config/
+#8 CACHED
+
+#9 [19/25] RUN chmod a+x /app/jboss-eap-8.1/bin/restart-clean.sh
+#9 CACHED
+
+#10 [15/25] RUN tar -C /usr/share/fonts/dejavu -xzvf /tmp/dejavu-fonts-ttf.tar.gz
+#10 CACHED
+
+#11 [20/25] RUN chmod a+x config.sh &&     bash config.sh /app/jboss-eap-patch.zip
+#11 CACHED
+
+#12 [21/25] RUN sed -i 's|<location name="/" handler="welcome-content"/>||' /app/jboss-eap-8.1/standalone/configuration/standalone-full.xml
+#12 CACHED
+
+#13 [22/25] WORKDIR /app/
+#13 CACHED
+
+#14 [18/25] RUN cp restart-clean.sh /app/jboss-eap-8.1/bin
+#14 CACHED
+
+#15 [24/25] RUN chown -R jboss:jboss /app/jboss-eap*
+#15 CACHED
+
+#16 [ 6/25] COPY tmp/installers/jboss-eap-8.1.0.zip /app/jboss-eap.zip
+#16 CACHED
+
+#17 [ 2/25] RUN ln -s /usr/share/zoneinfo/America/Chicago /etc/localtime &&     microdnf update -y  &&     microdnf install -y java-17-openjdk-headless less nss unzip tar gzip shadow-utils vi fontconfig &&     microdnf clean all &&     mkdir -p NSFS_NAS/database &&     rm -rf /var/cache/yum /tmp/*
+#17 CACHED
+
+#18 [12/25] COPY tmp/driver/postgresql-42.7.8.jar /tmp/postgresql-42.7.8.jar
+#18 CACHED
+
+#19 [23/25] RUN rm -rf /app/jboss-*-patch.zip /app/jboss_config/
+#19 CACHED
+
+#20 [13/25] COPY tmp/fonts/dejavu-fonts-ttf.tar.gz  /tmp/dejavu-fonts-ttf.tar.gz
+#20 CACHED
+
+#21 [ 5/25] WORKDIR /app/
+#21 CACHED
+
+#22 [10/25] COPY --chown=jboss:jboss jboss_config /app/jboss_config/
+#22 CACHED
+
+#23 [ 4/25] RUN chown -R jboss:jboss NSFS_NAS
+#23 CACHED
+
+#24 [ 8/25] COPY tmp/patches/jboss-eap-8.1.3-patch.zip /app/jboss-eap-patch.zip
+#24 CACHED
+
+#25 [ 9/25] RUN chown -R jboss:jboss /app/*
+#25 CACHED
+
+#26 [ 3/25] RUN useradd -U -m -d /app/ jboss
+#26 CACHED
+
+#27 [11/25] COPY jboss_config/java.security /app/jboss-eap-8.1/standalone/configuration/java.security
+#27 CACHED
+
+#28 [14/25] RUN mkdir -p /usr/share/fonts/dejavu/
+#28 CACHED
+
+#29 [25/25] WORKDIR /app/jboss-eap-8.1/
+#29 CACHED
+
+#30 exporting to image
+#30 exporting layers done
+#30 writing image sha256:771e8f48b4b792d706dfda1bf7864b015ad07b340e155058b7ac6e8ef7191cc9 0.0s done
+#30 naming to docker.io/local/jboss-local-tmp-miminal-1-pg:latest 0.0s done
+#30 DONE 0.1s
+############################ Tag ubi8 Docker Image ###################################################
+############################ Test ###################################################
+  adding: WEB-INF/ (stored 0%)
+  adding: WEB-INF/web.xml (deflated 56%)
+  adding: WEB-INF/jboss-web.xml (deflated 29%)
+  adding: index.jsp (deflated 72%)
+If the following command fails, it's safe to continue
+jboss-test
+If the following command fails, it's safe to continue
+jboss-test
+Starting jboss-test
+3e7f2f53b8f800c6d3f9b17cedeb5d2b9baf2f36fbe19445b830702602d7144a
+Successfully copied 3.58kB to jboss-test:/app/jboss-eap-8.1/standalone/deployments/test_war.war
+Waiting for JBoss to start
+Waiting for deployment scanner to pick up WAR
+Testing deployed URL
+curl: (22) The requested URL returned error: 404
+curl: (22) The requested URL returned error: 404
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ git ls-remote --tags origin "refs/tags/02.00.000.145"^C
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ curl http://localhost:8080/test_war/
+<html><head><title>Error</title></head><body>404 - Not Found</body></html>[sikaj01@ip-10-56-112-33 docker-jboss-local]$ curl http:/
+curl http://localhost:8080/test_war/^C
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ curl http://localhost:8080/test_war/
+<html><head><title>Error</title></head><body>404 - Not Found</body></html>[sikaj01@ip-10-56-112-33 docker-jboss-local]$ curl http:/
+^C
 [sikaj01@ip-10-56-112-33 docker-jboss-local]$ ll
 total 72
 -rw-r-----. 1 sikaj01 users 12356 Apr  3 18:44 BUILDING.md
@@ -11,79 +144,31 @@ drwxr-x---. 2 sikaj01 users  6144 Apr  3 18:44 dockerfiles
 drwxr-x---. 2 sikaj01 users  6144 Apr  3 18:44 jboss_config
 -rwxr-x---. 1 sikaj01 users   503 Apr  3 18:45 push_image.sh
 drwxr-x---. 3 sikaj01 users  6144 Apr  3 18:44 test_war
-drwxr-x---. 6 sikaj01 users  6144 Apr  3 21:12 tmp
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ ll test_war/
-total 8
-drwxr-x---. 2 sikaj01 users 6144 Apr  3 18:44 WEB-INF
--rw-r-----. 1 sikaj01 users 2522 Apr  3 18:44 index.jsp
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ less test_war/index.jsp 
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ ll test_war/
-total 8
-drwxr-x---. 2 sikaj01 users 6144 Apr  3 18:44 WEB-INF
--rw-r-----. 1 sikaj01 users 2522 Apr  3 18:44 index.jsp
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ ll test_war/WEB-INF/
-total 4
--rw-r-----. 1 sikaj01 users 316 Apr  3 18:44 web.xml
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ 
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ cat test_war/WEB-INF/web.xml
+drwxr-x---. 6 sikaj01 users  6144 Apr  3 21:32 tmp
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ cat test_war/WEB-INF/web.xml 
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee"
- xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
- <display-name>test-war</display-name>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         version="6.0">
+
+    <display-name>test-war</display-name>
+
+    <servlet>
+        <servlet-name>jsp</servlet-name>
+        <servlet-class>org.apache.jasper.servlet.JspServlet</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>jsp</servlet-name>
+        <url-pattern>*.jsp</url-pattern>
+    </servlet-mapping>
+
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+
 </web-app>
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ cat test_war/index.jsp 
-<pre>
-Test WAR deployed: true
-
-appKey set: <%= "DEVSUXENOC".equals(System.getProperty("appKey")) %>
-appEnv set: <%= "it".equals(System.getProperty("appEnv")) %>
-tenantKey set: <%= "fbe58f4c-96f3-449e-8d52-306526d56049".equals(System.getProperty("tenantKey"))%>
-conexus.jboss.host set: <%= "localhost".equals(System.getProperty("conexus.jboss.host")) %>
-
-org.hibernate.SQL warn enabled: <%= org.slf4j.LoggerFactory.getLogger("org.hibernate.SQL").isWarnEnabled() %>
-org.jboss.as info enabled: <%= org.slf4j.LoggerFactory.getLogger("org.jboss.as").isInfoEnabled() %>
-ROOT warn enabled: <%= org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).isWarnEnabled() %>
-<%
-    javax.naming.Context ctx = new javax.naming.InitialContext();
-    javax.sql.DataSource oracleConexusDS = (javax.sql.DataSource) ctx.lookup("java:jboss/datasources/XAConexusDS");
-%>
-Oracle datasource XAConexusDS is not null: <%= oracleConexusDS != null %>
-<%
-    javax.sql.DataSource oracleContractModDS = (javax.sql.DataSource) ctx.lookup("java:jboss/datasources/XAContractModDS");
-%>
-Oracle datasource XAContractModDS is not null: <%= oracleContractModDS != null %>
-<%
-    jakarta.jms.ConnectionFactory jmxConnectionFactory = (jakarta.jms.ConnectionFactory) ctx.lookup("java:/RemoteFuseJMS");
-%>
-JMX Connection Factory is not null: <%= jmxConnectionFactory != null %>
-<%
-    jakarta.jms.Queue auditQueue = (jakarta.jms.Queue) ctx.lookup("java:/jms/queue/AUDITLOGMDBQueue");
-%>
-Audit Queue is not null: <%= auditQueue != null %>
-<%
-    jakarta.jms.Queue taskQueue = (jakarta.jms.Queue) ctx.lookup("java:/jms/queue/TASKQueue");
-%>
-Task Queue is not null: <%= taskQueue != null %>
-<%
-    jakarta.jms.Queue slaQueue = (jakarta.jms.Queue) ctx.lookup("java:/jms/queue/SLAQueue");
-%>
-SLA Queue is not null: <%= slaQueue != null %>
-<%
-    jakarta.jms.Queue atpCentralizedQueue = (jakarta.jms.Queue) ctx.lookup("java:/jms/queue/ATPCentralizedQueue");
-%>
-ATP Centralized Queue is not null: <%= atpCentralizedQueue != null %>
-<%
-    jakarta.jms.Queue bpmCentralizedQueue = (jakarta.jms.Queue) ctx.lookup("java:/jms/queue/BPMCentralizedQueue");
-%>
-BPM Centralized Queue is not null: <%= bpmCentralizedQueue != null %>
-<%
-    jakarta.jms.Topic lifecycleTopic = (jakarta.jms.Topic) ctx.lookup("java:/jms/topic/lifecycle");
-%>
-Lifecycle topic is not null: <%= lifecycleTopic != null %>
-<%
-    jakarta.mail.Session mailSession = (jakarta.mail.Session) ctx.lookup("java:jboss/mail/Conexus");
-%>
-Mail Session is not null: <%= mailSession != null %>
-
-</pre>
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ cat test_war/WEB-INF/jboss-web.xml 
+<jboss-web>
+    <context-root>test_war</context-root>
+</jboss-web>[sikaj01@ip-10-56-112-33 docker-jboss-local]$ curl http://localhost:8080/test_war/
+<html><head><title>Error</title></head><body>404 - Not Found</body></html>[sikaj01@ip-10-56-112-33 docker-jboss-local]$ ^C
