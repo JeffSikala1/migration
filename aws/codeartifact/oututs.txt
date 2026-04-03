@@ -123,3 +123,160 @@ EXPOSE 9797 8080 9990 5445 8443 9999 9993
 WORKDIR $JBOSS_HOME/
 # Specify the debug port *:8787 to match the agentlib pattern for Java 9+ (-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8787)
 CMD ["sh", "-c", "$JBOSS_HOME/bin/standalone.sh -c=standalone-full.xml --debug '*:8787' && tail -F $JBOSS_HOME/standalone/log/server.log"]
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ ll
+total 72
+-rw-r-----. 1 sikaj01 users 12356 Apr  3 18:44 BUILDING.md
+-rwxr-x---. 1 sikaj01 users  2098 Apr  3 18:44 README.md
+-rw-r-----. 1 sikaj01 users  3790 Apr  3 18:44 RELEASE_NOTES.md
+-rw-r-----. 1 sikaj01 users  7391 Apr  3 18:44 RUNNING_JBOSS.md
+-rw-r-----. 1 sikaj01 users  5117 Apr  3 18:44 RUNNING_JBOSS_IT.md
+-rwxr-x---. 1 sikaj01 users  6164 Apr  3 20:45 build_image.sh
+-rwxr-x---. 1 sikaj01 users  1008 Apr  3 18:45 common.sh
+drwxr-x---. 2 sikaj01 users  6144 Apr  3 18:44 dockerfiles
+drwxr-x---. 2 sikaj01 users  6144 Apr  3 18:44 jboss_config
+-rwxr-x---. 1 sikaj01 users   503 Apr  3 18:45 push_image.sh
+drwxr-x---. 3 sikaj01 users  6144 Apr  3 18:44 test_war
+drwxr-x---. 6 sikaj01 users  6144 Apr  3 20:47 tmp
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ code dockerfiles/jboss.ubi8-minimal.Dockerfile 
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker rmi local/jboss-local-tmp-miminal-1-pg:latest
+Untagged: local/jboss-local-tmp-miminal-1-pg:latest
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker images
+REPOSITORY                                                                     TAG                IMAGE ID       CREATED          SIZE
+339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/docker-jboss-local   8.1.3-1-pg         ad4d41d3fe63   36 minutes ago   2.34GB
+<none>                                                                         <none>             dc93758a8617   2 hours ago      2.34GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi                    4.3.0-rocky-0.21   d1f45e6f06a9   2 weeks ago      841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi                    <none>             cc7fe326ff49   3 weeks ago      841MB
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ ./build_image.sh 
+############################ Caching JBoss Installer and Patch ##############################################
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/jboss/8.1/jboss-eap-8.1.0.zip
+############################################################################################################################ 100.0%
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/jboss/8.1/patches/jboss-eap-8.1.3-runtime-maven-repository.zip
+############################################################################################################################ 100.0%
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/postgresql/postgresql/42.7.8/postgresql-42.7.8.jar
+############################################################################################################################ 100.0%
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/fonts/dejavu-fonts-ttf.tar.gz
+############################################################################################################################ 100.0%
+############################ Building Jboss ubi8-minimal Docker Image ##############################################
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from jboss.ubi8-minimal.Dockerfile
+#1 transferring dockerfile: 4.24kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/redhat/ubi8-minimal:latest
+#2 DONE 0.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 137B done
+#3 DONE 0.0s
+
+#4 [ 1/25] FROM docker.io/redhat/ubi8-minimal:latest@sha256:815d4b55a154d9863c84f37298f4ebd2ae131bb244824996824138fc6c4b4b7d
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 478.75MB 3.5s done
+#5 DONE 3.7s
+
+#6 [ 8/25] COPY tmp/patches/jboss-eap-8.1.3-patch.zip /app/jboss-eap-patch.zip
+#6 CACHED
+
+#7 [ 4/25] RUN chown -R jboss:jboss NSFS_NAS
+#7 CACHED
+
+#8 [ 6/25] COPY tmp/installers/jboss-eap-8.1.0.zip /app/jboss-eap.zip
+#8 CACHED
+
+#9 [15/25] RUN tar -C /usr/share/fonts/dejavu -xzvf /tmp/dejavu-fonts-ttf.tar.gz
+#9 CACHED
+
+#10 [16/25] RUN fc-cache /usr/share/fonts/
+#10 CACHED
+
+#11 [12/25] COPY tmp/driver/postgresql-42.7.8.jar /tmp/postgresql-42.7.8.jar
+#11 CACHED
+
+#12 [18/25] RUN cp restart-clean.sh /app/jboss-eap-8.1/bin
+#12 CACHED
+
+#13 [ 2/25] RUN ln -s /usr/share/zoneinfo/America/Chicago /etc/localtime &&     microdnf update -y  &&     microdnf install -y java-17-openjdk-headless less nss unzip tar gzip shadow-utils vi fontconfig &&     microdnf clean all &&     mkdir -p NSFS_NAS/database &&     rm -rf /var/cache/yum /tmp/*
+#13 CACHED
+
+#14 [17/25] WORKDIR /app/jboss_config/
+#14 CACHED
+
+#15 [ 7/25] RUN unzip -q jboss-eap.zip &&     rm jboss-eap.zip
+#15 CACHED
+
+#16 [19/25] RUN chmod a+x /app/jboss-eap-8.1/bin/restart-clean.sh
+#16 CACHED
+
+#17 [13/25] COPY tmp/fonts/dejavu-fonts-ttf.tar.gz  /tmp/dejavu-fonts-ttf.tar.gz
+#17 CACHED
+
+#18 [ 3/25] RUN useradd -U -m -d /app/ jboss
+#18 CACHED
+
+#19 [ 9/25] RUN chown -R jboss:jboss /app/*
+#19 CACHED
+
+#20 [11/25] COPY jboss_config/java.security /app/jboss-eap-8.1/standalone/configuration/java.security
+#20 CACHED
+
+#21 [ 5/25] WORKDIR /app/
+#21 CACHED
+
+#22 [10/25] COPY --chown=jboss:jboss jboss_config /app/jboss_config/
+#22 CACHED
+
+#23 [14/25] RUN mkdir -p /usr/share/fonts/dejavu/
+#23 CACHED
+
+#24 [20/25] RUN chmod a+x config.sh &&     bash config.sh /app/jboss-eap-patch.zip
+#24 CACHED
+
+#25 [21/25] RUN sed -i 's|<location name="/" handler="welcome-content"/>||' /app/jboss-eap-8.1/standalone/configuration/standalone-full.xml
+#25 DONE 2.2s
+
+#26 [22/25] WORKDIR /app/
+#26 DONE 0.1s
+
+#27 [23/25] RUN rm -rf /app/jboss-*-patch.zip /app/jboss_config/
+#27 DONE 0.2s
+
+#28 [24/25] RUN chown -R jboss:jboss /app/jboss-eap*
+#28 DONE 2.7s
+
+#29 [25/25] WORKDIR /app/jboss-eap-8.1/
+#29 DONE 0.1s
+
+#30 exporting to image
+#30 exporting layers
+#30 exporting layers 3.2s done
+#30 writing image sha256:771e8f48b4b792d706dfda1bf7864b015ad07b340e155058b7ac6e8ef7191cc9 done
+#30 naming to docker.io/local/jboss-local-tmp-miminal-1-pg:latest done
+#30 DONE 3.3s
+############################ Tag ubi8 Docker Image ###################################################
+############################ Test ###################################################
+  adding: WEB-INF/ (stored 0%)
+  adding: WEB-INF/web.xml (deflated 42%)
+  adding: index.jsp (deflated 72%)
+If the following command fails, it's safe to continue
+jboss-test
+If the following command fails, it's safe to continue
+jboss-test
+Starting jboss-test
+3e73af13bd3a9a0b39ac5a66cdffd925605bce804149dcdbed1b621692debf1c
+Successfully copied 3.07kB to jboss-test:/app/jboss-eap-8.1/standalone/deployments/test_war.war
+Waiting for JBoss to start
+Waiting for deployment scanner to pick up WAR
+Testing deployed URL
+curl: (22) The requested URL returned error: 404
+curl: (22) The requested URL returned error: 404
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker images
+REPOSITORY                                                                     TAG                IMAGE ID       CREATED          SIZE
+339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/docker-jboss-local   8.1.3-1-pg         771e8f48b4b7   2 minutes ago    2.34GB
+local/jboss-local-tmp-miminal-1-pg                                             latest             771e8f48b4b7   2 minutes ago    2.34GB
+<none>                                                                         <none>             ad4d41d3fe63   38 minutes ago   2.34GB
+<none>                                                                         <none>             dc93758a8617   2 hours ago      2.34GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi                    4.3.0-rocky-0.21   d1f45e6f06a9   2 weeks ago      841MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi                    <none>             cc7fe326ff49   3 weeks ago      841MB
