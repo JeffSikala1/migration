@@ -89,6 +89,7 @@ RUN chmod a+x $JBOSS_HOME/bin/restart-clean.sh
 
 RUN chmod a+x config.sh && \
     bash config.sh $CONTAINER_JBOSS_PATCH_ZIP
+RUN sed -i 's|<location name="/" handler="welcome-content"/>||' $JBOSS_HOME/standalone/configuration/standalone-full.xml
 
 # Delete applied patch kits and cli files
 WORKDIR /app/
