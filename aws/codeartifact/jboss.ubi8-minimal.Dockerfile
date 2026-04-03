@@ -108,4 +108,4 @@ EXPOSE 9797 8080 9990 5445 8443 9999 9993
 
 WORKDIR $JBOSS_HOME/
 # Specify the debug port *:8787 to match the agentlib pattern for Java 9+ (-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8787)
-CMD ["sh", "-c", "$JBOSS_HOME/bin/standalone.sh -c=standalone-full.xml --debug '*:8787' && tail -F $JBOSS_HOME/standalone/log/server.log"]
+CMD ["sh", "-c", "$JBOSS_HOME/bin/standalone.sh -c=standalone-full.xml -b 0.0.0.0 -bmanagement 0.0.0.0 --debug '*:8787' && tail -F $JBOSS_HOME/standalone/log/server.log"]
