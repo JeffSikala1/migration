@@ -43,8 +43,8 @@ function cacheArtifacts() {
   downloadFile $ARTIFACTORY_BASE/jboss/$JBOSS_VER/patches/$JBOSS_ZIPPED_PATCH_MAVEN_REPO_FILENAME $JBOSS_PATCH_ZIP_PATH
 
   # deleting the driver as a precaution and since it's fast to download it
-  rm $DRIVER_HOME/ojdbc8.jar
-  rm $DRIVER_HOME/postgresql-42.7.8.jar
+  rm -f "$DRIVER_HOME/ojdbc8.jar"
+  rm -f "$DRIVER_HOME/postgresql-42.7.8.jar"
 #  downloadFile $ARTIFACTORY_BASE/oracle/ojdbc/19c/ojdbc8.jar $DRIVER_HOME/ojdbc8.jar
   downloadFile https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/postgresql/postgresql/42.7.8/postgresql-42.7.8.jar $DRIVER_HOME/postgresql-42.7.8.jar
 
@@ -73,22 +73,22 @@ function testImage() {
   docker cp tmp/test_war.war $TEST_ALIAS:$DEPLOYMENTS_DIR/test_war.war
   
   # change ownership and permissions as root
-  docker exec --user root $TEST_ALIAS sh -c "
+  docker exec --user root "$TEST_ALIAS" sh -c "
     chown jboss:jboss $DEPLOYMENTS_DIR/test_war.war &&
     chmod 644 $DEPLOYMENTS_DIR/test_war.war &&
     touch $DEPLOYMENTS_DIR/test_war.war.dodeploy
   "
 
-  until `docker exec -it $TEST_ALIAS /app/jboss-eap-$JBOSS_VER/bin/jboss-cli.sh -c ":read-attribute(name=server-state)" 2> /dev/null | grep -q "running"`; do
+  until `docker exec "$TEST_ALIAS" /app/jboss-eap-$JBOSS_VER/bin/jboss-cli.sh -c ":read-attribute(name=server-state)" 2> /dev/null | grep -q "running"`; do
     echo "Waiting for JBoss to start"
     sleep 1
   done
 
   echo "Waiting for deployment scanner to pick up WAR"
-  until docker exec -it $TEST_ALIAS test -f $DEPLOYMENTS_DIR/test_war.war.deployed; do
-    if docker exec -it $TEST_ALIAS test -f $DEPLOYMENTS_DIR/test_war.war.failed; then
+  until docker exec "$TEST_ALIAS" test -f $DEPLOYMENTS_DIR/test_war.war.deployed; do
+    if docker exec "$TEST_ALIAS" test -f $DEPLOYMENTS_DIR/test_war.war.failed; then
       echo "JBoss deployment scanner reported a failed deployment"
-      docker exec -it $TEST_ALIAS cat $DEPLOYMENTS_DIR/test_war.war.failed
+      docker exec "$TEST_ALIAS" cat $DEPLOYMENTS_DIR/test_war.war.failed
       exit 1
     fi
 
@@ -106,7 +106,7 @@ function buildImage() {
   echo "############################ Building Jboss ubi8-minimal Docker Image ##############################################"
 
   docker build \
-  --force-rm --pull --allow network.host --progress=plain \
+  --force-rm --pull --network host --progress=plain \
   --build-arg JBOSS_VER=$JBOSS_VER \
   --build-arg JBOSS_ZIP=$JBOSS_INSTALL_ZIP_PATH \
   --build-arg JBOSS_PATCH_ZIP=$JBOSS_PATCH_ZIP_PATH \
