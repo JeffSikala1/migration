@@ -1,115 +1,125 @@
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker ps
-CONTAINER ID   IMAGE                                       COMMAND                  CREATED         STATUS         PORTS                                                                                NAMES
-94408c3883d7   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/…"   3 minutes ago   Up 3 minutes   5445/tcp, 8443/tcp, 9797/tcp, 9990/tcp, 9993/tcp, 9999/tcp, 0.0.0.0:8080->8080/tcp   jboss-test
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker exec jboss-test ls -l /app
-total 0
-drwxr-xr-x. 1 jboss jboss 56 Apr  3 20:34 jboss-eap-8.1
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker exec jboss-test ls -l /app/jboss-eap-8.1
-total 452
--rw-r--r--. 1 jboss jboss    419 Jul 29  2025 JBossEULA.txt
--rw-r--r--. 1 jboss jboss  11356 Jul 29  2025 LICENSE.txt
-drwxr-xr-x. 1 jboss jboss     27 Jul 29  2025 appclient
-drwxr-xr-x. 1 jboss jboss      6 Apr  3 20:47 bin
-drwxr-xr-x. 1 jboss jboss     52 Jul 29  2025 docs
-drwxr-xr-x. 1 jboss jboss     38 Jul 29  2025 domain
--rw-r--r--. 1 jboss jboss 441948 Jul 29  2025 jboss-modules.jar
-drwxr-xr-x. 1 jboss jboss     31 Apr  3 20:35 modules
-drwxr-xr-x. 1 jboss jboss     80 Apr  3 20:32 standalone
--rw-r--r--. 1 jboss jboss     71 Apr  3 20:34 version.txt
-drwxr-xr-x. 1 jboss jboss    158 Jul 29  2025 welcome-content
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker exec jboss-test ls -l /app/jboss-eap-8.1/standalone
-total 0
-drwxr-xr-x. 1 jboss jboss 62 Apr  3 20:35 configuration
-drwxr-xr-x. 1 jboss jboss 37 Apr  3 20:32 data
-drwxr-xr-x. 1 jboss jboss 55 Apr  3 20:47 deployments
-drwxr-xr-x. 1 jboss jboss 17 Jul 29  2025 lib
-drwxr-xr-x. 1 jboss jboss 75 Apr  3 20:47 log
-drwxr-xr-x. 1 jboss jboss 71 Apr  3 20:47 tmp
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker exec jboss-test ls -l /app/jboss-eap-8.1/standalone/deployments
-total 20
--rw-r--r--. 1 jboss jboss 8888 Jul 29  2025 README.txt
--rw-r--r--. 1 jboss jboss 1364 Apr  3 20:47 test_war.war
--rw-r--r--. 1 jboss jboss   12 Apr  3 20:47 test_war.war.deployed
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker logs jboss-test | grep -i "Deployed"
-15:47:49,685 INFO  [org.jboss.as.connector.services.resourceadapters.ResourceAdapterActivatorService$ResourceAdapterActivator] (MSC service thread 1-3) IJ020002: Deployed: file://RaActivatoractivemq-ra
-15:47:50,632 INFO  [org.jboss.as.server] (ServerService Thread Pool -- 45) WFLYSRV0010: Deployed "test_war.war" (runtime-name : "test_war.war")
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ curl -i http://localhost:8080/
-HTTP/1.1 200 OK
-Connection: keep-alive
-Last-Modified: Tue, 29 Jul 2025 08:50:52 GMT
-Content-Length: 1720
-Content-Type: text/html
-Accept-Ranges: bytes
-Date: Fri, 03 Apr 2026 20:52:43 GMT
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ ll
+total 72
+-rw-r-----. 1 sikaj01 users 12356 Apr  3 18:44 BUILDING.md
+-rwxr-x---. 1 sikaj01 users  2098 Apr  3 18:44 README.md
+-rw-r-----. 1 sikaj01 users  3790 Apr  3 18:44 RELEASE_NOTES.md
+-rw-r-----. 1 sikaj01 users  7391 Apr  3 18:44 RUNNING_JBOSS.md
+-rw-r-----. 1 sikaj01 users  5117 Apr  3 18:44 RUNNING_JBOSS_IT.md
+-rwxr-x---. 1 sikaj01 users  6164 Apr  3 20:45 build_image.sh
+-rwxr-x---. 1 sikaj01 users  1008 Apr  3 18:45 common.sh
+drwxr-x---. 2 sikaj01 users  6144 Apr  3 18:44 dockerfiles
+drwxr-x---. 2 sikaj01 users  6144 Apr  3 18:44 jboss_config
+-rwxr-x---. 1 sikaj01 users   503 Apr  3 18:45 push_image.sh
+drwxr-x---. 3 sikaj01 users  6144 Apr  3 18:44 test_war
+drwxr-x---. 6 sikaj01 users  6144 Apr  3 20:47 tmp
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ cat dockerfiles/jboss.ubi8-minimal.Dockerfile 
+FROM redhat/ubi8-minimal
+LABEL maintainer="Bob Wernsman <robert.wernsman@gsa.gov"
+USER root
+# Set timezone
+RUN ln -s /usr/share/zoneinfo/America/Chicago /etc/localtime && \
+    microdnf update -y  && \
+    microdnf install -y java-17-openjdk-headless less nss unzip tar gzip shadow-utils vi fontconfig && \
+    microdnf clean all && \
+    mkdir -p NSFS_NAS/database && \
+    rm -rf /var/cache/yum /tmp/*
 
-<!--
-  ~ Copyright The WildFly Authors
-  ~ SPDX-License-Identifier: Apache-2.0
-  -->
+# Start Jboss installation
 
-<!DOCTYPE html>
+USER root
 
-<html>
-<head>
-    <!-- proper charset -->
-    <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
-    <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE8"/>
+ARG JBOSS_VER
+ARG JBOSS_ZIP
+ARG JBOSS_PATCH_ZIP
+ARG DEJAVU_FONT_TARBALL
+ENV ENVIRONMENT=dev
+ENV JBOSS_HOME /app/jboss-eap-$JBOSS_VER
 
-    <title>Welcome to JBoss EAP 8</title>
-    <link rel="shortcut icon" href="favicon.ico?v=1"/>
-    <link rel="StyleSheet" href="eap.css" type="text/css">
-</head>
+ENV CONTAINER_JBOSS_PATCH_ZIP=/app/jboss-eap-patch.zip
+###########################################################################################
+# Begin the Jboss work
+###########################################################################################
 
-<body>
+# Override HEAP and META_SIZE
+# The IT tests run fine with the default values of JVM Heap and Metaspace, but redeploying
+# EARs regularly during local development causes the Metaspace to run out. Unfortunately,
+# JBoss does not provide an good way to pass JVM system properties to the standalone server
+# configuration. You can override the value of the JAVA_OPTS environmental variable, but you
+# have to do so in a way that preserves the default JBoss JAVA_OPTS options configured in
+# bin/standalone.conf. What a pain. So what you see below is the exact value of the default
+# JAVA_OPTS as copied from the bin/standalone.conf with memory overrides plus the inclusion
+# of a java.security file.
+ARG JBOSS_MODULES_SYSTEM_PKGS="org.jboss.byteman"
+ARG HEAP_SIZE=3072m
+ARG MAX_META_SIZE=1303m
+ARG JAVA_SECURITY_FILE=$JBOSS_HOME/standalone/configuration/java.security
+ENV JAVA_OPTS -Xms$HEAP_SIZE \
+  -Xmx$HEAP_SIZE \
+  -XX:MetaspaceSize=96M \
+  -XX:MaxMetaspaceSize=$MAX_META_SIZE \
+  -Djava.net.preferIPv4Stack=true \
+  -Djboss.modules.system.pkgs=$JBOSS_MODULES_SYSTEM_PKGS \
+  -Djava.awt.headless=true \
+  -Djava.security.properties=$JAVA_SECURITY_FILE
 
-<div id="container" style="position: absolute; left: 0px; top: 0px; right: 0px; bottom: 0px;">
+# Add the jboss user
+RUN useradd -U -m -d /app/ jboss
 
-    <!-- header -->
-    <div class="header-panel">
-        <div class="header-line">&nbsp;</div>
-        <div class="header-top">
-            <img class="prod-title" src="images/product_title.png"/><span class="prod-version">8</span>
-        </div>
-        <div class="header-bottom">&nbsp;</div>
-    </div>
+# set jboss the owner of NSFS_NAS/database for vendor file IT testing
+RUN chown -R jboss:jboss NSFS_NAS
 
+# Copy and extract base Jboss installer and copy patch
+WORKDIR /app/
+COPY $JBOSS_ZIP /app/jboss-eap.zip
+RUN unzip -q jboss-eap.zip && \
+    rm jboss-eap.zip
+COPY $JBOSS_PATCH_ZIP $CONTAINER_JBOSS_PATCH_ZIP
+RUN chown -R jboss:jboss /app/*
 
-    <!-- main content -->
-    <div id="content">
+# Copy jboss configuration scripts
+COPY --chown=jboss:jboss jboss_config /app/jboss_config/
+#COPY --chown=jboss:jboss files/jboss/vault $JBOSS_HOME/vault/
 
-        <div class="section">
+# Install java security file
+COPY jboss_config/java.security $JAVA_SECURITY_FILE
 
-            <h1>Welcome to JBoss EAP 8</h1>
+# Install Postgres JDBC module
+COPY tmp/driver/postgresql-42.7.8.jar /tmp/postgresql-42.7.8.jar
 
-            <h3>Your Red Hat JBoss Enterprise Application Platform is running.</h3>
+# Install required JasperReports Font
+COPY $DEJAVU_FONT_TARBALL  /tmp/dejavu-fonts-ttf.tar.gz
+RUN mkdir -p /usr/share/fonts/dejavu/
+RUN tar -C /usr/share/fonts/dejavu -xzvf /tmp/dejavu-fonts-ttf.tar.gz
+RUN fc-cache /usr/share/fonts/
 
-            <p>
-                <a href="/console">Administration Console</a> |
-                <a href="https://access.redhat.com/documentation/en-us/red_hat_jboss_enterprise_application_platform">Latest release documentation</a> |
-                <a href="https://access.redhat.com/discussions">Online User Groups</a> <br/>
-            </p>
+# Modify the jboss-cli.xml file
+#RUN sed -i 's/chown \$JBOSS_USER/chown \$JBOSS_USER\:/' /etc/init.d/jboss
 
-            <sub>To replace this page simply deploy your own war with / as its context path.<br/>
-                To disable it, remove the "welcome-content" handler for location / in the undertow subsystem.</sub>
+# Start Jboss and apply patches and configurations
+USER jboss
+WORKDIR /app/jboss_config/
 
-        </div>
+RUN cp restart-clean.sh $JBOSS_HOME/bin
+RUN chmod a+x $JBOSS_HOME/bin/restart-clean.sh
 
-    </div>
+RUN chmod a+x config.sh && \
+    bash config.sh $CONTAINER_JBOSS_PATCH_ZIP
 
+# Delete applied patch kits and cli files
+WORKDIR /app/
+RUN rm -rf /app/jboss-*-patch.zip /app/jboss_config/
 
-    <div id="footer">&nbsp;</div>
+USER root
+RUN chown -R jboss:jboss /app/jboss-eap*
 
-</div>
+USER jboss
 
-</body>
-</html>
+# Ensure signals are forwarded to the JVM process correctly for graceful shutdown
+ENV LAUNCH_JBOSS_IN_BACKGROUND true
 
+# Expose the ports that we are interested in
+EXPOSE 9797 8080 9990 5445 8443 9999 9993
 
-[sikaj01@ip-10-56-112-33 docker-jboss-local]$ curl -i http://localhost:8080/test_war/
-HTTP/1.1 404 Not Found
-Connection: keep-alive
-Content-Length: 74
-Content-Type: text/html
-Date: Fri, 03 Apr 2026 20:53:11 GMT
-
-<html><head><title>Error</title></head><body>404 - Not Found</body></html>[sikaj01@ip-10-56-112-33 docker-jboss-local]$ 
+WORKDIR $JBOSS_HOME/
+# Specify the debug port *:8787 to match the agentlib pattern for Java 9+ (-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8787)
+CMD ["sh", "-c", "$JBOSS_HOME/bin/standalone.sh -c=standalone-full.xml --debug '*:8787' && tail -F $JBOSS_HOME/standalone/log/server.log"]
