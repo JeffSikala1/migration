@@ -71,7 +71,13 @@ function testImage() {
 
   docker run -d -p 8080:8080 --name=$TEST_ALIAS $JBOSS_TMP_NAME
   docker cp tmp/test_war.war $TEST_ALIAS:$DEPLOYMENTS_DIR/test_war.war
-  docker exec -it $TEST_ALIAS chmod 644 $DEPLOYMENTS_DIR/test_war.war
+  
+  # change ownership and permissions as root
+  docker exec --user root $TEST_ALIAS sh -c "
+    chown jboss:jboss $DEPLOYMENTS_DIR/test_war.war &&
+    chmod 644 $DEPLOYMENTS_DIR/test_war.war &&
+    touch $DEPLOYMENTS_DIR/test_war.war.dodeploy
+  "
 
   until `docker exec -it $TEST_ALIAS /app/jboss-eap-$JBOSS_VER/bin/jboss-cli.sh -c ":read-attribute(name=server-state)" 2> /dev/null | grep -q "running"`; do
     echo "Waiting for JBoss to start"
