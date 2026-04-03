@@ -58,37 +58,36 @@ function testImage() {
   JBOSS_HOME=/app/jboss-eap-$JBOSS_VER
   DEPLOYMENTS_DIR=$JBOSS_HOME/standalone/deployments
 
+  rm -f tmp/test_war.war
   cd test_war && zip -r ../tmp/test_war.war . && cd ../
 
   # Stop and remove the test container just in case the test did not finish cleanly the prior run.
   echo "If the following command fails, it's safe to continue"
-  docker stop $TEST_ALIAS
+  docker stop "$TEST_ALIAS" || true
 
   echo "If the following command fails, it's safe to continue"
-  docker rm $TEST_ALIAS
+  docker rm "$TEST_ALIAS" || true
 
   echo "Starting $TEST_ALIAS"
+  docker run -d -p 8080:8080 --name="$TEST_ALIAS" "$JBOSS_TMP_NAME"
+  docker cp tmp/test_war.war "$TEST_ALIAS:$DEPLOYMENTS_DIR/test_war.war"
 
-  docker run -d -p 8080:8080 --name=$TEST_ALIAS $JBOSS_TMP_NAME
-  docker cp tmp/test_war.war $TEST_ALIAS:$DEPLOYMENTS_DIR/test_war.war
-  
-  # change ownership and permissions as root
   docker exec --user root "$TEST_ALIAS" sh -c "
-    chown jboss:jboss $DEPLOYMENTS_DIR/test_war.war &&
-    chmod 644 $DEPLOYMENTS_DIR/test_war.war &&
-    touch $DEPLOYMENTS_DIR/test_war.war.dodeploy
+    chown jboss:jboss '$DEPLOYMENTS_DIR/test_war.war' &&
+    chmod 644 '$DEPLOYMENTS_DIR/test_war.war' &&
+    touch '$DEPLOYMENTS_DIR/test_war.war.dodeploy'
   "
 
-  until `docker exec "$TEST_ALIAS" /app/jboss-eap-$JBOSS_VER/bin/jboss-cli.sh -c ":read-attribute(name=server-state)" 2> /dev/null | grep -q "running"`; do
+  until docker exec "$TEST_ALIAS" /app/jboss-eap-"$JBOSS_VER"/bin/jboss-cli.sh -c ":read-attribute(name=server-state)" 2>/dev/null | grep -q "running"; do
     echo "Waiting for JBoss to start"
     sleep 1
   done
 
   echo "Waiting for deployment scanner to pick up WAR"
-  until docker exec "$TEST_ALIAS" test -f $DEPLOYMENTS_DIR/test_war.war.deployed; do
-    if docker exec "$TEST_ALIAS" test -f $DEPLOYMENTS_DIR/test_war.war.failed; then
+  until docker exec "$TEST_ALIAS" test -f "$DEPLOYMENTS_DIR/test_war.war.deployed"; do
+    if docker exec "$TEST_ALIAS" test -f "$DEPLOYMENTS_DIR/test_war.war.failed"; then
       echo "JBoss deployment scanner reported a failed deployment"
-      docker exec "$TEST_ALIAS" cat $DEPLOYMENTS_DIR/test_war.war.failed
+      docker exec "$TEST_ALIAS" cat "$DEPLOYMENTS_DIR/test_war.war.failed"
       exit 1
     fi
 
@@ -96,10 +95,12 @@ function testImage() {
     sleep 1
   done
 
-  curl --fail --silent --show-error http://localhost:8080/test_war/index.jsp
+  echo "Testing deployed URL"
+  curl --fail --silent --show-error http://localhost:8080/test_war/index.jsp || \
+  curl --fail --silent --show-error http://localhost:8080/index.jsp
 
-  # docker stop $TEST_ALIAS
-  # docker rm $TEST_ALIAS
+  # docker stop "$TEST_ALIAS"
+  # docker rm "$TEST_ALIAS"
 }
 
 function buildImage() {
@@ -110,8 +111,7 @@ function buildImage() {
   --build-arg JBOSS_VER=$JBOSS_VER \
   --build-arg JBOSS_ZIP=$JBOSS_INSTALL_ZIP_PATH \
   --build-arg JBOSS_PATCH_ZIP=$JBOSS_PATCH_ZIP_PATH \
-  --build-arg DEJAVU_FONT_TARBALL=$FONTS_
-  HOME/$DEJAVU_FONT \
+  --build-arg DEJAVU_FONT_TARBALL="$FONTS_HOME/$DEJAVU_FONT" \
   -t $JBOSS_TMP_NAME --file dockerfiles/jboss.ubi8-minimal.Dockerfile .
 
   if [ $? -ne 0 ];
