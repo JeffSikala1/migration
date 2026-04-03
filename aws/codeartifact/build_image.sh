@@ -11,7 +11,7 @@ function downloadFile() {
   # NOTE: the dash AFTER the -C (-C -) has meaning. This means curl should automatically figure out where to resume from based on the on-disk file being downloaded
   # -o {filename} write response to a file with the provided path/name
   echo "downloading $downloadUrl"
-  httpStatusCode=$(curl -L -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" "$downloadUrl" -C - -o $targetPathWithFileName -w "%{http_code}" --progress-bar ) || exitCode="$?"
+  httpStatusCode=$(curl -L -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" "$downloadUrl" -o $targetPathWithFileName -w "%{http_code}" --progress-bar ) || exitCode="$?"
 
   # just give up if we get http status over 200 but ignoring 416 which happens with -C if you are trying to resume on a file that is already fully downloaded
   # NOTE: This error handling is similar to how the --fail flag works in curl but I found this easier than dealing with exit codes which can sometimes be set to non-zero
