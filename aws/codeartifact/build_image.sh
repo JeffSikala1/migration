@@ -55,6 +55,8 @@ function cacheArtifacts() {
 function testImage() {
   echo "############################ Test ###################################################"
   TEST_ALIAS=jboss-test
+  JBOSS_HOME=/app/jboss-eap-$JBOSS_VER
+  DEPLOYMENTS_DIR=$JBOSS_HOME/standalone/deployments
 
   cd test_war && zip -r ../tmp/test_war.war . && cd ../
 
@@ -68,15 +70,25 @@ function testImage() {
   echo "Starting $TEST_ALIAS"
 
   docker run -d -p 8080:8080 --name=$TEST_ALIAS $JBOSS_TMP_NAME
-  docker cp tmp/test_war.war $TEST_ALIAS:/tmp
+  docker cp tmp/test_war.war $TEST_ALIAS:$DEPLOYMENTS_DIR/test_war.war
+  docker exec -it $TEST_ALIAS chmod 644 $DEPLOYMENTS_DIR/test_war.war
 
   until `docker exec -it $TEST_ALIAS /app/jboss-eap-$JBOSS_VER/bin/jboss-cli.sh -c ":read-attribute(name=server-state)" 2> /dev/null | grep -q "running"`; do
     echo "Waiting for JBoss to start"
     sleep 1
   done
 
-  echo "Installing WAR"
-  docker exec -it $TEST_ALIAS /app/jboss-eap-$JBOSS_VER/bin/jboss-cli.sh --connect "deploy /tmp/test_war.war"
+  echo "Waiting for deployment scanner to pick up WAR"
+  until docker exec -it $TEST_ALIAS test -f $DEPLOYMENTS_DIR/test_war.war.deployed; do
+    if docker exec -it $TEST_ALIAS test -f $DEPLOYMENTS_DIR/test_war.war.failed; then
+      echo "JBoss deployment scanner reported a failed deployment"
+      docker exec -it $TEST_ALIAS cat $DEPLOYMENTS_DIR/test_war.war.failed
+      exit 1
+    fi
+
+    echo "Waiting for test_war.war deployment"
+    sleep 1
+  done
 
   curl http://localhost:8080/test_war/index.jsp
 
