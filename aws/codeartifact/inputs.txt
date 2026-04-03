@@ -1,19 +1,15 @@
-git fetch origin --prune --tags
-
-echo "=== origin/main ==="
-git rev-parse origin/main
-git log -1 --oneline origin/main
-
-echo "=== tag ==="
-git rev-parse 02.00.000.145
-git log -1 --oneline 02.00.000.145
-
-echo "=== main contains tag? ==="
-git merge-base --is-ancestor 02.00.000.145 origin/main && echo YES || echo NO
-
-echo "=== release branch exists? ==="
-git ls-remote --heads origin "refs/heads/release/02.00.000.145"
-
-
-
-git push origin --delete release/02.00.000.145
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-release-local"},
+  "$or":[
+    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145"}},
+    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145"}},
+    {"path":{"$match":"gov/gsa/cnxs/ws-client/order-services/02.00.000.145"}},
+    {"path":{"$match":"gov/gsa/cnxs/ws-client/health-check/02.00.000.145"}}
+  ]
+}).include("name","path","repo")
+'
