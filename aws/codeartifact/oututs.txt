@@ -1,66 +1,113 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sku "jeff.sikala@gsa.gov:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data '
-items.find({
-  "repo":{"$eq":"conexus-release-local"},
-  "$or":[
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145"}},
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145"}},
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/order-services/02.00.000.145"}},
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/health-check/02.00.000.145"}}
-  ]
-}).include("name","path","repo")
-'
-
-{
-"results" : [ {
-  "repo" : "conexus-release-local",
-  "path" : "gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145",
-  "name" : "ws-client-aggregator-02.00.000.145.pom"
-} ],
-"range" : {
-  "start_pos" : 0,
-  "end_pos" : 1,
-  "total" : 1
-}
-}
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sku "jeff.sikala@gsa.gov:${TOKEN}" \
-  -X DELETE \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145/"
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sku "jeff.sikala@gsa.gov:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data '
-items.find({
-  "repo":{"$eq":"conexus-release-local"},
-  "$or":[
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145"}},
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145"}},
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/order-services/02.00.000.145"}},
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/health-check/02.00.000.145"}}
-  ]
-}).include("name","path","repo")
-'
-
-{
-"results" : [  ],
-"range" : {
-  "start_pos" : 0,
-  "end_pos" : 0,
-  "total" : 0
-}
-}
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../ws-client/
-[sikaj01@ip-10-56-112-33 ws-client]$ git fetch origin --prune --tags
-
-echo "=== release branch ==="
-git ls-remote --heads origin "refs/heads/release/02.00.000.145"
-=== release branch ===
-9458b2ba41d511905180220f806b6a91012b0d4d        refs/heads/release/02.00.000.145
-[sikaj01@ip-10-56-112-33 ws-client]$ echo "=== release tag ==="
-git ls-remote --tags origin "refs/tags/02.00.000.145"
-=== release tag ===
-fb57ffa7dee28d301a9c191a41d0690d41fc8e53        refs/tags/02.00.000.145
+[sikaj01@ip-10-56-128-81 ~]$ sysctl nat.ipv4.ip_forward
+sysctl: cannot stat /proc/sys/nat/ipv4/ip_forward: No such file or directory
+[sikaj01@ip-10-56-128-81 ~]$ sysctl net.ipv4.ip_forward
+net.ipv4.ip_forward = 0
+[sikaj01@ip-10-56-128-81 ~]$ sudo tcpdump -ni any host 10.56.56.2 and port 53
+tcpdump: data link type LINUX_SLL2
+dropped privs to tcpdump
+tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
+listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes
+17:43:02.622939 ens5  Out IP 10.56.128.81.59741 > 10.56.56.2.domain: 27338+ [1au] A? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:02.622939 ens5  Out IP 10.56.128.81.53908 > 10.56.56.2.domain: 57783+ [1au] AAAA? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:02.623575 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.53908: 57783 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., AAAA 2600:1f15:9dd:c306:cde4:1387:e566:a042, AAAA 2600:1f15:9dd:c303:4714:2bf4:24a0:b804, AAAA 2600:1f15:9dd:c300:75cc:ab8:9624:43f (330)
+17:43:02.642076 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.59741: 27338 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., A 18.253.165.84, A 18.252.66.87, A 18.253.223.25 (256)
+17:43:08.283498 ens5  Out IP 10.56.128.81.37504 > 10.56.56.2.domain: 32713+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:08.283498 ens5  Out IP 10.56.128.81.45968 > 10.56.56.2.domain: 4802+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:08.283772 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.37504: 32713 0/1/1 (169)
+17:43:08.284390 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.45968: 4802 8/0/1 A 3.236.94.242, A 3.236.94.150, A 3.236.94.194, A 3.236.94.196, A 3.236.94.248, A 3.236.94.218, A 3.236.94.153, A 3.236.94.211 (185)
+17:43:11.692982 ens5  Out IP 10.56.128.81.35150 > 10.56.56.2.domain: 43184+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:11.692987 ens5  Out IP 10.56.128.81.38885 > 10.56.56.2.domain: 32911+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:11.693266 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.35150: 43184 0/1/1 (169)
+17:43:11.693266 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.38885: 32911 8/0/1 A 3.236.94.211, A 3.236.94.153, A 3.236.94.218, A 3.236.94.248, A 3.236.94.196, A 3.236.94.194, A 3.236.94.150, A 3.236.94.242 (185)
+17:43:20.193448 ens5  Out IP 10.56.128.81.58410 > 10.56.56.2.domain: 18583+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:20.193448 ens5  Out IP 10.56.128.81.48253 > 10.56.56.2.domain: 6551+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:20.194433 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.58410: 18583 0/1/1 (135)
+17:43:20.194528 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.48253: 6551 8/0/1 A 44.202.79.195, A 3.236.94.140, A 3.236.94.143, A 3.236.94.199, A 3.236.94.236, A 3.236.94.168, A 3.236.94.131, A 3.236.94.230 (185)
+17:43:20.645711 ens5  Out IP 10.56.128.81.59441 > 10.56.56.2.domain: 46139+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:20.645716 ens5  Out IP 10.56.128.81.54258 > 10.56.56.2.domain: 34149+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:20.646033 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.54258: 34149 8/0/1 A 3.236.94.230, A 3.236.94.131, A 3.236.94.168, A 3.236.94.236, A 3.236.94.199, A 3.236.94.143, A 3.236.94.140, A 44.202.79.195 (185)
+17:43:20.646121 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.59441: 46139 0/1/1 (169)
+17:43:21.395208 vethcb9f48b P   IP 172.17.0.2.52063 > 10.56.56.2.domain: 775+ A? cdn-ubi.redhat.com. (36)
+17:43:21.395208 docker0 In  IP 172.17.0.2.52063 > 10.56.56.2.domain: 775+ A? cdn-ubi.redhat.com. (36)
+17:43:21.395240 vethcb9f48b P   IP 172.17.0.2.52063 > 10.56.56.2.domain: 776+ AAAA? cdn-ubi.redhat.com. (36)
+17:43:21.395240 docker0 In  IP 172.17.0.2.52063 > 10.56.56.2.domain: 776+ AAAA? cdn-ubi.redhat.com. (36)
+17:43:22.628233 ens5  Out IP 10.56.128.81.39161 > 10.56.56.2.domain: 51783+ [1au] AAAA? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:22.628233 ens5  Out IP 10.56.128.81.47468 > 10.56.56.2.domain: 10057+ [1au] A? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:22.629774 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.47468: 10057 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., A 18.252.66.87, A 18.253.165.84, A 18.253.223.25 (256)
+17:43:22.649186 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.39161: 51783 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., AAAA 2600:1f15:9dd:c303:4714:2bf4:24a0:b804, AAAA 2600:1f15:9dd:c306:cde4:1387:e566:a042, AAAA 2600:1f15:9dd:c300:75cc:ab8:9624:43f (292)
+17:43:22.720252 ens5  Out IP 10.56.128.81.46074 > 10.56.56.2.domain: 44676+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:22.720252 ens5  Out IP 10.56.128.81.59319 > 10.56.56.2.domain: 65040+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:22.720496 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.59319: 65040 0/1/1 (169)
+17:43:22.720496 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.46074: 44676 8/0/1 A 44.202.79.195, A 3.236.94.230, A 3.236.94.131, A 3.236.94.168, A 3.236.94.236, A 3.236.94.199, A 3.236.94.143, A 3.236.94.140 (185)
+17:43:22.995071 ens5  Out IP 10.56.128.81.59286 > 10.56.56.2.domain: 39246+ A? ip-10-56-128-81.ec2.internal. (46)
+17:43:22.995083 ens5  Out IP 10.56.128.81.59286 > 10.56.56.2.domain: 33867+ AAAA? ip-10-56-128-81.ec2.internal. (46)
+17:43:22.996065 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.59286: 39246 1/0/0 A 10.56.128.81 (62)
+17:43:22.996118 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.59286: 33867 0/1/0 (107)
+17:43:22.998333 ens5  Out IP 10.56.128.81.46533 > 10.56.56.2.domain: 51985+ [1au] A? ssm.us-east-1.amazonaws.com. (56)
+17:43:22.998359 ens5  Out IP 10.56.128.81.53614 > 10.56.56.2.domain: 2972+ [1au] AAAA? ssm.us-east-1.amazonaws.com. (56)
+17:43:22.999753 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.53614: 2972 0/1/1 (140)
+17:43:23.000088 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.46533: 51985 1/0/1 A 10.56.128.247 (72)
+17:43:23.897807 vethcb9f48b P   IP 172.17.0.2.52063 > 10.56.56.2.domain: 775+ A? cdn-ubi.redhat.com. (36)
+17:43:23.897807 docker0 In  IP 172.17.0.2.52063 > 10.56.56.2.domain: 775+ A? cdn-ubi.redhat.com. (36)
+17:43:23.897841 vethcb9f48b P   IP 172.17.0.2.52063 > 10.56.56.2.domain: 776+ AAAA? cdn-ubi.redhat.com. (36)
+17:43:23.897841 docker0 In  IP 172.17.0.2.52063 > 10.56.56.2.domain: 776+ AAAA? cdn-ubi.redhat.com. (36)
+17:43:28.028458 ens5  Out IP 10.56.128.81.58964 > 10.56.56.2.domain: 12945+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:28.028465 ens5  Out IP 10.56.128.81.46120 > 10.56.56.2.domain: 1610+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:28.028792 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.46120: 1610 8/0/1 A 3.236.94.140, A 44.202.79.195, A 3.236.94.230, A 3.236.94.131, A 3.236.94.168, A 3.236.94.236, A 3.236.94.199, A 3.236.94.143 (185)
+17:43:28.028792 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.58964: 12945 0/1/1 (169)
+17:43:31.071657 ens5  Out IP 10.56.128.81.56955 > 10.56.56.2.domain: 38054+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:31.071657 ens5  Out IP 10.56.128.81.49215 > 10.56.56.2.domain: 35070+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:31.071882 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.56955: 38054 8/0/1 A 3.236.94.143, A 3.236.94.140, A 44.202.79.195, A 3.236.94.230, A 3.236.94.131, A 3.236.94.168, A 3.236.94.236, A 3.236.94.199 (185)
+17:43:31.071953 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.49215: 35070 0/1/1 (169)
+17:43:32.632812 ens5  Out IP 10.56.128.81.56503 > 10.56.56.2.domain: 674+ [1au] A? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:32.632812 ens5  Out IP 10.56.128.81.35695 > 10.56.56.2.domain: 21458+ [1au] AAAA? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:32.633114 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.35695: 21458 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., AAAA 2600:1f15:9dd:c300:75cc:ab8:9624:43f, AAAA 2600:1f15:9dd:c306:cde4:1387:e566:a042, AAAA 2600:1f15:9dd:c303:4714:2bf4:24a0:b804 (330)
+17:43:32.633135 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.56503: 674 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., A 18.253.223.25, A 18.253.165.84, A 18.252.66.87 (294)
+17:43:38.868494 ens5  Out IP 10.56.128.81.33446 > 10.56.56.2.domain: 2839+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:38.868494 ens5  Out IP 10.56.128.81.33849 > 10.56.56.2.domain: 47485+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:38.868750 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.33446: 2839 0/1/1 (169)
+17:43:38.869605 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.33849: 47485 8/0/1 A 3.236.94.175, A 3.236.94.215, A 44.202.79.228, A 3.236.94.229, A 44.202.79.147, A 3.236.94.191, A 44.202.79.170, A 3.236.94.155 (185)
+17:43:41.762373 ens5  Out IP 10.56.128.81.40708 > 10.56.56.2.domain: 33194+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:41.762373 ens5  Out IP 10.56.128.81.56522 > 10.56.56.2.domain: 13739+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:41.762651 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.56522: 13739 8/0/1 A 3.236.94.155, A 44.202.79.170, A 3.236.94.191, A 44.202.79.147, A 3.236.94.229, A 44.202.79.228, A 3.236.94.215, A 3.236.94.175 (185)
+17:43:41.762788 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.40708: 33194 0/1/1 (169)
+17:43:41.921548 ens5  Out IP 10.56.128.81.41170 > 10.56.56.2.domain: 7928+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:41.921548 ens5  Out IP 10.56.128.81.42012 > 10.56.56.2.domain: 28905+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:41.921776 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.42012: 28905 8/0/1 A 3.236.94.175, A 3.236.94.155, A 44.202.79.170, A 3.236.94.191, A 44.202.79.147, A 3.236.94.229, A 44.202.79.228, A 3.236.94.215 (185)
+17:43:41.921848 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.41170: 7928 0/1/1 (169)
+17:43:42.636066 ens5  Out IP 10.56.128.81.52960 > 10.56.56.2.domain: 24630+ [1au] AAAA? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:42.636067 ens5  Out IP 10.56.128.81.50982 > 10.56.56.2.domain: 49984+ [1au] A? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:42.653600 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.50982: 49984 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., A 18.252.66.87, A 18.253.223.25, A 18.253.165.84 (256)
+17:43:42.654926 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.52960: 24630 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., AAAA 2600:1f15:9dd:c300:75cc:ab8:9624:43f, AAAA 2600:1f15:9dd:c306:cde4:1387:e566:a042, AAAA 2600:1f15:9dd:c303:4714:2bf4:24a0:b804 (292)
+17:43:48.208201 ens5  Out IP 10.56.128.81.34108 > 10.56.56.2.domain: 60818+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:48.208201 ens5  Out IP 10.56.128.81.34901 > 10.56.56.2.domain: 35566+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:48.208423 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.34901: 35566 0/1/1 (169)
+17:43:48.210329 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.34108: 60818 8/0/1 A 3.236.94.243, A 3.236.94.157, A 44.202.79.212, A 44.202.79.217, A 3.236.94.132, A 3.236.94.226, A 44.202.79.222, A 3.236.94.167 (185)
+17:43:48.880778 ens5  Out IP 10.56.128.81.46879 > 10.56.56.2.domain: 61438+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:48.880784 ens5  Out IP 10.56.128.81.57448 > 10.56.56.2.domain: 45524+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:48.881002 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.46879: 61438 8/0/1 A 3.236.94.167, A 44.202.79.222, A 3.236.94.226, A 3.236.94.132, A 44.202.79.217, A 44.202.79.212, A 3.236.94.157, A 3.236.94.243 (185)
+17:43:48.881051 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.57448: 45524 0/1/1 (169)
+17:43:50.769478 ens5  Out IP 10.56.128.81.39855 > 10.56.56.2.domain: 21350+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:50.769483 ens5  Out IP 10.56.128.81.57998 > 10.56.56.2.domain: 37629+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:50.772039 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.39855: 21350 0/1/1 (169)
+17:43:50.772064 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.57998: 37629 8/0/1 A 3.236.94.243, A 3.236.94.167, A 44.202.79.222, A 3.236.94.226, A 3.236.94.132, A 44.202.79.217, A 44.202.79.212, A 3.236.94.157 (185)
+17:43:52.640375 ens5  Out IP 10.56.128.81.50318 > 10.56.56.2.domain: 12786+ [1au] AAAA? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:52.640384 ens5  Out IP 10.56.128.81.37338 > 10.56.56.2.domain: 20019+ [1au] A? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:43:52.640694 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.50318: 12786 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., AAAA 2600:1f15:9dd:c303:4714:2bf4:24a0:b804, AAAA 2600:1f15:9dd:c306:cde4:1387:e566:a042, AAAA 2600:1f15:9dd:c300:75cc:ab8:9624:43f (330)
+17:43:52.659508 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.37338: 20019 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., A 18.253.165.84, A 18.253.223.25, A 18.252.66.87 (256)
+17:43:55.991057 ens5  Out IP 10.56.128.81.57869 > 10.56.56.2.domain: 10358+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:43:55.991064 ens5  Out IP 10.56.128.81.60412 > 10.56.56.2.domain: 58222+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:43:55.991342 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.57869: 10358 8/0/1 A 3.236.94.157, A 3.236.94.243, A 3.236.94.167, A 44.202.79.222, A 3.236.94.226, A 3.236.94.132, A 44.202.79.217, A 44.202.79.212 (185)
+17:43:55.991342 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.60412: 58222 0/1/1 (169)
+17:44:02.644170 ens5  Out IP 10.56.128.81.43918 > 10.56.56.2.domain: 60447+ [1au] A? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:44:02.644171 ens5  Out IP 10.56.128.81.47687 > 10.56.56.2.domain: 13770+ [1au] AAAA? f484ae50b5124c5ab609ac5e0e45e38f.us-gov-east-1.aws.elastic-cloud.com. (97)
+17:44:02.644387 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.47687: 13770 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., AAAA 2600:1f15:9dd:c300:75cc:ab8:9624:43f, AAAA 2600:1f15:9dd:c303:4714:2bf4:24a0:b804, AAAA 2600:1f15:9dd:c306:cde4:1387:e566:a042 (330)
+17:44:02.644406 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.43918: 60447 5/0/1 CNAME proxy.us-gov-east-1.aws.elastic-cloud.com., CNAME proxy-nlb-prod-us-gov-east-1-v2-4262db864eb8a3a9.elb.us-gov-east-1.amazonaws.com., A 18.252.66.87, A 18.253.223.25, A 18.253.165.84 (294)
+17:44:08.284393 ens5  Out IP 10.56.128.81.39985 > 10.56.56.2.domain: 55106+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:44:08.284393 ens5  Out IP 10.56.128.81.59859 > 10.56.56.2.domain: 60255+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:44:08.284756 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.59859: 60255 0/1/1 (169)
+17:44:08.285307 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.39985: 55106 8/0/1 A 3.236.94.175, A 3.236.94.232, A 3.236.94.221, A 3.236.94.202, A 44.202.79.235, A 44.202.79.217, A 44.202.79.161, A 3.236.94.205 (185)
+17:44:11.693421 ens5  Out IP 10.56.128.81.54441 > 10.56.56.2.domain: 35870+ [1au] A? logs.us-east-1.amazonaws.com. (57)
+17:44:11.693421 ens5  Out IP 10.56.128.81.49756 > 10.56.56.2.domain: 2843+ [1au] AAAA? logs.us-east-1.amazonaws.com. (57)
+17:44:11.693607 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.49756: 2843 0/1/1 (169)
+17:44:11.693692 ens5  In  IP 10.56.56.2.domain > 10.56.128.81.54441: 35870 8/0/1 A 3.236.94.205, A 44.202.79.161, A 44.202.79.217, A 44.202.79.235, A 3.236.94.202, A 3.236.94.221, A 3.236.94.232, A 3.236.94.175 (185)
