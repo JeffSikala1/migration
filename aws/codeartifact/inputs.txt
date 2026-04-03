@@ -1,30 +1,3 @@
-# change 
-/subsystem=datasources/jdbc-driver=postgres:add(driver-name=postgres,driver-module-name=org.postgres,driver-xa-datasource-class-name=org.postgresql.xa.PGXADataSource)
-# to this
-/subsystem=datasources/jdbc-driver=postgres:add(driver-name=postgres,driver-module-name=org.postgresql,driver-xa-datasource-class-name=org.postgresql.xa.PGXADataSource)
+ fixed the JBoss build and deployment issue by correcting the Postgres driver module setup (name/dependencies + running that step as root) and aligning the datasource config. The test WAR now deploys successfully (deployment-info = OK).
 
-
-
-
-In jboss_config/config.sh
-
-Change this:
-$JBOSS_HOME/bin/jboss-cli.sh -c --command="module add --name=org.postgres --resources=/tmp/postgresql-42.7.8.jar --dependencies=javax.api,javax.transaction.api"
-to this:
-$JBOSS_HOME/bin/jboss-cli.sh -c --command="module add --name=org.postgresql --resources=/tmp/postgresql-42.7.8.jar --dependencies=jakarta.api,jakarta.transaction.api"
-
-
-
-docker stop jboss-test || true
-docker rm jboss-test || true
-docker rmi local/jboss-local-tmp-miminal-1-pg:latest
-./build_image.sh
-
-
-docker logs jboss-test | grep -i "org.postgres\|WFLYJCA0115\|jboss.jdbc-driver.postgres"
-docker exec jboss-test /app/jboss-eap-8.1/bin/jboss-cli.sh -c "deployment-info"
-docker logs jboss-test | grep -i "WFLYJCA0115\|jboss.jdbc-driver.postgres\|jakarta.api\|org.postgresql"
-docker exec jboss-test /app/jboss-eap-8.1/bin/jboss-cli.sh -c "deployment-info"
-
-
-curl http://localhost:8080/test_war/
+I pushed the changes to our feature branch—can you pull it down and validate on your side?
