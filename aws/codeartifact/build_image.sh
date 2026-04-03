@@ -96,10 +96,10 @@ function testImage() {
     sleep 1
   done
 
-  curl http://localhost:8080/test_war/index.jsp
+  curl --fail --silent --show-error http://localhost:8080/test_war/index.jsp
 
-  docker stop $TEST_ALIAS
-  docker rm $TEST_ALIAS
+  # docker stop $TEST_ALIAS
+  # docker rm $TEST_ALIAS
 }
 
 function buildImage() {
@@ -110,7 +110,8 @@ function buildImage() {
   --build-arg JBOSS_VER=$JBOSS_VER \
   --build-arg JBOSS_ZIP=$JBOSS_INSTALL_ZIP_PATH \
   --build-arg JBOSS_PATCH_ZIP=$JBOSS_PATCH_ZIP_PATH \
-  --build-arg DEJAVU_FONT_TARBALL=$FONTS_HOME/$DEJAVU_FONT \
+  --build-arg DEJAVU_FONT_TARBALL=$FONTS_
+  HOME/$DEJAVU_FONT \
   -t $JBOSS_TMP_NAME --file dockerfiles/jboss.ubi8-minimal.Dockerfile .
 
   if [ $? -ne 0 ];
