@@ -1,32 +1,26 @@
-curl -sku "jeff.sikala@gsa.gov:${TOKEN}" \
-  -X DELETE \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145/"
+python3 ../release-scripts/promote.py \
+  conexus-rc-local \
+  gov.gsa.cnxs.ws-client \
+  ws-client-aggregator \
+  "02.00.000.145" \
+  --username "sa_bamboo" \
+  --password "${TOKEN}" \
+  --override
 
 
 
-curl -sku "jeff.sikala@gsa.gov:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data '
-items.find({
-  "repo":{"$eq":"conexus-release-local"},
-  "$or":[
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145"}},
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145"}},
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/order-services/02.00.000.145"}},
-    {"path":{"$match":"gov/gsa/cnxs/ws-client/health-check/02.00.000.145"}}
-  ]
-}).include("name","path","repo")
-'
+git push origin :refs/tags/02.00.000.145
 
 
+git ls-remote --tags origin | grep 02.00.000.145
+# should return NOTHING
 
 
-git fetch origin --prune --tags
+git log -1 origin/main
 
-echo "=== release branch ==="
-git ls-remote --heads origin "refs/heads/release/02.00.000.145"
 
-echo "=== release tag ==="
-git ls-remote --tags origin "refs/tags/02.00.000.145"
+git checkout main
+git pull
+
+git reset --hard origin/main~1
+git push origin main --force
