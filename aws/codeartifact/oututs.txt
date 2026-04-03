@@ -25,3 +25,42 @@ items.find({
   "end_pos" : 1,
   "total" : 1
 }
+}
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sku "jeff.sikala@gsa.gov:${TOKEN}" \
+  -X DELETE \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145/"
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sku "jeff.sikala@gsa.gov:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-release-local"},
+  "$or":[
+    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145"}},
+    {"path":{"$match":"gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145"}},
+    {"path":{"$match":"gov/gsa/cnxs/ws-client/order-services/02.00.000.145"}},
+    {"path":{"$match":"gov/gsa/cnxs/ws-client/health-check/02.00.000.145"}}
+  ]
+}).include("name","path","repo")
+'
+
+{
+"results" : [  ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 0,
+  "total" : 0
+}
+}
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../ws-client/
+[sikaj01@ip-10-56-112-33 ws-client]$ git fetch origin --prune --tags
+
+echo "=== release branch ==="
+git ls-remote --heads origin "refs/heads/release/02.00.000.145"
+=== release branch ===
+9458b2ba41d511905180220f806b6a91012b0d4d        refs/heads/release/02.00.000.145
+[sikaj01@ip-10-56-112-33 ws-client]$ echo "=== release tag ==="
+git ls-remote --tags origin "refs/tags/02.00.000.145"
+=== release tag ===
+fb57ffa7dee28d301a9c191a41d0690d41fc8e53        refs/tags/02.00.000.145
