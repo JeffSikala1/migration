@@ -211,21 +211,21 @@ Promote Job:
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
             CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            GROUP_ID=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.groupId 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            ARTIFACT_ID=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.artifactId 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-
             [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-            [ -n "${GROUP_ID}" ] || { echo "ERROR: could not determine Maven groupId"; exit 1; }
-            [ -n "${ARTIFACT_ID}" ] || { echo "ERROR: could not determine Maven artifactId"; exit 1; }
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            GROUP_PATH="${GROUP_ID//./\/}"
-            ARTIFACT_PATH="${GROUP_PATH}/${ARTIFACT_ID}/${RELEASE_VERSION}"
 
             AQL=$(cat <<EOF
             items.find({
               "repo":{"\$eq":"conexus-release-local"},
-              "path":{"\$eq":"${ARTIFACT_PATH}"}
+              "\$or":[
+                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-aggregator/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-facade-api/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-facade-core/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-integration/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-ear/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-integration-test/${RELEASE_VERSION}"}}
+              ]
             }).include("name","repo","path")
             EOF
             )
@@ -243,13 +243,22 @@ Promote Job:
             data = json.loads('''${RESULT}''')
             items = {(item["path"], item["name"]) for item in data.get("results", [])}
             expected = [
-              ("${ARTIFACT_PATH}", "${ARTIFACT_ID}-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/pricing/pricing-aggregator/${RELEASE_VERSION}", "pricing-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/pricing/pricing-facade-api/${RELEASE_VERSION}", "pricing-facade-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/pricing/pricing-facade-api/${RELEASE_VERSION}", "pricing-facade-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/pricing/pricing-facade-core/${RELEASE_VERSION}", "pricing-facade-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/pricing/pricing-facade-core/${RELEASE_VERSION}", "pricing-facade-core-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/pricing/pricing-integration/${RELEASE_VERSION}", "pricing-integration-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/pricing/pricing-ear/${RELEASE_VERSION}", "pricing-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/pricing/pricing-ear/${RELEASE_VERSION}", "pricing-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/pricing/pricing-integration-test/${RELEASE_VERSION}", "pricing-integration-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/pricing/pricing-integration-test/${RELEASE_VERSION}", "pricing-integration-test-${RELEASE_VERSION}.jar"),
             ]
             print(sum(1 for x in expected if x in items))
             PY
             )
 
-            total_expected=1
+            total_expected=10
 
             echo "INFO: found ${found_count} of ${total_expected} expected Pricing release artifacts"
 
@@ -286,12 +295,7 @@ Promote Job:
 
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
             CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            GROUP_ID=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.groupId 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            ARTIFACT_ID=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.artifactId 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-
             [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-            [ -n "${GROUP_ID}" ] || { echo "ERROR: could not determine Maven groupId"; exit 1; }
-            [ -n "${ARTIFACT_ID}" ] || { echo "ERROR: could not determine Maven artifactId"; exit 1; }
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
 
@@ -299,8 +303,58 @@ Promote Job:
 
             python3 ../release-scripts/promote.py \
               conexus-rc-local \
-              "${GROUP_ID}" \
-              "${ARTIFACT_ID}" \
+              gov.gsa.cnxs.pricing \
+              pricing-aggregator \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.pricing \
+              pricing-facade-api \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.pricing \
+              pricing-facade-core \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.pricing \
+              pricing-integration \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.pricing \
+              pricing-ear \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.pricing \
+              pricing-integration-test \
               "${RELEASE_VERSION}" \
               --username "sa_bamboo" \
               --password "${bamboo.artifactory_access_token_secret}" \
