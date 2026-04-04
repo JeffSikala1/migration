@@ -521,9 +521,12 @@ Finalize Job:
             fi
 
             TAG_EXISTS=false
+            TAG_ON_MAIN=false
+            TAG_COMMIT=""
             if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
               TAG_EXISTS=true
-              echo "INFO: release tag ${RELEASE_TAG} already exists; will reuse it if merge is still needed."
+              TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_TAG}")"
+              echo "INFO: existing tag ${RELEASE_TAG} points to ${TAG_COMMIT}"
             fi
 
             git fetch origin \
@@ -536,8 +539,20 @@ Finalize Job:
               exit 1
             fi
 
+            if [ "${TAG_EXISTS}" = "true" ]; then
+              if git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/main; then
+                TAG_ON_MAIN=true
+              fi
+            fi
+
             git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
             git checkout -B main origin/main >/dev/null 2>&1
+
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${TAG_ON_MAIN}" != "true" ]; then
+              echo "ERROR: release tag ${RELEASE_TAG} already exists but is not contained in origin/main."
+              echo "ERROR: refusing to continue because reusing the stale tag would corrupt release finalization."
+              exit 1
+            fi
 
             git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
 
