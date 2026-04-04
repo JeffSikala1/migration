@@ -220,11 +220,7 @@ Promote Job:
               "repo":{"\$eq":"conexus-release-local"},
               "\$or":[
                 {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-aggregator/${RELEASE_VERSION}"}},
-                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-facade-api/${RELEASE_VERSION}"}},
-                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-facade-core/${RELEASE_VERSION}"}},
-                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-integration/${RELEASE_VERSION}"}},
-                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-ear/${RELEASE_VERSION}"}},
-                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-integration-test/${RELEASE_VERSION}"}}
+                {"path":{"\$eq":"gov/gsa/cnxs/pricing/pricing-integration/${RELEASE_VERSION}"}}
               ]
             }).include("name","repo","path")
             EOF
@@ -245,22 +241,14 @@ Promote Job:
 
             expected = [
                 ("gov/gsa/cnxs/pricing/pricing-aggregator/${RELEASE_VERSION}", "pricing-aggregator-${RELEASE_VERSION}.pom"),
-                ("gov/gsa/cnxs/pricing/pricing-facade-api/${RELEASE_VERSION}", "pricing-facade-api-${RELEASE_VERSION}.pom"),
-                ("gov/gsa/cnxs/pricing/pricing-facade-api/${RELEASE_VERSION}", "pricing-facade-api-${RELEASE_VERSION}.jar"),
-                ("gov/gsa/cnxs/pricing/pricing-facade-core/${RELEASE_VERSION}", "pricing-facade-core-${RELEASE_VERSION}.pom"),
-                ("gov/gsa/cnxs/pricing/pricing-facade-core/${RELEASE_VERSION}", "pricing-facade-core-${RELEASE_VERSION}.jar"),
                 ("gov/gsa/cnxs/pricing/pricing-integration/${RELEASE_VERSION}", "pricing-integration-${RELEASE_VERSION}.pom"),
-                ("gov/gsa/cnxs/pricing/pricing-ear/${RELEASE_VERSION}", "pricing-ear-${RELEASE_VERSION}.pom"),
-                ("gov/gsa/cnxs/pricing/pricing-ear/${RELEASE_VERSION}", "pricing-ear-${RELEASE_VERSION}.ear"),
-                ("gov/gsa/cnxs/pricing/pricing-integration-test/${RELEASE_VERSION}", "pricing-integration-test-${RELEASE_VERSION}.pom"),
-                ("gov/gsa/cnxs/pricing/pricing-integration-test/${RELEASE_VERSION}", "pricing-integration-test-${RELEASE_VERSION}.jar"),
             ]
 
             print(sum(1 for x in expected if x in items))
             PY
             )
 
-            total_expected=10
+            total_expected=2
 
             echo "INFO: found ${found_count} of ${total_expected} expected Pricing release artifacts"
 
@@ -276,18 +264,6 @@ Promote Job:
             fi
 
             echo "ERROR: partial Pricing release already exists for ${RELEASE_VERSION}."
-            echo "Expected full artifact family:"
-            printf '  %s\n' \
-              "pricing-aggregator-${RELEASE_VERSION}.pom" \
-              "pricing-facade-api-${RELEASE_VERSION}.pom" \
-              "pricing-facade-api-${RELEASE_VERSION}.jar" \
-              "pricing-facade-core-${RELEASE_VERSION}.pom" \
-              "pricing-facade-core-${RELEASE_VERSION}.jar" \
-              "pricing-integration-${RELEASE_VERSION}.pom" \
-              "pricing-ear-${RELEASE_VERSION}.pom" \
-              "pricing-ear-${RELEASE_VERSION}.ear" \
-              "pricing-integration-test-${RELEASE_VERSION}.pom" \
-              "pricing-integration-test-${RELEASE_VERSION}.jar"
             exit 1
 
     - inject-variables:
@@ -328,47 +304,7 @@ Promote Job:
             python3 ../release-scripts/promote.py \
               conexus-rc-local \
               gov.gsa.cnxs.pricing \
-              pricing-facade-api \
-              "${RELEASE_VERSION}" \
-              --username "sa_bamboo" \
-              --password "${bamboo.artifactory_access_token_secret}" \
-              --settings-xml "${SETTINGS_FILE}" \
-              --override
-
-            python3 ../release-scripts/promote.py \
-              conexus-rc-local \
-              gov.gsa.cnxs.pricing \
-              pricing-facade-core \
-              "${RELEASE_VERSION}" \
-              --username "sa_bamboo" \
-              --password "${bamboo.artifactory_access_token_secret}" \
-              --settings-xml "${SETTINGS_FILE}" \
-              --override
-
-            python3 ../release-scripts/promote.py \
-              conexus-rc-local \
-              gov.gsa.cnxs.pricing \
               pricing-integration \
-              "${RELEASE_VERSION}" \
-              --username "sa_bamboo" \
-              --password "${bamboo.artifactory_access_token_secret}" \
-              --settings-xml "${SETTINGS_FILE}" \
-              --override
-
-            python3 ../release-scripts/promote.py \
-              conexus-rc-local \
-              gov.gsa.cnxs.pricing \
-              pricing-ear \
-              "${RELEASE_VERSION}" \
-              --username "sa_bamboo" \
-              --password "${bamboo.artifactory_access_token_secret}" \
-              --settings-xml "${SETTINGS_FILE}" \
-              --override
-
-            python3 ../release-scripts/promote.py \
-              conexus-rc-local \
-              gov.gsa.cnxs.pricing \
-              pricing-integration-test \
               "${RELEASE_VERSION}" \
               --username "sa_bamboo" \
               --password "${bamboo.artifactory_access_token_secret}" \
