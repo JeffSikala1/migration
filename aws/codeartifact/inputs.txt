@@ -1,32 +1,22 @@
-curl -sku "sa_bamboo:${TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping"
-
-
-curl -kI -u "sa_bamboo:${TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/db/pg-datafile/02.00.000.45/pg-datafile-02.00.000.45.pom"
-
-
-curl -sku "sa_bamboo:${TOKEN}" \
+curl -sku "jeff.sikala@gsa.gov:${ARTIFACTORY_TOKEN}" \
   -H "Content-Type: text/plain" \
   -X POST \
   "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
   --data '
 items.find({
-  "name":{"$match":"pg-datafile-02.00.000.45.pom"}
-}).include("repo","path","name")
-'
-
-
-curl -sku "sa_bamboo:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data '
-items.find({
-  "repo":{"$eq":"conexus-plugin-repository"},
-  "path":{"$eq":"gov/gsa/cnxs/db/pg-datafile/02.00.000.45"}
+  "$or":[
+    {"name":{"$match":"pg-datafile-02.00.000.45.pom"}},
+    {"name":{"$match":"pg-datafile-02.00.000.45-postgres-data.tar.gz"}}
+  ]
 }).include("repo","path","name")
 '
 
 curl -kI -u "jeff.sikala@gsa.gov:${ARTIFACTORY_TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/db/pg-datafile/02.00.000.45/pg-datafile-02.00.000.45.pom"
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.45/pg-datafile-02.00.000.45.pom"
+
+
+curl -kI -u "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.45/pg-datafile-02.00.000.45-postgres-data.tar.gz"
+
+
+I checked with the sa_bamboo service account. The token is valid, but the dependency issue does not look like just a Bamboo permission problem. Artifactory appears to have pg-datafile-02.00.000.45-postgres-data.tar.gz, but not the corresponding pg-datafile-02.00.000.45.pom, and Maven is failing while trying to read that POM descriptor from conexus-plugin-repository.
