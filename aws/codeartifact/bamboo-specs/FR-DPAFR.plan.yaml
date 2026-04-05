@@ -783,6 +783,50 @@ Finalize Job:
               exit 1
             fi
 
+            RELEASE_ARTIFACTS_EXIST=false
+            found_count=0
+
+            AQL=$(cat <<EOF
+            items.find({
+              "repo":{"\$eq":"conexus-release-local"},
+              "\$or":[
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-aggregator/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}"}}
+              ]
+            }).include("name","repo","path")
+            EOF
+            )
+
+            RESULT=$(curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+              -H "Content-Type: text/plain" \
+              -X POST \
+              "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+              --data "${AQL}")
+
+            found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            print(len(data.get("results", [])))
+            PY
+            )
+
+            if [ "${found_count}" -gt 0 ]; then
+              RELEASE_ARTIFACTS_EXIST=true
+            fi
+
+            BRANCH_EXISTS=false
+            if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
+              BRANCH_EXISTS=true
+            fi
+
+            if [ "${BRANCH_EXISTS}" = "false" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
+              echo "INFO: release ${RELEASE_VERSION} already finalized; release branch already absent."
+              exit 0
+            fi
+
             if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
               echo "Deleting remote release branch ${RELEASE_BRANCH}"
               git push origin --delete "${RELEASE_BRANCH}"
