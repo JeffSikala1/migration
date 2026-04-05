@@ -530,6 +530,7 @@ Finalize Job:
             RELEASE_BRANCH="release/${RELEASE_VERSION}"
             INTEGRATION_BRANCH="${bamboo.integration.branch}"
             REPO_URL="${bamboo.repo_url}"
+            VALIDATE_INTEGRATION_REF="refs/remotes/validate_integration"
 
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
@@ -551,17 +552,17 @@ Finalize Job:
               git tag -d "${RELEASE_VERSION}" >/dev/null 2>&1 || true
 
               git fetch "${REPO_URL}" \
-                "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/validate/${INTEGRATION_BRANCH}" \
+                "+refs/heads/${INTEGRATION_BRANCH}:${VALIDATE_INTEGRATION_REF}" \
                 "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
-                >/dev/null 2>&1 || true
+                --prune
 
               TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}" 2>/dev/null || true)"
-              INTEGRATION_COMMIT="$(git rev-parse refs/remotes/validate/${INTEGRATION_BRANCH} 2>/dev/null || true)"
+              INTEGRATION_COMMIT="$(git rev-parse "${VALIDATE_INTEGRATION_REF}" 2>/dev/null || true)"
 
               echo "INFO: tag_commit=${TAG_COMMIT:-missing} integration_commit=${INTEGRATION_COMMIT:-missing}"
 
               if [ -n "${TAG_COMMIT}" ] && [ -n "${INTEGRATION_COMMIT}" ]; then
-                if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/validate/${INTEGRATION_BRANCH}"; then
+                if git merge-base --is-ancestor "${TAG_COMMIT}" "${VALIDATE_INTEGRATION_REF}"; then
                   INTEGRATION_HAS_TAG=true
                 fi
               fi
@@ -662,6 +663,8 @@ Finalize Job:
             RELEASE_TAG="${RELEASE_VERSION}"
             INTEGRATION_BRANCH="${bamboo.integration.branch}"
             REPO_URL="${bamboo.repo_url}"
+            VALIDATE_RELEASE_REF="refs/remotes/validate_release"
+            VALIDATE_INTEGRATION_REF="refs/remotes/validate_integration"
 
             git config user.name "bamboo"
             git config user.email "bamboo@local"
@@ -677,18 +680,22 @@ Finalize Job:
             fi
 
             git fetch "${REPO_URL}" \
-              "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/validate/${INTEGRATION_BRANCH}" \
-              "+refs/heads/${RELEASE_BRANCH}:refs/remotes/validate/${RELEASE_BRANCH}" \
-              "+refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}" \
-              --prune >/dev/null 2>&1
+              "+refs/heads/${INTEGRATION_BRANCH}:${VALIDATE_INTEGRATION_REF}" \
+              "+refs/heads/${RELEASE_BRANCH}:${VALIDATE_RELEASE_REF}" \
+              --prune
 
             TAG_EXISTS=false
             TAG_ON_INTEGRATION=false
 
-            if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            if git ls-remote --tags "${REPO_URL}" "refs/tags/${RELEASE_TAG}" | grep -q "refs/tags/${RELEASE_TAG}$"; then
               TAG_EXISTS=true
+
+              git fetch "${REPO_URL}" \
+                "+refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}" \
+                --prune
+
               TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_TAG}")"
-              if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/validate/${INTEGRATION_BRANCH}"; then
+              if git merge-base --is-ancestor "${TAG_COMMIT}" "${VALIDATE_INTEGRATION_REF}"; then
                 TAG_ON_INTEGRATION=true
               fi
             fi
@@ -698,8 +705,8 @@ Finalize Job:
               exit 1
             fi
 
-            git checkout -B "${RELEASE_BRANCH}" "refs/remotes/validate/${RELEASE_BRANCH}" >/dev/null 2>&1
-            git checkout -B "${INTEGRATION_BRANCH}" "refs/remotes/validate/${INTEGRATION_BRANCH}" >/dev/null 2>&1
+            git checkout -B "${RELEASE_BRANCH}" "${VALIDATE_RELEASE_REF}"
+            git checkout -B "${INTEGRATION_BRANCH}" "${VALIDATE_INTEGRATION_REF}"
 
             git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
 
@@ -748,6 +755,7 @@ Finalize Job:
             RELEASE_BRANCH="release/${RELEASE_VERSION}"
             INTEGRATION_BRANCH="${bamboo.integration.branch}"
             REPO_URL="${bamboo.repo_url}"
+            VALIDATE_INTEGRATION_REF="refs/remotes/validate_integration"
 
             TAG_EXISTS=false
             BRANCH_EXISTS=false
@@ -810,17 +818,17 @@ Finalize Job:
               git tag -d "${RELEASE_VERSION}" >/dev/null 2>&1 || true
 
               git fetch "${REPO_URL}" \
-                "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/validate/${INTEGRATION_BRANCH}" \
+                "+refs/heads/${INTEGRATION_BRANCH}:${VALIDATE_INTEGRATION_REF}" \
                 "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
-                >/dev/null 2>&1 || true
+                --prune
 
               TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}" 2>/dev/null || true)"
-              INTEGRATION_COMMIT="$(git rev-parse refs/remotes/validate/${INTEGRATION_BRANCH} 2>/dev/null || true)"
+              INTEGRATION_COMMIT="$(git rev-parse "${VALIDATE_INTEGRATION_REF}" 2>/dev/null || true)"
 
               echo "INFO: tag_commit=${TAG_COMMIT:-missing} integration_commit=${INTEGRATION_COMMIT:-missing}"
 
               if [ -n "${TAG_COMMIT}" ] && [ -n "${INTEGRATION_COMMIT}" ]; then
-                if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/validate/${INTEGRATION_BRANCH}"; then
+                if git merge-base --is-ancestor "${TAG_COMMIT}" "${VALIDATE_INTEGRATION_REF}"; then
                   INTEGRATION_HAS_TAG=true
                 fi
               fi
