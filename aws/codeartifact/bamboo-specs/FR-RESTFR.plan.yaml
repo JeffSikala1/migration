@@ -862,30 +862,34 @@ Finalize Job:
               exit 1
             fi
 
-            if [ "${BRANCH_EXISTS}" = "true" ]; then
-              if [ "${INTEGRATION_HAS_TAG}" = "true" ]; then
-                echo "INFO: final-state signals confirmed; attempting to delete remote release branch ${RELEASE_BRANCH}"
-                if git push origin --delete "${RELEASE_BRANCH}"; then
-                  echo "INFO: deleted remote release branch ${RELEASE_BRANCH}"
-                else
-                  echo "WARNING: failed to delete remote release branch ${RELEASE_BRANCH}"
-                  echo "WARNING: release is still finalized because tag exists on ${INTEGRATION_BRANCH} and full release artifacts are present."
-                fi
-                exit 0
-              fi
-
-              echo "WARNING: could not re-prove ancestry, but tag and full release artifacts already exist."
-              echo "WARNING: treating release as finalized and attempting best-effort cleanup for ${RELEASE_BRANCH}."
-              if git push origin --delete "${RELEASE_BRANCH}"; then
-                echo "INFO: deleted remote release branch ${RELEASE_BRANCH}"
-              else
-                echo "WARNING: failed to delete remote release branch ${RELEASE_BRANCH}"
-                echo "WARNING: release remains finalized based on remote tag + release artifacts."
-              fi
+            if [ "${BRANCH_EXISTS}" != "true" ]; then
+              echo "INFO: release branch ${RELEASE_BRANCH} already absent; release is finalized."
               exit 0
             fi
 
-            echo "INFO: release branch ${RELEASE_BRANCH} already absent; release is finalized."
+            if [ "${INTEGRATION_HAS_TAG}" = "true" ]; then
+              echo "INFO: final-state signals confirmed; attempting to delete remote release branch ${RELEASE_BRANCH}"
+            else
+              echo "WARNING: could not re-prove ancestry, but remote tag and full release artifacts already exist."
+              echo "WARNING: treating release as finalized and attempting best-effort cleanup for ${RELEASE_BRANCH}"
+            fi
+
+            delete_output="$(git push origin --delete "${RELEASE_BRANCH}" 2>&1)" && delete_rc=0 || delete_rc=$?
+            echo "${delete_output}"
+
+            if [ "${delete_rc}" -eq 0 ]; then
+              echo "INFO: deleted remote release branch ${RELEASE_BRANCH}"
+              exit 0
+            fi
+
+            if echo "${delete_output}" | grep -Eqi 'remote ref does not exist|unable to delete|not found|could not remove|cannot lock ref'; then
+              echo "WARNING: remote release branch ${RELEASE_BRANCH} was not deletable or no longer exists."
+              echo "WARNING: release remains finalized based on remote tag + release artifacts."
+              exit 0
+            fi
+
+            echo "WARNING: failed to delete remote release branch ${RELEASE_BRANCH}"
+            echo "WARNING: release remains finalized based on remote tag + release artifacts."
             exit 0
 
   artifact-subscriptions: []
