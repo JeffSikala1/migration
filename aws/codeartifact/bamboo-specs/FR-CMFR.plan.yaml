@@ -592,6 +592,8 @@ Finalize Job:
               exit 1
             fi
 
+            git tag -d "${RELEASE_VERSION}" >/dev/null 2>&1 || true
+
             git fetch origin \
               "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/origin/__validate_integration" \
               "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
@@ -610,12 +612,15 @@ Finalize Job:
               exit 1
             fi
 
+            echo "INFO: tag=${RELEASE_VERSION} tag_commit=${TAG_COMMIT} integration=${INTEGRATION_BRANCH} integration_commit=${INTEGRATION_COMMIT}"
+
             if ! git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/__validate_integration; then
               echo "ERROR: tag commit ${TAG_COMMIT} is not contained in ${INTEGRATION_BRANCH}; refusing to delete release branch."
               exit 1
             fi
 
             if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
+              echo "Deleting remote release branch ${RELEASE_BRANCH}"
               git push origin --delete "${RELEASE_BRANCH}"
             else
               echo "Release branch ${RELEASE_BRANCH} already absent"
