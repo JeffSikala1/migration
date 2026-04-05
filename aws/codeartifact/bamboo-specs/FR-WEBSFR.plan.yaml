@@ -129,7 +129,7 @@ Promote Job:
               TAG_EXISTS=false
               RELEASE_ARTIFACTS_EXIST=false
               found_count=0
-              total_expected=${bamboo.webservices_total_expected_artifacts}
+              total_expected=24
 
               if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
                 TAG_EXISTS=true
@@ -155,12 +155,32 @@ Promote Job:
             import json
             data = json.loads('''${RESULT}''')
             items = {(item["path"], item["name"]) for item in data.get("results", [])}
-
-            # TODO: replace with validated Webservices release artifact set
             expected = [
-                # ("gov/gsa/cnxs/webservices/.../${RELEASE_VERSION}", "artifact-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-aggregator/${RELEASE_VERSION}", "webservices-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade/${RELEASE_VERSION}", "ws-facade-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/webservices-version-war/${RELEASE_VERSION}", "webservices-version-war-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-version-war/${RELEASE_VERSION}", "webservices-version-war-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/webservices/cnxs-ws-ear/${RELEASE_VERSION}", "cnxs-ws-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/cnxs-ws-ear/${RELEASE_VERSION}", "cnxs-ws-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}-tests.jar"),
             ]
-
             print(sum(1 for x in expected if x in items))
             PY
                 )
@@ -241,10 +261,6 @@ Promote Job:
 
             echo "Release state validation passed."
 
-    - inject-variables:
-        file: skip.properties
-        scope: LOCAL
-
     - script:
         interpreter: SHELL
         description: Pre-check Webservices release artifacts in Artifactory
@@ -285,17 +301,37 @@ Promote Job:
             import json
             data = json.loads('''${RESULT}''')
             items = {(item["path"], item["name"]) for item in data.get("results", [])}
-
-            # TODO: replace with validated Webservices release artifact set
             expected = [
-                # ("gov/gsa/cnxs/webservices/.../${RELEASE_VERSION}", "artifact-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-aggregator/${RELEASE_VERSION}", "webservices-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade/${RELEASE_VERSION}", "ws-facade-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/webservices-version-war/${RELEASE_VERSION}", "webservices-version-war-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-version-war/${RELEASE_VERSION}", "webservices-version-war-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/webservices/cnxs-ws-ear/${RELEASE_VERSION}", "cnxs-ws-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/cnxs-ws-ear/${RELEASE_VERSION}", "cnxs-ws-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}-tests.jar"),
             ]
-
             print(sum(1 for x in expected if x in items))
             PY
             )
 
-            total_expected=${bamboo.webservices_total_expected_artifacts}
+            total_expected=24
 
             echo "INFO: found ${found_count} of ${total_expected} expected Webservices release artifacts"
 
@@ -338,12 +374,16 @@ Promote Job:
 
             mkdir -p working
 
-            # TODO: replace with validated Webservices promote.py calls
-            # Example:
-            # python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices webservices-aggregator "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
-
-            echo "ERROR: Webservices promote.py calls not yet populated with validated module/artifact set."
-            exit 1
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices webservices-aggregator "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices webservices-common "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices ws-facade "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices ws-facade-api "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices ws-facade-core "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices order-services "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices tax-services "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices webservices-version-war "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices cnxs-ws-ear "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.webservices.test webservices-system-test "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
 
   artifact-subscriptions: []
 
@@ -456,7 +496,7 @@ Finalize Job:
             INTEGRATION_HAS_TAG=false
             BRANCH_EXISTS=false
             RELEASE_ARTIFACTS_EXIST=false
-            total_expected=${bamboo.webservices_total_expected_artifacts}
+            total_expected=24
 
             if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
               TAG_EXISTS=true
@@ -505,12 +545,32 @@ Finalize Job:
             import json
             data = json.loads('''${RESULT}''')
             items = {(item["path"], item["name"]) for item in data.get("results", [])}
-
-            # TODO: replace with validated Webservices release artifact set
             expected = [
-                # ("gov/gsa/cnxs/webservices/.../${RELEASE_VERSION}", "artifact-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-aggregator/${RELEASE_VERSION}", "webservices-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade/${RELEASE_VERSION}", "ws-facade-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/webservices-version-war/${RELEASE_VERSION}", "webservices-version-war-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-version-war/${RELEASE_VERSION}", "webservices-version-war-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/webservices/cnxs-ws-ear/${RELEASE_VERSION}", "cnxs-ws-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/cnxs-ws-ear/${RELEASE_VERSION}", "cnxs-ws-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}-tests.jar"),
             ]
-
             print(sum(1 for x in expected if x in items))
             PY
             )
@@ -521,7 +581,7 @@ Finalize Job:
 
             echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}, release_artifacts_found=${found_count}"
 
-            if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
               echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
               {
                 echo "bamboo_skip_release=true"
@@ -652,7 +712,14 @@ Finalize Job:
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -euo pipefail
+            set -uo pipefail
+
+            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
+              echo "INFO: release already finalized; skipping."
+              exit 0
+            fi
+
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
             RELEASE_VERSION="${bamboo_inject_bamboo_release_version:-}"
             RELEASE_BRANCH="${bamboo_inject_bamboo_release_branch:-}"
@@ -662,13 +729,12 @@ Finalize Job:
               exit 0
             fi
 
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
             TAG_EXISTS=false
             RELEASE_ARTIFACTS_EXIST=false
             found_count=0
-            total_expected=${bamboo.webservices_total_expected_artifacts}
+            total_expected=24
 
             if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
               TAG_EXISTS=true
@@ -697,14 +763,33 @@ Finalize Job:
             except Exception:
                 print(0)
                 raise SystemExit(0)
-
             items = {(item["path"], item["name"]) for item in data.get("results", [])}
-
-            # TODO: replace with validated Webservices release artifact set
             expected = [
-                # ("gov/gsa/cnxs/webservices/.../${RELEASE_VERSION}", "artifact-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-aggregator/${RELEASE_VERSION}", "webservices-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/webservices-common/${RELEASE_VERSION}", "webservices-common-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade/${RELEASE_VERSION}", "ws-facade-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-api/${RELEASE_VERSION}", "ws-facade-api-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/ws-facade-core/${RELEASE_VERSION}", "ws-facade-core-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/order-services/${RELEASE_VERSION}", "order-services-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/tax-services/${RELEASE_VERSION}", "tax-services-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/webservices/webservices-version-war/${RELEASE_VERSION}", "webservices-version-war-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/webservices-version-war/${RELEASE_VERSION}", "webservices-version-war-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/webservices/cnxs-ws-ear/${RELEASE_VERSION}", "cnxs-ws-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/cnxs-ws-ear/${RELEASE_VERSION}", "cnxs-ws-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/webservices/test/webservices-system-test/${RELEASE_VERSION}", "webservices-system-test-${RELEASE_VERSION}-tests.jar"),
             ]
-
             print(sum(1 for x in expected if x in items))
             PY
             )
@@ -743,7 +828,6 @@ variables:
   maven.artifactId: webservices-aggregator
   maven.groupId: gov.gsa.cnxs.webservices
   integration.branch: main
-  webservices_total_expected_artifacts: "0"
 
 repositories:
   - Webservices:
