@@ -1,3 +1,116 @@
-git ls-remote --tags ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/vendoremulator.git "refs/tags/02.00.000.141"
-git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/vendoremulator.git "refs/heads/release/02.00.000.141"
-git push ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/vendoremulator.git --delete "release/02.00.000.141"
+RELEASE_VERSION="<real-release-version>"
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data @- <<EOF
+items.find({
+  "repo":{"\$eq":"conexus-rc-local"},
+  "name":{"\$match":"*${RELEASE_VERSION}*"},
+  "path":{"\$match":"gov/gsa/cnxs/webservices*"}
+}).include("name","repo","path")
+EOF
+
+
+
+
+
+grep -n "<packaging>" pom.xml
+grep -n "<module>" pom.xml
+find . -name pom.xml -print
+find . -name pom.xml -exec sh -c '
+  for f in "$@"; do
+    echo "===== $f ====="
+    grep -n "<artifactId>\|<groupId>\|<packaging>\|<module>" "$f" || true
+    echo
+  done
+' sh {} +
+
+
+
+
+
+
+SETTINGS_FILE=/tmp/settings-artifactory-manual.xml
+
+cat > "${SETTINGS_FILE}" <<XML
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>artifactory</id>
+      <mirrorOf>*</mirrorOf>
+      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>use-artifactory</id>
+      <repositories>
+        <repository>
+          <id>artifactory</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>artifactory</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+  <activeProfiles>
+    <activeProfile>use-artifactory</activeProfile>
+  </activeProfiles>
+  <servers>
+    <server>
+      <id>central</id>
+      <username>sa_bamboo</username>
+      <password>${TOKEN}</password>
+    </server>
+    <server>
+      <id>artifactory</id>
+      <username>sa_bamboo</username>
+      <password>${TOKEN}</password>
+    </server>
+  </servers>
+</settings>
+XML
+
+
+
+
+CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+echo "${CURRENT_VERSION}"
+echo "${CURRENT_VERSION%-SNAPSHOT}"
+
+
+
+
+grep -n "<version>" pom.xml | head -20
+grep -n "<parent>\|<artifactId>\|<version>" pom.xml | head -40
+
+
+
+
+
+RELEASE_VERSION="<that-version-without-snapshot>"
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data @- <<EOF
+items.find({
+  "repo":{"\$eq":"conexus-rc-local"},
+  "name":{"\$match":"*${RELEASE_VERSION}*"},
+  "path":{"\$match":"gov/gsa/cnxs/webservices*"}
+}).include("name","repo","path")
+EOF
