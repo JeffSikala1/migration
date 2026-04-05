@@ -532,6 +532,13 @@ Finalize Job:
             REPO_URL="${bamboo.repo_url}"
             VALIDATE_INTEGRATION_REF="refs/remotes/validate_integration"
 
+            {
+              echo "bamboo_skip_release=false"
+              echo "bamboo_release_version=${RELEASE_VERSION}"
+              echo "bamboo_release_branch=${RELEASE_BRANCH}"
+              echo "bamboo_integration_branch=${INTEGRATION_BRANCH}"
+            } > "${bamboo.build.working.directory}/skip.properties"
+
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
             TAG_EXISTS=false
@@ -614,13 +621,23 @@ Finalize Job:
 
             if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
               echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
-              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+              {
+                echo "bamboo_skip_release=true"
+                echo "bamboo_release_version=${RELEASE_VERSION}"
+                echo "bamboo_release_branch=${RELEASE_BRANCH}"
+                echo "bamboo_integration_branch=${INTEGRATION_BRANCH}"
+              } > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
 
             if [ "${TAG_EXISTS}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
               echo "INFO: release ${RELEASE_VERSION} appears already finalized based on remote tag + missing release branch + release artifacts present; skipping."
-              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+              {
+                echo "bamboo_skip_release=true"
+                echo "bamboo_release_version=${RELEASE_VERSION}"
+                echo "bamboo_release_branch=${RELEASE_BRANCH}"
+                echo "bamboo_integration_branch=${INTEGRATION_BRANCH}"
+              } > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
 
@@ -747,16 +764,14 @@ Finalize Job:
 
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1 || true)
-            if [ -z "${CURRENT_VERSION}" ]; then
-              echo "WARNING: could not determine Maven version during cleanup; skipping destructive cleanup."
+            RELEASE_VERSION="${bamboo_inject_bamboo_release_version:-}"
+            RELEASE_BRANCH="${bamboo_inject_bamboo_release_branch:-}"
+            REPO_URL="${bamboo.repo_url}"
+
+            if [ -z "${RELEASE_VERSION}" ] || [ -z "${RELEASE_BRANCH}" ]; then
+              echo "WARNING: cleanup metadata missing from injected variables; skipping destructive cleanup."
               exit 0
             fi
-
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
-            REPO_URL="${bamboo.repo_url}"
 
             echo "INFO: starting cleanup for release=${RELEASE_VERSION} branch=${RELEASE_BRANCH}"
 
