@@ -201,6 +201,7 @@ Promote Job:
         scripts:
           - |
             set -euo pipefail
+
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
@@ -213,17 +214,21 @@ Promote Job:
             [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            GROUP_ID="${bamboo.maven.groupId}"
-            ARTIFACT_ID="${bamboo.maven.artifactId}"
-            GROUP_PATH="${GROUP_ID//./\/}"
-
-            EXPECTED_POM="${ARTIFACT_ID}-${RELEASE_VERSION}.pom"
+            GROUP_PATH="gov/gsa/cnxs/contract-mod"
 
             AQL=$(cat <<EOF
             items.find({
               "repo":{"\$eq":"conexus-release-local"},
-              "path":{"\$eq":"${GROUP_PATH}/${ARTIFACT_ID}/${RELEASE_VERSION}"},
-              "name":{"\$match":"${ARTIFACT_ID}-${RELEASE_VERSION}*"}
+              "\$or":[
+                {"path":{"\$eq":"${GROUP_PATH}/contract-mod/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${GROUP_PATH}/contract-mod-core/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${GROUP_PATH}/contract-mod-domain/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${GROUP_PATH}/contract-mod-routes/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${GROUP_PATH}/contract-mod-war/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${GROUP_PATH}/contract-mod-integration-support/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${GROUP_PATH}/contract-mod-integration-ear/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"${GROUP_PATH}/contract-mod-integration-test/${RELEASE_VERSION}"}}
+              ]
             }).include("name","repo","path")
             EOF
             )
@@ -236,18 +241,53 @@ Promote Job:
 
             echo "${RESULT}" > "${bamboo.build.working.directory}/release-check.json"
 
-            pom_count=$(echo "${RESULT}" | grep -F -c "\"name\" : \"${EXPECTED_POM}\"" || true)
+            found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            items = {(item["path"], item["name"]) for item in data.get("results", [])}
+            expected = [
+                ("gov/gsa/cnxs/contract-mod/contract-mod/${RELEASE_VERSION}", "contract-mod-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-core/${RELEASE_VERSION}", "contract-mod-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-core/${RELEASE_VERSION}", "contract-mod-core-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-core/${RELEASE_VERSION}", "contract-mod-core-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-domain/${RELEASE_VERSION}", "contract-mod-domain-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-domain/${RELEASE_VERSION}", "contract-mod-domain-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-domain/${RELEASE_VERSION}", "contract-mod-domain-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-routes/${RELEASE_VERSION}", "contract-mod-routes-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-routes/${RELEASE_VERSION}", "contract-mod-routes-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-routes/${RELEASE_VERSION}", "contract-mod-routes-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-war/${RELEASE_VERSION}", "contract-mod-war-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-war/${RELEASE_VERSION}", "contract-mod-war-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-support/${RELEASE_VERSION}", "contract-mod-integration-support-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-support/${RELEASE_VERSION}", "contract-mod-integration-support-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-support/${RELEASE_VERSION}", "contract-mod-integration-support-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-ear/${RELEASE_VERSION}", "contract-mod-integration-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-ear/${RELEASE_VERSION}", "contract-mod-integration-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-test/${RELEASE_VERSION}", "contract-mod-integration-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-test/${RELEASE_VERSION}", "contract-mod-integration-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-test/${RELEASE_VERSION}", "contract-mod-integration-test-${RELEASE_VERSION}-tests.jar"),
+            ]
+            print(sum(1 for x in expected if x in items))
+            PY
+            )
 
-            if [ "${pom_count}" -eq 0 ]; then
+            total_expected=20
+
+            echo "INFO: found ${found_count} of ${total_expected} expected ContractMod release artifacts"
+
+            if [ "${found_count}" -eq 0 ]; then
               echo "INFO: no ContractMod release artifacts found for ${RELEASE_VERSION}; promotion may proceed."
               exit 0
             fi
 
-            if [ "${pom_count}" -ge 1 ]; then
-              echo "INFO: ContractMod release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
+            if [ "${found_count}" -eq "${total_expected}" ]; then
+              echo "INFO: all ContractMod release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
+
+            echo "ERROR: partial ContractMod release already exists for ${RELEASE_VERSION}."
+            exit 1
 
     - inject-variables:
         file: skip.properties
@@ -260,6 +300,7 @@ Promote Job:
         scripts:
           - |
             set -euo pipefail
+
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release artifacts already exist; skipping promotion."
               exit 0
@@ -273,15 +314,14 @@ Promote Job:
 
             mkdir -p working
 
-            python3 ../release-scripts/promote.py \
-              conexus-rc-local \
-              ${bamboo.maven.groupId} \
-              ${bamboo.maven.artifactId} \
-              "${RELEASE_VERSION}" \
-              --username "sa_bamboo" \
-              --password "${bamboo.artifactory_access_token_secret}" \
-              --settings-xml "${SETTINGS_FILE}" \
-              --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.contract-mod contract-mod "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.contract-mod contract-mod-core "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.contract-mod contract-mod-domain "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.contract-mod contract-mod-routes "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.contract-mod contract-mod-war "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.contract-mod contract-mod-integration-support "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.contract-mod contract-mod-integration-ear "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.contract-mod contract-mod-integration-test "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
 
   artifact-subscriptions: []
 
@@ -379,11 +419,12 @@ Finalize Job:
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
             RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            INTEGRATION_BRANCH="${bamboo.integration.branch}"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
             TAG_EXISTS=false
-            MAIN_HAS_TAG=false
+            INTEGRATION_HAS_TAG=false
             BRANCH_EXISTS=false
 
             if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
@@ -396,32 +437,35 @@ Finalize Job:
 
             if [ "${TAG_EXISTS}" = "true" ]; then
               git fetch origin \
-                "+refs/heads/main:refs/remotes/origin/__validate_main" \
+                "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/origin/__validate_integration" \
                 "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
                 >/dev/null 2>&1 || true
 
               TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}" 2>/dev/null || true)"
-              MAIN_COMMIT="$(git rev-parse refs/remotes/origin/__validate_main 2>/dev/null || true)"
+              INTEGRATION_COMMIT="$(git rev-parse refs/remotes/origin/__validate_integration 2>/dev/null || true)"
 
-              echo "INFO: tag_commit=${TAG_COMMIT:-missing} validate_main=${MAIN_COMMIT:-missing}"
-
-              if [ -n "${TAG_COMMIT}" ] && [ -n "${MAIN_COMMIT}" ]; then
-                if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/origin/__validate_main"; then
-                  MAIN_HAS_TAG=true
+              if [ -n "${TAG_COMMIT}" ] && [ -n "${INTEGRATION_COMMIT}" ]; then
+                if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/origin/__validate_integration"; then
+                  INTEGRATION_HAS_TAG=true
                 fi
               fi
             fi
 
-            echo "INFO: tag_exists=${TAG_EXISTS}, main_has_tag=${MAIN_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
+            echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
 
-            if [ "${TAG_EXISTS}" = "true" ] && [ "${MAIN_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
               echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
 
             if [ "${BRANCH_EXISTS}" != "true" ]; then
-              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist and release is not proven finalized on main."
+              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist and release is not proven finalized on ${INTEGRATION_BRANCH}."
+              exit 1
+            fi
+
+            if ! git ls-remote --heads origin "refs/heads/${INTEGRATION_BRANCH}" | grep -q "refs/heads/${INTEGRATION_BRANCH}$"; then
+              echo "ERROR: integration branch ${INTEGRATION_BRANCH} does not exist."
               exit 1
             fi
 
@@ -433,12 +477,11 @@ Finalize Job:
 
     - script:
         interpreter: SHELL
-        description: Merge release branch to main, set release versions, tag, and push
+        description: Merge release branch to integration branch, set release versions, tag, and push
         working-dir: ${bamboo.module_name}
         scripts:
           - |
             set -euo pipefail
-
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
@@ -453,48 +496,47 @@ Finalize Job:
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
             RELEASE_BRANCH="release/${RELEASE_VERSION}"
             RELEASE_TAG="${RELEASE_VERSION}"
+            INTEGRATION_BRANCH="${bamboo.integration.branch}"
 
             git config user.name "bamboo"
             git config user.email "bamboo@local"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+
             if ! git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
-              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
+              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finish release cannot continue."
               exit 1
             fi
 
-            if ! git ls-remote --exit-code --heads origin "refs/heads/main" >/dev/null 2>&1; then
-              echo "ERROR: remote main does not exist for this repository."
-              if git ls-remote --exit-code --heads origin "refs/heads/master" >/dev/null 2>&1; then
-                echo "INFO: remote master exists. This repo may still use master instead of main."
-              fi
+            if ! git ls-remote --exit-code --heads origin "refs/heads/${INTEGRATION_BRANCH}" >/dev/null 2>&1; then
+              echo "ERROR: integration branch ${INTEGRATION_BRANCH} does not exist."
               exit 1
             fi
 
             git fetch origin \
-              "+refs/heads/main:refs/remotes/origin/main" \
+              "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/origin/${INTEGRATION_BRANCH}" \
               "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}" \
               "+refs/tags/*:refs/tags/*" \
               --prune >/dev/null 2>&1
 
             TAG_EXISTS=false
-            TAG_ON_MAIN=false
+            TAG_ON_INTEGRATION=false
 
             if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
               TAG_EXISTS=true
               TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_TAG}")"
-              if git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/main; then
-                TAG_ON_MAIN=true
+              if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/origin/${INTEGRATION_BRANCH}"; then
+                TAG_ON_INTEGRATION=true
               fi
             fi
 
-            if [ "${TAG_EXISTS}" = "true" ] && [ "${TAG_ON_MAIN}" != "true" ]; then
-              echo "ERROR: release tag ${RELEASE_TAG} already exists but is not contained in origin/main."
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${TAG_ON_INTEGRATION}" != "true" ]; then
+              echo "ERROR: release tag ${RELEASE_TAG} already exists but is not contained in origin/${INTEGRATION_BRANCH}."
               exit 1
             fi
 
-            git checkout -B "${RELEASE_BRANCH}" "refs/remotes/origin/${RELEASE_BRANCH}"
-            git checkout -B main "refs/remotes/origin/main"
+            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
+            git checkout -B "${INTEGRATION_BRANCH}" "origin/${INTEGRATION_BRANCH}" >/dev/null 2>&1
 
             git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
 
@@ -510,7 +552,7 @@ Finalize Job:
               git tag "${RELEASE_TAG}"
             fi
 
-            git push origin main
+            git push origin "${INTEGRATION_BRANCH}"
 
             if [ "${TAG_EXISTS}" = "false" ]; then
               git push origin "refs/tags/${RELEASE_TAG}"
@@ -541,40 +583,39 @@ Finalize Job:
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
             RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            INTEGRATION_BRANCH="${bamboo.integration.branch}"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
-            git fetch origin \
-              "+refs/heads/main:refs/remotes/origin/__validate_main" \
-              "+refs/tags/*:refs/tags/*" \
-              >/dev/null 2>&1 || true
-
-            if ! git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+            if ! git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
               echo "ERROR: release tag ${RELEASE_VERSION} does not exist in remote; refusing to delete release branch."
               exit 1
             fi
 
-            TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}")"
+            git fetch origin \
+              "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/origin/__validate_integration" \
+              "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
+              >/dev/null 2>&1
+
+            TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}" 2>/dev/null || true)"
+            INTEGRATION_COMMIT="$(git rev-parse refs/remotes/origin/__validate_integration 2>/dev/null || true)"
+
             if [ -z "${TAG_COMMIT}" ]; then
               echo "ERROR: could not resolve tag commit for ${RELEASE_VERSION}"
               exit 1
             fi
 
-            MAIN_COMMIT="$(git rev-parse refs/remotes/origin/__validate_main 2>/dev/null || true)"
-            if [ -z "${MAIN_COMMIT}" ]; then
-              echo "ERROR: could not resolve refs/remotes/origin/__validate_main after explicit fetch"
+            if [ -z "${INTEGRATION_COMMIT}" ]; then
+              echo "ERROR: could not resolve fetched integration branch commit"
               exit 1
             fi
 
-            echo "INFO: tag=${RELEASE_VERSION} tag_commit=${TAG_COMMIT} validate_main=${MAIN_COMMIT}"
-
-            if ! git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/__validate_main; then
-              echo "ERROR: tag commit ${TAG_COMMIT} is not contained in refs/remotes/origin/__validate_main; refusing to delete release branch."
+            if ! git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/__validate_integration; then
+              echo "ERROR: tag commit ${TAG_COMMIT} is not contained in ${INTEGRATION_BRANCH}; refusing to delete release branch."
               exit 1
             fi
 
             if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
-              echo "Deleting remote release branch ${RELEASE_BRANCH}"
               git push origin --delete "${RELEASE_BRANCH}"
             else
               echo "Release branch ${RELEASE_BRANCH} already absent"
@@ -584,8 +625,9 @@ Finalize Job:
 
 variables:
   module_name: reconciliation
-  maven.artifactId: reconciliation
-  maven.groupId: gov.gsa.cnxs
+  maven.groupId: gov.gsa.cnxs.contract-mod
+  maven.artifactId: contract-mod
+  integration.branch: develop
 
 repositories:
   - ContractMod:
