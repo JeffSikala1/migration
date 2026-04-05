@@ -426,6 +426,7 @@ Finalize Job:
             TAG_EXISTS=false
             INTEGRATION_HAS_TAG=false
             BRANCH_EXISTS=false
+            RELEASE_ARTIFACTS_EXIST=false
 
             if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
               TAG_EXISTS=true
@@ -436,6 +437,8 @@ Finalize Job:
             fi
 
             if [ "${TAG_EXISTS}" = "true" ]; then
+              git tag -d "${RELEASE_VERSION}" >/dev/null 2>&1 || true
+
               git fetch origin \
                 "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/origin/__validate_integration" \
                 "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
@@ -444,6 +447,8 @@ Finalize Job:
               TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}" 2>/dev/null || true)"
               INTEGRATION_COMMIT="$(git rev-parse refs/remotes/origin/__validate_integration 2>/dev/null || true)"
 
+              echo "INFO: tag_commit=${TAG_COMMIT:-missing} integration_commit=${INTEGRATION_COMMIT:-missing}"
+
               if [ -n "${TAG_COMMIT}" ] && [ -n "${INTEGRATION_COMMIT}" ]; then
                 if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/origin/__validate_integration"; then
                   INTEGRATION_HAS_TAG=true
@@ -451,10 +456,73 @@ Finalize Job:
               fi
             fi
 
-            echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
+            AQL=$(cat <<EOF
+            items.find({
+              "repo":{"\$eq":"conexus-release-local"},
+              "\$or":[
+                {"path":{"\$eq":"gov/gsa/cnxs/contract-mod/contract-mod/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/contract-mod/contract-mod-core/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/contract-mod/contract-mod-domain/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/contract-mod/contract-mod-routes/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/contract-mod/contract-mod-war/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/contract-mod/contract-mod-integration-support/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/contract-mod/contract-mod-integration-ear/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/contract-mod/contract-mod-integration-test/${RELEASE_VERSION}"}}
+              ]
+            }).include("name","repo","path")
+            EOF
+            )
+
+            RESULT=$(curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+              -H "Content-Type: text/plain" \
+              -X POST \
+              "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+              --data "${AQL}")
+
+            found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            items = {(item["path"], item["name"]) for item in data.get("results", [])}
+            expected = [
+                ("gov/gsa/cnxs/contract-mod/contract-mod/${RELEASE_VERSION}", "contract-mod-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-core/${RELEASE_VERSION}", "contract-mod-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-core/${RELEASE_VERSION}", "contract-mod-core-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-core/${RELEASE_VERSION}", "contract-mod-core-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-domain/${RELEASE_VERSION}", "contract-mod-domain-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-domain/${RELEASE_VERSION}", "contract-mod-domain-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-domain/${RELEASE_VERSION}", "contract-mod-domain-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-routes/${RELEASE_VERSION}", "contract-mod-routes-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-routes/${RELEASE_VERSION}", "contract-mod-routes-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-routes/${RELEASE_VERSION}", "contract-mod-routes-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-war/${RELEASE_VERSION}", "contract-mod-war-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-war/${RELEASE_VERSION}", "contract-mod-war-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-support/${RELEASE_VERSION}", "contract-mod-integration-support-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-support/${RELEASE_VERSION}", "contract-mod-integration-support-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-support/${RELEASE_VERSION}", "contract-mod-integration-support-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-ear/${RELEASE_VERSION}", "contract-mod-integration-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-ear/${RELEASE_VERSION}", "contract-mod-integration-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-test/${RELEASE_VERSION}", "contract-mod-integration-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-test/${RELEASE_VERSION}", "contract-mod-integration-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/contract-mod/contract-mod-integration-test/${RELEASE_VERSION}", "contract-mod-integration-test-${RELEASE_VERSION}-tests.jar"),
+            ]
+            print(sum(1 for x in expected if x in items))
+            PY
+            )
+
+            if [ "${found_count}" -gt 0 ]; then
+              RELEASE_ARTIFACTS_EXIST=true
+            fi
+
+            echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}, release_artifacts_found=${found_count}"
 
             if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
               echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
+              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+              exit 0
+            fi
+
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
+              echo "INFO: release ${RELEASE_VERSION} appears already finalized based on remote tag + missing release branch + release artifacts present; skipping."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
