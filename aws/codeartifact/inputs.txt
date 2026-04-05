@@ -1,19 +1,63 @@
-git fetch origin --prune --tags
+SETTINGS_FILE=/tmp/settings-reporting-check.xml
 
-echo "=== pom version ==="
-mvn -q -DforceStdout help:evaluate -Dexpression=project.version | sed '/^\[/d' | tail -1
+cat > "${SETTINGS_FILE}" <<XML
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>artifactory</id>
+      <mirrorOf>*</mirrorOf>
+      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>use-artifactory</id>
+      <repositories>
+        <repository>
+          <id>artifactory</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>artifactory</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+  <activeProfiles>
+    <activeProfile>use-artifactory</activeProfile>
+  </activeProfiles>
+  <servers>
+    <server>
+      <id>artifactory</id>
+      <username>sa_bamboo</username>
+      <password>${TOKEN}</password>
+    </server>
+    <server>
+      <id>central</id>
+      <username>sa_bamboo</username>
+      <password>${TOKEN}</password>
+    </server>
+  </servers>
+</settings>
+XML
 
-echo "=== release branches ==="
-git ls-remote --heads origin "refs/heads/release/*"
+/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1
 
-echo "=== tags near expected version ==="
-git ls-remote --tags origin | grep "02.00.000.11"
 
-echo "=== main ==="
-git ls-remote --heads origin "refs/heads/main"
 
-echo "=== develop ==="
-git ls-remote --heads origin "refs/heads/develop"
+
+find . -maxdepth 3 \( -name pom.xml -o -name "*.ear" \)
+grep -R "<artifactId>reporting-ear</artifactId>" -n .
+
 
 
 
@@ -25,8 +69,8 @@ curl -sku "sa_bamboo:${TOKEN}" \
 items.find({
   "repo":{"$eq":"conexus-rc-local"},
   "$or":[
-    {"path":{"$match":"gov/gsa/cnxs/reporting/reporting-aggregator/*"}},
-    {"path":{"$match":"gov/gsa/cnxs/reporting/reporting-ear/*"}}
+    {"path":{"$eq":"gov/gsa/cnxs/reporting/reporting-aggregator/02.00.000.115-RC"}},
+    {"path":{"$eq":"gov/gsa/cnxs/reporting/reporting-ear/02.00.000.115-RC"}}
   ]
 }).include("name","repo","path")
 '
