@@ -1,29 +1,32 @@
-cd ~/rest
 git fetch origin --prune --tags
 
-echo "=== remote release branch ==="
-git ls-remote --heads origin "refs/heads/release/02.00.000.175"
+echo "=== pom version ==="
+mvn -q -DforceStdout help:evaluate -Dexpression=project.version | sed '/^\[/d' | tail -1
 
-echo "=== remote main ==="
+echo "=== release branches ==="
+git ls-remote --heads origin "refs/heads/release/*"
+
+echo "=== tags near expected version ==="
+git ls-remote --tags origin | grep "02.00.000.11"
+
+echo "=== main ==="
 git ls-remote --heads origin "refs/heads/main"
 
-echo "=== remote tag ==="
-git ls-remote --tags origin "refs/tags/02.00.000.175"
-
-git tag -d 02.00.000.175 >/dev/null 2>&1 || true
-
-git fetch origin \
-  "+refs/heads/main:refs/remotes/origin/__validate_main" \
-  "+refs/tags/02.00.000.175:refs/tags/02.00.000.175"
-
-echo "=== ancestry check ==="
-git rev-list -n 1 02.00.000.175
-git rev-parse refs/remotes/origin/__validate_main
-git merge-base --is-ancestor 02.00.000.175 refs/remotes/origin/__validate_main && echo TAG_ON_MAIN || echo TAG_NOT_ON_MAIN
-
-echo "=== delete attempt ==="
-git push origin --delete release/02.00.000.175
+echo "=== develop ==="
+git ls-remote --heads origin "refs/heads/develop"
 
 
 
-
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "$or":[
+    {"path":{"$match":"gov/gsa/cnxs/reporting/reporting-aggregator/*"}},
+    {"path":{"$match":"gov/gsa/cnxs/reporting/reporting-ear/*"}}
+  ]
+}).include("name","repo","path")
+'
