@@ -126,8 +126,64 @@ Promote Job:
             git fetch origin --prune --tags >/dev/null 2>&1
 
             if ! git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
-              if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
-                echo "INFO: release ${RELEASE_VERSION} already finalized; skipping."
+              TAG_EXISTS=false
+              RELEASE_ARTIFACTS_EXIST=false
+
+              if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+                TAG_EXISTS=true
+              fi
+
+              if [ "${TAG_EXISTS}" = "true" ]; then
+                AQL=$(cat <<EOF
+            items.find({
+              "repo":{"\$eq":"conexus-release-local"},
+              "\$or":[
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-aggregator/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}"}}
+              ]
+            }).include("name","repo","path")
+            EOF
+                )
+
+                RESULT=$(curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+                  -H "Content-Type: text/plain" \
+                  -X POST \
+                  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+                  --data "${AQL}")
+
+                found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            items = {(item["path"], item["name"]) for item in data.get("results", [])}
+            expected = [
+                ("gov/gsa/cnxs/dpa/dpa-aggregator/${RELEASE_VERSION}", "dpa-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}", "dpa-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}", "dpa-core-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}", "dpa-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}", "dpa-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}-tests.jar"),
+            ]
+            print(sum(1 for x in expected if x in items))
+            PY
+                )
+
+                if [ "${found_count}" -gt 0 ]; then
+                  RELEASE_ARTIFACTS_EXIST=true
+                fi
+              fi
+
+              echo "INFO: tag_exists=${TAG_EXISTS}, branch_exists=false, release_artifacts_found=${found_count:-0}"
+
+              if [ "${TAG_EXISTS}" = "true" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
+                echo "INFO: release ${RELEASE_VERSION} already finalized based on remote tag + missing release branch + release artifacts present; skipping."
                 echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
                 exit 0
               fi
@@ -188,6 +244,67 @@ Promote Job:
             git fetch origin --prune --tags >/dev/null 2>&1
 
             if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+              TAG_EXISTS=false
+              RELEASE_ARTIFACTS_EXIST=false
+
+              if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+                TAG_EXISTS=true
+              fi
+
+              if [ "${TAG_EXISTS}" = "true" ]; then
+                AQL=$(cat <<EOF
+            items.find({
+              "repo":{"\$eq":"conexus-release-local"},
+              "\$or":[
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-aggregator/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}"}}
+              ]
+            }).include("name","repo","path")
+            EOF
+                )
+
+                RESULT=$(curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+                  -H "Content-Type: text/plain" \
+                  -X POST \
+                  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+                  --data "${AQL}")
+
+                found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            items = {(item["path"], item["name"]) for item in data.get("results", [])}
+            expected = [
+                ("gov/gsa/cnxs/dpa/dpa-aggregator/${RELEASE_VERSION}", "dpa-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}", "dpa-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}", "dpa-core-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}", "dpa-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}", "dpa-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}-tests.jar"),
+            ]
+            print(sum(1 for x in expected if x in items))
+            PY
+                )
+
+                if [ "${found_count}" -gt 0 ]; then
+                  RELEASE_ARTIFACTS_EXIST=true
+                fi
+              fi
+
+              echo "INFO: tag_exists=${TAG_EXISTS}, branch_exists=false, release_artifacts_found=${found_count:-0}"
+
+              if [ "${TAG_EXISTS}" = "true" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
+                echo "INFO: release ${RELEASE_VERSION} already finalized based on remote tag + missing release branch + release artifacts present; promotion checks may skip."
+                exit 0
+              fi
+
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
               exit 1
             fi
@@ -214,16 +331,17 @@ Promote Job:
             [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            GROUP_ID="${bamboo.maven.groupId}"
-            ARTIFACT_ID="${bamboo.maven.artifactId}"
-            GROUP_PATH="${GROUP_ID//./\/}"
-            EXPECTED_POM="${ARTIFACT_ID}-${RELEASE_VERSION}.pom"
 
             AQL=$(cat <<EOF
             items.find({
               "repo":{"\$eq":"conexus-release-local"},
-              "path":{"\$eq":"${GROUP_PATH}/${ARTIFACT_ID}/${RELEASE_VERSION}"},
-              "name":{"\$match":"${ARTIFACT_ID}-${RELEASE_VERSION}*"}
+              "\$or":[
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-aggregator/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}"}}
+              ]
             }).include("name","repo","path")
             EOF
             )
@@ -236,16 +354,44 @@ Promote Job:
 
             echo "${RESULT}" > "${bamboo.build.working.directory}/release-check.json"
 
-            pom_count=$(echo "${RESULT}" | grep -F -c "\"name\" : \"${EXPECTED_POM}\"" || true)
+            found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            items = {(item["path"], item["name"]) for item in data.get("results", [])}
+            expected = [
+                ("gov/gsa/cnxs/dpa/dpa-aggregator/${RELEASE_VERSION}", "dpa-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}", "dpa-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}", "dpa-core-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}", "dpa-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}", "dpa-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}-tests.jar"),
+            ]
+            print(sum(1 for x in expected if x in items))
+            PY
+            )
 
-            if [ "${pom_count}" -eq 0 ]; then
+            total_expected=11
+
+            echo "INFO: found ${found_count} of ${total_expected} expected DPA release artifacts"
+
+            if [ "${found_count}" -eq 0 ]; then
               echo "INFO: no DPA release artifacts found for ${RELEASE_VERSION}; promotion may proceed."
               exit 0
             fi
 
-            echo "INFO: DPA release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
-            echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
-            exit 0
+            if [ "${found_count}" -eq "${total_expected}" ]; then
+              echo "INFO: all DPA release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
+              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+              exit 0
+            fi
+
+            echo "ERROR: partial DPA release already exists for ${RELEASE_VERSION}."
+            exit 1
 
     - inject-variables:
         file: skip.properties
@@ -272,15 +418,11 @@ Promote Job:
 
             mkdir -p working
 
-            python3 ../release-scripts/promote.py \
-              conexus-rc-local \
-              ${bamboo.maven.groupId} \
-              ${bamboo.maven.artifactId} \
-              "${RELEASE_VERSION}" \
-              --username "sa_bamboo" \
-              --password "${bamboo.artifactory_access_token_secret}" \
-              --settings-xml "${SETTINGS_FILE}" \
-              --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.dpa dpa-aggregator "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.dpa dpa-core "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.dpa dpa-api "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.dpa dpa-ear "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.dpa.test dpa-integration-test "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
 
   artifact-subscriptions: []
 
@@ -415,15 +557,16 @@ Finalize Job:
               fi
             fi
 
-            GROUP_ID="${bamboo.maven.groupId}"
-            ARTIFACT_ID="${bamboo.maven.artifactId}"
-            GROUP_PATH="${GROUP_ID//./\/}"
-
             AQL=$(cat <<EOF
             items.find({
               "repo":{"\$eq":"conexus-release-local"},
-              "path":{"\$eq":"${GROUP_PATH}/${ARTIFACT_ID}/${RELEASE_VERSION}"},
-              "name":{"\$match":"${ARTIFACT_ID}-${RELEASE_VERSION}*"}
+              "\$or":[
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-aggregator/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}"}},
+                {"path":{"\$eq":"gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}"}}
+              ]
             }).include("name","repo","path")
             EOF
             )
@@ -434,13 +577,32 @@ Finalize Job:
               "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
               --data "${AQL}")
 
-            pom_count=$(echo "${RESULT}" | grep -F -c "\"name\" : \"${ARTIFACT_ID}-${RELEASE_VERSION}.pom\"" || true)
+            found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            items = {(item["path"], item["name"]) for item in data.get("results", [])}
+            expected = [
+                ("gov/gsa/cnxs/dpa/dpa-aggregator/${RELEASE_VERSION}", "dpa-aggregator-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}", "dpa-core-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-core/${RELEASE_VERSION}", "dpa-core-${RELEASE_VERSION}.war"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/dpa/dpa-api/${RELEASE_VERSION}", "dpa-api-${RELEASE_VERSION}-tests.jar"),
+                ("gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}", "dpa-ear-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/dpa-ear/${RELEASE_VERSION}", "dpa-ear-${RELEASE_VERSION}.ear"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}.jar"),
+                ("gov/gsa/cnxs/dpa/test/dpa-integration-test/${RELEASE_VERSION}", "dpa-integration-test-${RELEASE_VERSION}-tests.jar"),
+            ]
+            print(sum(1 for x in expected if x in items))
+            PY
+            )
 
-            if [ "${pom_count}" -gt 0 ]; then
+            if [ "${found_count}" -gt 0 ]; then
               RELEASE_ARTIFACTS_EXIST=true
             fi
 
-            echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}, release_artifacts_exist=${RELEASE_ARTIFACTS_EXIST}"
+            echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}, release_artifacts_found=${found_count}"
 
             if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
               echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
