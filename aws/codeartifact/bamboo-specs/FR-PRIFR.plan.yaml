@@ -574,32 +574,40 @@ Finalize Job:
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
-            git fetch origin \
-              "+refs/heads/main:refs/remotes/origin/__validate_main" \
-              "+refs/tags/*:refs/tags/*" \
-              >/dev/null 2>&1 || true
-
-            if ! git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+            if ! git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
               echo "ERROR: release tag ${RELEASE_VERSION} does not exist in remote; refusing to delete release branch."
               exit 1
             fi
 
-            TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}")"
+            if ! git ls-remote --heads origin "refs/heads/main" | grep -q "refs/heads/main$"; then
+              echo "ERROR: remote main does not exist"
+              exit 1
+            fi
+
+            git tag -d "${RELEASE_VERSION}" >/dev/null 2>&1 || true
+
+            git fetch origin \
+              "+refs/heads/main:refs/remotes/origin/__validate_main" \
+              "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
+              >/dev/null 2>&1
+
+            TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}" 2>/dev/null || true)"
+            MAIN_COMMIT="$(git rev-parse refs/remotes/origin/__validate_main 2>/dev/null || true)"
+
             if [ -z "${TAG_COMMIT}" ]; then
               echo "ERROR: could not resolve tag commit for ${RELEASE_VERSION}"
               exit 1
             fi
 
-            MAIN_COMMIT="$(git rev-parse refs/remotes/origin/__validate_main 2>/dev/null || true)"
             if [ -z "${MAIN_COMMIT}" ]; then
-              echo "ERROR: could not resolve refs/remotes/origin/__validate_main after explicit fetch"
+              echo "ERROR: could not resolve fetched main commit"
               exit 1
             fi
 
             echo "INFO: tag=${RELEASE_VERSION} tag_commit=${TAG_COMMIT} validate_main=${MAIN_COMMIT}"
 
             if ! git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/__validate_main; then
-              echo "ERROR: tag commit ${TAG_COMMIT} is not contained in refs/remotes/origin/__validate_main; refusing to delete release branch."
+              echo "ERROR: tag commit ${TAG_COMMIT} is not contained in fetched main ${MAIN_COMMIT}; refusing to delete release branch."
               exit 1
             fi
 
