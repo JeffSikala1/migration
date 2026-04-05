@@ -627,20 +627,14 @@ Finalize Job:
 
             echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}, release_artifacts_found=${found_count}"
 
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
+              echo "INFO: release ${RELEASE_VERSION} already finalized based on remote tag + missing release branch + full release artifacts; skipping."
+              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+              exit 0
+            fi
+
             if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "true" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
               echo "INFO: release ${RELEASE_VERSION} is already finalized; only release-branch cleanup remains."
-              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
-              exit 0
-            fi
-
-            if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
-              echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
-              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
-              exit 0
-            fi
-
-            if [ "${TAG_EXISTS}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
-              echo "INFO: release ${RELEASE_VERSION} appears already finalized based on remote tag + missing release branch + release artifacts present; skipping."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
