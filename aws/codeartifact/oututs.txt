@@ -1,655 +1,188 @@
-[sikaj01@ip-10-56-112-33 ws]$ git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws.git
-1df692ecd6f8aa5b365643ab6021fb695630813d        refs/heads/bugfix/01.00.000.146+fix-rest-version
-926e142c8b1e037663709e29e4b72a45632c9028        refs/heads/bugfix/fix-rest-version
-3e31bc7242aa0fcc72155e9a61a25cc12518993d        refs/heads/develop
-752ad077b2994b910f9f6e1072349bc0b0745540        refs/heads/feature/CNXS-73750-upgrade-to-jboss-8.0.8-aws
-51639b0c4adb78583e4e83909347e95ced5ca13e        refs/heads/feature/CNXS-75523-test-webservice-api-session-limits-after-changes-have-been-made
-7f1c9195e213b67ed164f4c90ab084c19b279212        refs/heads/feature/CNXS-76745-perform-jboss-docker-image-from-8.0.8-to-8.1.3-sasikanth
-6a72ae3bbdc5222ba94cf1d1554eed1aa6c28e5b        refs/heads/feature/ll-2025-jboss-8
-fb4d1ed2beac2a12863aed0b06c370ba4bc3b7be        refs/heads/feature/ll-CNXS-68737-newer-versions
-231dd721c9e847728d29d43b07585b1cdd5b4d73        refs/heads/feature/ll-jboss8
-26767680864b22a4e57e661460affb2c7f9acbc2        refs/heads/feature/ll-jboss8+CNXS-66342-upgrade-to-jboss-8.x-for-development-environment-part-2
-11c010020019519c795bcea379a2525b19dd90b6        refs/heads/feature/ll-modelchanges
-d49137a8d8faecfce3ba881518e9edbc93d4193e        refs/heads/feature/ll-postgres
-6f0fe82d1bee9d60df80a753521ab10654155437        refs/heads/feature/ll-postgres+CNXS-65168-ws-test-fixes
-9297c3e0b2fb4cec5f6e57a960986ee574fcca62        refs/heads/feature/ll-postgres+CNXS-67129-ws-modules-fix
-f746e1697a940248d9ccee5c98738f96bb0efb67        refs/heads/feature/ll-postgres+CNXS-67183-prototype-hibernate-against-the-json-postgres-datatype
-6560025d8d63acec43285aebbf5278485365ecad        refs/heads/feature/ll-postgres+CNXS-68646-enable-tests
-91da733729279dcb5835cbd53431fd03ddd0cc33        refs/heads/feature/ll-postgres+CNXS-69417-update-ws-backend
-b06bd45a9420050f65d73898f609edf75d533895        refs/heads/feature/ll-postgres+CNXS-74686-implement-auth-from-jboss-to-api-exchange
-515872079131d4bedfe1221f6eef93fbafcebc8d        refs/heads/main
-4d4b9b0f1bca5f79338ca7dea95216ec5de8195b        refs/heads/release/01.00.000.150
-81279abf982d48261af7cbd7409c97764e49b05c        refs/heads/release/02.00.000.151
-debec8ee3aaa3213ae3325e605d0ccdbcf91190a        refs/heads/release/02.00.000.152
-[sikaj01@ip-10-56-112-33 ws]$ SETTINGS_FILE=/tmp/settings-artifactory-manual.xml
-
-cat > "${SETTINGS_FILE}" <<XML
-<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
-  <mirrors>
-    <mirror>
-      <id>artifactory</id>
-      <mirrorOf>*</mirrorOf>
-      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-    </mirror>
-  </mirrors>
-  <profiles>
-    <profile>
-      <id>use-artifactory</id>
-      <repositories>
-        <repository>
-          <id>artifactory</id>
-          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-          <releases><enabled>true</enabled></releases>
-          <snapshots><enabled>true</enabled></snapshots>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>artifactory</id>
-          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-          <releases><enabled>true</enabled></releases>
-XMLettings>>>rd>${TOKEN}</password>>activeProfile>shots>
-[sikaj01@ip-10-56-112-33 ws]$ CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-echo "${CURRENT_VERSION}"
-echo "${CURRENT_VERSION%-SNAPSHOT}"
-02.00.000.153-SNAPSHOT
-02.00.000.153
-[sikaj01@ip-10-56-112-33 ws]$ RELEASE_VERSION="02.00.000.153"
-
-curl -sku "sa_bamboo:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data @- <<EOF
-items.find({
-  "repo":{"\$eq":"conexus-rc-local"},
-  "name":{"\$match":"*${RELEASE_VERSION}*"},
-  "path":{"\$match":"gov/gsa/cnxs/ws*"}
-}).include("name","repo","path")
-EOF
-
-{
-"results" : [ {
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-aggregator/02.00.000.153-RC",
-  "name" : "ws-aggregator-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-common/02.00.000.153-RC",
-  "name" : "ws-common-02.00.000.153-RC.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-common/02.00.000.153-RC",
-  "name" : "ws-common-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-common/02.00.000.153-RC",
-  "name" : "ws-common-02.00.000.153-RC-tests.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-api/02.00.000.153-RC",
-  "name" : "ws-api-02.00.000.153-RC.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-api/02.00.000.153-RC",
-  "name" : "ws-api-02.00.000.153-RC-tests.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-api/02.00.000.153-RC",
-  "name" : "ws-api-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-test-support/02.00.000.153-RC",
-  "name" : "ws-test-support-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-test-support/02.00.000.153-RC",
-  "name" : "ws-test-support-02.00.000.153-RC-tests.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.153-RC",
-  "name" : "ws-integration-ear-02.00.000.153-RC.ear"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.153-RC",
-  "name" : "ws-integration-core-02.00.000.153-RC.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-ear/02.00.000.153-RC",
-  "name" : "ws-services-ear-02.00.000.153-RC.ear"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-order-services/02.00.000.153-RC",
-  "name" : "ws-services-order-services-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-test-support/02.00.000.153-RC",
-  "name" : "ws-test-support-02.00.000.153-RC.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-core/02.00.000.153-RC",
-  "name" : "ws-core-02.00.000.153-RC-tests.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-core/02.00.000.153-RC",
-  "name" : "ws-core-02.00.000.153-RC.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-aggregator/02.00.000.153-RC",
-  "name" : "ws-services-aggregator-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.153-RC",
-  "name" : "ws-services-order-services-impl-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.153-RC",
-  "name" : "ws-services-order-services-impl-02.00.000.153-RC.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.153-RC",
-  "name" : "ws-services-health-check-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.153-RC",
-  "name" : "ws-services-health-check-02.00.000.153-RC-tests.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-version-war/02.00.000.153-RC",
-  "name" : "ws-version-war-02.00.000.153-RC.war"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.153-RC",
-  "name" : "ws-services-order-services-impl-02.00.000.153-RC-tests.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-version-war/02.00.000.153-RC",
-  "name" : "ws-version-war-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-ear/02.00.000.153-RC",
-  "name" : "ws-services-ear-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.153-RC",
-  "name" : "ws-integration-api-02.00.000.153-RC-tests.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration/02.00.000.153-RC",
-  "name" : "ws-integration-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.153-RC",
-  "name" : "ws-integration-api-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.153-RC",
-  "name" : "ws-integration-api-02.00.000.153-RC.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.153-RC",
-  "name" : "ws-integration-ear-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.153-RC",
-  "name" : "ws-integration-test-02.00.000.153-RC-tests.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.153-RC",
-  "name" : "ws-integration-test-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.153-RC",
-  "name" : "ws-integration-core-02.00.000.153-RC-tests.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.153-RC",
-  "name" : "ws-integration-core-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.153-RC",
-  "name" : "ws-integration-test-02.00.000.153-RC.jar"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-core/02.00.000.153-RC",
-  "name" : "ws-core-02.00.000.153-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.153-RC",
-  "name" : "ws-services-health-check-02.00.000.153-RC.jar"
-} ],
-"range" : {
-  "start_pos" : 0,
-  "end_pos" : 37,
-  "total" : 37
-}
-}
-[sikaj01@ip-10-56-112-33 ws]$ grep -n "<packaging>" pom.xml
-grep -n "<module>" pom.xml
-find . -name pom.xml -print
-find . -name pom.xml -exec sh -c '
-  for f in "$@"; do
-    echo "===== $f ====="
-    grep -n "<artifactId>\|<groupId>\|<packaging>\|<module>" "$f" || true
-    echo
-  done
-' sh {} +
-13:    <packaging>pom</packaging>
-18:        <module>api</module>
-19:        <module>test-support</module>
-20:        <module>common</module>
-21:        <module>core</module>
-22:        <module>services</module>
-23:        <module>version</module>
-24:        <module>ear</module>
-25:        <module>integration</module>
-./ear/pom.xml
-./integration/integration-core/pom.xml
-./integration/integration-test/pom.xml
-./integration/integration-ear/pom.xml
-./integration/pom.xml
-./integration/integration-api/pom.xml
-./services/health-check/pom.xml
-./services/order-services/impl/pom.xml
-./services/order-services/pom.xml
-./services/pom.xml
-./api/pom.xml
-./test-support/pom.xml
-./version/pom.xml
-./common/pom.xml
-./core/pom.xml
-./pom.xml
-===== ./ear/pom.xml =====
-4:        <artifactId>ws-aggregator</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-services-ear</artifactId>
-11:    <packaging>ear</packaging>
-16:            <groupId>${project.groupId}</groupId>
-17:            <artifactId>ws-services-order-services-impl</artifactId>
-22:                    <groupId>gov.gsa.cnxs.common-rest</groupId>
-23:                    <artifactId>*</artifactId>
-29:            <groupId>${project.groupId}</groupId>
-30:            <artifactId>ws-version-war</artifactId>
-35:                    <groupId>*jboss*</groupId>
-36:                    <artifactId>*</artifactId>
-39:                    <groupId>*hibernate*</groupId>
-40:                    <artifactId>*</artifactId>
-46:            <groupId>${project.groupId}</groupId>
-47:            <artifactId>ws-services-health-check</artifactId>
-53:            <groupId>gov.gsa.cnxs.domain</groupId>
-54:            <artifactId>domain</artifactId>
-64:                <groupId>org.apache.maven.plugins</groupId>
-65:                <artifactId>maven-ear-plugin</artifactId>
-75:                            <groupId>${project.groupId}</groupId>
-76:                            <artifactId>ws-services-order-services-impl</artifactId>
-80:                            <groupId>${project.groupId}</groupId>
-81:                            <artifactId>ws-services-health-check</artifactId>
-85:                            <groupId>gov.gsa.cnxs.domain</groupId>
-86:                            <artifactId>domain</artifactId>
-90:                            <groupId>gov.gsa.cnxs.ws</groupId>
-91:                            <artifactId>ws-version-war</artifactId>
-
-===== ./integration/integration-core/pom.xml =====
-4:        <artifactId>ws-integration</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-integration-core</artifactId>
-18:            <groupId>${project.groupId}</groupId>
-19:            <artifactId>ws-integration-api</artifactId>
-24:            <groupId>${project.groupId}</groupId>
-25:            <artifactId>ws-test-support</artifactId>
-30:            <groupId>jakarta.inject</groupId>
-31:            <artifactId>jakarta.inject-api</artifactId>
-
-===== ./integration/integration-test/pom.xml =====
-4:        <artifactId>ws-integration</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-integration-test</artifactId>
-19:            <groupId>${project.groupId}</groupId>
-20:            <artifactId>ws-services-ear</artifactId>
-26:            <groupId>${project.groupId}</groupId>
-27:            <artifactId>ws-integration-ear</artifactId>
-33:            <groupId>${project.groupId}</groupId>
-34:            <artifactId>ws-api</artifactId>
-39:            <groupId>${project.groupId}</groupId>
-40:            <artifactId>ws-services-order-services-impl</artifactId>
-46:            <groupId>${project.groupId}</groupId>
-47:            <artifactId>ws-integration-api</artifactId>
-53:            <groupId>gov.gsa.cnxs.ws-client</groupId>
-54:            <artifactId>ws-client-order-services</artifactId>
-59:            <groupId>${project.groupId}</groupId>
-60:            <artifactId>ws-test-support</artifactId>
-66:            <groupId>gov.gsa.cnxs.ws-client</groupId>
-67:            <artifactId>ws-health-check</artifactId>
-71:            <groupId>gov.gsa.cnxs.emulator</groupId>
-72:            <artifactId>vendor-emulator-ear</artifactId>
-77:            <groupId>gov.gsa.cnxs.domain.test</groupId>
-78:            <artifactId>domain-test-api</artifactId>
-83:            <groupId>gov.gsa.cnxs.webservices</groupId>
-84:            <artifactId>webservices-common</artifactId>
-90:            <groupId>gov.gsa.cnxs.common-rest</groupId>
-91:            <artifactId>common-rest</artifactId>
-98:            <groupId>gov.gsa.cnxs.rest.test</groupId>
-99:            <artifactId>rest-system-test</artifactId>
-107:                    <artifactId>jaxb-runtime</artifactId>
-108:                    <groupId>org.glassfish.jaxb</groupId>
-114:            <groupId>gov.gsa.cnxs.common-rest</groupId>
-115:            <artifactId>common-rest-test-utils</artifactId>
-122:            <groupId>org.jboss.resteasy</groupId>
-123:            <artifactId>resteasy-jackson2-provider</artifactId>
-128:            <groupId>gov.gsa.cnxs.domain.test</groupId>
-129:            <artifactId>domain-test-ear</artifactId>
-134:            <groupId>gov.gsa.cnxs.webservices</groupId>
-135:            <artifactId>cnxs-ws-ear</artifactId>
-140:            <groupId>gov.gsa.cnxs.domain.test</groupId>
-141:            <artifactId>domain-integration</artifactId>
-146:            <groupId>gov.gsa.cnxs.common</groupId>
-147:            <artifactId>common-test-utils</artifactId>
-152:            <groupId>jakarta.jms</groupId>
-153:            <artifactId>jakarta.jms-api</artifactId>
-157:            <groupId>jakarta.enterprise</groupId>
-158:            <artifactId>jakarta.enterprise.cdi-api</artifactId>
-163:            <groupId>jakarta.persistence</groupId>
-164:            <artifactId>jakarta.persistence-api</artifactId>
-169:            <groupId>jakarta.ws.rs</groupId>
-170:            <artifactId>jakarta.ws.rs-api</artifactId>
-175:            <groupId>jakarta.interceptor</groupId>
-176:            <artifactId>jakarta.interceptor-api</artifactId>
-182:            <groupId>org.jboss.ws.cxf</groupId>
-183:            <artifactId>jbossws-cxf-client</artifactId>
-199:                    <groupId>gov.gsa.cnxs.db</groupId>
-200:                    <artifactId>pg-datafile</artifactId>
-206:<!--                    <groupId>gov.gsa.cnxs.db</groupId>-->
-207:<!--                    <artifactId>schema</artifactId>-->
-218:                        <groupId>org.apache.maven.plugins</groupId>
-219:                        <artifactId>maven-compiler-plugin</artifactId>
-232:                        <groupId>org.apache.maven.plugins</groupId>
-233:                        <artifactId>maven-surefire-plugin</artifactId>
-240:                        <groupId>org.apache.maven.plugins</groupId>
-241:                        <artifactId>maven-dependency-plugin</artifactId>
-266:<!--                                            <groupId>gov.gsa.cnxs.db</groupId>-->
-267:<!--                                            <artifactId>schema</artifactId>-->
-282:                        <groupId>io.fabric8</groupId>
-283:                        <artifactId>docker-maven-plugin</artifactId>
-382:                        <groupId>org.apache.maven.plugins</groupId>
-383:                        <artifactId>maven-failsafe-plugin</artifactId>
-
-===== ./integration/integration-ear/pom.xml =====
-4:        <artifactId>ws-integration</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-integration-ear</artifactId>
-11:    <packaging>ear</packaging>
-19:            <groupId>${project.groupId}</groupId>
-20:            <artifactId>ws-integration-core</artifactId>
-26:            <groupId>gov.gsa.cnxs.domain</groupId>
-27:            <artifactId>domain</artifactId>
-37:                <groupId>org.apache.maven.plugins</groupId>
-38:                <artifactId>maven-ear-plugin</artifactId>
-48:                            <groupId>${project.groupId}</groupId>
-49:                            <artifactId>ws-integration-core</artifactId>
-52:                            <groupId>gov.gsa.cnxs.domain</groupId>
-53:                            <artifactId>domain</artifactId>
-
-===== ./integration/pom.xml =====
-4:        <artifactId>ws-aggregator</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-integration</artifactId>
-11:    <packaging>pom</packaging>
-15:        <module>integration-api</module>
-16:        <module>integration-core</module>
-17:        <module>integration-ear</module>
-18:        <module>integration-test</module>
-23:            <groupId>gov.gsa.cnxs.domain</groupId>
-24:            <artifactId>domain</artifactId>
-28:            <groupId>jakarta.ejb</groupId>
-29:            <artifactId>jakarta.ejb-api</artifactId>
-33:            <groupId>org.jboss.resteasy</groupId>
-34:            <artifactId>resteasy-client</artifactId>
-
-===== ./integration/integration-api/pom.xml =====
-4:        <artifactId>ws-integration</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-integration-api</artifactId>
-
-===== ./services/health-check/pom.xml =====
-4:        <artifactId>ws-services-aggregator</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-services-health-check</artifactId>
-15:            <groupId>gov.gsa.cnxs.ws-client</groupId>
-16:            <artifactId>ws-health-check</artifactId>
-20:            <groupId>jakarta.validation</groupId>
-21:            <artifactId>jakarta.validation-api</artifactId>
-26:            <groupId>jakarta.interceptor</groupId>
-27:            <artifactId>jakarta.interceptor-api</artifactId>
-32:            <groupId>gov.gsa.cnxs.domain</groupId>
-33:            <artifactId>domain</artifactId>
-
-===== ./services/order-services/impl/pom.xml =====
-4:        <groupId>gov.gsa.cnxs.ws</groupId>
-5:        <artifactId>ws-services-order-services</artifactId>
-10:    <artifactId>ws-services-order-services-impl</artifactId>
-15:            <groupId>${project.groupId}</groupId>
-16:            <artifactId>ws-core</artifactId>
-23:            <groupId>${project.groupId}</groupId>
-24:            <artifactId>ws-test-support</artifactId>
-30:            <groupId>gov.gsa.cnxs.domain</groupId>
-31:            <artifactId>domain</artifactId>
-36:            <groupId>gov.gsa.cnxs.common</groupId>
-37:            <artifactId>common-test-utils</artifactId>
-42:            <groupId>org.fluttercode.datafactory</groupId>
-43:            <artifactId>datafactory</artifactId>
-47:            <groupId>gov.gsa.cnxs.ws-client</groupId>
-48:            <artifactId>ws-client-order-services</artifactId>
-53:            <groupId>org.jboss.ejb3</groupId>
-54:            <artifactId>jboss-ejb3-ext-api</artifactId>
-58:            <groupId>jakarta.validation</groupId>
-59:            <artifactId>jakarta.validation-api</artifactId>
-64:            <groupId>jakarta.interceptor</groupId>
-65:            <artifactId>jakarta.interceptor-api</artifactId>
-
-===== ./services/order-services/pom.xml =====
-4:        <artifactId>ws-services-aggregator</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-services-order-services</artifactId>
-11:    <packaging>pom</packaging>
-15:        <module>impl</module>
-
-===== ./services/pom.xml =====
-4:        <artifactId>ws-aggregator</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-services-aggregator</artifactId>
-11:    <packaging>pom</packaging>
-15:        <module>order-services</module>
-16:        <module>health-check</module>
-21:            <groupId>${project.groupId}</groupId>
-22:            <artifactId>ws-core</artifactId>
-27:            <groupId>jakarta.ejb</groupId>
-28:            <artifactId>jakarta.ejb-api</artifactId>
-32:            <groupId>jakarta.jms</groupId>
-33:            <artifactId>jakarta.jms-api</artifactId>
-37:            <groupId>org.glassfish</groupId>
-38:            <artifactId>jakarta.el</artifactId>
-43:            <groupId>gov.gsa.cnxs.domain</groupId>
-44:            <artifactId>domain</artifactId>
-51:            <groupId>com.fasterxml.jackson.core</groupId>
-52:            <artifactId>jackson-databind</artifactId>
-
-===== ./api/pom.xml =====
-4:        <artifactId>ws-aggregator</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-api</artifactId>
-15:            <groupId>gov.gsa.cnxs.ws-client</groupId>
-16:            <artifactId>ws-client-order-services</artifactId>
-20:            <groupId>${project.groupId}</groupId>
-21:            <artifactId>ws-common</artifactId>
-26:            <groupId>gov.gsa.cnxs.domain</groupId>
-27:            <artifactId>domain</artifactId>
-31:            <groupId>jakarta.ejb</groupId>
-32:            <artifactId>jakarta.ejb-api</artifactId>
-36:            <groupId>jakarta.jms</groupId>
-37:            <artifactId>jakarta.jms-api</artifactId>
-41:            <groupId>jakarta.validation</groupId>
-42:            <artifactId>jakarta.validation-api</artifactId>
-46:            <groupId>gov.gsa.cnxs.webservices</groupId>
-47:            <artifactId>webservices-common</artifactId>
-
-===== ./test-support/pom.xml =====
-4:        <artifactId>ws-aggregator</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-test-support</artifactId>
-18:            <groupId>${project.groupId}</groupId>
-19:            <artifactId>ws-api</artifactId>
-25:            <groupId>gov.gsa.cnxs.domain</groupId>
-26:            <artifactId>domain</artifactId>
-31:            <groupId>ch.qos.logback</groupId>
-32:            <artifactId>logback-classic</artifactId>
-37:            <groupId>ch.qos.logback</groupId>
-38:            <artifactId>logback-core</artifactId>
-43:            <groupId>org.hamcrest</groupId>
-44:            <artifactId>hamcrest</artifactId>
-49:            <groupId>org.apache.commons</groupId>
-50:            <artifactId>commons-lang3</artifactId>
-54:            <groupId>gov.gsa.cnxs.common</groupId>
-55:            <artifactId>common-utils</artifactId>
-
-===== ./version/pom.xml =====
-3:        <artifactId>ws-aggregator</artifactId>
-4:        <groupId>gov.gsa.cnxs.ws</groupId>
-9:    <artifactId>ws-version-war</artifactId>
-11:    <packaging>war</packaging>
-22:            <groupId>jakarta.interceptor</groupId>
-23:            <artifactId>jakarta.interceptor-api</artifactId>
-28:            <groupId>jakarta.ejb</groupId>
-29:            <artifactId>jakarta.ejb-api</artifactId>
-34:            <groupId>org.jboss.resteasy</groupId>
-35:            <artifactId>resteasy-multipart-provider</artifactId>
-39:                    <artifactId>servlet-api</artifactId>
-40:                    <groupId>javax.servlet</groupId>
-46:            <groupId>org.jboss.resteasy</groupId>
-47:            <artifactId>resteasy-jackson2-provider</artifactId>
-52:            <groupId>jakarta.ws.rs</groupId>
-53:            <artifactId>jakarta.ws.rs-api</artifactId>
-58:            <groupId>jakarta.servlet</groupId>
-59:            <artifactId>jakarta.servlet-api</artifactId>
-65:            <groupId>jakarta.transaction</groupId>
-66:            <artifactId>jakarta.transaction-api</artifactId>
-71:            <groupId>jakarta.validation</groupId>
-72:            <artifactId>jakarta.validation-api</artifactId>
-94:                <groupId>org.codehaus.mojo</groupId>
-95:                <artifactId>templating-maven-plugin</artifactId>
-106:                <artifactId>maven-war-plugin</artifactId>
-
-===== ./common/pom.xml =====
-4:        <artifactId>ws-aggregator</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-common</artifactId>
-16:            <groupId>gov.gsa.cnxs.common</groupId>
-17:            <artifactId>common-utils</artifactId>
-21:            <groupId>gov.gsa.cnxs.domain</groupId>
-22:            <artifactId>domain</artifactId>
-27:            <groupId>gov.gsa.cnxs.domain</groupId>
-28:            <artifactId>domain</artifactId>
-35:            <groupId>gov.gsa.cnxs.ws-client</groupId>
-36:            <artifactId>ws-client-common</artifactId>
-40:            <groupId>jakarta.jms</groupId>
-41:            <artifactId>jakarta.jms-api</artifactId>
-45:            <groupId>com.fasterxml.jackson.core</groupId>
-46:            <artifactId>jackson-databind</artifactId>
-
-===== ./core/pom.xml =====
-4:        <artifactId>ws-aggregator</artifactId>
-5:        <groupId>gov.gsa.cnxs.ws</groupId>
-10:    <artifactId>ws-core</artifactId>
-15:            <groupId>org.glassfish</groupId>
-16:            <artifactId>jakarta.el</artifactId>
-21:            <groupId>${project.groupId}</groupId>
-22:            <artifactId>ws-api</artifactId>
-27:            <groupId>${project.groupId}</groupId>
-28:            <artifactId>ws-test-support</artifactId>
-34:            <groupId>gov.gsa.cnxs.common</groupId>
-35:            <artifactId>common-test-utils</artifactId>
-40:            <groupId>gov.gsa.cnxs.ws-client</groupId>
-41:            <artifactId>ws-client-order-services</artifactId>
-46:            <groupId>gov.gsa.cnxs.domain</groupId>
-47:            <artifactId>domain</artifactId>
-52:            <groupId>gov.gsa.cnxs.webservices</groupId>
-53:            <artifactId>webservices-common</artifactId>
-57:            <groupId>org.fluttercode.datafactory</groupId>
-58:            <artifactId>datafactory</artifactId>
-62:            <groupId>org.apache.commons</groupId>
-63:            <artifactId>commons-lang3</artifactId>
-67:            <groupId>jakarta.jms</groupId>
-68:            <artifactId>jakarta.jms-api</artifactId>
-72:            <groupId>jakarta.ejb</groupId>
-73:            <artifactId>jakarta.ejb-api</artifactId>
-78:            <groupId>jakarta.validation</groupId>
-79:            <artifactId>jakarta.validation-api</artifactId>
-84:            <groupId>com.fasterxml.jackson.core</groupId>
-85:            <artifactId>jackson-core</artifactId>
-90:            <groupId>com.fasterxml.jackson.core</groupId>
-91:            <artifactId>jackson-databind</artifactId>
-97:            <groupId>org.jboss.ws.cxf</groupId>
-98:            <artifactId>jbossws-cxf-client</artifactId>
-
-===== ./pom.xml =====
-4:        <groupId>gov.gsa.cnxs.bom</groupId>
-5:        <artifactId>env</artifactId>
-10:    <groupId>gov.gsa.cnxs.ws</groupId>
-11:    <artifactId>ws-aggregator</artifactId>
-13:    <packaging>pom</packaging>
-18:        <module>api</module>
-19:        <module>test-support</module>
-20:        <module>common</module>
-21:        <module>core</module>
-22:        <module>services</module>
-23:        <module>version</module>
-24:        <module>ear</module>
-25:        <module>integration</module>
-41:                <groupId>gov.gsa.cnxs.common-rest</groupId>
-42:                <artifactId>common-rest</artifactId>
-46:                        <groupId>gov.gsa.cnxs.domain</groupId>
-47:                        <artifactId>domain</artifactId>
-53:                <groupId>gov.gsa.cnxs.ws-client</groupId>
-54:                <artifactId>ws-client-order-services</artifactId>
-59:                <groupId>gov.gsa.cnxs.ws-client</groupId>
-60:                <artifactId>ws-client-order-services</artifactId>
-67:                <groupId>gov.gsa.cnxs.ws-client</groupId>
-68:                <artifactId>ws-health-check</artifactId>
-73:                <groupId>gov.gsa.cnxs.ws-client</groupId>
-74:                <artifactId>ws-client-common</artifactId>
-79:                <groupId>gov.gsa.cnxs.emulator</groupId>
-80:                <artifactId>vendor-emulator-ear</artifactId>
-86:                <groupId>gov.gsa.cnxs.rest</groupId>
-87:                <artifactId>rest-ear</artifactId>
-93:                <groupId>gov.gsa.cnxs.common</groupId>
-94:                <artifactId>common-utils</artifactId>
-99:                <groupId>gov.gsa.cnxs.common</groupId>
-100:                <artifactId>common-test-utils</artifactId>
-107:                <groupId>gov.gsa.cnxs.domain</groupId>
-108:                <artifactId>domain</artifactId>
-113:                <groupId>gov.gsa.cnxs.domain</groupId>
-114:                <artifactId>domain</artifactId>
-121:                <groupId>gov.gsa.cnxs.domain.test</groupId>
-122:                <artifactId>domain-test-ear</artifactId>
-128:                <groupId>gov.gsa.cnxs.domain.test</groupId>
-129:                <artifactId>domain-test-api</artifactId>
-135:                <groupId>gov.gsa.cnxs.rest.test</groupId>
-136:                <artifactId>rest-system-test</artifactId>
-142:                <groupId>gov.gsa.cnxs.common-rest</groupId>
-143:                <artifactId>common-rest-test-utils</artifactId>
-149:                <groupId>gov.gsa.cnxs.domain.test</groupId>
-150:                <artifactId>domain-integration</artifactId>
-157:                <groupId>gov.gsa.cnxs.webservices</groupId>
-158:                <artifactId>cnxs-ws-ear</artifactId>
-164:                <groupId>gov.gsa.cnxs.webservices</groupId>
-165:                <artifactId>webservices-common</artifactId>
-170:                <groupId>gov.gsa.cnxs.webservices</groupId>
-171:                <artifactId>webservices-common</artifactId>
-178:                <groupId>org.fluttercode.datafactory</groupId>
-179:                <artifactId>datafactory</artifactId>
-192:                <groupId>org.openclover</groupId>
-193:                <artifactId>clover-maven-plugin</artifactId>
+[sikaj01@ip-10-56-112-33 ws]$ git ls-remote --tags ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws.git "refs/tags/02.00.000.153"
+[sikaj01@ip-10-56-112-33 ws]$ git ls-remote --tags ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws.git
+1dfe5a34dfef7c7bcaba037b8c3e488d68b73a10        refs/tags/01.00.000.01
+6b7d2af53219162732875e4b39e865436be15c5b        refs/tags/01.00.000.01^{}
+cc9e6f0b4ce22d6e294f01e9fe1932b0f284c10e        refs/tags/01.00.000.02
+dd37cdd9e10e6b5b5f696abd864263e69494f7f6        refs/tags/01.00.000.02^{}
+c02b977d3b3a8790bfdf2d104295e551b42f2a2a        refs/tags/01.00.000.03
+fcf08661c07ff178351c098ccddeb1912ed410d1        refs/tags/01.00.000.03^{}
+dedaeae7377670d3505843d88ee9f24606ee95dc        refs/tags/01.00.000.04
+9ac59702363eeff4f9bc744093bcc418a30145ba        refs/tags/01.00.000.04^{}
+c3b0b9c1dcbfac736c734f798a93dbe2aabd6278        refs/tags/01.00.000.05
+96d81c9706e871381cddb25413c69c4e050470a6        refs/tags/01.00.000.05^{}
+cb625f4650b2ad8ea6d32957b68172f8d3cea589        refs/tags/01.00.000.06
+b45736cdd0b93032311d5788c9eadd947c1536af        refs/tags/01.00.000.06^{}
+47f521e08d49d9561e5412ab145cec3fef1cf98e        refs/tags/01.00.000.07
+27feaac30800f9b6dbbae0a5c6edac604a22ae3a        refs/tags/01.00.000.07^{}
+94fb8ed724e8b8f58b11ad774f4381cbad51ca69        refs/tags/01.00.000.08
+83015c8383b1cd5e929ef5f7122f8e47d763eeb5        refs/tags/01.00.000.08^{}
+c03af93fd612a436e826c954cd106cc540a6e899        refs/tags/01.00.000.09
+8f994cb39fc0c6a5fc6303dc6b8af93da3849a58        refs/tags/01.00.000.09^{}
+2eb7bca929b9f5a39de125f28b7aac2fac36a44c        refs/tags/01.00.000.10
+30a1ea00189034a5d94a962e85d3af25aae601ae        refs/tags/01.00.000.10^{}
+6e4c92f8ed755d7c6d4ca3c1c7635bca4aa6bcea        refs/tags/01.00.000.100
+841f23016e534c793950e40ea8b03f47e1155981        refs/tags/01.00.000.101
+3504fa6e5b29d84f4d761eba4fc2d04210d966d5        refs/tags/01.00.000.102
+ce091f48bae5d6e1e1fe5442ff65f153fec5e07e        refs/tags/01.00.000.103
+8657490cb432f5028195cfc1cd4022e3050c58d6        refs/tags/01.00.000.104
+e3de7ae3f30743cb6c97b1d490bef6183c6d2d28        refs/tags/01.00.000.105.1
+6947e76659c093c16b7ede9c57a416b5ddda0041        refs/tags/01.00.000.106
+50d76fff1e64b83cef6f1f72e3019edab76ae695        refs/tags/01.00.000.107
+b2fbb5cd44de7f7a75ede42a98f0a4c563969119        refs/tags/01.00.000.108
+0e6c9abaab7c9d11d06a2c84653db93b83e589fa        refs/tags/01.00.000.109
+a151d99a546bdf67a12832111b73d7c229837c8b        refs/tags/01.00.000.11
+4478599c627c292cbc7471553d5c0388844ba68b        refs/tags/01.00.000.11^{}
+ba2437719bd95b3cd5808986838657ecfefe3cbf        refs/tags/01.00.000.110
+114bd88976d95255a1217bb4ff20d556226a328e        refs/tags/01.00.000.111
+b0f6356b483092617907db998a7c3136f0960b0e        refs/tags/01.00.000.112
+758363092078c2be97866bf3d2195a47a7bff4ff        refs/tags/01.00.000.113
+72d44c06b4b3289d33247e4cbcb58ef6cdd67c23        refs/tags/01.00.000.114
+42d993908a7344000eecb5ed898a01503c8d3dff        refs/tags/01.00.000.115
+df4c6027b165eca13fc61813c42dc1e456e50248        refs/tags/01.00.000.116
+c456ae71b60d55ba93726409a5dde3c32821a72c        refs/tags/01.00.000.116.1
+40f641fcb0504e449b1fa4e6ec4b2d68296ae143        refs/tags/01.00.000.116.1^{}
+93593fbb1f0bc46fb5736d0016736e7098a0f534        refs/tags/01.00.000.117.1
+868875cd22ba35c102ed6edfe317d251d0ec7b57        refs/tags/01.00.000.118
+881d4e6ce22662123229ec082f0683988dae0aa9        refs/tags/01.00.000.119
+cc9ef84ee2f59badeb3b7c20c9c6fbf367800464        refs/tags/01.00.000.12
+d6f22e63dc347802ad8c99086e513fa9749723c4        refs/tags/01.00.000.12^{}
+9468aa5a07e1a6789f4cbc97c8f2a387dc672bc8        refs/tags/01.00.000.120
+33a0280c4aa357dc72095754fb27c5b4018edfd3        refs/tags/01.00.000.121
+8ddc5c76697768d9239e34b555c4e474a75a7ddb        refs/tags/01.00.000.122
+b6fa461d2915b78f5270a61eeee01011cfd22639        refs/tags/01.00.000.123
+e64a967c0a4d775e1632a93cfbdb0f68e99133d5        refs/tags/01.00.000.124
+8052928e8d78710d1ac2e2fd2bc0b542245f0e7b        refs/tags/01.00.000.125
+7c47232933fc86c17739f4d671fe76b6b869599c        refs/tags/01.00.000.126
+5e42fa093c929838b1fe56144b16ba7b39ae6092        refs/tags/01.00.000.127
+6821aaabceee7e5f92f2e230084ab9eb8118266f        refs/tags/01.00.000.128
+3fbf28dc11464fa955fe09ebe1572473c7cc1097        refs/tags/01.00.000.129
+373f29c3aa7792de1e512edd53103042393e68a6        refs/tags/01.00.000.13
+298ebbb4d010af595fa0c8d5054cddbcf24a708c        refs/tags/01.00.000.13^{}
+9e2f7a057009925666fdfdd4fd57a263fce8591e        refs/tags/01.00.000.130.1
+055e10c6f079eedbdbb78481b6918ba62e009262        refs/tags/01.00.000.131
+2edd0d810b1c03042903dacf03e479c552cedc0f        refs/tags/01.00.000.132
+685d877e300b9c0a0cbd6f9ce5e1d9dc5892e6cd        refs/tags/01.00.000.133
+6a5a6a3e50fd04fe9711b8ed9f6da0c6f06fd967        refs/tags/01.00.000.134
+90894bc362b1bc18a24e51e0ac0cd4d15b41e0c2        refs/tags/01.00.000.135
+caa342a396a6dd54705cfd87576dea2846455070        refs/tags/01.00.000.136
+b42af6d99e864119d76ebd1a4574a5edd395b948        refs/tags/01.00.000.137
+05c72e06d2ebe993baabc5f8e352ee498e9d1578        refs/tags/01.00.000.138
+24846a3123fe8e364738129c828bda91728c5f25        refs/tags/01.00.000.139
+e0f1ecb09f2a7b74e30acce2ce9fe755ec6d63ed        refs/tags/01.00.000.14
+14ea058a366306c85848b60b65316e087ec6acdf        refs/tags/01.00.000.14^{}
+10389eef2c70b0e2271da388156ec33f60b53f97        refs/tags/01.00.000.140
+b707d3298166ca236c4689751bd378a90d84ea2c        refs/tags/01.00.000.141
+93c4870ae361e3beb8b98b9614f22ccfc83456c3        refs/tags/01.00.000.142
+b30c393c8f4a26c5bd0b04afe6db1371f120a271        refs/tags/01.00.000.143
+5cd523dc15e2a1821a53faa07ea0b03e2f3870bf        refs/tags/01.00.000.144
+1e2a2fa18d36061cefc2a3003be4b86e485c28c5        refs/tags/01.00.000.145
+acc9cff9ba5c933ea14f25a5108d2d9e858591c6        refs/tags/01.00.000.146
+2148adaabfafd1b012c555c9919f6e46756b25ef        refs/tags/01.00.000.147
+eb8fca01a62de546c95db1cf05f72c11cec6398b        refs/tags/01.00.000.148
+f82fb8db5b134d471239d3684c81725a93616116        refs/tags/01.00.000.149
+82fe597848e5709f62f126c3d1a1f5321166ffc8        refs/tags/01.00.000.15
+93c2e66388c8f5bc8c8af93030d3581c3ee85cc9        refs/tags/01.00.000.15^{}
+3a9bdfb16326a1ed46122c0dc7f27c3a2674daa3        refs/tags/01.00.000.150
+1b14ab0699b73e78eefddb2409e96d27bb5ebe00        refs/tags/01.00.000.16
+6ddae33e1ab03e39fea8816df844b43fe94452ca        refs/tags/01.00.000.16^{}
+a1ee2e6796b73997702a817e3e493e7c5d2f6328        refs/tags/01.00.000.17
+27ab342b4cef8c915fffc1aa7a8c0f5b0222c0f4        refs/tags/01.00.000.17^{}
+00e535f0b5ae0faf1592340f9b7a2877b7aa1700        refs/tags/01.00.000.18
+71d4878600d1eb3ba9ff3c5b25c8b97f8e5d612b        refs/tags/01.00.000.18^{}
+19995ba44e65720f76803bd80ba774efee965362        refs/tags/01.00.000.19
+bc9dbc87dd77e994b1d4c1e373891822131e2004        refs/tags/01.00.000.19^{}
+58e5d8243716b0521b0b6ba24a2f2e1354b7b89d        refs/tags/01.00.000.20
+7c90255b345c782b8daa05df43bfd27f1490fa85        refs/tags/01.00.000.20^{}
+56dc1d6a5ebaeca93def16faa7b8626119a1b104        refs/tags/01.00.000.21
+9cd66b1a7703739e405a68b38b17bf83496dc3d4        refs/tags/01.00.000.21^{}
+5a2bf830e6ecea6336089cb05863e61e138f3c7b        refs/tags/01.00.000.22
+45cc02a4e37c59497e708c72193471dce4b4f5e6        refs/tags/01.00.000.22^{}
+ba6597c17ddc2c9e29e8848ae2d0eec611ee022a        refs/tags/01.00.000.23
+0f1569b3f551c1bfef7ac07e85786db058850d28        refs/tags/01.00.000.23^{}
+f9a6db3b908457a32d6430c184de8cd27dc7964f        refs/tags/01.00.000.24
+9828fc50bcda45b8ab576cc74c7da6d86c7e08b3        refs/tags/01.00.000.24^{}
+af21804825f7fe7311ec35254830a298d4151d77        refs/tags/01.00.000.25
+8876dd546177fb82aac55d10a4ef0e137300cf4f        refs/tags/01.00.000.25^{}
+320ffb0189322fe9cab399f70be636955fd68a38        refs/tags/01.00.000.26
+823e96b6dd884883df9caf8287820789b3ac17a4        refs/tags/01.00.000.26^{}
+6b18dc9422d53b26904c333d4b699a38d42b8036        refs/tags/01.00.000.27
+c60bbf606d94ca0406d7993d580570e9dd8d05c5        refs/tags/01.00.000.27^{}
+e0d4a1a0ff4968d0d3993260a7fe39e48df3e7be        refs/tags/01.00.000.28
+ce4ce99a62b98f1a7611701aae3ab9579b45fd16        refs/tags/01.00.000.28^{}
+1574679170349fdb2be14a52042d755a00c2d308        refs/tags/01.00.000.29
+f5a9deee3eb193b1407a8fef6964ce9a1382433d        refs/tags/01.00.000.29^{}
+7c213e52f482525f6e3084f9f5b9babaedf8050b        refs/tags/01.00.000.30
+913ecccb6bd0d7be3fc7bda9a79ed600fc99e1ab        refs/tags/01.00.000.30^{}
+d9c449ff3e644c0e8484b51dfaa4739d943d763d        refs/tags/01.00.000.31
+15a475d58c2664e70ef217c20fd65608ad839bec        refs/tags/01.00.000.31^{}
+af5070235c7f89c44c2154637e74138122f61cae        refs/tags/01.00.000.32
+40cf648e8b34430dbfe8a142f73a4214bd122ec2        refs/tags/01.00.000.32^{}
+9a9c7d3d34c4daff60fb8371d7982efc34e7002f        refs/tags/01.00.000.33
+5e4f605dc5df610316685f83115ee2fd6425f4ba        refs/tags/01.00.000.33^{}
+ec332ff8590d9f4dd84fc1c49f96f6aa90133dc3        refs/tags/01.00.000.34
+33dccffa7b582942dfe132092c5b0443bcffbcf5        refs/tags/01.00.000.34^{}
+daef4ac9f562d9aa3cdab2ec7b5c1f912e526e6b        refs/tags/01.00.000.35
+fcd8419fb3388132a6eaa2aa01130041f2400769        refs/tags/01.00.000.35^{}
+e2fb3960086efaec03a34a0b9e35cf48ef5a0b02        refs/tags/01.00.000.36
+26dc4d8c862ed5eaf2f4442c961519e5e29849b6        refs/tags/01.00.000.36^{}
+7ae17752e4ed1fee7b54485a1b0baffd37e63850        refs/tags/01.00.000.37
+76b63bcb07c327c166ef1a754155fdf2d6a1a52a        refs/tags/01.00.000.41.1
+e317aba9bafcd62b0dfbc25b6b1745bde11ba976        refs/tags/01.00.000.42
+6a56c452994d8326c96cf741df11cc8504a0a6db        refs/tags/01.00.000.43
+9b8acebcc1834a617140fd856439ce08a35aee8e        refs/tags/01.00.000.43.1
+176fcafe88f2c34c4a3bd0e86ffd0a136cbba52d        refs/tags/01.00.000.44
+4c726145b03b264484ca40f62d4fe71bb8caef75        refs/tags/01.00.000.46
+e1fa466ff66a6b5c566fcac1ef75322f2b4c0300        refs/tags/01.00.000.47
+e009f9eed8040997c63a246fbac307e2ee0eb3fa        refs/tags/01.00.000.48
+e98c83dc756576f94c770824346798e49ede3c6f        refs/tags/01.00.000.49
+d1f27b964ea67be65da33aa5e99aa565f328bc96        refs/tags/01.00.000.50
+9ecff3076ae1eeddaad96abb13b7dee6224b93f3        refs/tags/01.00.000.51
+3830c02c9c9e30d97345525c2cb35cfbf423c578        refs/tags/01.00.000.52
+984a6ffaa48dc28d8eb1d301c18b2dffde787b12        refs/tags/01.00.000.53
+bc920e1f32590fec3b497f872af150fc45b2caab        refs/tags/01.00.000.54
+7e923ee980ae6ec6d1bbe35be80516904638cb16        refs/tags/01.00.000.55
+86f02ee3e624d1fb77fbe6284714ff38b2e2e115        refs/tags/01.00.000.56
+35aad52c4b47dc836ef509338e5bf407b7d9dcff        refs/tags/01.00.000.57
+4e435db3edddf9b6ccdcfab65f51c778b424c36d        refs/tags/01.00.000.58
+74a882792a7c1fc388a7308989c654273e7196ee        refs/tags/01.00.000.59
+163ef356fda57903c5b88c11e266c85dbcf3dbaa        refs/tags/01.00.000.60
+f39152eb212bb7f4350957226e1e81e13c3d6c91        refs/tags/01.00.000.61
+cc903446adcff9f32a6cde79c24821e14c3ed048        refs/tags/01.00.000.62
+505466999988a006473346b31a70d3a171a73ce3        refs/tags/01.00.000.63
+fc7b47a18fcb016f612a9c78b2bc02e8a3001ccf        refs/tags/01.00.000.64
+58f925b2e8b228614ba964a0f603d2230f28e4bc        refs/tags/01.00.000.65
+d1cfdafc1e6536dcd8e7fb6c010b46000ac59d72        refs/tags/01.00.000.66
+31edc71f465ac7b24995a9b2e0ed5f16ebf812b5        refs/tags/01.00.000.67
+daad3374fbb728f7dbf612a11d418b2cfe37b463        refs/tags/01.00.000.68
+0130de2bfc64bbbb17cda18efb2174d9e9c4e68c        refs/tags/01.00.000.69
+0674faa2d78c0b25766578a315ab275262fa3398        refs/tags/01.00.000.70
+a141b42531aa3e0d6f6e5adde52bde245797f962        refs/tags/01.00.000.71
+b8bdd052004a5d200f70837b6b2a6a7b9704b504        refs/tags/01.00.000.72
+ab732e03747188db6c36e64594c10bba0334a593        refs/tags/01.00.000.73
+7601db55ec50d696ad9c60ef3d571e220b272ce6        refs/tags/01.00.000.74
+8cde90647d2f8895d2ff907f897d9e97c6d1a7b6        refs/tags/01.00.000.75.2
+305e1daea15a667b0356ec66f3899b4da87f2692        refs/tags/01.00.000.76
+78671773bac36475f6ec20b147570b19abb34d5d        refs/tags/01.00.000.77
+4e7bc3163516995d131afe7981d250e1f93e98bd        refs/tags/01.00.000.78
+46a4cebda26a929816885f34dd947170bee37b6c        refs/tags/01.00.000.79
+cf5125e672dab5e609f0f292f39e12f31c628492        refs/tags/01.00.000.80
+f27d12149192a0310ee81822bdf0bf58fca8d34e        refs/tags/01.00.000.81
+a2e89177b98a06c3eba2921322eb8d9eab5f4ced        refs/tags/01.00.000.82
+523064ecfc279904512d4845f8e5115f8dae63fc        refs/tags/01.00.000.83
+21bf3554e003e0402a051de2d3eb7450691db655        refs/tags/01.00.000.84.1
+b6e21dd9eeb9e8bec4aefe1b7fe43838b2cdf3ab        refs/tags/01.00.000.85
+76704cff3ea53bad9f0bfef6dd2d31dd74064961        refs/tags/01.00.000.86
+f0447cba0f1629bdbcec1c065d91c4a366f18fc6        refs/tags/01.00.000.87.1
+416aa495ec86f9cc13c6171f4ccd871b657e5928        refs/tags/01.00.000.89
+42539087d54010943a595a8ee26993490e6e6ca4        refs/tags/01.00.000.90
+98288e438568bb975b2db18d2bd4b1b4dd0b20e8        refs/tags/01.00.000.91
+3bbecbc0b4b6bdcf400ac45a6fea63412ab56ecc        refs/tags/01.00.000.93
+250b8b1e64a5205786ea11fa9e6fcd0bffa0ea18        refs/tags/01.00.000.95
+b351a915a99424625ec83bc19371cfecdb001ba2        refs/tags/01.00.000.96
+b3f737fb3b47559f67a85ad2df083871ca7e219c        refs/tags/01.00.000.97
+5e0a2a5dedec2409b2c670c818b2859c709c8b36        refs/tags/01.00.000.98
+2117d6c89aceb2de6902854dd2abf06ee0b9d83b        refs/tags/S169
+3a9bdfb16326a1ed46122c0dc7f27c3a2674daa3        refs/tags/S169^{}
 
 [sikaj01@ip-10-56-112-33 ws]$ RELEASE_VERSION="02.00.000.153"
 
