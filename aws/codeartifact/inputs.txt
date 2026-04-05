@@ -1,8 +1,12 @@
-git tag -d 02.00.000.146
-git fetch origin --tags
-
-git rev-list -n 1 02.00.000.146
-git rev-parse origin/main
-git merge-base --is-ancestor 02.00.000.146 origin/main && echo YES || echo NO
-
-
+curl -sku "jeff.sikala@gsa.gov:${ARTIFACTORY_TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "$or":[
+    {"path":{"$match":"gov/gsa/cnxs/task/task-aggregator/*"}}
+  ]
+}).include("repo","path","name")
+'
