@@ -1,12 +1,35 @@
-curl -sku "jeff.sikala@gsa.gov:${ARTIFACTORY_TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data '
-items.find({
-  "repo":{"$eq":"conexus-rc-local"},
-  "$or":[
-    {"path":{"$match":"gov/gsa/cnxs/task/task-aggregator/*"}}
-  ]
-}).include("repo","path","name")
-'
+cd ../task
+git fetch origin --prune --tags
+
+echo "=== remote main ==="
+git ls-remote --heads origin "refs/heads/main"
+
+echo "=== remote tag ==="
+git ls-remote --tags origin "refs/tags/02.00.000.215"
+
+echo "=== remote release branch ==="
+git ls-remote --heads origin "refs/heads/release/02.00.000.215"
+
+
+
+
+git fetch origin main --tags
+git fetch origin release/02.00.000.215 || true
+
+git rev-list -n 1 02.00.000.215
+git rev-parse origin/main
+git merge-base --is-ancestor 02.00.000.215 origin/main && echo YES || echo NO
+
+
+
+
+
+
+
+git push origin --delete release/02.00.000.215
+
+
+
+
+
+git ls-remote --heads origin "refs/heads/release/02.00.000.215"
