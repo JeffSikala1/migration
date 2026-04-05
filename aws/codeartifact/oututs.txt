@@ -21,3 +21,803 @@ b06bd45a9420050f65d73898f609edf75d533895        refs/heads/feature/ll-postgres+C
 4d4b9b0f1bca5f79338ca7dea95216ec5de8195b        refs/heads/release/01.00.000.150
 81279abf982d48261af7cbd7409c97764e49b05c        refs/heads/release/02.00.000.151
 debec8ee3aaa3213ae3325e605d0ccdbcf91190a        refs/heads/release/02.00.000.152
+[sikaj01@ip-10-56-112-33 ws]$ SETTINGS_FILE=/tmp/settings-artifactory-manual.xml
+
+cat > "${SETTINGS_FILE}" <<XML
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>artifactory</id>
+      <mirrorOf>*</mirrorOf>
+      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>use-artifactory</id>
+      <repositories>
+        <repository>
+          <id>artifactory</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>artifactory</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+          <releases><enabled>true</enabled></releases>
+XMLettings>>>rd>${TOKEN}</password>>activeProfile>shots>
+[sikaj01@ip-10-56-112-33 ws]$ CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+echo "${CURRENT_VERSION}"
+echo "${CURRENT_VERSION%-SNAPSHOT}"
+02.00.000.153-SNAPSHOT
+02.00.000.153
+[sikaj01@ip-10-56-112-33 ws]$ RELEASE_VERSION="02.00.000.153"
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data @- <<EOF
+items.find({
+  "repo":{"\$eq":"conexus-rc-local"},
+  "name":{"\$match":"*${RELEASE_VERSION}*"},
+  "path":{"\$match":"gov/gsa/cnxs/ws*"}
+}).include("name","repo","path")
+EOF
+
+{
+"results" : [ {
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-aggregator/02.00.000.153-RC",
+  "name" : "ws-aggregator-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-common/02.00.000.153-RC",
+  "name" : "ws-common-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-common/02.00.000.153-RC",
+  "name" : "ws-common-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-common/02.00.000.153-RC",
+  "name" : "ws-common-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-api/02.00.000.153-RC",
+  "name" : "ws-api-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-api/02.00.000.153-RC",
+  "name" : "ws-api-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-api/02.00.000.153-RC",
+  "name" : "ws-api-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-test-support/02.00.000.153-RC",
+  "name" : "ws-test-support-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-test-support/02.00.000.153-RC",
+  "name" : "ws-test-support-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.153-RC",
+  "name" : "ws-integration-ear-02.00.000.153-RC.ear"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.153-RC",
+  "name" : "ws-integration-core-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-ear/02.00.000.153-RC",
+  "name" : "ws-services-ear-02.00.000.153-RC.ear"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-order-services/02.00.000.153-RC",
+  "name" : "ws-services-order-services-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-test-support/02.00.000.153-RC",
+  "name" : "ws-test-support-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-core/02.00.000.153-RC",
+  "name" : "ws-core-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-core/02.00.000.153-RC",
+  "name" : "ws-core-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-aggregator/02.00.000.153-RC",
+  "name" : "ws-services-aggregator-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.153-RC",
+  "name" : "ws-services-order-services-impl-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.153-RC",
+  "name" : "ws-services-order-services-impl-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.153-RC",
+  "name" : "ws-services-health-check-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.153-RC",
+  "name" : "ws-services-health-check-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-version-war/02.00.000.153-RC",
+  "name" : "ws-version-war-02.00.000.153-RC.war"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.153-RC",
+  "name" : "ws-services-order-services-impl-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-version-war/02.00.000.153-RC",
+  "name" : "ws-version-war-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-ear/02.00.000.153-RC",
+  "name" : "ws-services-ear-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.153-RC",
+  "name" : "ws-integration-api-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration/02.00.000.153-RC",
+  "name" : "ws-integration-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.153-RC",
+  "name" : "ws-integration-api-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.153-RC",
+  "name" : "ws-integration-api-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.153-RC",
+  "name" : "ws-integration-ear-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.153-RC",
+  "name" : "ws-integration-test-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.153-RC",
+  "name" : "ws-integration-test-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.153-RC",
+  "name" : "ws-integration-core-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.153-RC",
+  "name" : "ws-integration-core-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.153-RC",
+  "name" : "ws-integration-test-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-core/02.00.000.153-RC",
+  "name" : "ws-core-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.153-RC",
+  "name" : "ws-services-health-check-02.00.000.153-RC.jar"
+} ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 37,
+  "total" : 37
+}
+}
+[sikaj01@ip-10-56-112-33 ws]$ grep -n "<packaging>" pom.xml
+grep -n "<module>" pom.xml
+find . -name pom.xml -print
+find . -name pom.xml -exec sh -c '
+  for f in "$@"; do
+    echo "===== $f ====="
+    grep -n "<artifactId>\|<groupId>\|<packaging>\|<module>" "$f" || true
+    echo
+  done
+' sh {} +
+13:    <packaging>pom</packaging>
+18:        <module>api</module>
+19:        <module>test-support</module>
+20:        <module>common</module>
+21:        <module>core</module>
+22:        <module>services</module>
+23:        <module>version</module>
+24:        <module>ear</module>
+25:        <module>integration</module>
+./ear/pom.xml
+./integration/integration-core/pom.xml
+./integration/integration-test/pom.xml
+./integration/integration-ear/pom.xml
+./integration/pom.xml
+./integration/integration-api/pom.xml
+./services/health-check/pom.xml
+./services/order-services/impl/pom.xml
+./services/order-services/pom.xml
+./services/pom.xml
+./api/pom.xml
+./test-support/pom.xml
+./version/pom.xml
+./common/pom.xml
+./core/pom.xml
+./pom.xml
+===== ./ear/pom.xml =====
+4:        <artifactId>ws-aggregator</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-services-ear</artifactId>
+11:    <packaging>ear</packaging>
+16:            <groupId>${project.groupId}</groupId>
+17:            <artifactId>ws-services-order-services-impl</artifactId>
+22:                    <groupId>gov.gsa.cnxs.common-rest</groupId>
+23:                    <artifactId>*</artifactId>
+29:            <groupId>${project.groupId}</groupId>
+30:            <artifactId>ws-version-war</artifactId>
+35:                    <groupId>*jboss*</groupId>
+36:                    <artifactId>*</artifactId>
+39:                    <groupId>*hibernate*</groupId>
+40:                    <artifactId>*</artifactId>
+46:            <groupId>${project.groupId}</groupId>
+47:            <artifactId>ws-services-health-check</artifactId>
+53:            <groupId>gov.gsa.cnxs.domain</groupId>
+54:            <artifactId>domain</artifactId>
+64:                <groupId>org.apache.maven.plugins</groupId>
+65:                <artifactId>maven-ear-plugin</artifactId>
+75:                            <groupId>${project.groupId}</groupId>
+76:                            <artifactId>ws-services-order-services-impl</artifactId>
+80:                            <groupId>${project.groupId}</groupId>
+81:                            <artifactId>ws-services-health-check</artifactId>
+85:                            <groupId>gov.gsa.cnxs.domain</groupId>
+86:                            <artifactId>domain</artifactId>
+90:                            <groupId>gov.gsa.cnxs.ws</groupId>
+91:                            <artifactId>ws-version-war</artifactId>
+
+===== ./integration/integration-core/pom.xml =====
+4:        <artifactId>ws-integration</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-integration-core</artifactId>
+18:            <groupId>${project.groupId}</groupId>
+19:            <artifactId>ws-integration-api</artifactId>
+24:            <groupId>${project.groupId}</groupId>
+25:            <artifactId>ws-test-support</artifactId>
+30:            <groupId>jakarta.inject</groupId>
+31:            <artifactId>jakarta.inject-api</artifactId>
+
+===== ./integration/integration-test/pom.xml =====
+4:        <artifactId>ws-integration</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-integration-test</artifactId>
+19:            <groupId>${project.groupId}</groupId>
+20:            <artifactId>ws-services-ear</artifactId>
+26:            <groupId>${project.groupId}</groupId>
+27:            <artifactId>ws-integration-ear</artifactId>
+33:            <groupId>${project.groupId}</groupId>
+34:            <artifactId>ws-api</artifactId>
+39:            <groupId>${project.groupId}</groupId>
+40:            <artifactId>ws-services-order-services-impl</artifactId>
+46:            <groupId>${project.groupId}</groupId>
+47:            <artifactId>ws-integration-api</artifactId>
+53:            <groupId>gov.gsa.cnxs.ws-client</groupId>
+54:            <artifactId>ws-client-order-services</artifactId>
+59:            <groupId>${project.groupId}</groupId>
+60:            <artifactId>ws-test-support</artifactId>
+66:            <groupId>gov.gsa.cnxs.ws-client</groupId>
+67:            <artifactId>ws-health-check</artifactId>
+71:            <groupId>gov.gsa.cnxs.emulator</groupId>
+72:            <artifactId>vendor-emulator-ear</artifactId>
+77:            <groupId>gov.gsa.cnxs.domain.test</groupId>
+78:            <artifactId>domain-test-api</artifactId>
+83:            <groupId>gov.gsa.cnxs.webservices</groupId>
+84:            <artifactId>webservices-common</artifactId>
+90:            <groupId>gov.gsa.cnxs.common-rest</groupId>
+91:            <artifactId>common-rest</artifactId>
+98:            <groupId>gov.gsa.cnxs.rest.test</groupId>
+99:            <artifactId>rest-system-test</artifactId>
+107:                    <artifactId>jaxb-runtime</artifactId>
+108:                    <groupId>org.glassfish.jaxb</groupId>
+114:            <groupId>gov.gsa.cnxs.common-rest</groupId>
+115:            <artifactId>common-rest-test-utils</artifactId>
+122:            <groupId>org.jboss.resteasy</groupId>
+123:            <artifactId>resteasy-jackson2-provider</artifactId>
+128:            <groupId>gov.gsa.cnxs.domain.test</groupId>
+129:            <artifactId>domain-test-ear</artifactId>
+134:            <groupId>gov.gsa.cnxs.webservices</groupId>
+135:            <artifactId>cnxs-ws-ear</artifactId>
+140:            <groupId>gov.gsa.cnxs.domain.test</groupId>
+141:            <artifactId>domain-integration</artifactId>
+146:            <groupId>gov.gsa.cnxs.common</groupId>
+147:            <artifactId>common-test-utils</artifactId>
+152:            <groupId>jakarta.jms</groupId>
+153:            <artifactId>jakarta.jms-api</artifactId>
+157:            <groupId>jakarta.enterprise</groupId>
+158:            <artifactId>jakarta.enterprise.cdi-api</artifactId>
+163:            <groupId>jakarta.persistence</groupId>
+164:            <artifactId>jakarta.persistence-api</artifactId>
+169:            <groupId>jakarta.ws.rs</groupId>
+170:            <artifactId>jakarta.ws.rs-api</artifactId>
+175:            <groupId>jakarta.interceptor</groupId>
+176:            <artifactId>jakarta.interceptor-api</artifactId>
+182:            <groupId>org.jboss.ws.cxf</groupId>
+183:            <artifactId>jbossws-cxf-client</artifactId>
+199:                    <groupId>gov.gsa.cnxs.db</groupId>
+200:                    <artifactId>pg-datafile</artifactId>
+206:<!--                    <groupId>gov.gsa.cnxs.db</groupId>-->
+207:<!--                    <artifactId>schema</artifactId>-->
+218:                        <groupId>org.apache.maven.plugins</groupId>
+219:                        <artifactId>maven-compiler-plugin</artifactId>
+232:                        <groupId>org.apache.maven.plugins</groupId>
+233:                        <artifactId>maven-surefire-plugin</artifactId>
+240:                        <groupId>org.apache.maven.plugins</groupId>
+241:                        <artifactId>maven-dependency-plugin</artifactId>
+266:<!--                                            <groupId>gov.gsa.cnxs.db</groupId>-->
+267:<!--                                            <artifactId>schema</artifactId>-->
+282:                        <groupId>io.fabric8</groupId>
+283:                        <artifactId>docker-maven-plugin</artifactId>
+382:                        <groupId>org.apache.maven.plugins</groupId>
+383:                        <artifactId>maven-failsafe-plugin</artifactId>
+
+===== ./integration/integration-ear/pom.xml =====
+4:        <artifactId>ws-integration</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-integration-ear</artifactId>
+11:    <packaging>ear</packaging>
+19:            <groupId>${project.groupId}</groupId>
+20:            <artifactId>ws-integration-core</artifactId>
+26:            <groupId>gov.gsa.cnxs.domain</groupId>
+27:            <artifactId>domain</artifactId>
+37:                <groupId>org.apache.maven.plugins</groupId>
+38:                <artifactId>maven-ear-plugin</artifactId>
+48:                            <groupId>${project.groupId}</groupId>
+49:                            <artifactId>ws-integration-core</artifactId>
+52:                            <groupId>gov.gsa.cnxs.domain</groupId>
+53:                            <artifactId>domain</artifactId>
+
+===== ./integration/pom.xml =====
+4:        <artifactId>ws-aggregator</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-integration</artifactId>
+11:    <packaging>pom</packaging>
+15:        <module>integration-api</module>
+16:        <module>integration-core</module>
+17:        <module>integration-ear</module>
+18:        <module>integration-test</module>
+23:            <groupId>gov.gsa.cnxs.domain</groupId>
+24:            <artifactId>domain</artifactId>
+28:            <groupId>jakarta.ejb</groupId>
+29:            <artifactId>jakarta.ejb-api</artifactId>
+33:            <groupId>org.jboss.resteasy</groupId>
+34:            <artifactId>resteasy-client</artifactId>
+
+===== ./integration/integration-api/pom.xml =====
+4:        <artifactId>ws-integration</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-integration-api</artifactId>
+
+===== ./services/health-check/pom.xml =====
+4:        <artifactId>ws-services-aggregator</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-services-health-check</artifactId>
+15:            <groupId>gov.gsa.cnxs.ws-client</groupId>
+16:            <artifactId>ws-health-check</artifactId>
+20:            <groupId>jakarta.validation</groupId>
+21:            <artifactId>jakarta.validation-api</artifactId>
+26:            <groupId>jakarta.interceptor</groupId>
+27:            <artifactId>jakarta.interceptor-api</artifactId>
+32:            <groupId>gov.gsa.cnxs.domain</groupId>
+33:            <artifactId>domain</artifactId>
+
+===== ./services/order-services/impl/pom.xml =====
+4:        <groupId>gov.gsa.cnxs.ws</groupId>
+5:        <artifactId>ws-services-order-services</artifactId>
+10:    <artifactId>ws-services-order-services-impl</artifactId>
+15:            <groupId>${project.groupId}</groupId>
+16:            <artifactId>ws-core</artifactId>
+23:            <groupId>${project.groupId}</groupId>
+24:            <artifactId>ws-test-support</artifactId>
+30:            <groupId>gov.gsa.cnxs.domain</groupId>
+31:            <artifactId>domain</artifactId>
+36:            <groupId>gov.gsa.cnxs.common</groupId>
+37:            <artifactId>common-test-utils</artifactId>
+42:            <groupId>org.fluttercode.datafactory</groupId>
+43:            <artifactId>datafactory</artifactId>
+47:            <groupId>gov.gsa.cnxs.ws-client</groupId>
+48:            <artifactId>ws-client-order-services</artifactId>
+53:            <groupId>org.jboss.ejb3</groupId>
+54:            <artifactId>jboss-ejb3-ext-api</artifactId>
+58:            <groupId>jakarta.validation</groupId>
+59:            <artifactId>jakarta.validation-api</artifactId>
+64:            <groupId>jakarta.interceptor</groupId>
+65:            <artifactId>jakarta.interceptor-api</artifactId>
+
+===== ./services/order-services/pom.xml =====
+4:        <artifactId>ws-services-aggregator</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-services-order-services</artifactId>
+11:    <packaging>pom</packaging>
+15:        <module>impl</module>
+
+===== ./services/pom.xml =====
+4:        <artifactId>ws-aggregator</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-services-aggregator</artifactId>
+11:    <packaging>pom</packaging>
+15:        <module>order-services</module>
+16:        <module>health-check</module>
+21:            <groupId>${project.groupId}</groupId>
+22:            <artifactId>ws-core</artifactId>
+27:            <groupId>jakarta.ejb</groupId>
+28:            <artifactId>jakarta.ejb-api</artifactId>
+32:            <groupId>jakarta.jms</groupId>
+33:            <artifactId>jakarta.jms-api</artifactId>
+37:            <groupId>org.glassfish</groupId>
+38:            <artifactId>jakarta.el</artifactId>
+43:            <groupId>gov.gsa.cnxs.domain</groupId>
+44:            <artifactId>domain</artifactId>
+51:            <groupId>com.fasterxml.jackson.core</groupId>
+52:            <artifactId>jackson-databind</artifactId>
+
+===== ./api/pom.xml =====
+4:        <artifactId>ws-aggregator</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-api</artifactId>
+15:            <groupId>gov.gsa.cnxs.ws-client</groupId>
+16:            <artifactId>ws-client-order-services</artifactId>
+20:            <groupId>${project.groupId}</groupId>
+21:            <artifactId>ws-common</artifactId>
+26:            <groupId>gov.gsa.cnxs.domain</groupId>
+27:            <artifactId>domain</artifactId>
+31:            <groupId>jakarta.ejb</groupId>
+32:            <artifactId>jakarta.ejb-api</artifactId>
+36:            <groupId>jakarta.jms</groupId>
+37:            <artifactId>jakarta.jms-api</artifactId>
+41:            <groupId>jakarta.validation</groupId>
+42:            <artifactId>jakarta.validation-api</artifactId>
+46:            <groupId>gov.gsa.cnxs.webservices</groupId>
+47:            <artifactId>webservices-common</artifactId>
+
+===== ./test-support/pom.xml =====
+4:        <artifactId>ws-aggregator</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-test-support</artifactId>
+18:            <groupId>${project.groupId}</groupId>
+19:            <artifactId>ws-api</artifactId>
+25:            <groupId>gov.gsa.cnxs.domain</groupId>
+26:            <artifactId>domain</artifactId>
+31:            <groupId>ch.qos.logback</groupId>
+32:            <artifactId>logback-classic</artifactId>
+37:            <groupId>ch.qos.logback</groupId>
+38:            <artifactId>logback-core</artifactId>
+43:            <groupId>org.hamcrest</groupId>
+44:            <artifactId>hamcrest</artifactId>
+49:            <groupId>org.apache.commons</groupId>
+50:            <artifactId>commons-lang3</artifactId>
+54:            <groupId>gov.gsa.cnxs.common</groupId>
+55:            <artifactId>common-utils</artifactId>
+
+===== ./version/pom.xml =====
+3:        <artifactId>ws-aggregator</artifactId>
+4:        <groupId>gov.gsa.cnxs.ws</groupId>
+9:    <artifactId>ws-version-war</artifactId>
+11:    <packaging>war</packaging>
+22:            <groupId>jakarta.interceptor</groupId>
+23:            <artifactId>jakarta.interceptor-api</artifactId>
+28:            <groupId>jakarta.ejb</groupId>
+29:            <artifactId>jakarta.ejb-api</artifactId>
+34:            <groupId>org.jboss.resteasy</groupId>
+35:            <artifactId>resteasy-multipart-provider</artifactId>
+39:                    <artifactId>servlet-api</artifactId>
+40:                    <groupId>javax.servlet</groupId>
+46:            <groupId>org.jboss.resteasy</groupId>
+47:            <artifactId>resteasy-jackson2-provider</artifactId>
+52:            <groupId>jakarta.ws.rs</groupId>
+53:            <artifactId>jakarta.ws.rs-api</artifactId>
+58:            <groupId>jakarta.servlet</groupId>
+59:            <artifactId>jakarta.servlet-api</artifactId>
+65:            <groupId>jakarta.transaction</groupId>
+66:            <artifactId>jakarta.transaction-api</artifactId>
+71:            <groupId>jakarta.validation</groupId>
+72:            <artifactId>jakarta.validation-api</artifactId>
+94:                <groupId>org.codehaus.mojo</groupId>
+95:                <artifactId>templating-maven-plugin</artifactId>
+106:                <artifactId>maven-war-plugin</artifactId>
+
+===== ./common/pom.xml =====
+4:        <artifactId>ws-aggregator</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-common</artifactId>
+16:            <groupId>gov.gsa.cnxs.common</groupId>
+17:            <artifactId>common-utils</artifactId>
+21:            <groupId>gov.gsa.cnxs.domain</groupId>
+22:            <artifactId>domain</artifactId>
+27:            <groupId>gov.gsa.cnxs.domain</groupId>
+28:            <artifactId>domain</artifactId>
+35:            <groupId>gov.gsa.cnxs.ws-client</groupId>
+36:            <artifactId>ws-client-common</artifactId>
+40:            <groupId>jakarta.jms</groupId>
+41:            <artifactId>jakarta.jms-api</artifactId>
+45:            <groupId>com.fasterxml.jackson.core</groupId>
+46:            <artifactId>jackson-databind</artifactId>
+
+===== ./core/pom.xml =====
+4:        <artifactId>ws-aggregator</artifactId>
+5:        <groupId>gov.gsa.cnxs.ws</groupId>
+10:    <artifactId>ws-core</artifactId>
+15:            <groupId>org.glassfish</groupId>
+16:            <artifactId>jakarta.el</artifactId>
+21:            <groupId>${project.groupId}</groupId>
+22:            <artifactId>ws-api</artifactId>
+27:            <groupId>${project.groupId}</groupId>
+28:            <artifactId>ws-test-support</artifactId>
+34:            <groupId>gov.gsa.cnxs.common</groupId>
+35:            <artifactId>common-test-utils</artifactId>
+40:            <groupId>gov.gsa.cnxs.ws-client</groupId>
+41:            <artifactId>ws-client-order-services</artifactId>
+46:            <groupId>gov.gsa.cnxs.domain</groupId>
+47:            <artifactId>domain</artifactId>
+52:            <groupId>gov.gsa.cnxs.webservices</groupId>
+53:            <artifactId>webservices-common</artifactId>
+57:            <groupId>org.fluttercode.datafactory</groupId>
+58:            <artifactId>datafactory</artifactId>
+62:            <groupId>org.apache.commons</groupId>
+63:            <artifactId>commons-lang3</artifactId>
+67:            <groupId>jakarta.jms</groupId>
+68:            <artifactId>jakarta.jms-api</artifactId>
+72:            <groupId>jakarta.ejb</groupId>
+73:            <artifactId>jakarta.ejb-api</artifactId>
+78:            <groupId>jakarta.validation</groupId>
+79:            <artifactId>jakarta.validation-api</artifactId>
+84:            <groupId>com.fasterxml.jackson.core</groupId>
+85:            <artifactId>jackson-core</artifactId>
+90:            <groupId>com.fasterxml.jackson.core</groupId>
+91:            <artifactId>jackson-databind</artifactId>
+97:            <groupId>org.jboss.ws.cxf</groupId>
+98:            <artifactId>jbossws-cxf-client</artifactId>
+
+===== ./pom.xml =====
+4:        <groupId>gov.gsa.cnxs.bom</groupId>
+5:        <artifactId>env</artifactId>
+10:    <groupId>gov.gsa.cnxs.ws</groupId>
+11:    <artifactId>ws-aggregator</artifactId>
+13:    <packaging>pom</packaging>
+18:        <module>api</module>
+19:        <module>test-support</module>
+20:        <module>common</module>
+21:        <module>core</module>
+22:        <module>services</module>
+23:        <module>version</module>
+24:        <module>ear</module>
+25:        <module>integration</module>
+41:                <groupId>gov.gsa.cnxs.common-rest</groupId>
+42:                <artifactId>common-rest</artifactId>
+46:                        <groupId>gov.gsa.cnxs.domain</groupId>
+47:                        <artifactId>domain</artifactId>
+53:                <groupId>gov.gsa.cnxs.ws-client</groupId>
+54:                <artifactId>ws-client-order-services</artifactId>
+59:                <groupId>gov.gsa.cnxs.ws-client</groupId>
+60:                <artifactId>ws-client-order-services</artifactId>
+67:                <groupId>gov.gsa.cnxs.ws-client</groupId>
+68:                <artifactId>ws-health-check</artifactId>
+73:                <groupId>gov.gsa.cnxs.ws-client</groupId>
+74:                <artifactId>ws-client-common</artifactId>
+79:                <groupId>gov.gsa.cnxs.emulator</groupId>
+80:                <artifactId>vendor-emulator-ear</artifactId>
+86:                <groupId>gov.gsa.cnxs.rest</groupId>
+87:                <artifactId>rest-ear</artifactId>
+93:                <groupId>gov.gsa.cnxs.common</groupId>
+94:                <artifactId>common-utils</artifactId>
+99:                <groupId>gov.gsa.cnxs.common</groupId>
+100:                <artifactId>common-test-utils</artifactId>
+107:                <groupId>gov.gsa.cnxs.domain</groupId>
+108:                <artifactId>domain</artifactId>
+113:                <groupId>gov.gsa.cnxs.domain</groupId>
+114:                <artifactId>domain</artifactId>
+121:                <groupId>gov.gsa.cnxs.domain.test</groupId>
+122:                <artifactId>domain-test-ear</artifactId>
+128:                <groupId>gov.gsa.cnxs.domain.test</groupId>
+129:                <artifactId>domain-test-api</artifactId>
+135:                <groupId>gov.gsa.cnxs.rest.test</groupId>
+136:                <artifactId>rest-system-test</artifactId>
+142:                <groupId>gov.gsa.cnxs.common-rest</groupId>
+143:                <artifactId>common-rest-test-utils</artifactId>
+149:                <groupId>gov.gsa.cnxs.domain.test</groupId>
+150:                <artifactId>domain-integration</artifactId>
+157:                <groupId>gov.gsa.cnxs.webservices</groupId>
+158:                <artifactId>cnxs-ws-ear</artifactId>
+164:                <groupId>gov.gsa.cnxs.webservices</groupId>
+165:                <artifactId>webservices-common</artifactId>
+170:                <groupId>gov.gsa.cnxs.webservices</groupId>
+171:                <artifactId>webservices-common</artifactId>
+178:                <groupId>org.fluttercode.datafactory</groupId>
+179:                <artifactId>datafactory</artifactId>
+192:                <groupId>org.openclover</groupId>
+193:                <artifactId>clover-maven-plugin</artifactId>
+
+[sikaj01@ip-10-56-112-33 ws]$ RELEASE_VERSION="02.00.000.153"
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data @- <<EOF
+items.find({
+  "repo":{"\$eq":"conexus-rc-local"},
+  "name":{"\$match":"*${RELEASE_VERSION}*"},
+  "path":{"\$match":"gov/gsa/cnxs/ws*"}
+}).include("name","repo","path")
+EOF
+
+{
+"results" : [ {
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-aggregator/02.00.000.153-RC",
+  "name" : "ws-aggregator-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-common/02.00.000.153-RC",
+  "name" : "ws-common-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-common/02.00.000.153-RC",
+  "name" : "ws-common-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-common/02.00.000.153-RC",
+  "name" : "ws-common-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-api/02.00.000.153-RC",
+  "name" : "ws-api-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-api/02.00.000.153-RC",
+  "name" : "ws-api-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-api/02.00.000.153-RC",
+  "name" : "ws-api-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-test-support/02.00.000.153-RC",
+  "name" : "ws-test-support-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-test-support/02.00.000.153-RC",
+  "name" : "ws-test-support-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.153-RC",
+  "name" : "ws-integration-ear-02.00.000.153-RC.ear"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.153-RC",
+  "name" : "ws-integration-core-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-ear/02.00.000.153-RC",
+  "name" : "ws-services-ear-02.00.000.153-RC.ear"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-order-services/02.00.000.153-RC",
+  "name" : "ws-services-order-services-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-test-support/02.00.000.153-RC",
+  "name" : "ws-test-support-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-core/02.00.000.153-RC",
+  "name" : "ws-core-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-core/02.00.000.153-RC",
+  "name" : "ws-core-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-aggregator/02.00.000.153-RC",
+  "name" : "ws-services-aggregator-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.153-RC",
+  "name" : "ws-services-order-services-impl-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.153-RC",
+  "name" : "ws-services-order-services-impl-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.153-RC",
+  "name" : "ws-services-health-check-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.153-RC",
+  "name" : "ws-services-health-check-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-version-war/02.00.000.153-RC",
+  "name" : "ws-version-war-02.00.000.153-RC.war"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.153-RC",
+  "name" : "ws-services-order-services-impl-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-version-war/02.00.000.153-RC",
+  "name" : "ws-version-war-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-ear/02.00.000.153-RC",
+  "name" : "ws-services-ear-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.153-RC",
+  "name" : "ws-integration-api-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration/02.00.000.153-RC",
+  "name" : "ws-integration-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.153-RC",
+  "name" : "ws-integration-api-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.153-RC",
+  "name" : "ws-integration-api-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.153-RC",
+  "name" : "ws-integration-ear-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.153-RC",
+  "name" : "ws-integration-test-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.153-RC",
+  "name" : "ws-integration-test-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.153-RC",
+  "name" : "ws-integration-core-02.00.000.153-RC-tests.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.153-RC",
+  "name" : "ws-integration-core-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.153-RC",
+  "name" : "ws-integration-test-02.00.000.153-RC.jar"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-core/02.00.000.153-RC",
+  "name" : "ws-core-02.00.000.153-RC.pom"
+},{
+  "repo" : "conexus-rc-local",
+  "path" : "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.153-RC",
+  "name" : "ws-services-health-check-02.00.000.153-RC.jar"
+} ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 37,
+  "total" : 37
+}
+}
