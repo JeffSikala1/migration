@@ -1,64 +1,4 @@
-/usr/share/maven/bin/mvn -q -DforceStdout help:evaluate -Dexpression=project.groupId
-/usr/share/maven/bin/mvn -q -DforceStdout help:evaluate -Dexpression=project.artifactId
-/usr/share/maven/bin/mvn -q -DforceStdout help:evaluate -Dexpression=project.version
-
-
-
-grep -n "<packaging>" pom.xml
-grep -n "<module>" pom.xml
-
-
-
-find . -name pom.xml -print
-
-
-
-find . -name pom.xml -exec sh -c '
-  for f in "$@"; do
-    echo "===== $f ====="
-    grep -n "<artifactId>\|<groupId>\|<packaging>\|<module>" "$f" || true
-    echo
-  done
-' sh {} +
-
-
-
-
-RELEASE_VERSION="02.00.000.166"
-
-curl -sku "sa_bamboo:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data "
-items.find({
-  \"repo\":{\"\\$eq\":\"conexus-rc-local\"},
-  \"path\":{\"\\$match\":\"gov/gsa/cnxs/emulator/*/${RELEASE_VERSION}\"}
-}).include(\"name\",\"repo\",\"path\")"
-
-
-
-
-
-RELEASE_VERSION="02.00.000.166"
-
-curl -sku "sa_bamboo:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data "
-items.find({
-  \"repo\":{\"\\$eq\":\"conexus-rc-local\"},
-  \"path\":{\"\\$match\":\"gov/gsa/cnxs/emulator/*/${RELEASE_VERSION}\"}
-}).include(\"name\",\"repo\",\"path\")"
-
-
-
-
-
-
-
-RELEASE_VERSION="02.00.000.166"
+RELEASE_VERSION="02.00.000.141"
 
 curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
   -H "Content-Type: text/plain" \
@@ -66,50 +6,37 @@ curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
   "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
   --data "
 items.find({
-  \"repo\":{\"\\$eq\":\"conexus-release-local\"},
+  \"repo\":{\"\\$eq\":\"conexus-rc-local\"},
   \"path\":{\"\\$match\":\"gov/gsa/cnxs/emulator/*/${RELEASE_VERSION}\"}
 }).include(\"name\",\"repo\",\"path\")"
 
 
 
 
+RELEASE_VERSION="02.00.000.141"
+
+curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data "
+items.find({
+  \"repo\":{\"\\$eq\":\"conexus-rc-local\"},
+  \"path\":{\"\\$match\":\"gov/gsa/cnxs/emulator*/*/${RELEASE_VERSION}\"}
+}).include(\"name\",\"repo\",\"path\")"
 
 
 
-/usr/share/maven/bin/mvn -B -q help:effective-pom -Doutput=effective-pom.xml
-grep -n "<artifactId>\|<packaging>" effective-pom.xml | head -200
 
+RELEASE_VERSION="02.00.000.141"
 
-
-
-/usr/share/maven/bin/mvn -B -DskipTests validate | tee /tmp/ve-validate.log
-grep -E "Reactor Build Order|Building " /tmp/ve-validate.log
-
-
-
-
-
-set -euo pipefail
-
-echo "=== ROOT MAVEN COORDINATES ==="
-/usr/share/maven/bin/mvn -q -DforceStdout help:evaluate -Dexpression=project.groupId
-/usr/share/maven/bin/mvn -q -DforceStdout help:evaluate -Dexpression=project.artifactId
-/usr/share/maven/bin/mvn -q -DforceStdout help:evaluate -Dexpression=project.version
-
-echo
-echo "=== ROOT PACKAGING / MODULES ==="
-grep -n "<packaging>\|<module>" pom.xml || true
-
-echo
-echo "=== ALL POMS ==="
-find . -name pom.xml | sort
-
-echo
-echo "=== POM SUMMARY ==="
-find . -name pom.xml -exec sh -c '
-  for f in "$@"; do
-    echo "----- $f -----"
-    grep -n "<groupId>\|<artifactId>\|<packaging>\|<module>" "$f" || true
-    echo
-  done
-' sh {} +
+curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data "
+items.find({
+  \"repo\":{\"\\$eq\":\"conexus-rc-local\"},
+  \"name\":{\"\\$match\":\"*${RELEASE_VERSION}*\"},
+  \"path\":{\"\\$match\":\"gov/gsa/cnxs/*\"}
+}).include(\"name\",\"repo\",\"path\")"
