@@ -1,49 +1,11 @@
-cd ~/dpa
+cd ../rest
 git fetch origin --prune --tags
 
 echo "=== remote main ==="
 git ls-remote --heads origin "refs/heads/main"
 
-echo "=== remote release branch ==="
-git ls-remote --heads origin "refs/heads/release/02.00.000.133"
+echo "=== remote develop ==="
+git ls-remote --heads origin "refs/heads/develop"
 
-echo "=== remote tag ==="
-git ls-remote --tags origin "refs/tags/02.00.000.133"
-
-git tag -d 02.00.000.133 >/dev/null 2>&1 || true
-
-git fetch origin \
-  "+refs/heads/main:refs/remotes/origin/__validate_main" \
-  "+refs/tags/02.00.000.133:refs/tags/02.00.000.133"
-
-echo "=== ancestry check ==="
-git rev-list -n 1 02.00.000.133
-git rev-parse refs/remotes/origin/__validate_main
-git merge-base --is-ancestor 02.00.000.133 refs/remotes/origin/__validate_main && echo TAG_ON_MAIN || echo TAG_NOT_ON_MAIN
-
-
-
-
-
-
-curl -sku "sa_bamboo:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data '
-items.find({
-  "repo":{"$eq":"conexus-release-local"},
-  "$or":[
-    {"path":{"$eq":"gov/gsa/cnxs/dpa/dpa-aggregator/02.00.000.133"}},
-    {"path":{"$eq":"gov/gsa/cnxs/dpa/dpa-core/02.00.000.133"}},
-    {"path":{"$eq":"gov/gsa/cnxs/dpa/dpa-api/02.00.000.133"}},
-    {"path":{"$eq":"gov/gsa/cnxs/dpa/dpa-ear/02.00.000.133"}},
-    {"path":{"$eq":"gov/gsa/cnxs/dpa/test/dpa-integration-test/02.00.000.133"}}
-  ]
-}).include("name","repo","path")
-'
-
-
-
-
-git push origin --delete release/02.00.000.133
+echo "=== remote master ==="
+git ls-remote --heads origin "refs/heads/master"
