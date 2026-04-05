@@ -753,21 +753,15 @@ Finalize Job:
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
             RELEASE_BRANCH="release/${RELEASE_VERSION}"
-            INTEGRATION_BRANCH="${bamboo.integration.branch}"
             REPO_URL="${bamboo.repo_url}"
 
             TAG_EXISTS=false
-            BRANCH_EXISTS=false
             RELEASE_ARTIFACTS_EXIST=false
             found_count=0
             total_expected=9
 
             if git ls-remote --tags "${REPO_URL}" "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
               TAG_EXISTS=true
-            fi
-
-            if git ls-remote --heads "${REPO_URL}" "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
-              BRANCH_EXISTS=true
             fi
 
             AQL=$(cat <<EOF
@@ -812,30 +806,27 @@ Finalize Job:
               RELEASE_ARTIFACTS_EXIST=true
             fi
 
-            echo "INFO: tag_exists=${TAG_EXISTS}, branch_exists=${BRANCH_EXISTS}, release_artifacts_found=${found_count}"
+            echo "INFO: tag_exists=${TAG_EXISTS}, release_artifacts_found=${found_count}"
 
-            if [ "${TAG_EXISTS}" != "true" ]; then
-              echo "ERROR: release tag ${RELEASE_VERSION} does not exist in remote; refusing cleanup."
-              exit 1
-            fi
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
+              echo "INFO: final-state signals confirmed for ${RELEASE_VERSION}"
 
-            if [ "${RELEASE_ARTIFACTS_EXIST}" != "true" ]; then
-              echo "ERROR: release artifacts for ${RELEASE_VERSION} not found in release repo; refusing cleanup."
-              exit 1
-            fi
-
-            if [ "${BRANCH_EXISTS}" = "true" ]; then
-              echo "INFO: final-state signals confirmed; attempting best-effort deletion of remote release branch ${RELEASE_BRANCH}"
-              if git push "${REPO_URL}" --delete "${RELEASE_BRANCH}"; then
-                echo "INFO: deleted remote release branch ${RELEASE_BRANCH}"
+              if git ls-remote --heads "${REPO_URL}" "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
+                echo "INFO: attempting best-effort deletion of ${RELEASE_BRANCH}"
+                if git push "${REPO_URL}" --delete "${RELEASE_BRANCH}"; then
+                  echo "INFO: deleted remote release branch ${RELEASE_BRANCH}"
+                else
+                  echo "WARNING: failed to delete remote release branch ${RELEASE_BRANCH}"
+                  echo "WARNING: release remains successful because tag and full release artifacts exist."
+                fi
               else
-                echo "WARNING: failed to delete remote release branch ${RELEASE_BRANCH}"
-                echo "WARNING: release remains finalized based on remote tag + full release artifacts."
+                echo "INFO: release branch ${RELEASE_BRANCH} already absent"
               fi
+
               exit 0
             fi
 
-            echo "INFO: release branch ${RELEASE_BRANCH} already absent; release is finalized."
+            echo "INFO: cleanup skipped because final-state signals are incomplete."
             exit 0
 
   artifact-subscriptions: []
