@@ -128,6 +128,7 @@ Promote Job:
             if ! git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
               TAG_EXISTS=false
               RELEASE_ARTIFACTS_EXIST=false
+              found_count=0
 
               if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
                 TAG_EXISTS=true
@@ -246,6 +247,7 @@ Promote Job:
             if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
               TAG_EXISTS=false
               RELEASE_ARTIFACTS_EXIST=false
+              found_count=0
 
               if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
                 TAG_EXISTS=true
@@ -301,7 +303,8 @@ Promote Job:
               echo "INFO: tag_exists=${TAG_EXISTS}, branch_exists=false, release_artifacts_found=${found_count:-0}"
 
               if [ "${TAG_EXISTS}" = "true" ] && [ "${RELEASE_ARTIFACTS_EXIST}" = "true" ]; then
-                echo "INFO: release ${RELEASE_VERSION} already finalized based on remote tag + missing release branch + release artifacts present; promotion checks may skip."
+                echo "INFO: release ${RELEASE_VERSION} already finalized based on remote tag + missing release branch + release artifacts present; skipping."
+                echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
                 exit 0
               fi
 
@@ -310,6 +313,10 @@ Promote Job:
             fi
 
             echo "Release state validation passed."
+
+    - inject-variables:
+        file: skip.properties
+        scope: LOCAL
 
     - script:
         interpreter: SHELL
