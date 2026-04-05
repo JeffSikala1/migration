@@ -1,39 +1,51 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../reporting/
-[sikaj01@ip-10-56-112-33 reporting]$ git fetch origin --prune --tags
+[sikaj01@ip-10-56-112-33 reporting]$ SETTINGS_FILE=/tmp/settings-reporting-check.xml
 
-echo "=== pom version ==="
-mvn -q -DforceStdout help:evaluate -Dexpression=project.version | sed '/^\[/d' | tail -1
+cat > "${SETTINGS_FILE}" <<XML
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>artifactory</id>
+      <mirrorOf>*</mirrorOf>
+      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>use-artifactory</id>
+      <repositories>
+        <repository>
+          <id>artifactory</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>artifactory</id>
+          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+          <releases><enabled>true</enabled></releases>
+\[/d' | grep -v '^$' | tail -1 -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^
+02.00.000.115-SNAPSHOT
 
-echo "=== release branches ==="
-git ls-remote --heads origin "refs/heads/release/*"
 
-echo "=== tags near expected version ==="
-git ls-remote --tags origin | grep "02.00.000.11"
 
-echo "=== main ==="
-git ls-remote --heads origin "refs/heads/main"
+[sikaj01@ip-10-56-112-33 reporting]$ find . -maxdepth 3 \( -name pom.xml -o -name "*.ear" \)
+grep -R "<artifactId>reporting-ear</artifactId>" -n .
+./integration/pom.xml
+./war/pom.xml
+./core/pom.xml
+./pom.xml
 
-echo "=== develop ==="
-git ls-remote --heads origin "refs/heads/develop"
-remote: Enumerating objects: 55, done.
-remote: Counting objects: 100% (53/53), done.
-remote: Compressing objects: 100% (15/15), done.
-remote: Total 23 (delta 6), reused 0 (delta 0), pack-reused 0 (from 0)
-Unpacking objects: 100% (23/23), 2.06 KiB | 3.00 KiB/s, done.
-From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting
-   26f30703..5ee14737  develop    -> origin/develop
-=== pom version ===
- @ 
-=== release branches ===
-8c7902d8f472b504b45f06042f793b0a2d9d6345        refs/heads/release/01.00.000.112
-41d31678f7da0dad0b0bf55c9ef7f62298a750d2        refs/heads/release/02.00.000.113
-9888b91d59bdea214739316dfba25d0c168d3007        refs/heads/release/02.00.000.114
-079d1e76f6a71ee83a396192e669fcf1a30c1f8d        refs/heads/release/02.00.000.115
-=== tags near expected version ===
-=== main ===
-d9934fb18fe853d7e5f43f2790ccdac7f5d0e971        refs/heads/main
-=== develop ===
-5ee14737a51f8e5687da4b89653c3c28cd053a60        refs/heads/develop
+
+[sikaj01@ip-10-56-112-33 reporting]$ find . -maxdepth 3 \( -name pom.xml -o -name "*.ear" \)
+grep -R "<artifactId>reporting-ear</artifactId>" -n .
+./integration/pom.xml
+./war/pom.xml
+./core/pom.xml
+./pom.xml
 [sikaj01@ip-10-56-112-33 reporting]$ curl -sku "sa_bamboo:${TOKEN}" \
   -H "Content-Type: text/plain" \
   -X POST \
@@ -42,8 +54,8 @@ d9934fb18fe853d7e5f43f2790ccdac7f5d0e971        refs/heads/main
 items.find({
   "repo":{"$eq":"conexus-rc-local"},
   "$or":[
-    {"path":{"$match":"gov/gsa/cnxs/reporting/reporting-aggregator/*"}},
-    {"path":{"$match":"gov/gsa/cnxs/reporting/reporting-ear/*"}}
+    {"path":{"$eq":"gov/gsa/cnxs/reporting/reporting-aggregator/02.00.000.115-RC"}},
+    {"path":{"$eq":"gov/gsa/cnxs/reporting/reporting-ear/02.00.000.115-RC"}}
   ]
 }).include("name","repo","path")
 '
@@ -51,24 +63,12 @@ items.find({
 {
 "results" : [ {
   "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/reporting/reporting-aggregator/01.00.000.111-RC",
-  "name" : "reporting-aggregator-01.00.000.111-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
   "path" : "gov/gsa/cnxs/reporting/reporting-aggregator/02.00.000.115-RC",
   "name" : "reporting-aggregator-02.00.000.115-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/reporting/reporting-aggregator/01.00.000.112-RC",
-  "name" : "reporting-aggregator-01.00.000.112-RC.pom"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/reporting/reporting-aggregator/01.00.000.110-RC",
-  "name" : "reporting-aggregator-01.00.000.110-RC.pom"
 } ],
 "range" : {
   "start_pos" : 0,
-  "end_pos" : 4,
-  "total" : 4
+  "end_pos" : 1,
+  "total" : 1
 }
 }
