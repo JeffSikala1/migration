@@ -1,24 +1,43 @@
-cd ../task
+cd ../contract-mod
+
 git fetch origin --prune --tags
 
 echo "=== remote main ==="
 git ls-remote --heads origin "refs/heads/main"
 
+echo "=== remote develop ==="
+git ls-remote --heads origin "refs/heads/develop"
+
+echo "=== remote master ==="
+git ls-remote --heads origin "refs/heads/master"
+
 echo "=== remote tag ==="
-git ls-remote --tags origin "refs/tags/02.00.000.215"
+git ls-remote --tags origin "refs/tags/02.00.000.49"
 
 echo "=== remote release branch ==="
-git ls-remote --heads origin "refs/heads/release/02.00.000.215"
+git ls-remote --heads origin "refs/heads/release/02.00.000.49"
+
+git fetch origin main --tags || true
+git fetch origin develop || true
+git fetch origin master || true
+git fetch origin release/02.00.000.49 || true
+
+echo "=== local refs ==="
+git show-ref | egrep 'refs/remotes/origin/(main|develop|master|release/02.00.000.49)|refs/tags/02.00.000.49' || true
+
+echo "=== rev parse ==="
+git rev-parse refs/remotes/origin/main || true
+git rev-parse refs/remotes/origin/develop || true
+git rev-parse refs/remotes/origin/master || true
+git rev-parse refs/remotes/origin/release/02.00.000.49 || true
+
+echo "=== tag ancestry check ==="
+git rev-list -n 1 02.00.000.49 || true
+git merge-base --is-ancestor 02.00.000.49 refs/remotes/origin/main && echo TAG_ON_MAIN || echo TAG_NOT_ON_MAIN
 
 
 
 
-git fetch origin main --tags
-git fetch origin release/02.00.000.215 || true
-
-git rev-list -n 1 02.00.000.215
-git rev-parse origin/main
-git merge-base --is-ancestor 02.00.000.215 origin/main && echo YES || echo NO
 
 
 
@@ -26,10 +45,112 @@ git merge-base --is-ancestor 02.00.000.215 origin/main && echo YES || echo NO
 
 
 
-git push origin --delete release/02.00.000.215
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "path":{"$eq":"gov/gsa/cnxs/reconciliation/02.00.000.49"}
+}).include("name","repo","path","created","modified","size")
+'
 
 
 
 
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "path":{"$eq":"gov/gsa/cnxs/reconciliation/02.00.000.49"},
+  "name":{"$match":"reconciliation-02.00.000.49*"}
+}).include("name","repo","path","created","modified","size")
+'
 
-git ls-remote --heads origin "refs/heads/release/02.00.000.215"
+
+
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "name":{"$match":"reconciliation-02.00.000.49*"}
+}).include("name","repo","path","created","modified","size")
+'
+
+
+
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/gavc?g=gov.gsa.cnxs&a=reconciliation&v=02.00.000.49&repos=conexus-rc-local"
+
+
+
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "$and":[
+    {"name":{"$match":"reconciliation-02.00.000.49*"}}
+  ]
+}).include("name","repo","path")
+'
+
+
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "name":{"$match":"reconciliation-02.00.000.49*"}
+}).include("name","repo","path")
+'
+
+
+
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-release-local"},
+  "name":{"$match":"reconciliation-02.00.000.49*"}
+}).include("name","repo","path")
+'
+
+
+
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "name":{"$match":"*02.00.000.49*"}
+}).include("name","repo","path")
+'
+
+
+
+
+curl -sku "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/gavc?g=gov.gsa.cnxs&a=reconciliation&v=02.00.000.49&repos=conexus-rc-local"

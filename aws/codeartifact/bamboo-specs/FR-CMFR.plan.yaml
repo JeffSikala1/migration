@@ -438,6 +438,7 @@ Finalize Job:
         scripts:
           - |
             set -euo pipefail
+
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
@@ -457,44 +458,43 @@ Finalize Job:
             git config user.email "bamboo@local"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
-
             if ! git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
-              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finish release cannot continue."
+              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
               exit 1
             fi
 
-            TAG_EXISTS=false
-            TAG_ON_MAIN=false
+            if ! git ls-remote --exit-code --heads origin "refs/heads/main" >/dev/null 2>&1; then
+              echo "ERROR: remote main does not exist for this repository."
+              if git ls-remote --exit-code --heads origin "refs/heads/master" >/dev/null 2>&1; then
+                echo "INFO: remote master exists. This repo may still use master instead of main."
+              fi
+              exit 1
+            fi
 
             git fetch origin \
               "+refs/heads/main:refs/remotes/origin/main" \
               "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}" \
+              "+refs/tags/*:refs/tags/*" \
               --prune >/dev/null 2>&1
 
-            if ! git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1; then
-              echo "ERROR: origin/main not found after explicit fetch"
-              exit 1
-            fi
+            TAG_EXISTS=false
+            TAG_ON_MAIN=false
 
             if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
               TAG_EXISTS=true
               TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_TAG}")"
-              echo "INFO: existing tag ${RELEASE_TAG} points to ${TAG_COMMIT}"
-
               if git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/main; then
                 TAG_ON_MAIN=true
               fi
             fi
 
-            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
-            git checkout -B main origin/main >/dev/null 2>&1
-
             if [ "${TAG_EXISTS}" = "true" ] && [ "${TAG_ON_MAIN}" != "true" ]; then
               echo "ERROR: release tag ${RELEASE_TAG} already exists but is not contained in origin/main."
-              echo "ERROR: refusing to continue because reusing the stale tag would corrupt release finalization."
               exit 1
             fi
+
+            git checkout -B "${RELEASE_BRANCH}" "refs/remotes/origin/${RELEASE_BRANCH}"
+            git checkout -B main "refs/remotes/origin/main"
 
             git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
 
@@ -508,8 +508,6 @@ Finalize Job:
 
             if [ "${TAG_EXISTS}" = "false" ]; then
               git tag "${RELEASE_TAG}"
-            else
-              echo "INFO: tag ${RELEASE_TAG} already exists; not recreating."
             fi
 
             git push origin main
