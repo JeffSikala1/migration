@@ -1,68 +1,29 @@
-SETTINGS_FILE=/tmp/settings-rest-check.xml
+cd ~/rest
+git fetch origin --prune --tags
 
-cat > "${SETTINGS_FILE}" <<XML
-<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
-  <mirrors>
-    <mirror>
-      <id>artifactory</id>
-      <mirrorOf>*</mirrorOf>
-      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-    </mirror>
-  </mirrors>
-  <profiles>
-    <profile>
-      <id>use-artifactory</id>
-      <repositories>
-        <repository>
-          <id>artifactory</id>
-          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-          <releases><enabled>true</enabled></releases>
-          <snapshots><enabled>true</enabled></snapshots>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>artifactory</id>
-          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-          <releases><enabled>true</enabled></releases>
-          <snapshots><enabled>true</enabled></snapshots>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-  </profiles>
-  <activeProfiles>
-    <activeProfile>use-artifactory</activeProfile>
-  </activeProfiles>
-</settings>
-XML
+echo "=== remote release branch ==="
+git ls-remote --heads origin "refs/heads/release/02.00.000.175"
 
-CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+echo "=== remote main ==="
+git ls-remote --heads origin "refs/heads/main"
 
-echo "CURRENT_VERSION=${CURRENT_VERSION}"
-echo "RELEASE_VERSION=${RELEASE_VERSION}"
+echo "=== remote tag ==="
+git ls-remote --tags origin "refs/tags/02.00.000.175"
+
+git tag -d 02.00.000.175 >/dev/null 2>&1 || true
+
+git fetch origin \
+  "+refs/heads/main:refs/remotes/origin/__validate_main" \
+  "+refs/tags/02.00.000.175:refs/tags/02.00.000.175"
+
+echo "=== ancestry check ==="
+git rev-list -n 1 02.00.000.175
+git rev-parse refs/remotes/origin/__validate_main
+git merge-base --is-ancestor 02.00.000.175 refs/remotes/origin/__validate_main && echo TAG_ON_MAIN || echo TAG_NOT_ON_MAIN
+
+echo "=== delete attempt ==="
+git push origin --delete release/02.00.000.175
 
 
 
 
-git ls-remote --heads origin "refs/heads/release/${RELEASE_VERSION}"
-
-
-
-
-curl -sku "sa_bamboo:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data "
-items.find({
-  \"repo\":{\"\$eq\":\"conexus-rc-local\"},
-  \"name\":{\"\$match\":\"*${RELEASE_VERSION}*\"}
-}).include(\"name\",\"repo\",\"path\")
-"
-
-
-curl -sku "sa_bamboo:${TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/gavc?g=gov.gsa.cnxs.rest&a=rest-aggregator&v=${RELEASE_VERSION}-RC&repos=conexus-rc-local"
