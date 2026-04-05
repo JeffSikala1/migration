@@ -4,147 +4,267 @@ plan:
   project-key: FR
   key: REPFR
   name: Reporting - Finish Release
+
 stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
+  - Promote Release Artifacts:
+      jobs:
+        - Promote Job
+
+  - Finalize Git Release:
+      jobs:
+        - Finalize Job
+
+# =========================
+# PROMOTE STAGE
+# =========================
+
+Promote Job:
   key: JOB1
+  other:
+    clean-working-dir: true
+
   tasks:
-  - checkout:
-      path: ${bamboo.module_name}
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: release-scripts
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - clean
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 400 ~/.ssh/id_rsa
+    - checkout:
+        path: ${bamboo.module_name}
+        force-clean-build: true
 
-        # Configure git to use this key
-        echo "Host *" &gt; ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
-      description: Install SSH key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    - checkout:
+        repository: bamboo-deployment
+        path: release-scripts
+        force-clean-build: true
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+    # -------------------------
+    # SSH VALIDATION
+    # -------------------------
+    - script:
+        interpreter: SHELL
+        description: Validate SSH key
+        scripts:
+          - |
+            set -euo pipefail
+            test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
 
-        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
-        release_branch=${release_branches[0]}
+    # -------------------------
+    # MAVEN SETTINGS
+    # -------------------------
+    - script:
+        interpreter: SHELL
+        description: Write Maven settings
+        scripts:
+          - |
+            set -euo pipefail
+            SETTINGS_FILE=/tmp/settings-${bamboo.buildResultKey}.xml
 
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
+            cat > "${SETTINGS_FILE}" <<XML
+            <settings>
+              <mirrors>
+                <mirror>
+                  <id>artifactory</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <servers>
+                <server>
+                  <id>central</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
 
+    # -------------------------
+    # VALIDATE + SNAPSHOT CONVERT
+    # -------------------------
+    - script:
+        interpreter: SHELL
+        working-dir: ${bamboo.module_name}
+        description: Validate release branch + convert RC → SNAPSHOT
+        scripts:
+          - |
+            set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
-        find . -type f -name *.xml -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
-        git commit -a -m "Updated versions from release-candidate to release"
-        git push --set-upstream origin "${release_branch}"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      working-dir: ${bamboo.module_name}
-      description: Release script
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: maven.version
-        removeSnapshot: 'true'
-        variableScope: JOB
-        pomFile: ${bamboo.module_name}/pom.xml
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
+            echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
-        curl -k "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        update-ca-trust
-      description: Install USDA root certificate in system wide trusted certificate location
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version | tail -1)
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
 
-        mkdir working
-        python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs ${bamboo.module_name} ${bamboo.maven.version} --username "${bamboo.artifactory_admin_username}" --password "${bamboo.artifactory_admin_password}" --override
-      working-dir: ${bamboo.module_name}
-      description: Promote Artifacts
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin --prune --tags >/dev/null 2>&1
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null; then
+              echo "ERROR: release branch ${RELEASE_BRANCH} not found"
+              exit 1
+            fi
 
-        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
-        release_branch=${release_branches[0]}
+            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}"
 
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
+            find . -name "*.xml" -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
 
-        git checkout main
-        git merge -s recursive -X theirs -m "Merge Release Branch" ${release_branch}
-        git tag ${bamboo.maven.version}
-        find . -type f -name *.xml -exec sed -i 's/-SNAPSHOT//g' {} +
-        git commit -a -m "Release Versions"
-        git push --set-upstream origin main
-        git push --set-upstream origin main --tags
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      working-dir: ${bamboo.module_name}
-      description: Merge Release branch
-  artifact-subscriptions: []
-variables:
-  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
-  maven.artifactId: reporting-aggregator
-  maven.groupId: gov.gsa.cnxs.reporting
-  module_name: reporting
-repositories:
-- Reporting:
-    scope: global
-- bamboo-deployment:
-    scope: global
-triggers: []
-branches:
-  create: manually
-  delete: never
-  link-to-jira: true
-notifications: []
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: []
+            if ! git diff --quiet; then
+              git commit -am "Convert RC → SNAPSHOT"
+              git push origin HEAD:"${RELEASE_BRANCH}"
+            fi
+
+    - inject-variables:
+        file: skip.properties
+        scope: LOCAL
+
+    # -------------------------
+    # CERT INSTALL
+    # -------------------------
+    - script:
+        interpreter: SHELL
+        description: Install USDA cert
+        scripts:
+          - |
+            set -euo pipefail
+            curl -ks https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt \
+              -o /etc/pki/ca-trust/source/anchors/usda.pem
+            update-ca-trust
+
+    # -------------------------
+    # ARTIFACT CHECK
+    # -------------------------
+    - script:
+        interpreter: SHELL
+        working-dir: ${bamboo.module_name}
+        description: Validate release artifacts
+        scripts:
+          - |
+            set -euo pipefail
+
+            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version | tail -1)
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+
+            RESULT=$(curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+              -X POST \
+              https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql \
+              -d "items.find({\"repo\":\"conexus-release-local\",\"path\":{\"\$match\":\"*${RELEASE_VERSION}\"}})")
+
+            COUNT=$(echo "$RESULT" | jq '.results | length')
+
+            if [ "$COUNT" -gt 0 ]; then
+              echo "Artifacts already exist → skipping"
+              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+            fi
+
+    - inject-variables:
+        file: skip.properties
+        scope: LOCAL
+
+    # -------------------------
+    # PROMOTE
+    # -------------------------
+    - script:
+        interpreter: SHELL
+        working-dir: ${bamboo.module_name}
+        description: Promote artifacts
+        scripts:
+          - |
+            set -euo pipefail
+
+            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
+              echo "Skipping promotion"
+              exit 0
+            fi
+
+            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version | tail -1)
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+
+            mkdir -p working
+
+            python3 ../release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.reporting \
+              reporting-aggregator \
+              "${RELEASE_VERSION}" \
+              --username sa_bamboo \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
+
+# =========================
+# FINALIZE STAGE
+# =========================
+
+Finalize Job:
+  key: JOB2
+  other:
+    clean-working-dir: true
+
+  tasks:
+    - clean
+
+    - checkout:
+        path: ${bamboo.module_name}
+        force-clean-build: true
+
+    - script:
+        interpreter: SHELL
+        description: Validate SSH key
+        scripts:
+          - |
+            test -s /opt/bamboo-keys/bitbucket_ci || exit 1
+
+    - script:
+        interpreter: SHELL
+        working-dir: ${bamboo.module_name}
+        description: Finalize release
+        scripts:
+          - |
+            set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes'
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -1)
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            TAG="${RELEASE_VERSION}"
+            INTEGRATION="${bamboo.integration.branch}"
+
+            git fetch origin --prune --tags
+
+            git checkout -B "${INTEGRATION}" "origin/${INTEGRATION}"
+            git merge -X theirs "${RELEASE_BRANCH}"
+
+            find . -name "*.xml" -exec sed -i 's/-SNAPSHOT//g' {} +
+
+            if ! git diff --quiet; then
+              git commit -am "Release Versions"
+            fi
+
+            if ! git rev-parse "${TAG}" >/dev/null 2>&1; then
+              git tag "${TAG}"
+            fi
+
+            git push origin "${INTEGRATION}"
+            git push origin "${TAG}"
+
+    # -------------------------
+    # CLEANUP (SAFE)
+    # -------------------------
+    - script:
+        interpreter: SHELL
+        working-dir: ${bamboo.module_name}
+        description: Cleanup release branch
+        scripts:
+          - |
+            set -euo pipefail
+
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci'
+
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -1)
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+
+            if git ls-remote --heads origin "${RELEASE_BRANCH}" | grep -q "${RELEASE_BRANCH}"; then
+              git push origin --delete "${RELEASE_BRANCH}" || echo "Cleanup failed but OK"
+            fi
