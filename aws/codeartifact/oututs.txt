@@ -1,86 +1,4 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ ART_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
-REPO="conexus-plugin-repository"
-BASE_PATH="gov/gsa/cnxs/db/pg-datafile/02.00.000.45"
-
-POM_URL="${ART_URL}/${REPO}/${BASE_PATH}/pg-datafile-02.00.000.45.pom"
-TAR_URL="${ART_URL}/${REPO}/${BASE_PATH}/pg-datafile-02.00.000.45-postgres-data.tar.gz"
-
-echo "Checking POM..."
-curl -sS -o /dev/null -w "HTTP %{http_code} -> %{url_effective}\n" \
-  -u "sa_bamboo:${TOKEN}" \
-  "$POM_URL"
-
-echo "Checking TAR..."
-curl -sS -o /dev/null -w "HTTP %{http_code} -> %{url_effective}\n" \
-  -u "sa_bamboo:${TOKEN}" \
-  "$TAR_URL"
-Checking POM...
-HTTP 403 -> https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/db/pg-datafile/02.00.000.45/pg-datafile-02.00.000.45.pom
-Checking TAR...
-HTTP 200 -> https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/db/pg-datafile/02.00.000.45/pg-datafile-02.00.000.45-postgres-data.tar.gz
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
-curl -sS \
-  -u "sa_bamboo:${TOKEN}" \
-  "${ART_URL}/api/search/gavc?g=gov.gsa.cnxs.db&a=pg-datafile&v=02.00.000.45&repos=${REPO}"
-
-{
-  "results" : [ ]
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cat > /tmp/pg-datafile.aql <<'EOF''
-items.find(
-  {
-    "$or": [
-      {
-        "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45",
-        "name": "pg-datafile-02.00.000.45.pom"
-      },
-      {
-        "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45",
-        "name": "pg-datafile-02.00.000.45-postgres-data.tar.gz"
-      }
-    ]
-  }
-).include("repo","path","name","size","modified","created")
-EOF
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cat > /tmp/pg-datafile.aql <<'EOF'
-items.find(
-  {
-    "$or": [
-      {
-        "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45",
-        "name": "pg-datafile-02.00.000.45.pom"
-      },
-      {
-        "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45",
-        "name": "pg-datafile-02.00.000.45-postgres-data.tar.gz"
-      }
-    ]
-  }
-).include("repo","path","name","size","modified","created")
-EOF
-
-curl -sS \
-  -u "sa_bamboo:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST "${ART_URL}/api/search/aql" \
-  --data-binary @/tmp/pg-datafile.aql
-
-{
-"results" : [ {
-  "repo" : "conexus-release-local",
-  "path" : "gov/gsa/cnxs/db/pg-datafile/02.00.000.45",
-  "name" : "pg-datafile-02.00.000.45-postgres-data.tar.gz",
-  "size" : 19715477,
-  "created" : "2026-03-11T20:53:31.910Z",
-  "modified" : "2026-03-11T20:53:20.621Z"
-} ],
-"range" : {
-  "start_pos" : 0,
-  "end_pos" : 1,
-  "total" : 1
-}
-}
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
-cat > /tmp/pg-datafile-folder.aql <<'EOF'
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ cat > /tmp/pg-datafile-admin.aql <<'EOF'
 items.find(
   {
     "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45"
@@ -89,10 +7,10 @@ items.find(
 EOF
 
 curl -sS \
-  -u "sa_bamboo:${TOKEN}" \
+  -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
   -H "Content-Type: text/plain" \
   -X POST "${ART_URL}/api/search/aql" \
-  --data-binary @/tmp/pg-datafile-folder.aql
+  --data-binary @/tmp/pg-datafile-admin.aql
 
 {
 "results" : [ {
