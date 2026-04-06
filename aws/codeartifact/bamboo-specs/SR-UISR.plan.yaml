@@ -23,7 +23,6 @@ stages:
       jobs:
         - Delete release branch if failed
 
-
 Gitflow release start:
   key: JOB1
   other:
@@ -50,20 +49,20 @@ Gitflow release start:
         scripts:
           - |
             set -eu
-            SETTINGS_FILE=/tmp/settings-${bamboo.buildResultKey}.xml
+            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
 
-            cat > "$SETTINGS_FILE" <<XML
+            cat > "${SETTINGS_FILE}" <<XML
             <settings>
               <mirrors>
                 <mirror>
-                  <id>artifactory</id>
+                  <id>central</id>
                   <mirrorOf>*</mirrorOf>
                   <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
                 </mirror>
               </mirrors>
               <servers>
                 <server>
-                  <id>artifactory</id>
+                  <id>central</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
@@ -73,58 +72,49 @@ Gitflow release start:
 
     - script:
         interpreter: SHELL
-        description: Determine version + branch
+        description: Determine release metadata
         scripts:
           - |
             set -eu
             SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
 
-            VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "$SETTINGS_FILE" help:evaluate -Dexpression=project.version | grep -v '\[' | tail -1)
+            VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version | grep -v '^\[' | tail -1)
             RELEASE_BRANCH="release/${VERSION%-SNAPSHOT}"
 
-            echo "Version: $VERSION"
-            echo "Branch: $RELEASE_BRANCH"
+            echo "VERSION=${VERSION}" > .release-context
+            echo "RELEASE_BRANCH=${RELEASE_BRANCH}" >> .release-context
+
+            echo "Version: ${VERSION}"
+            echo "Release branch: ${RELEASE_BRANCH}"
 
     - script:
         interpreter: SHELL
-        description: Cleanup old tags
+        description: Validate release state
         scripts:
           - |
             set -eu
+            . ./.release-context
+
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes'
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
-            VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | grep -v '\[' | tail -1)
-            CLEAN=${VERSION%-SNAPSHOT}
+            git ls-remote --exit-code --heads "${bamboo.planRepository.repositoryUrl}" refs/heads/develop >/dev/null
 
-            git fetch --tags
+            REMOTE_RELEASES=$(git ls-remote --heads "${bamboo.planRepository.repositoryUrl}" 'refs/heads/release/*' || true)
 
-            if git tag -l "$CLEAN" | grep -q .; then
-              git tag -d "$CLEAN" || true
-              git push origin ":refs/tags/$CLEAN"
+            if [ -n "${REMOTE_RELEASES}" ]; then
+              echo "Remote release branches found:"
+              echo "${REMOTE_RELEASES}" | awk '{print $2}'
+
+              OTHER_RELEASES=$(echo "${REMOTE_RELEASES}" | awk '{print $2}' | grep -v "^refs/heads/${RELEASE_BRANCH}$" || true)
+              if [ -n "${OTHER_RELEASES}" ]; then
+                echo "Another release branch already exists. Finish or remove it before starting ${RELEASE_BRANCH}."
+                exit 1
+              fi
             fi
 
-    - script:
-        interpreter: SHELL
-        description: Clean old release branches
-        scripts:
-          - |
-            set -eu
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes'
-
-            git fetch origin --prune
-
-            for b in $(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin/release || true); do
-              git push origin --delete "$b" || true
-            done
-
-    - script:
-        interpreter: SHELL
-        description: Sync develop
-        scripts:
-          - |
-            set -eu
-            git fetch origin
-            git checkout develop
+            git fetch origin +refs/heads/*:refs/remotes/origin/* --tags
+            git checkout -B develop origin/develop
             git reset --hard origin/develop
 
     - script:
@@ -143,37 +133,51 @@ Gitflow release start:
         scripts:
           - |
             set -eu
-            /usr/share/maven/bin/mvn -U -B \
-              -s "/tmp/settings-${bamboo.buildResultKey}.xml" \
-              external.atlassian.jgitflow:jgitflow-maven-plugin:release-start \
-              -DpushReleases=true \
-              -DallowSnapshots=true \
-              -DdefaultOriginUrl="${bamboo.planRepository.repositoryUrl}"
+            . ./.release-context
+
+            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+
+            if git ls-remote --exit-code --heads "${bamboo.planRepository.repositoryUrl}" "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
+              echo "${RELEASE_BRANCH} already exists; skipping jgitflow release-start"
+            else
+              /usr/share/maven/bin/mvn -U -B \
+                -s "${SETTINGS_FILE}" \
+                external.atlassian.jgitflow:jgitflow-maven-plugin:release-start \
+                -DpushReleases=true \
+                -DallowSnapshots=true \
+                -DdefaultOriginUrl="${bamboo.planRepository.repositoryUrl}"
+            fi
 
     - script:
         interpreter: SHELL
-        description: Convert SNAPSHOT → RC
+        description: Convert SNAPSHOT to RC on release branch
         scripts:
           - |
             set -eu
+            . ./.release-context
+
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes'
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
-            VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | grep -v '\[' | tail -1)
-            BRANCH="release/${VERSION%-SNAPSHOT}"
+            git fetch origin +refs/heads/*:refs/remotes/origin/* --tags
+            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}"
 
-            git fetch origin
-            git checkout -B "$BRANCH" "origin/$BRANCH"
+            if find . -name pom.xml -print | xargs grep -q -- '-SNAPSHOT'; then
+              find . -name pom.xml -exec sed -i 's/-SNAPSHOT/-RC/g' {} +
 
-            find . -name pom.xml -exec sed -i 's/SNAPSHOT/RC/g' {} +
+              git config user.name "bamboo"
+              git config user.email "bamboo@local"
 
-            git config user.name "bamboo"
-            git config user.email "bamboo@local"
+              find . -name pom.xml -print0 | xargs -0 git add
 
-            if ! git diff --quiet; then
-              git commit -am "Update SNAPSHOT to RC"
-              git push origin HEAD:"$BRANCH"
+              if ! git diff --cached --quiet; then
+                git commit -m "Update SNAPSHOT to RC"
+                git push origin HEAD:"${RELEASE_BRANCH}"
+              fi
+            else
+              echo "No SNAPSHOT versions found in pom.xml files"
             fi
-
 
 Deploy RC:
   key: DR
@@ -182,7 +186,61 @@ Deploy RC:
 
   tasks:
     - clean
-    - checkout
+
+    - checkout:
+        force-clean-build: true
+
+    - script:
+        interpreter: SHELL
+        description: Validate SSH keys
+        scripts:
+          - |
+            set -eu
+            test -s /opt/bamboo-keys/bitbucket_ci
+
+    - script:
+        interpreter: SHELL
+        description: Write Maven settings
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
+
+            cat > "${SETTINGS_FILE}" <<XML
+            <settings>
+              <mirrors>
+                <mirror>
+                  <id>central</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <servers>
+                <server>
+                  <id>central</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
+
+    - script:
+        interpreter: SHELL
+        description: Determine release metadata
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
+
+            VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version | grep -v '^\[' | tail -1)
+            RELEASE_BRANCH="release/${VERSION%-SNAPSHOT}"
+
+            echo "VERSION=${VERSION}" > .release-context
+            echo "RELEASE_BRANCH=${RELEASE_BRANCH}" >> .release-context
+
+            echo "Version: ${VERSION}"
+            echo "Release branch: ${RELEASE_BRANCH}"
 
     - script:
         interpreter: SHELL
@@ -190,11 +248,14 @@ Deploy RC:
         scripts:
           - |
             set -eu
-            VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | grep -v '\[' | tail -1)
-            BRANCH="release/${VERSION%-SNAPSHOT}"
+            . ./.release-context
 
-            git fetch origin
-            git checkout -B "$BRANCH" "origin/$BRANCH"
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes'
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+
+            git fetch origin +refs/heads/*:refs/remotes/origin/* --tags
+            git rev-parse --verify "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
+            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}"
 
     - script:
         interpreter: SHELL
@@ -223,7 +284,6 @@ Deploy RC:
           -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local
           -s /tmp/settings-${bamboo.buildResultKey}.xml
 
-
 Update dependencies to latest snapshot versions:
   key: SMD
   other:
@@ -231,7 +291,44 @@ Update dependencies to latest snapshot versions:
 
   tasks:
     - clean
-    - checkout
+
+    - checkout:
+        force-clean-build: true
+
+    - script:
+        interpreter: SHELL
+        description: Validate SSH keys
+        scripts:
+          - |
+            set -eu
+            test -s /opt/bamboo-keys/bitbucket_ci
+
+    - script:
+        interpreter: SHELL
+        description: Write Maven settings
+        scripts:
+          - |
+            set -eu
+            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
+
+            cat > "${SETTINGS_FILE}" <<XML
+            <settings>
+              <mirrors>
+                <mirror>
+                  <id>central</id>
+                  <mirrorOf>*</mirrorOf>
+                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+                </mirror>
+              </mirrors>
+              <servers>
+                <server>
+                  <id>central</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+              </servers>
+            </settings>
+            XML
 
     - script:
         interpreter: SHELL
@@ -239,8 +336,11 @@ Update dependencies to latest snapshot versions:
         scripts:
           - |
             set -eu
-            git fetch origin develop
-            git checkout develop
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes'
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+
+            git fetch origin +refs/heads/*:refs/remotes/origin/* --tags
+            git checkout -B develop origin/develop
             git reset --hard origin/develop
 
     - script:
@@ -250,8 +350,16 @@ Update dependencies to latest snapshot versions:
         scripts:
           - |
             set -eu
+
+            export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
+
+            yum install -y google-chrome-stable || true
+
+            npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/
+
             npm install
             npm test
+
             ng build --configuration production
 
     - maven:
@@ -260,7 +368,7 @@ Update dependencies to latest snapshot versions:
         goal: >-
           -U clean deploy
           -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
-
+          -s /tmp/settings-${bamboo.buildResultKey}.xml
 
 Delete release branch if failed:
   key: DRBIF
@@ -268,7 +376,8 @@ Delete release branch if failed:
     clean-working-dir: true
 
   tasks:
-    - checkout
+    - checkout:
+        force-clean-build: true
 
     - script:
         interpreter: SHELL
@@ -276,14 +385,18 @@ Delete release branch if failed:
         scripts:
           - |
             set -eu
+
             if [ "${bamboo.buildFailed}" = "true" ]; then
-              VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | grep -v '\[' | tail -1)
-              BRANCH="release/${VERSION%-SNAPSHOT}"
+              export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes'
+              git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
-              git fetch origin
-              git push origin --delete "$BRANCH" || true
+              VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout help:evaluate -Dexpression=project.version | grep -v '^\[' | tail -1)
+              RELEASE_BRANCH="release/${VERSION%-SNAPSHOT}"
+
+              if git ls-remote --exit-code --heads "${bamboo.planRepository.repositoryUrl}" "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
+                git push origin --delete "${RELEASE_BRANCH}" || true
+              fi
             fi
-
 
 repositories:
   - UI:
