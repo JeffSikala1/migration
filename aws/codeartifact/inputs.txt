@@ -151,64 +151,7 @@ git push ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git :refs
 git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git "refs/heads/release/01.00.000.110"
 
 
-
-ART_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
-REPO="conexus-plugin-repository"
-BASE_PATH="gov/gsa/cnxs/db/pg-datafile/02.00.000.45"
-
-POM_URL="${ART_URL}/${REPO}/${BASE_PATH}/pg-datafile-02.00.000.45.pom"
-TAR_URL="${ART_URL}/${REPO}/${BASE_PATH}/pg-datafile-02.00.000.45-postgres-data.tar.gz"
-
-echo "Checking POM..."
-curl -sS -o /dev/null -w "HTTP %{http_code} -> %{url_effective}\n" \
-  -u "sa_bamboo:${TOKEN}" \
-  "$POM_URL"
-
-echo "Checking TAR..."
-curl -sS -o /dev/null -w "HTTP %{http_code} -> %{url_effective}\n" \
-  -u "sa_bamboo:${TOKEN}" \
-  "$TAR_URL"
-
-
-
-
-
-curl -sS \
-  -u "sa_bamboo:${TOKEN}" \
-  "${ART_URL}/api/search/gavc?g=gov.gsa.cnxs.db&a=pg-datafile&v=02.00.000.45&repos=${REPO}"
-
-
-
-
-
-
-cat > /tmp/pg-datafile.aql <<'EOF'
-items.find(
-  {
-    "$or": [
-      {
-        "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45",
-        "name": "pg-datafile-02.00.000.45.pom"
-      },
-      {
-        "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45",
-        "name": "pg-datafile-02.00.000.45-postgres-data.tar.gz"
-      }
-    ]
-  }
-).include("repo","path","name","size","modified","created")
-EOF
-
-curl -sS \
-  -u "sa_bamboo:${TOKEN}" \
-  -H "Content-Type: text/plain" \
-  -X POST "${ART_URL}/api/search/aql" \
-  --data-binary @/tmp/pg-datafile.aql
-
-
-
-
-cat > /tmp/pg-datafile-folder.aql <<'EOF'
+cat > /tmp/pg-datafile-admin.aql <<'EOF'
 items.find(
   {
     "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45"
@@ -217,7 +160,7 @@ items.find(
 EOF
 
 curl -sS \
-  -u "sa_bamboo:${TOKEN}" \
+  -u "admin_user:admin_password" \
   -H "Content-Type: text/plain" \
   -X POST "${ART_URL}/api/search/aql" \
-  --data-binary @/tmp/pg-datafile-folder.aql
+  --data-binary @/tmp/pg-datafile-admin.aql
