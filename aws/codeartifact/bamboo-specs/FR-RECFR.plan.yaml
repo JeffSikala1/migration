@@ -310,7 +310,7 @@ Promote Job:
     - script:
         interpreter: SHELL
         description: Promote Reconciliation artifacts from RC repo
-        working-dir: ${bamboo.module_name}
+        working-dir: ${bamboo.build.working.directory}
         scripts:
           - |
             set -euo pipefail
@@ -321,11 +321,11 @@ Promote Job:
             fi
 
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -f "${bamboo.module_name}/pom.xml" -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
             [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RC_DIR="$(pwd)/working/gov/gsa/cnxs/reconciliation/reconciliation-war/${RELEASE_VERSION}-RC"
+            RC_DIR="${bamboo.build.working.directory}/working/gov/gsa/cnxs/reconciliation/reconciliation-war/${RELEASE_VERSION}-RC"
             mkdir -p "${RC_DIR}"
 
             RC_BASE_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local/gov/gsa/cnxs/reconciliation/reconciliation-war/${RELEASE_VERSION}-RC"
@@ -338,15 +338,61 @@ Promote Job:
               -o "${RC_DIR}/reconciliation-war-${RELEASE_VERSION}-RC.war" \
               "${RC_BASE_URL}/reconciliation-war-${RELEASE_VERSION}-RC.war"
 
-            /usr/share/maven/bin/mvn -B deploy:deploy-file \
+            STANDALONE_POM="/tmp/reconciliation-standalone-${bamboo.buildResultKey}.xml"
+            cat > "${STANDALONE_POM}" <<XML
+            <project xmlns="http://maven.apache.org/POM/4.0.0"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+              <modelVersion>4.0.0</modelVersion>
+              <groupId>local.temp</groupId>
+              <artifactId>standalone-promote</artifactId>
+              <version>1.0.0</version>
+            </project>
+            XML
+
+            /usr/share/maven/bin/mvn -B \
+              -f "${STANDALONE_POM}" \
+              deploy:deploy-file \
               -Durl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local \
               -DrepositoryId=central \
               -s "${SETTINGS_FILE}" \
-              -Dmaven.deploy.skip=false \
               -Dfile="${RC_DIR}/reconciliation-war-${RELEASE_VERSION}-RC.war" \
               -DpomFile="${RC_DIR}/reconciliation-war-${RELEASE_VERSION}-RC.pom" \
               -Dpackaging=war \
               -DgeneratePom=false
+
+            AQL=$(cat <<EOF
+            items.find({
+              "repo":{"\$eq":"conexus-release-local"},
+              "path":{"\$eq":"gov/gsa/cnxs/reconciliation/reconciliation-war/${RELEASE_VERSION}"}
+            }).include("name","repo","path")
+            EOF
+            )
+
+            RESULT=$(curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+              -H "Content-Type: text/plain" \
+              -X POST \
+              "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+              --data "${AQL}")
+
+            found_count=$(python3 - <<PY
+            import json
+            data = json.loads('''${RESULT}''')
+            items = {(item["path"], item["name"]) for item in data.get("results", [])}
+            expected = [
+                ("gov/gsa/cnxs/reconciliation/reconciliation-war/${RELEASE_VERSION}", "reconciliation-war-${RELEASE_VERSION}.pom"),
+                ("gov/gsa/cnxs/reconciliation/reconciliation-war/${RELEASE_VERSION}", "reconciliation-war-${RELEASE_VERSION}.war"),
+            ]
+            print(sum(1 for x in expected if x in items))
+            PY
+            )
+
+            [ "${found_count}" -eq 2 ] || {
+              echo "ERROR: promotion did not produce the full release artifact set; found ${found_count} of 2"
+              exit 1
+            }
+
+            echo "INFO: reconciliation release artifacts successfully promoted for ${RELEASE_VERSION}"
 
   artifact-subscriptions: []
 
