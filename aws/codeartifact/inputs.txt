@@ -153,25 +153,5 @@ git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs
 
 
 
-cat > /tmp/pg-datafile-all.aql <<'EOF'
-items.find(
-  {
-    "path": {"$match":"gov/gsa/cnxs/db/pg-datafile/*"}
-  }
-).include("repo","path","name","size","modified","created")
-EOF
-
-curl -sS \
-  -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" \
-  -H "Content-Type: text/plain" \
-  -X POST "${ART_URL}/api/search/aql" \
-  --data-binary @/tmp/pg-datafile-all.aql
-
-
-
-
-
-
-grep -R "conexus-feature-repo" .
-grep -R "mavenFeatureRepositoryUrl" .
-grep -R "pg-datafile" .
+Since this looks more like a raw data file than a full Maven-published module, I think the main question is just how you want to handle it going forward.
+If you still want to keep using Maven semantics for it, then we’d probably need to publish it with at least a minimal generated POM so Maven can resolve it properly. If not, it may make more sense to stop treating it like a normal Maven dependency and just pull it in as a file/artifact during the build or test flow. Let me know which way you want to go and I can help from the pipeline side.
