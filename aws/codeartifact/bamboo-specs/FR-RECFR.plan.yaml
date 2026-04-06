@@ -641,6 +641,9 @@ Finalize Job:
 
             git config user.name "bamboo"
             git config user.email "bamboo@local"
+            git config gc.auto 0
+            git config maintenance.auto false || true
+            git config gc.autoDetach false || true
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
@@ -684,26 +687,26 @@ Finalize Job:
             else
               echo "INFO: merge reported conflicts; resolving remaining conflicts in favor of ${RELEASE_BRANCH}"
 
+              rm -f .git/index.lock
+
               while IFS= read -r f; do
-                code="$(git status --porcelain -- "$f" | awk '{print $1}')"
-                case "$code" in
-                  UD|DD)
-                    git rm -f -- "$f"
-                    ;;
-                  DU|UU|AA|UA)
-                    git checkout --theirs -- "$f" || true
-                    git add -A -- "$f"
-                    ;;
-                  AU)
-                    git rm -f -- "$f" || true
-                    ;;
-                  *)
-                    echo "ERROR: unhandled merge conflict state ${code} for ${f}"
-                    git status --short
-                    exit 1
-                    ;;
-                esac
+                [ -n "${f}" ] || continue
+
+                rm -f .git/index.lock
+
+                if git show ":3:${f}" >/dev/null 2>&1; then
+                  # release branch ("theirs") still has the file/content
+                  git checkout --theirs -- "${f}"
+                  rm -f .git/index.lock
+                  git add -- "${f}"
+                else
+                  # release branch deleted it, so delete it here too
+                  rm -f .git/index.lock
+                  git rm -f -- "${f}" || true
+                fi
               done < <(git diff --name-only --diff-filter=U)
+
+              rm -f .git/index.lock
 
               if git diff --name-only --diff-filter=U | grep -q .; then
                 echo "ERROR: unresolved merge conflicts remain after auto-resolution"
