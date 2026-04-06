@@ -152,4 +152,72 @@ git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs
 
 
 
-Hey team — I ran the UI start release and it’s now getting past the release-creation steps, but it’s failing in the Angular unit tests during the Deploy RC stage. The failure is in secure/src/services/grid/task-order-user-management.grid.service.spec.ts around line 108, where the test is expecting the grid filter field object to include optionLabel: 'label', but the actual object being built does not. Can you take a look and confirm whether the test needs to be updated or whether the grid config regressed?
+ART_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
+REPO="conexus-plugin-repository"
+BASE_PATH="gov/gsa/cnxs/db/pg-datafile/02.00.000.45"
+
+POM_URL="${ART_URL}/${REPO}/${BASE_PATH}/pg-datafile-02.00.000.45.pom"
+TAR_URL="${ART_URL}/${REPO}/${BASE_PATH}/pg-datafile-02.00.000.45-postgres-data.tar.gz"
+
+echo "Checking POM..."
+curl -sS -o /dev/null -w "HTTP %{http_code} -> %{url_effective}\n" \
+  -u "sa_bamboo:${TOKEN}" \
+  "$POM_URL"
+
+echo "Checking TAR..."
+curl -sS -o /dev/null -w "HTTP %{http_code} -> %{url_effective}\n" \
+  -u "sa_bamboo:${TOKEN}" \
+  "$TAR_URL"
+
+
+
+
+
+curl -sS \
+  -u "sa_bamboo:${TOKEN}" \
+  "${ART_URL}/api/search/gavc?g=gov.gsa.cnxs.db&a=pg-datafile&v=02.00.000.45&repos=${REPO}"
+
+
+
+
+
+
+cat > /tmp/pg-datafile.aql <<'EOF'
+items.find(
+  {
+    "$or": [
+      {
+        "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45",
+        "name": "pg-datafile-02.00.000.45.pom"
+      },
+      {
+        "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45",
+        "name": "pg-datafile-02.00.000.45-postgres-data.tar.gz"
+      }
+    ]
+  }
+).include("repo","path","name","size","modified","created")
+EOF
+
+curl -sS \
+  -u "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST "${ART_URL}/api/search/aql" \
+  --data-binary @/tmp/pg-datafile.aql
+
+
+
+
+cat > /tmp/pg-datafile-folder.aql <<'EOF'
+items.find(
+  {
+    "path": "gov/gsa/cnxs/db/pg-datafile/02.00.000.45"
+  }
+).include("repo","path","name","size","modified","created")
+EOF
+
+curl -sS \
+  -u "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST "${ART_URL}/api/search/aql" \
+  --data-binary @/tmp/pg-datafile-folder.aql
