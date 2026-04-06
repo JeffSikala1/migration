@@ -310,7 +310,7 @@ Promote Job:
     - script:
         interpreter: SHELL
         description: Promote Reconciliation artifacts from RC repo
-        working-dir: ${bamboo.module_name}
+        working-dir: ${bamboo.build.working.directory}
         scripts:
           - |
             set -euo pipefail
@@ -321,14 +321,22 @@ Promote Job:
             fi
 
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -f "${bamboo.module_name}/pom.xml" -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
             [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
             RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
 
             mkdir -p working
 
-            python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs.reconciliation reconciliation-war "${RELEASE_VERSION}" --username "sa_bamboo" --password "${bamboo.artifactory_access_token_secret}" --settings-xml "${SETTINGS_FILE}" --override
+            python3 release-scripts/promote.py \
+              conexus-rc-local \
+              gov.gsa.cnxs.reconciliation \
+              reconciliation-war \
+              "${RELEASE_VERSION}" \
+              --username "sa_bamboo" \
+              --password "${bamboo.artifactory_access_token_secret}" \
+              --settings-xml "${SETTINGS_FILE}" \
+              --override
 
   artifact-subscriptions: []
 
@@ -503,6 +511,11 @@ Finalize Job:
 
             echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}, release_artifacts_found=${found_count}"
 
+            if [ "${TAG_EXISTS}" != "true" ] && [ "${BRANCH_EXISTS}" = "true" ] && [ "${found_count}" -ne "${total_expected}" ]; then
+              echo "ERROR: release artifacts are not fully present in conexus-release-local for ${RELEASE_VERSION}; refusing to finalize."
+              exit 1
+            fi
+
             if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
               echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
               {
@@ -604,7 +617,40 @@ Finalize Job:
             git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
             git checkout -B "${INTEGRATION_BRANCH}" "origin/${INTEGRATION_BRANCH}" >/dev/null 2>&1
 
-            git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
+            if git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"; then
+              echo "INFO: merge completed without manual conflict resolution"
+            else
+              echo "INFO: merge reported conflicts; resolving remaining conflicts in favor of ${RELEASE_BRANCH}"
+
+              while IFS= read -r f; do
+                code="$(git status --porcelain -- "$f" | awk '{print $1}')"
+                case "$code" in
+                  UD|DD)
+                    git rm -f -- "$f"
+                    ;;
+                  DU|UU|AA|UA)
+                    git checkout --theirs -- "$f" || true
+                    git add -A -- "$f"
+                    ;;
+                  AU)
+                    git rm -f -- "$f" || true
+                    ;;
+                  *)
+                    echo "ERROR: unhandled merge conflict state ${code} for ${f}"
+                    git status --short
+                    exit 1
+                    ;;
+                esac
+              done < <(git diff --name-only --diff-filter=U)
+
+              if git diff --name-only --diff-filter=U | grep -q .; then
+                echo "ERROR: unresolved merge conflicts remain after auto-resolution"
+                git status --short
+                exit 1
+              fi
+
+              git commit --no-edit
+            fi
 
             find . -type f -name "*.xml" -exec sed -i 's/-SNAPSHOT//g' {} +
 
