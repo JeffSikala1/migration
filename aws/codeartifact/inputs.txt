@@ -151,6 +151,52 @@ git push ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git :refs
 git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git "refs/heads/release/01.00.000.110"
 
 
+<properties>
+  <pg.datafile.version>02.00.000.45</pg.datafile.version>
+  <pg.datafile.dir>${project.build.directory}/pg-datafile</pg.datafile.dir>
+  <pg.datafile.file>${pg.datafile.dir}/pg-datafile-postgres-data.tar.gz</pg.datafile.file>
+</properties>
 
-Got it — that makes sense. So basically, instead of keeping pg-datafile as a normal dependency, the idea would be to have the build pull the tar.gz as a file during the appropriate phase and use it from there.
-That lines up with what I found in Artifactory since the file is there but it is not published like a full Maven module. From my side that sounds like the cleaner path forward, so once you decide how you want to wire that into the POM, I can help make sure the pipeline supports it.
+<build>
+  <plugins>
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-dependency-plugin</artifactId>
+      <version>3.10.0</version>
+      <executions>
+        <execution>
+          <id>copy-pg-datafile</id>
+          <phase>generate-test-resources</phase>
+          <goals>
+            <goal>copy</goal>
+          </goals>
+          <configuration>
+            <artifactItems>
+              <artifactItem>
+                <groupId>gov.gsa.cnxs.db</groupId>
+                <artifactId>pg-datafile</artifactId>
+                <version>${pg.datafile.version}</version>
+                <type>tar.gz</type>
+                <classifier>postgres-data</classifier>
+                <outputDirectory>${pg.datafile.dir}</outputDirectory>
+                <destFileName>pg-datafile-postgres-data.tar.gz</destFileName>
+                <overWrite>false</overWrite>
+              </artifactItem>
+            </artifactItems>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-failsafe-plugin</artifactId>
+      <version>3.5.5</version>
+      <configuration>
+        <systemPropertyVariables>
+          <pg.datafile.file>${pg.datafile.file}</pg.datafile.file>
+        </systemPropertyVariables>
+      </configuration>
+    </plugin>
+  </plugins>
+</build>
