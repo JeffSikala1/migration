@@ -310,7 +310,7 @@ Promote Job:
     - script:
         interpreter: SHELL
         description: Promote Reconciliation artifacts from RC repo
-        working-dir: ${bamboo.build.working.directory}
+        working-dir: .
         scripts:
           - |
             set -euo pipefail
@@ -338,6 +338,12 @@ Promote Job:
               -o "${RC_DIR}/reconciliation-war-${RELEASE_VERSION}-RC.war" \
               "${RC_BASE_URL}/reconciliation-war-${RELEASE_VERSION}-RC.war"
 
+            CLEAN_POM="${RC_DIR}/reconciliation-war-${RELEASE_VERSION}.pom"
+            CLEAN_WAR="${RC_DIR}/reconciliation-war-${RELEASE_VERSION}.war"
+
+            sed 's/-RC//g' "${RC_DIR}/reconciliation-war-${RELEASE_VERSION}-RC.pom" > "${CLEAN_POM}"
+            cp "${RC_DIR}/reconciliation-war-${RELEASE_VERSION}-RC.war" "${CLEAN_WAR}"
+
             STANDALONE_POM="/tmp/reconciliation-standalone-${bamboo.buildResultKey}.xml"
             cat > "${STANDALONE_POM}" <<XML
             <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -356,8 +362,8 @@ Promote Job:
               -Durl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local \
               -DrepositoryId=central \
               -s "${SETTINGS_FILE}" \
-              -Dfile="${RC_DIR}/reconciliation-war-${RELEASE_VERSION}-RC.war" \
-              -DpomFile="${RC_DIR}/reconciliation-war-${RELEASE_VERSION}-RC.pom" \
+              -Dfile="${CLEAN_WAR}" \
+              -DpomFile="${CLEAN_POM}" \
               -Dpackaging=war \
               -DgeneratePom=false
 
