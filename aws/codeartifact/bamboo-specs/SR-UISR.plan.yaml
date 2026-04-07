@@ -300,12 +300,32 @@ Deploy RC:
 
             yum install -y google-chrome-stable || true
 
-            npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/
+            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
 
-            npm install
-            npm test
+            echo "Checking for npm config sources..."
+            npm config get registry || true
+            [ -f ~/.npmrc ] && { echo "=== ~/.npmrc ==="; cat ~/.npmrc; } || true
+            [ -f .npmrc ] && { echo "=== local .npmrc ==="; cat .npmrc; } || true
 
-            ng build --configuration production --output-hashing=all --optimization
+            echo "Removing old npm registry overrides..."
+            npm config delete registry || true
+            rm -f ~/.npmrc
+
+            echo "Writing clean ~/.npmrc for current Artifactory..."
+            cat > ~/.npmrc <<EOF
+            registry=${NEW_NPM_REGISTRY}
+            always-auth=false
+            strict-ssl=true
+            EOF
+
+            npm cache clean --force || true
+
+            echo "Using registry: $(npm config get registry)"
+
+            npm install --registry="${NEW_NPM_REGISTRY}"
+            npm test --registry="${NEW_NPM_REGISTRY}"
+
+            ./node_modules/.bin/ng build --configuration production --output-hashing=all --optimization
 
     - maven:
         executable: Maven 3
@@ -415,12 +435,32 @@ Update dependencies to latest snapshot versions:
 
             yum install -y google-chrome-stable || true
 
-            npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/
+            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
 
-            npm install
-            npm test
+            echo "Checking for npm config sources..."
+            npm config get registry || true
+            [ -f ~/.npmrc ] && { echo "=== ~/.npmrc ==="; cat ~/.npmrc; } || true
+            [ -f .npmrc ] && { echo "=== local .npmrc ==="; cat .npmrc; } || true
 
-            ng build --configuration production
+            echo "Removing old npm registry overrides..."
+            npm config delete registry || true
+            rm -f ~/.npmrc
+
+            echo "Writing clean ~/.npmrc for current Artifactory..."
+            cat > ~/.npmrc <<EOF
+            registry=${NEW_NPM_REGISTRY}
+            always-auth=false
+            strict-ssl=true
+            EOF
+
+            npm cache clean --force || true
+
+            echo "Using registry: $(npm config get registry)"
+
+            npm install --registry="${NEW_NPM_REGISTRY}"
+            npm test --registry="${NEW_NPM_REGISTRY}"
+
+            ./node_modules/.bin/ng build --configuration production --output-hashing=all --optimization
 
     - maven:
         executable: Maven 3
