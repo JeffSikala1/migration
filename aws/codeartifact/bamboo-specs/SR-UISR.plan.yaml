@@ -160,24 +160,24 @@ Gitflow release start:
 
     - script:
         interpreter: SHELL
-        description: Start Gitflow release
+        description: Create release branch from develop
         scripts:
           - |
             set -eu
             . ./.release-context
 
-            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
-            if git ls-remote --exit-code --heads "${bamboo.planRepository.repositoryUrl}" "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
-              echo "${RELEASE_BRANCH} already exists; skipping jgitflow release-start"
+            git fetch origin +refs/heads/*:refs/remotes/origin/* --prune --tags
+            git checkout -B develop origin/develop
+            git reset --hard origin/develop
+
+            if git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
+              echo "${RELEASE_BRANCH} already exists; allowing rerun"
             else
-              /usr/share/maven/bin/mvn -U -B \
-                -s "${SETTINGS_FILE}" \
-                external.atlassian.jgitflow:jgitflow-maven-plugin:release-start \
-                -DpushReleases=true \
-                -DallowSnapshots=true \
-                -DdefaultOriginUrl="${bamboo.planRepository.repositoryUrl}"
+              git checkout -b "${RELEASE_BRANCH}"
+              git push origin "${RELEASE_BRANCH}"
             fi
 
     - script:
