@@ -1,50 +1,126 @@
+[sikaj01@ip-10-56-112-33 ~]$ free
+               total        used        free      shared  buff/cache   available
+Mem:         7913056     5565744      674496       29000     1672816     2009848
+Swap:              0           0           0
+[sikaj01@ip-10-56-112-33 ~]$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           7.5Gi       5.3Gi       652Mi        28Mi       1.6Gi       1.9Gi
+Swap:             0B          0B          0B
+[sikaj01@ip-10-56-112-33 ~]$ lvs
+bash: lvs: command not found
 [sikaj01@ip-10-56-112-33 ~]$ df -h
 Filesystem                                          Size  Used Avail Use% Mounted on
 devtmpfs                                            4.0M     0  4.0M   0% /dev
 tmpfs                                               3.8G     0  3.8G   0% /dev/shm
-tmpfs                                               1.6G  8.8M  1.6G   1% /run
-/dev/nvme0n1p1                                       30G   29G  1.4G  96% /
-tmpfs                                               3.8G  184K  3.8G   1% /tmp
+tmpfs                                               1.6G  8.9M  1.6G   1% /run
+/dev/nvme0n1p1                                       30G   29G  1.3G  96% /
+tmpfs                                               3.8G  152K  3.8G   1% /tmp
 /dev/nvme0n1p128                                     10M  1.3M  8.7M  13% /boot/efi
 fs-0f6ba8dbc07103a4a.efs.us-east-1.amazonaws.com:/  8.0E   70G  8.0E   1% /efs/devopsdata
 tmpfs                                               773M  4.0K  773M   1% /run/user/1021
 tmpfs                                               773M  4.0K  773M   1% /run/user/1012
 tmpfs                                               773M  4.0K  773M   1% /run/user/1036
-[sikaj01@ip-10-56-112-33 ~]$ docker ps
-CONTAINER ID   IMAGE                                       COMMAND                  CREATED      STATUS      PORTS                                                                                NAMES
-ba459073759a   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/…"   3 days ago   Up 3 days   5445/tcp, 8443/tcp, 9797/tcp, 9990/tcp, 9993/tcp, 9999/tcp, 0.0.0.0:8080->8080/tcp   jboss-test
-[sikaj01@ip-10-56-112-33 ~]$ docker container ls -a
-CONTAINER ID   IMAGE                                       COMMAND                  CREATED       STATUS      PORTS                                                                                NAMES
-dd88044a89ba   postgres-cnx-it-035212-658                  "docker-entrypoint.s…"   7 hours ago   Created                                                                                          postgres-cnx-it-035212-658
-ba459073759a   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/…"   3 days ago    Up 3 days   5445/tcp, 8443/tcp, 9797/tcp, 9990/tcp, 9993/tcp, 9999/tcp, 0.0.0.0:8080->8080/tcp   jboss-test
-[sikaj01@ip-10-56-112-33 ~]$ docker inspect postgres-cnx-it-035212-658 
+[sikaj01@ip-10-56-112-33 ~]$ lsblk
+NAME          MAJ:MIN RM SIZE RO TYPE MOUNTPOINTS
+nvme0n1       259:0    0  30G  0 disk 
+├─nvme0n1p1   259:1    0  30G  0 part /
+├─nvme0n1p127 259:2    0   1M  0 part 
+└─nvme0n1p128 259:3    0  10M  0 part /boot/efi
+[sikaj01@ip-10-56-112-33 ~]$ fsdisk -l
+bash: fsdisk: command not found
+[sikaj01@ip-10-56-112-33 ~]$ fsdisk 
+bash: fsdisk: command not found
+[sikaj01@ip-10-56-112-33 ~]$ fdisk -l 
+fdisk: cannot open /dev/nvme0n1: Permission denied
+[sikaj01@ip-10-56-112-33 ~]$ sudo !!
+sudo fdisk -l 
+Disk /dev/nvme0n1: 30 GiB, 32212254720 bytes, 62914560 sectors
+Disk model: Amazon Elastic Block Store              
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 4096 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+Disklabel type: gpt
+Disk identifier: 5EF52E38-5FCB-4896-BA7E-94D8656CD21F
+
+Device           Start      End  Sectors Size Type
+/dev/nvme0n1p1   24576 62914526 62889951  30G Linux filesystem
+/dev/nvme0n1p127 22528    24575     2048   1M BIOS boot
+/dev/nvme0n1p128  2048    22527    20480  10M EFI System
+
+Partition table entries are not in disk order
+
+
+
+
+
+[sikaj01@ip-10-56-112-33 ~]$ docker ps -a | grep postgres-cnx-it-111858-033
+48d92a2cd1ef   postgres-cnx-it-111858-033                  "docker-entrypoint.s…"   27 minutes ago   Up 27 minutes (healthy)   5432/tcp                                                                             postgres-cnx-it-111858-033
+
+
+[sikaj01@ip-10-56-112-33 ~]$ docker inspect postgres-cnx-it-111858-033
 [
     {
-        "Id": "dd88044a89baf8c375248d77a76c64f983d1f6e50e4acd0aa83580d2dbdcf4a6",
-        "Created": "2026-04-07T03:56:34.025810028Z",
+        "Id": "48d92a2cd1efd42c8af635a3022b7cd2e3f260a0e25fad50b741c40aa58dc588",
+        "Created": "2026-04-07T11:23:48.180079589Z",
         "Path": "docker-entrypoint.sh",
         "Args": [
             "postgres"
         ],
         "State": {
-            "Status": "created",
-            "Running": false,
+            "Status": "running",
+            "Running": true,
             "Paused": false,
             "Restarting": false,
             "OOMKilled": false,
             "Dead": false,
-            "Pid": 0,
-            "ExitCode": 128,
-            "Error": "network isolated_nw not found",
-            "StartedAt": "0001-01-01T00:00:00Z",
-            "FinishedAt": "0001-01-01T00:00:00Z"
+            "Pid": 2045872,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-04-07T11:23:49.044168795Z",
+            "FinishedAt": "0001-01-01T00:00:00Z",
+            "Health": {
+                "Status": "healthy",
+                "FailingStreak": 0,
+                "Log": [
+                    {
+                        "Start": "2026-04-07T11:46:52.188689611Z",
+                        "End": "2026-04-07T11:46:52.307827386Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-04-07T11:47:52.308938376Z",
+                        "End": "2026-04-07T11:47:52.445894051Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-04-07T11:48:52.446389846Z",
+                        "End": "2026-04-07T11:48:52.576379385Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-04-07T11:49:52.577052897Z",
+                        "End": "2026-04-07T11:49:52.706727222Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-04-07T11:50:52.707211702Z",
+                        "End": "2026-04-07T11:50:52.836415935Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    }
+                ]
+            }
         },
         "Image": "sha256:8db7c9a0a25b7f78c6d460f5a6f61682a839c4242748c2d4db5df6fd5da43630",
-        "ResolvConfPath": "",
-        "HostnamePath": "",
-        "HostsPath": "",
-        "LogPath": "",
-        "Name": "/postgres-cnx-it-035212-658",
+        "ResolvConfPath": "/var/lib/docker/containers/48d92a2cd1efd42c8af635a3022b7cd2e3f260a0e25fad50b741c40aa58dc588/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/48d92a2cd1efd42c8af635a3022b7cd2e3f260a0e25fad50b741c40aa58dc588/hostname",
+        "HostsPath": "/var/lib/docker/containers/48d92a2cd1efd42c8af635a3022b7cd2e3f260a0e25fad50b741c40aa58dc588/hosts",
+        "LogPath": "/var/lib/docker/containers/48d92a2cd1efd42c8af635a3022b7cd2e3f260a0e25fad50b741c40aa58dc588/48d92a2cd1efd42c8af635a3022b7cd2e3f260a0e25fad50b741c40aa58dc588-json.log",
+        "Name": "/postgres-cnx-it-111858-033",
         "RestartCount": 0,
         "Driver": "overlay2",
         "Platform": "linux",
@@ -154,10 +230,10 @@ ba459073759a   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/�
         },
         "GraphDriver": {
             "Data": {
-                "LowerDir": "/var/lib/docker/overlay2/ee1a53a2148813316148a35ea5fcc07d45124bf215a87ffbd882992c373c4faf-init/diff:/var/lib/docker/overlay2/fefd33877d81582223a90de17069a91054cf6796a027138e075c0c5c58d70f97/diff:/var/lib/docker/overlay2/279ae700c9940aa92f70a181dc66c5e2e6bbf1bcaa6b5aabfc1930375a0283fb/diff:/var/lib/docker/overlay2/99811d4c0a1e3db79a80944ae1aab645ca144a15b574e8ac3bdde38d5ad046ed/diff:/var/lib/docker/overlay2/9035a67f84b672e7eb484954309567d76c401aed4000c2e2ca37cff765629643/diff:/var/lib/docker/overlay2/bcc69f188dc1f933f78e7cb4ceb30d2967b4f4e8d070bcc1ae44f2f957610f28/diff:/var/lib/docker/overlay2/ae5393969af2af44fd3f1072003038ab8f52abcc8e8b332a2568e55238c7c8ed/diff:/var/lib/docker/overlay2/a764987b75effa8711565c674b8fcfc6773bfa8ff959aa7a5a71ef25f63cf12f/diff:/var/lib/docker/overlay2/6a9fd289e2ede14be8b544e816a14c7a8a118db030c29b032c8a6e8264fb0f0c/diff:/var/lib/docker/overlay2/05a58eb5d5d96903d0d4f850f48bab9c76ec82a785a71177ced477ab05e00fa6/diff:/var/lib/docker/overlay2/764f5f6ab6b2996f0078b8cff45c46133dcf008b55b879ca866f97bb34486e7e/diff:/var/lib/docker/overlay2/2c26b6439342cd33ae3bd493ef3fa34762bafa369f7123f5b48ce62f8e15bb3c/diff:/var/lib/docker/overlay2/6e0bcc20345caa37b85da14cdd2f0213e583376b6f0bbdb3858d069df10ae215/diff:/var/lib/docker/overlay2/efe53abb42e638fe1634796d9984729ee4166253a600417d35ec8e7e8698d9e2/diff:/var/lib/docker/overlay2/6f09af6cf01bc2f36af40a94744f6ecc06523f70b0aa958f202219d80637ec03/diff:/var/lib/docker/overlay2/e52b3d604abb775fb4f47b2ca4ea0691723ffa844bd08632afebf96d7701fc5e/diff:/var/lib/docker/overlay2/a7284a1870e6486d401dc9dfc88398894da5e740d358ec7dacc8ce0ec7a7178b/diff:/var/lib/docker/overlay2/09bc6c33a3ce6d38e46f12432281c70af9f648dc42b830cd8a84ebc842d4b8d6/diff:/var/lib/docker/overlay2/57439abcf80cdc87ad663d8cccbd6b5165be8c320a5c589ec8a45e444c7d5014/diff:/var/lib/docker/overlay2/639aec51ed824bcf5b1181687f5605d55e3f59d99d69735b4d89b300f3e1289b/diff:/var/lib/docker/overlay2/3006f980f89f3c832fa30fc6bc96219a6d5373ad8e6c6e8cd75e0180a3ee0fbf/diff:/var/lib/docker/overlay2/57552eb1294a927dc8aad772d123949db9ca4ebe8bc82665f675cd4741bd71c2/diff:/var/lib/docker/overlay2/a0ce8eb784c4dd272e5847d19acec055600961904d50a23fc572bdbec54935a7/diff",
-                "MergedDir": "/var/lib/docker/overlay2/ee1a53a2148813316148a35ea5fcc07d45124bf215a87ffbd882992c373c4faf/merged",
-                "UpperDir": "/var/lib/docker/overlay2/ee1a53a2148813316148a35ea5fcc07d45124bf215a87ffbd882992c373c4faf/diff",
-                "WorkDir": "/var/lib/docker/overlay2/ee1a53a2148813316148a35ea5fcc07d45124bf215a87ffbd882992c373c4faf/work"
+                "LowerDir": "/var/lib/docker/overlay2/d7e7a8f7e4ce1b4965b8f908ef9298e1762daebc7270769fff84db78b1478369-init/diff:/var/lib/docker/overlay2/fefd33877d81582223a90de17069a91054cf6796a027138e075c0c5c58d70f97/diff:/var/lib/docker/overlay2/279ae700c9940aa92f70a181dc66c5e2e6bbf1bcaa6b5aabfc1930375a0283fb/diff:/var/lib/docker/overlay2/99811d4c0a1e3db79a80944ae1aab645ca144a15b574e8ac3bdde38d5ad046ed/diff:/var/lib/docker/overlay2/9035a67f84b672e7eb484954309567d76c401aed4000c2e2ca37cff765629643/diff:/var/lib/docker/overlay2/bcc69f188dc1f933f78e7cb4ceb30d2967b4f4e8d070bcc1ae44f2f957610f28/diff:/var/lib/docker/overlay2/ae5393969af2af44fd3f1072003038ab8f52abcc8e8b332a2568e55238c7c8ed/diff:/var/lib/docker/overlay2/a764987b75effa8711565c674b8fcfc6773bfa8ff959aa7a5a71ef25f63cf12f/diff:/var/lib/docker/overlay2/6a9fd289e2ede14be8b544e816a14c7a8a118db030c29b032c8a6e8264fb0f0c/diff:/var/lib/docker/overlay2/05a58eb5d5d96903d0d4f850f48bab9c76ec82a785a71177ced477ab05e00fa6/diff:/var/lib/docker/overlay2/764f5f6ab6b2996f0078b8cff45c46133dcf008b55b879ca866f97bb34486e7e/diff:/var/lib/docker/overlay2/2c26b6439342cd33ae3bd493ef3fa34762bafa369f7123f5b48ce62f8e15bb3c/diff:/var/lib/docker/overlay2/6e0bcc20345caa37b85da14cdd2f0213e583376b6f0bbdb3858d069df10ae215/diff:/var/lib/docker/overlay2/efe53abb42e638fe1634796d9984729ee4166253a600417d35ec8e7e8698d9e2/diff:/var/lib/docker/overlay2/6f09af6cf01bc2f36af40a94744f6ecc06523f70b0aa958f202219d80637ec03/diff:/var/lib/docker/overlay2/e52b3d604abb775fb4f47b2ca4ea0691723ffa844bd08632afebf96d7701fc5e/diff:/var/lib/docker/overlay2/a7284a1870e6486d401dc9dfc88398894da5e740d358ec7dacc8ce0ec7a7178b/diff:/var/lib/docker/overlay2/09bc6c33a3ce6d38e46f12432281c70af9f648dc42b830cd8a84ebc842d4b8d6/diff:/var/lib/docker/overlay2/57439abcf80cdc87ad663d8cccbd6b5165be8c320a5c589ec8a45e444c7d5014/diff:/var/lib/docker/overlay2/639aec51ed824bcf5b1181687f5605d55e3f59d99d69735b4d89b300f3e1289b/diff:/var/lib/docker/overlay2/3006f980f89f3c832fa30fc6bc96219a6d5373ad8e6c6e8cd75e0180a3ee0fbf/diff:/var/lib/docker/overlay2/57552eb1294a927dc8aad772d123949db9ca4ebe8bc82665f675cd4741bd71c2/diff:/var/lib/docker/overlay2/a0ce8eb784c4dd272e5847d19acec055600961904d50a23fc572bdbec54935a7/diff",
+                "MergedDir": "/var/lib/docker/overlay2/d7e7a8f7e4ce1b4965b8f908ef9298e1762daebc7270769fff84db78b1478369/merged",
+                "UpperDir": "/var/lib/docker/overlay2/d7e7a8f7e4ce1b4965b8f908ef9298e1762daebc7270769fff84db78b1478369/diff",
+                "WorkDir": "/var/lib/docker/overlay2/d7e7a8f7e4ce1b4965b8f908ef9298e1762daebc7270769fff84db78b1478369/work"
             },
             "Name": "overlay2"
         },
@@ -172,8 +248,8 @@ ba459073759a   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/�
             },
             {
                 "Type": "volume",
-                "Name": "64936ed7c68f51608549b1218f17e8134928bc3f87f0a0f4803b316a3aea3aeb",
-                "Source": "/var/lib/docker/volumes/64936ed7c68f51608549b1218f17e8134928bc3f87f0a0f4803b316a3aea3aeb/_data",
+                "Name": "1238008678c2c1f1d164302f2f92e072e217f46803598753620f705ac69678ff",
+                "Source": "/var/lib/docker/volumes/1238008678c2c1f1d164302f2f92e072e217f46803598753620f705ac69678ff/_data",
                 "Destination": "/var/lib/postgresql/data",
                 "Driver": "local",
                 "Mode": "",
@@ -182,7 +258,7 @@ ba459073759a   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/�
             }
         ],
         "Config": {
-            "Hostname": "dd88044a89ba",
+            "Hostname": "48d92a2cd1ef",
             "Domainname": "",
             "User": "postgres",
             "AttachStdin": false,
@@ -219,7 +295,7 @@ ba459073759a   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/�
                 "Timeout": 30000000000,
                 "StartPeriod": 300000000000
             },
-            "Image": "postgres-cnx-it-035212-658",
+            "Image": "postgres-cnx-it-111858-033",
             "Volumes": {
                 "/tmp/cnxs-data/": {},
                 "/var/lib/postgresql/data": {}
@@ -236,9 +312,11 @@ ba459073759a   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/�
         },
         "NetworkSettings": {
             "Bridge": "",
-            "SandboxID": "",
-            "SandboxKey": "",
-            "Ports": {},
+            "SandboxID": "3616613240faef17eaedc88f30c416996a08af575d30a7b1a08a3d0d1953c9d7",
+            "SandboxKey": "/var/run/docker/netns/3616613240fa",
+            "Ports": {
+                "5432/tcp": null
+            },
             "HairpinMode": false,
             "LinkLocalIPv6Address": "",
             "LinkLocalIPv6PrefixLen": 0,
@@ -257,80 +335,242 @@ ba459073759a   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/�
                     "IPAMConfig": null,
                     "Links": null,
                     "Aliases": [
-                        "dd88044a89ba"
+                        "48d92a2cd1ef"
                     ],
-                    "MacAddress": "",
-                    "NetworkID": "",
-                    "EndpointID": "",
-                    "Gateway": "",
-                    "IPAddress": "",
-                    "IPPrefixLen": 0,
+                    "MacAddress": "02:42:ac:12:00:02",
+                    "NetworkID": "0e587bc70f5eb74cdf4fe23de33a66e54caffe3b5fab8f13efdfc353bd873cbb",
+                    "EndpointID": "3013768eac0eff4fb133d1f87307b47513ba890cbb64dc0c05951d4982aacf6c",
+                    "Gateway": "172.18.0.1",
+                    "IPAddress": "172.18.0.2",
+                    "IPPrefixLen": 16,
                     "IPv6Gateway": "",
                     "GlobalIPv6Address": "",
                     "GlobalIPv6PrefixLen": 0,
                     "DriverOpts": null,
-                    "DNSNames": null
+                    "DNSNames": [
+                        "postgres-cnx-it-111858-033",
+                        "48d92a2cd1ef"
+                    ]
                 }
             }
         }
     }
 ]
+[sikaj01@ip-10-56-112-33 ~]$ docker port postgres-cnx-it-111858-033
+[sikaj01@ip-10-56-112-33 ~]$ docker inspect postgres-cnx-it-111858-033 | grep -A 20 -B 5 NetworkMode
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "isolated_nw",
+            "PortBindings": null,
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": [],
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": null,
+            "GroupAdd": null,
+[sikaj01@ip-10-56-112-33 ~]$ docker ps
+CONTAINER ID   IMAGE                                       COMMAND                  CREATED          STATUS                    PORTS                                                                                NAMES
+5919cacd1cb3   jboss-cnx-it-111858-033                     "sh -c '$JBOSS_HOME/…"   28 minutes ago   Up 28 minutes             5445/tcp, 8080/tcp, 8443/tcp, 9797/tcp, 9990/tcp, 9993/tcp, 9999/tcp                 jboss-cnx-it-111858-033
+48d92a2cd1ef   postgres-cnx-it-111858-033                  "docker-entrypoint.s…"   28 minutes ago   Up 28 minutes (healthy)   5432/tcp                                                                             postgres-cnx-it-111858-033
+ba459073759a   local/jboss-local-tmp-miminal-1-pg:latest   "sh -c '$JBOSS_HOME/…"   3 days ago       Up 3 days                 5445/tcp, 8443/tcp, 9797/tcp, 9990/tcp, 9993/tcp, 9999/tcp, 0.0.0.0:8080->8080/tcp   jboss-test
+[sikaj01@ip-10-56-112-33 ~]$ docker network ls
+NETWORK ID     NAME          DRIVER    SCOPE
+278e71f48d39   bridge        bridge    local
+bb7b977aa128   host          host      local
+0e587bc70f5e   isolated_nw   bridge    local
+dd03632a2104   none          null      local
+[sikaj01@ip-10-56-112-33 ~]$ docker network inspect isolated_nw
+[
+    {
+        "Name": "isolated_nw",
+        "Id": "0e587bc70f5eb74cdf4fe23de33a66e54caffe3b5fab8f13efdfc353bd873cbb",
+        "Created": "2026-04-07T04:00:08.633095606Z",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "172.18.0.0/16",
+                    "Gateway": "172.18.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {
+            "48d92a2cd1efd42c8af635a3022b7cd2e3f260a0e25fad50b741c40aa58dc588": {
+                "Name": "postgres-cnx-it-111858-033",
+                "EndpointID": "3013768eac0eff4fb133d1f87307b47513ba890cbb64dc0c05951d4982aacf6c",
+                "MacAddress": "02:42:ac:12:00:02",
+                "IPv4Address": "172.18.0.2/16",
+                "IPv6Address": ""
+            },
+            "5919cacd1cb307aaee46fd0207e8ac1f87a33231dd9a0c69a7201f165ca7094e": {
+                "Name": "jboss-cnx-it-111858-033",
+                "EndpointID": "ea9f11fd27b91c1f0b0b2468e77cfe77d92e110cdd8f0b38a43570290857a818",
+                "MacAddress": "02:42:ac:12:00:03",
+                "IPv4Address": "172.18.0.3/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {},
+        "Labels": {}
+    }
+]
 
-[sikaj01@ip-10-56-112-33 domain]$ grep -R "postgres-cnx-it" integration/target/ -n
-integration/target/surefire/surefire_0-20260407112407618_2tmp:8:postgres.host=postgres-cnx-it-111858-033
-integration/target/test-classes/db-postgres.properties:2:hibernate.connection.url=jdbc:postgresql://postgres-cnx-it-111858-033:5432/cnxspdb
+[sikaj01@ip-10-56-112-33 domain]$ grep -R "postgres.host" integration -n
+grep -R "dbPostgresHost" integration -n
+grep -R "111858-033" integration/target -n
+integration/src/test/resources/db-postgres.properties:2:hibernate.connection.url=jdbc:postgresql://${postgres.host}:${dbPostgresPort}/${dbPostgresService}
+integration/pom.xml:21:        The postgres.host is simply the alias of the docker container by default. This works when
+integration/pom.xml:26:        So you need to -Dpostgres.host=172.25.0.2. This is the IP of Postgres running within the isolated_nw.
+integration/pom.xml:28:        <postgres.host>${dbPostgresHost}</postgres.host>
+integration/pom.xml:398:                                        <postgres.host>${postgres.host}</postgres.host>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureCountTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.MasterClinRuleTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractVehicleTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinActionRuleTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IAAAttachmentTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractClinTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.PostgresQueryWithCustomResourcesPostgresTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AssociatedFeeTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinIcbDetailFormulasTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureProjectTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinTypeTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractingOfficerRepresentativeTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IcbDetailTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InterAgencyAgreementTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/pom.xml:28:        <postgres.host>${dbPostgresHost}</postgres.host>
+integration/pom.xml:310:                                    <name>${dbPostgresHost}</name>
+integration/pom.xml:311:                                    <alias>${dbPostgresHost}</alias>
+integration/pom.xml:362:                                            <container>${dbPostgresHost}</container>
+integration/pom.xml:365:                                            <CONEXUS_DB_URL>jdbc:postgresql://${dbPostgresHost}:${dbPostgresPort}/${dbPostgresService}</CONEXUS_DB_URL>
+integration/target/test-classes/db-postgres.properties:2:hibernate.connection.url=jdbc:postgresql://postgres-cnx-it-111858-033:5432/cnxspdb
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureCountTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureCountTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureCountTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureCountTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureCountTest.xml:138:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureCountTest.xml:165:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureCountTest.xml:191:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureCountTest.xml:315:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.MasterClinRuleTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.MasterClinRuleTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.MasterClinRuleTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.MasterClinRuleTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.MasterClinRuleTest.xml:236:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractVehicleTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractVehicleTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractVehicleTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractVehicleTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractVehicleTest.xml:139:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractVehicleTest.xml:262:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinTest.xml:136:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinTest.xml:163:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinTest.xml:288:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractTest.xml:138:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractTest.xml:163:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractTest.xml:287:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinActionRuleTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinActionRuleTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinActionRuleTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IAAAttachmentTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IAAAttachmentTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IAAAttachmentTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IAAAttachmentTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IAAAttachmentTest.xml:139:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IAAAttachmentTest.xml:261:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractClinTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractClinTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractClinTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractClinTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractClinTest.xml:139:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractClinTest.xml:261:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.PostgresQueryWithCustomResourcesPostgresTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.PostgresQueryWithCustomResourcesPostgresTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.PostgresQueryWithCustomResourcesPostgresTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.PostgresQueryWithCustomResourcesPostgresTest.xml:149:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.PostgresQueryWithCustomResourcesPostgresTest.xml:175:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.PostgresQueryWithCustomResourcesPostgresTest.xml:200:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.PostgresQueryWithCustomResourcesPostgresTest.xml:326:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AssociatedFeeTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AssociatedFeeTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AssociatedFeeTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AssociatedFeeTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AssociatedFeeTest.xml:139:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AssociatedFeeTest.xml:165:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AssociatedFeeTest.xml:288:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinIcbDetailFormulasTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinIcbDetailFormulasTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinIcbDetailFormulasTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinIcbDetailFormulasTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.AgreementClinIcbDetailFormulasTest.xml:236:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureProjectTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureProjectTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureProjectTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureProjectTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureProjectTest.xml:137:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureProjectTest.xml:163:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InfrastructureProjectTest.xml:288:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinTypeTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinTypeTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinTypeTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinTypeTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinTypeTest.xml:137:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
 integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinTypeTest.xml:162:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
-
-
-
-[sikaj01@ip-10-56-112-33 domain]$ grep -R "jdbc:postgresql" integration domain test-util -n
-integration/src/test/resources/db-postgres.properties:2:hibernate.connection.url=jdbc:postgresql://${postgres.host}:${dbPostgresPort}/${dbPostgresService}
-integration/pom.xml:365:                                            <CONEXUS_DB_URL>jdbc:postgresql://${dbPostgresHost}:${dbPostgresPort}/${dbPostgresService}</CONEXUS_DB_URL>
-integration/target/test-classes/db-postgres.properties:2:hibernate.connection.url=jdbc:postgresql://postgres-cnx-it-111858-033:5432/cnxspdb
-domain/src/test/resources/META-INF/persistence.xml:275:            <property name="hibernate.connection.url" value="jdbc:postgresql://localhost:5432/cnxspdb"/>
-domain/src/test/resources/db-postgres.properties:2:hibernate.connection.url=jdbc:postgresql://localhost:5432/cnxspdb
-domain/target/test-classes/META-INF/persistence.xml:275:            <property name="hibernate.connection.url" value="jdbc:postgresql://localhost:5432/cnxspdb"/>
-domain/target/test-classes/db-postgres.properties:2:hibernate.connection.url=jdbc:postgresql://localhost:5432/cnxspdb
-
-
-[sikaj01@ip-10-56-112-33 domain]$ grep -R "nsfs_app\|cnxs_mod_app" integration domain test-util -n
-integration/src/test/resources/db-postgres.properties:4:hibernate.connection.username=nsfs_app
-integration/target/test-classes/db-postgres.properties:4:hibernate.connection.username=nsfs_app
-domain/src/test/resources/db-postgres.properties:4:hibernate.connection.username=nsfs_app
-domain/target/test-classes/db-postgres.properties:4:hibernate.connection.username=nsfs_app
-
-
-[sikaj01@ip-10-56-112-33 domain]$ df -h
-Filesystem                                          Size  Used Avail Use% Mounted on
-devtmpfs                                            4.0M     0  4.0M   0% /dev
-tmpfs                                               3.8G     0  3.8G   0% /dev/shm
-tmpfs                                               1.6G  8.9M  1.6G   1% /run
-/dev/nvme0n1p1                                       30G   29G  1.3G  96% /
-tmpfs                                               3.8G  152K  3.8G   1% /tmp
-/dev/nvme0n1p128                                     10M  1.3M  8.7M  13% /boot/efi
-fs-0f6ba8dbc07103a4a.efs.us-east-1.amazonaws.com:/  8.0E   70G  8.0E   1% /efs/devopsdata
-tmpfs                                               773M  4.0K  773M   1% /run/user/1021
-tmpfs                                               773M  4.0K  773M   1% /run/user/1012
-tmpfs                                               773M  4.0K  773M   1% /run/user/1036
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ClinTypeTest.xml:288:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractingOfficerRepresentativeTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractingOfficerRepresentativeTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractingOfficerRepresentativeTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractingOfficerRepresentativeTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractingOfficerRepresentativeTest.xml:137:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractingOfficerRepresentativeTest.xml:163:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.ContractingOfficerRepresentativeTest.xml:288:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IcbDetailTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IcbDetailTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IcbDetailTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IcbDetailTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IcbDetailTest.xml:137:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IcbDetailTest.xml:262:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.IcbDetailTest.xml:287:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InterAgencyAgreementTest.xml:7:    <property name="postgres.host" value="postgres-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InterAgencyAgreementTest.xml:12:    <property name="conexus.jms.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InterAgencyAgreementTest.xml:33:    <property name="conexus.jboss.host" value="jboss-cnx-it-111858-033"/>
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InterAgencyAgreementTest.xml:111:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InterAgencyAgreementTest.xml:138:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InterAgencyAgreementTest.xml:164:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
+integration/target/failsafe-reports/TEST-gov.gsa.nsfs.domains.agreement.InterAgencyAgreementTest.xml:288:Caused by: java.net.UnknownHostException: postgres-cnx-it-111858-033
