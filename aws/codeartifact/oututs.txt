@@ -1,53 +1,308 @@
-[sikaj01@ip-10-56-112-33 ~]$ cd domain/
-[sikaj01@ip-10-56-112-33 domain]$ git branch
-  develop
-* feature/CNXS-76927-build-docker-jboss-image-pust-to-ECR
-  feature/ll-postgres
-  main
-[sikaj01@ip-10-56-112-33 domain]$ git pull
-lAlready up to date.
+[sikaj01@ip-10-56-112-33 domain]$ grep -A 20 -B 5 "<parent>" pom.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>gov.gsa.cnxs.bom</groupId>
+        <artifactId>env</artifactId>
+        <version>02.00.000.167-SNAPSHOT</version>
+    </parent>
+
+    <version>02.00.000.173-SNAPSHOT</version>
+    <groupId>gov.gsa.cnxs.domain</groupId>
+    <artifactId>domain-aggregator</artifactId>
+    <packaging>pom</packaging>
+    <name>Conexus Domain Aggregator</name>
+
+    <scm>
+        <connection>scm:git:ssh://10.203.62.171/app/git/nsfs/domain.git</connection>
+        <developerConnection>scm:git:ssh://10.203.62.171:/app/git/nsfs/domain.git</developerConnection>
+    </scm>
+
+    <modules>
+        <module>domain</module>
+        <module>test-util</module>
+        <module>integration</module>
+
+[sikaj01@ip-10-56-112-33 domain]$ grep -A 20 -B 5 "<parent>" pom.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>gov.gsa.cnxs.bom</groupId>
+        <artifactId>env</artifactId>
+        <version>02.00.000.167-SNAPSHOT</version>
+    </parent>
+
+    <version>02.00.000.173-SNAPSHOT</version>
+    <groupId>gov.gsa.cnxs.domain</groupId>
+    <artifactId>domain-aggregator</artifactId>
+    <packaging>pom</packaging>
+    <name>Conexus Domain Aggregator</name>
+
+    <scm>
+        <connection>scm:git:ssh://10.203.62.171/app/git/nsfs/domain.git</connection>
+        <developerConnection>scm:git:ssh://10.203.62.171:/app/git/nsfs/domain.git</developerConnection>
+    </scm>
+
+    <modules>
+        <module>domain</module>
+        <module>test-util</module>
+        <module>integration</module>
+[sikaj01@ip-10-56-112-33 domain]$ find ~/.m2 -name settings.xml -type f
+/home/sikaj01/.m2/settings.xml
+[sikaj01@ip-10-56-112-33 domain]$ cat ~/.m2/settings.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <servers>
+    <server>
+      <id>conexus-plugin-repository</id>
+      <username>aws</username>
+      <password>${env.CODEARTIFACT_AUTH_TOKEN}</password>
+    </server>
+    <server>
+      <id>conexus-dependencies</id>
+      <username>aws</username>
+      <password>${env.CODEARTIFACT_AUTH_TOKEN}</password>
+    </server>
+  </servers>
+</settings>
+[sikaj01@ip-10-56-112-33 domain]$ code ~/.m2/settings.xml
+[sikaj01@ip-10-56-112-33 domain]$ cat ~/.m2/settings.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd">
+
+  <servers>
+    <server>
+      <id>conexus-plugin-repository</id>
+      <username>${env.ARTIFACTORY_USER}</username>
+      <password>${env.ARTIFACTORY_TOKEN}</password>
+    </server>
+  </servers>
+
+  <mirrors>
+    <mirror>
+      <id>conexus-plugin-repository</id>
+      <name>conexus-plugin-repository</name>
+      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+      <mirrorOf>*</mirrorOf>
+    </mirror>
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>artifactory</id>
+      <repositories>
+        <repository>
+          <id>central</id>
+          <url>https://repo.maven.apache.org/maven2</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </repository>
+        <repository>
+          <id>snapshots</id>
+          <url>https://repo.maven.apache.org/maven2</url>
+          <releases>
+            <enabled>false</enabled>
+          </releases>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>artifactory</activeProfile>
+  </activeProfiles>
+
+[sikaj01@ip-10-56-112-33 domain]$ cat ~/settings-artifactory.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd">
+
+  <servers>
+    <server>
+      <id>conexus-plugin-repository</id>
+      <username>${env.ARTIFACTORY_USER}</username>
+      <password>${env.ARTIFACTORY_TOKEN}</password>
+    </server>
+  </servers>
+
+  <mirrors>
+    <mirror>
+      <id>conexus-plugin-repository</id>
+      <name>conexus-plugin-repository</name>
+      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+      <mirrorOf>*</mirrorOf>
+    </mirror>
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>artifactory</id>
+      <repositories>
+        <repository>
+          <id>central</id>
+          <url>https://repo.maven.apache.org/maven2</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </repository>
+        <repository>
+          <id>snapshots</id>
+          <url>https://repo.maven.apache.org/maven2</url>
+          <releases>
+            <enabled>false</enabled>
+          </releases>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>artifactory</activeProfile>
+  </activeProfiles>
+</settings>[sikaj01@ip-10-56-112-33 domain]$ echo $MAVEN_OPTS
+
+[sikaj01@ip-10-56-112-33 domain]$ echo $M2_HOME
+
+[sikaj01@ip-10-56-112-33 domain]$ ~/.m2/settings.xml
+bash: /home/sikaj01/.m2/settings.xml: Permission denied
+[sikaj01@ip-10-56-112-33 domain]$ ~/.m2/settings.xml
+bash: /home/sikaj01/.m2/settings.xml: Permission denied
+[sikaj01@ip-10-56-112-33 domain]$ source ~/.bashrc
+[sikaj01@ip-10-56-112-33 domain]$ mvn -s ~/.m2/settings.xml
+[INFO] Scanning for projects...
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml (612 B at 1.1 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-20260406.171647-8.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-20260406.171647-8.pom (8.9 kB at 98 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/maven-metadata.xml
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/maven-metadata.xml (617 B at 4.8 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/env-base-02.00.000.167-20260406.171647-8.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/env-base-02.00.000.167-20260406.171647-8.pom (28 kB at 255 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/shiro/shiro-bom/2.0.1/shiro-bom-2.0.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/shiro/shiro-bom/2.0.1/shiro-bom-2.0.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/shiro/shiro-root/2.0.1/shiro-root-2.0.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/shiro/shiro-root/2.0.1/shiro-root-2.0.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/32/apache-32.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/32/apache-32.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/junit/junit-bom/5.10.2/junit-bom-5.10.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/junit/junit-bom/5.10.2/junit-bom-5.10.2.pom (0 B at 0 B/s)
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for gov.gsa.cnxs.domain.test:domain-integration:jar:02.00.000.173-SNAPSHOT
+[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 230, column 29
+[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-failsafe-plugin @ line 380, column 29
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] Conexus Domain Aggregator                                          [pom]
+[INFO] Conexus Domain                                                     [jar]
+[INFO] domain-test-aggregator                                             [pom]
+[INFO] domain-test-api                                                    [jar]
+[INFO] domain-test-core                                                   [jar]
+[INFO] domain-test-ear                                                    [ear]
+[INFO] Conexus Domain System Test                                         [jar]
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Conexus Domain Aggregator 02.00.000.173-SNAPSHOT:
+[INFO] 
+[INFO] Conexus Domain Aggregator .......................... SKIPPED
+[INFO] Conexus Domain ..................................... SKIPPED
+[INFO] domain-test-aggregator ............................. SKIPPED
+[INFO] domain-test-api .................................... SKIPPED
+[INFO] domain-test-core ................................... SKIPPED
+[INFO] domain-test-ear .................................... SKIPPED
+[INFO] Conexus Domain System Test ......................... SKIPPED
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.129 s
+[INFO] Finished at: 2026-04-07T01:45:52Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] No goals have been specified for this build. You must specify a valid lifecycle phase or a goal in the format <plugin-prefix>:<goal> or <plugin-group-id>:<plugin-artifact-id>[:<plugin-version>]:<goal>. Available lifecycle phases are: validate, initialize, generate-sources, process-sources, generate-resources, process-resources, compile, process-classes, generate-test-sources, process-test-sources, generate-test-resources, process-test-resources, test-compile, process-test-classes, test, prepare-package, package, pre-integration-test, integration-test, post-integration-test, verify, install, deploy, pre-clean, clean, post-clean, pre-site, site, post-site, site-deploy. -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/NoGoalSpecifiedException
 [sikaj01@ip-10-56-112-33 domain]$ ll
 total 20
 drwxr-x---. 4 sikaj01 users 6144 Apr  7 01:05 domain
-drwxr-x---. 3 sikaj01 users 6144 Apr  7 01:05 integration
+drwxr-x---. 3 sikaj01 users 6144 Apr  7 01:31 integration
 -rw-r-----. 1 sikaj01 users 3597 Apr  7 01:05 pom.xml
 drwxr-x---. 2 sikaj01 users 6144 Oct  7 10:01 script
 drwxr-x---. 5 sikaj01 users 6144 Apr  7 01:05 test-util
-[sikaj01@ip-10-56-112-33 domain]$ ll
-total 20
-drwxr-x---. 4 sikaj01 users 6144 Apr  7 01:05 domain
-drwxr-x---. 3 sikaj01 users 6144 Apr  7 01:05 integration
--rw-r-----. 1 sikaj01 users 3597 Apr  7 01:05 pom.xml
-drwxr-x---. 2 sikaj01 users 6144 Oct  7 10:01 script
-drwxr-x---. 5 sikaj01 users 6144 Apr  7 01:05 test-util
-[sikaj01@ip-10-56-112-33 domain]$ git pull
-remote: Enumerating objects: 7, done.
-remote: Counting objects: 100% (7/7), done.
-remote: Compressing objects: 100% (4/4), done.
-remote: Total 4 (delta 2), reused 0 (delta 0), pack-reused 0 (from 0)
-Unpacking objects: 100% (4/4), 457 bytes | 3.00 KiB/s, done.
-From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/domain
-   8454c15ef..387706a6e  feature/CNXS-76927-build-docker-jboss-image-pust-to-ECR -> origin/feature/CNXS-76927-build-docker-jboss-image-pust-to-ECR
-Updating 8454c15ef..387706a6e
-Fast-forward
- integration/pom.xml | 24 +++++++++++++++++++++++-
- 1 file changed, 23 insertions(+), 1 deletion(-)
-[sikaj01@ip-10-56-112-33 domain]$ cd integration/
-[sikaj01@ip-10-56-112-33 integration]$ ll
+[sikaj01@ip-10-56-112-33 domain]$ pwd
+/home/sikaj01/domain
+[sikaj01@ip-10-56-112-33 domain]$ mvn -s intergration/pom.xml
+[ERROR] Error executing Maven.
+[ERROR] The specified user settings file does not exist: /efs/devopsdata/sikaj01/domain/intergration/pom.xml
+[sikaj01@ip-10-56-112-33 domain]$ pwd
+/home/sikaj01/domain
+[sikaj01@ip-10-56-112-33 domain]$ ll integration/
 total 28
 -rw-r-----. 1 sikaj01 users 21281 Apr  7 01:31 pom.xml
 drwxr-x---. 4 sikaj01 users  6144 Oct  7 10:01 src
-[sikaj01@ip-10-56-112-33 integration]$ mvn -pl domain-integration -am clean verify
+[sikaj01@ip-10-56-112-33 domain]$ mvn -s /home/sikaj01/domain/integration/pom.xml
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective settings
+[WARNING] Expected root element 'settings' but found 'project' (position: START_TAG seen ...apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">... @2:205)  @ /home/sikaj01/domain/integration/pom.xml, line 2, column 205
+[WARNING] 
 [INFO] Scanning for projects...
+Downloading from central: https://repo.maven.apache.org/maven2/org/jboss/bom/jboss-eap-ee/8.1.3.GA-redhat-00006/jboss-eap-ee-8.1.3.GA-redhat-00006.pom
+Downloading from central: https://repo.maven.apache.org/maven2/org/jboss/eap/wildfly-jaxws-client-bom/8.1.3.GA-redhat-00006/wildfly-jaxws-client-bom-8.1.3.GA-redhat-00006.pom
 [ERROR] [ERROR] Some problems were encountered while processing the POMs:
-[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 230, column 29
-[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-failsafe-plugin @ line 380, column 29
-[FATAL] Non-resolvable parent POM for gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT: Could not find artifact gov.gsa.cnxs.bom:env:pom:02.00.000.167-SNAPSHOT and 'parent.relativePath' points at wrong local POM @ gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT, /efs/devopsdata/sikaj01/domain/pom.xml, line 5, column 13
+[ERROR] Non-resolvable import POM: Could not find artifact org.jboss.bom:jboss-eap-ee:pom:8.1.3.GA-redhat-00006 in central (https://repo.maven.apache.org/maven2) @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 23, column 25
+[ERROR] Non-resolvable import POM: Could not find artifact org.jboss.eap:wildfly-jaxws-client-bom:pom:8.1.3.GA-redhat-00006 in central (https://repo.maven.apache.org/maven2) @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 31, column 25
+[ERROR] 'dependencies.dependency.version' for org.jboss.eap:wildfly-ejb-client-bom:pom is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 141, column 21
+[ERROR] 'dependencies.dependency.version' for org.jboss.eap:wildfly-jms-client-bom:pom is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 153, column 21
+[ERROR] 'dependencies.dependency.version' for org.hibernate.validator:hibernate-validator:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 159, column 21
+[ERROR] 'dependencies.dependency.version' for org.hibernate.orm:hibernate-core:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 165, column 21
+[ERROR] 'dependencies.dependency.version' for jakarta.enterprise:jakarta.enterprise.cdi-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 171, column 21
+[ERROR] 'dependencies.dependency.version' for jakarta.persistence:jakarta.persistence-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 177, column 21
+[ERROR] 'dependencies.dependency.version' for org.jboss.spec.jakarta.xml.ws:jboss-jakarta-xml-ws-api_4.0_spec:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 184, column 21
+[ERROR] 'dependencies.dependency.version' for org.jboss.spec.jakarta.xml.soap:jboss-saaj-api_3.0_spec:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 189, column 21
+[ERROR] 'dependencies.dependency.version' for jakarta.annotation:jakarta.annotation-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 194, column 21
  @ 
 [ERROR] The build could not read 1 project -> [Help 1]
 [ERROR]   
-[ERROR]   The project gov.gsa.cnxs.domain.test:domain-integration:02.00.000.173-SNAPSHOT (/efs/devopsdata/sikaj01/domain/integration/pom.xml) has 1 error
-[ERROR]     Non-resolvable parent POM for gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT: Could not find artifact gov.gsa.cnxs.bom:env:pom:02.00.000.167-SNAPSHOT and 'parent.relativePath' points at wrong local POM @ gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT, /efs/devopsdata/sikaj01/domain/pom.xml, line 5, column 13 -> [Help 2]
+[ERROR]   The project gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT (/efs/devopsdata/sikaj01/domain/pom.xml) has 11 errors
+[ERROR]     Non-resolvable import POM: Could not find artifact org.jboss.bom:jboss-eap-ee:pom:8.1.3.GA-redhat-00006 in central (https://repo.maven.apache.org/maven2) @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 23, column 25 -> [Help 2]
+[ERROR]     Non-resolvable import POM: Could not find artifact org.jboss.eap:wildfly-jaxws-client-bom:pom:8.1.3.GA-redhat-00006 in central (https://repo.maven.apache.org/maven2) @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 31, column 25 -> [Help 2]
+[ERROR]     'dependencies.dependency.version' for org.jboss.eap:wildfly-ejb-client-bom:pom is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 141, column 21
+[ERROR]     'dependencies.dependency.version' for org.jboss.eap:wildfly-jms-client-bom:pom is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 153, column 21
+[ERROR]     'dependencies.dependency.version' for org.hibernate.validator:hibernate-validator:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 159, column 21
+[ERROR]     'dependencies.dependency.version' for org.hibernate.orm:hibernate-core:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 165, column 21
+[ERROR]     'dependencies.dependency.version' for jakarta.enterprise:jakarta.enterprise.cdi-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 171, column 21
+[ERROR]     'dependencies.dependency.version' for jakarta.persistence:jakarta.persistence-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 177, column 21
+[ERROR]     'dependencies.dependency.version' for org.jboss.spec.jakarta.xml.ws:jboss-jakarta-xml-ws-api_4.0_spec:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 184, column 21
+[ERROR]     'dependencies.dependency.version' for org.jboss.spec.jakarta.xml.soap:jboss-saaj-api_3.0_spec:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 189, column 21
+[ERROR]     'dependencies.dependency.version' for jakarta.annotation:jakarta.annotation-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 194, column 21
 [ERROR] 
 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
@@ -55,17 +310,77 @@ drwxr-x---. 4 sikaj01 users  6144 Oct  7 10:01 src
 [ERROR] For more information about the errors and possible solutions, please read the following articles:
 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
 [ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/UnresolvableModelException
-[sikaj01@ip-10-56-112-33 integration]$ mvn clean install -DskipTests
+
+sikaj01@ip-10-56-112-33 domain]$ cat ~/.bashrc
+# .bashrc
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+        . /etc/bashrc
+fi
+
+# User specific environment
+if ! [[ "$PATH" =~ "$HOME/.local/bin:$HOME/bin:" ]]
+then
+    PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+fi
+export PATH
+
+# Uncomment the following line if you don't like systemctl's auto-paging feature:
+# export SYSTEMD_PAGER=
+
+# User specific aliases and functions
+if [ -d ~/.bashrc.d ]; then
+        for rc in ~/.bashrc.d/*; do
+                if [ -f "$rc" ]; then
+                        . "$rc"
+                fi
+        done
+fi
+
+unset rc
+source ~/.kube/kubectl-aliases.sh
+
+
+# Environment variables
+
+
+[sikaj01@ip-10-56-112-33 domain]$ mvn -s .
+[ERROR] Error executing Maven.
+[ERROR] The specified user settings file does not exist: /efs/devopsdata/sikaj01/domain
+[sikaj01@ip-10-56-112-33 domain]$ mvn -s ./pom.xml
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective settings
+[WARNING] Expected root element 'settings' but found 'project' (position: START_TAG seen ...apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">... @2:205)  @ /efs/devopsdata/sikaj01/domain/pom.xml, line 2, column 205
+[WARNING] 
 [INFO] Scanning for projects...
 [ERROR] [ERROR] Some problems were encountered while processing the POMs:
-[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 230, column 29
-[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-failsafe-plugin @ line 380, column 29
-[FATAL] Non-resolvable parent POM for gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT: Could not find artifact gov.gsa.cnxs.bom:env:pom:02.00.000.167-SNAPSHOT and 'parent.relativePath' points at wrong local POM @ gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT, /efs/devopsdata/sikaj01/domain/pom.xml, line 5, column 13
+[ERROR] Non-resolvable import POM: org.jboss.bom:jboss-eap-ee:pom:8.1.3.GA-redhat-00006 was not found in https://repo.maven.apache.org/maven2 during a previous attempt. This failure was cached in the local repository and resolution is not reattempted until the update interval of central has elapsed or updates are forced @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 23, column 25
+[ERROR] Non-resolvable import POM: org.jboss.eap:wildfly-jaxws-client-bom:pom:8.1.3.GA-redhat-00006 was not found in https://repo.maven.apache.org/maven2 during a previous attempt. This failure was cached in the local repository and resolution is not reattempted until the update interval of central has elapsed or updates are forced @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 31, column 25
+[ERROR] 'dependencies.dependency.version' for org.jboss.eap:wildfly-ejb-client-bom:pom is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 141, column 21
+[ERROR] 'dependencies.dependency.version' for org.jboss.eap:wildfly-jms-client-bom:pom is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 153, column 21
+[ERROR] 'dependencies.dependency.version' for org.hibernate.validator:hibernate-validator:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 159, column 21
+[ERROR] 'dependencies.dependency.version' for org.hibernate.orm:hibernate-core:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 165, column 21
+[ERROR] 'dependencies.dependency.version' for jakarta.enterprise:jakarta.enterprise.cdi-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 171, column 21
+[ERROR] 'dependencies.dependency.version' for jakarta.persistence:jakarta.persistence-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 177, column 21
+[ERROR] 'dependencies.dependency.version' for org.jboss.spec.jakarta.xml.ws:jboss-jakarta-xml-ws-api_4.0_spec:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 184, column 21
+[ERROR] 'dependencies.dependency.version' for org.jboss.spec.jakarta.xml.soap:jboss-saaj-api_3.0_spec:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 189, column 21
+[ERROR] 'dependencies.dependency.version' for jakarta.annotation:jakarta.annotation-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 194, column 21
  @ 
 [ERROR] The build could not read 1 project -> [Help 1]
 [ERROR]   
-[ERROR]   The project gov.gsa.cnxs.domain.test:domain-integration:02.00.000.173-SNAPSHOT (/efs/devopsdata/sikaj01/domain/integration/pom.xml) has 1 error
-[ERROR]     Non-resolvable parent POM for gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT: Could not find artifact gov.gsa.cnxs.bom:env:pom:02.00.000.167-SNAPSHOT and 'parent.relativePath' points at wrong local POM @ gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT, /efs/devopsdata/sikaj01/domain/pom.xml, line 5, column 13 -> [Help 2]
+[ERROR]   The project gov.gsa.cnxs.domain:domain-aggregator:02.00.000.173-SNAPSHOT (/efs/devopsdata/sikaj01/domain/pom.xml) has 11 errors
+[ERROR]     Non-resolvable import POM: org.jboss.bom:jboss-eap-ee:pom:8.1.3.GA-redhat-00006 was not found in https://repo.maven.apache.org/maven2 during a previous attempt. This failure was cached in the local repository and resolution is not reattempted until the update interval of central has elapsed or updates are forced @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 23, column 25 -> [Help 2]
+[ERROR]     Non-resolvable import POM: org.jboss.eap:wildfly-jaxws-client-bom:pom:8.1.3.GA-redhat-00006 was not found in https://repo.maven.apache.org/maven2 during a previous attempt. This failure was cached in the local repository and resolution is not reattempted until the update interval of central has elapsed or updates are forced @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 31, column 25 -> [Help 2]
+[ERROR]     'dependencies.dependency.version' for org.jboss.eap:wildfly-ejb-client-bom:pom is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 141, column 21
+[ERROR]     'dependencies.dependency.version' for org.jboss.eap:wildfly-jms-client-bom:pom is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 153, column 21
+[ERROR]     'dependencies.dependency.version' for org.hibernate.validator:hibernate-validator:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 159, column 21
+[ERROR]     'dependencies.dependency.version' for org.hibernate.orm:hibernate-core:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 165, column 21
+[ERROR]     'dependencies.dependency.version' for jakarta.enterprise:jakarta.enterprise.cdi-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 171, column 21
+[ERROR]     'dependencies.dependency.version' for jakarta.persistence:jakarta.persistence-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 177, column 21
+[ERROR]     'dependencies.dependency.version' for org.jboss.spec.jakarta.xml.ws:jboss-jakarta-xml-ws-api_4.0_spec:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 184, column 21
+[ERROR]     'dependencies.dependency.version' for org.jboss.spec.jakarta.xml.soap:jboss-saaj-api_3.0_spec:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 189, column 21
+[ERROR]     'dependencies.dependency.version' for jakarta.annotation:jakarta.annotation-api:jar is missing. @ gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT, /home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/env-02.00.000.167-SNAPSHOT.pom, line 194, column 21
 [ERROR] 
 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
@@ -73,416 +388,901 @@ drwxr-x---. 4 sikaj01 users  6144 Oct  7 10:01 src
 [ERROR] For more information about the errors and possible solutions, please read the following articles:
 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
 [ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/UnresolvableModelException
-[sikaj01@ip-10-56-112-33 integration]$ cat pom.xml 
-<?xml version="1.0"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>gov.gsa.cnxs.domain</groupId>
-        <artifactId>domain-aggregator</artifactId>
-        <version>02.00.000.173-SNAPSHOT</version>
-    </parent>
 
-    <groupId>gov.gsa.cnxs.domain.test</groupId>
-    <artifactId>domain-integration</artifactId>
-    <name>Conexus Domain System Test</name>
-    <packaging>jar</packaging>
+[sikaj01@ip-10-56-112-33 domain]$ mvn -U dependency:get \
+  -Dartifact=gov.gsa.cnxs.bom:env:pom:02.00.000.167-SNAPSHOT \
+  -Dtransitive=false
+[INFO] Scanning for projects...
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml (612 B at 1.7 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/maven-metadata.xml
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/maven-metadata.xml (617 B at 7.4 kB/s)
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for gov.gsa.cnxs.domain.test:domain-integration:jar:02.00.000.173-SNAPSHOT
+[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 230, column 29
+[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-failsafe-plugin @ line 380, column 29
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] Conexus Domain Aggregator                                          [pom]
+[INFO] Conexus Domain                                                     [jar]
+[INFO] domain-test-aggregator                                             [pom]
+[INFO] domain-test-api                                                    [jar]
+[INFO] domain-test-core                                                   [jar]
+[INFO] domain-test-ear                                                    [ear]
+[INFO] Conexus Domain System Test                                         [jar]
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-deploy-plugin/3.1.3/maven-deploy-plugin-3.1.3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-deploy-plugin/3.1.3/maven-deploy-plugin-3.1.3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-deploy-plugin/3.1.3/maven-deploy-plugin-3.1.3.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-deploy-plugin/3.1.3/maven-deploy-plugin-3.1.3.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/42/maven-parent-42.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/42/maven-parent-42.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/39/maven-parent-39.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/39/maven-parent-39.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/29/apache-29.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/29/apache-29.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/34/maven-parent-34.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/34/maven-parent-34.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-dependency-plugin/3.8.0/maven-dependency-plugin-3.8.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-dependency-plugin/3.8.0/maven-dependency-plugin-3.8.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-dependency-plugin/3.8.0/maven-dependency-plugin-3.8.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-dependency-plugin/3.8.0/maven-dependency-plugin-3.8.0.jar (0 B at 0 B/s)
+[INFO] 
+[INFO] ---------------< gov.gsa.cnxs.domain:domain-aggregator >----------------
+[INFO] Building Conexus Domain Aggregator 02.00.000.173-SNAPSHOT          [1/7]
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- maven-dependency-plugin:3.8.0:get (default-cli) @ domain-aggregator ---
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-sink-api/2.0.0-M12/doxia-sink-api-2.0.0-M12.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-sink-api/2.0.0-M12/doxia-sink-api-2.0.0-M12.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia/2.0.0-M12/doxia-2.0.0-M12.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia/2.0.0-M12/doxia-2.0.0-M12.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/reporting/maven-reporting-api/4.0.0-M12/maven-reporting-api-4.0.0-M12.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/reporting/maven-reporting-api/4.0.0-M12/maven-reporting-api-4.0.0-M12.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/42/maven-shared-components-42.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/42/maven-shared-components-42.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/reporting/maven-reporting-impl/4.0.0-M15/maven-reporting-impl-4.0.0-M15.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/reporting/maven-reporting-impl/4.0.0-M15/maven-reporting-impl-4.0.0-M15.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/39/maven-shared-components-39.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/39/maven-shared-components-39.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-parent/1.7.36/slf4j-parent-1.7.36.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-parent/1.7.36/slf4j-parent-1.7.36.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-site-model/2.0.0-M19/doxia-site-model-2.0.0-M19.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-site-model/2.0.0-M19/doxia-site-model-2.0.0-M19.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-sitetools/2.0.0-M19/doxia-sitetools-2.0.0-M19.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-sitetools/2.0.0-M19/doxia-sitetools-2.0.0-M19.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/org.eclipse.sisu.plexus/0.9.0.M3/org.eclipse.sisu.plexus-0.9.0.M3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/org.eclipse.sisu.plexus/0.9.0.M3/org.eclipse.sisu.plexus-0.9.0.M3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/sisu-inject/0.9.0.M3/sisu-inject-0.9.0.M3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/sisu-inject/0.9.0.M3/sisu-inject-0.9.0.M3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/org.eclipse.sisu.inject/0.9.0.M3/org.eclipse.sisu.inject-0.9.0.M3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/org.eclipse.sisu.inject/0.9.0.M3/org.eclipse.sisu.inject-0.9.0.M3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.1.0/plexus-component-annotations-2.1.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.1.0/plexus-component-annotations-2.1.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-containers/2.1.0/plexus-containers-2.1.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-containers/2.1.0/plexus-containers-2.1.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/5.1/plexus-5.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/5.1/plexus-5.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-classworlds/2.6.0/plexus-classworlds-2.6.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-classworlds/2.6.0/plexus-classworlds-2.6.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/javax/inject/javax.inject/1/javax.inject-1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/javax/inject/javax.inject/1/javax.inject-1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-core/2.0.0-M12/doxia-core-2.0.0-M12.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-core/2.0.0-M12/doxia-core-2.0.0-M12.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.16.1/commons-io-2.16.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.16.1/commons-io-2.16.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/69/commons-parent-69.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/69/commons-parent-69.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/64/commons-parent-64.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/64/commons-parent-64.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/30/apache-30.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/30/apache-30.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/junit/junit-bom/5.10.0/junit-bom-5.10.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/junit/junit-bom/5.10.0/junit-bom-5.10.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-integration-tools/2.0.0-M19/doxia-integration-tools-2.0.0-M19.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-integration-tools/2.0.0-M19/doxia-integration-tools-2.0.0-M19.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-i18n/1.0-beta-10/plexus-i18n-1.0-beta-10.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-i18n/1.0-beta-10/plexus-i18n-1.0-beta-10.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-interpolation/1.27/plexus-interpolation-1.27.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-interpolation/1.27/plexus-interpolation-1.27.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/16/plexus-16.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/16/plexus-16.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/junit/junit-bom/5.10.1/junit-bom-5.10.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/junit/junit-bom/5.10.1/junit-bom-5.10.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-site-renderer/2.0.0-M19/doxia-site-renderer-2.0.0-M19.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-site-renderer/2.0.0-M19/doxia-site-renderer-2.0.0-M19.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-skin-model/2.0.0-M19/doxia-skin-model-2.0.0-M19.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-skin-model/2.0.0-M19/doxia-skin-model-2.0.0-M19.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-xhtml5/2.0.0-M12/doxia-module-xhtml5-2.0.0-M12.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-xhtml5/2.0.0-M12/doxia-module-xhtml5-2.0.0-M12.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-modules/2.0.0-M12/doxia-modules-2.0.0-M12.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-modules/2.0.0-M12/doxia-modules-2.0.0-M12.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-velocity/2.1.0/plexus-velocity-2.1.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-velocity/2.1.0/plexus-velocity-2.1.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/velocity-engine-core/2.3/velocity-engine-core-2.3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/velocity-engine-core/2.3/velocity-engine-core-2.3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/velocity-engine-parent/2.3/velocity-engine-parent-2.3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/velocity-engine-parent/2.3/velocity-engine-parent-2.3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/velocity-master/4/velocity-master-4.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/velocity-master/4/velocity-master-4.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-lang3/3.11/commons-lang3-3.11.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-lang3/3.11/commons-lang3-3.11.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/51/commons-parent-51.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/51/commons-parent-51.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.30/slf4j-api-1.7.30.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.30/slf4j-api-1.7.30.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-parent/1.7.30/slf4j-parent-1.7.30.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-parent/1.7.30/slf4j-parent-1.7.30.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/tools/velocity-tools-generic/3.1/velocity-tools-generic-3.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/tools/velocity-tools-generic/3.1/velocity-tools-generic-3.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/tools/velocity-tools-parent/3.1/velocity-tools-parent-3.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/tools/velocity-tools-parent/3.1/velocity-tools-parent-3.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-beanutils/commons-beanutils/1.9.4/commons-beanutils-1.9.4.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-beanutils/commons-beanutils/1.9.4/commons-beanutils-1.9.4.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/47/commons-parent-47.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/47/commons-parent-47.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/19/apache-19.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/19/apache-19.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-logging/commons-logging/1.2/commons-logging-1.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-logging/commons-logging/1.2/commons-logging-1.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/34/commons-parent-34.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/34/commons-parent-34.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-collections/commons-collections/3.2.2/commons-collections-3.2.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-collections/commons-collections/3.2.2/commons-collections-3.2.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/39/commons-parent-39.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/39/commons-parent-39.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/16/apache-16.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/16/apache-16.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-digester3/3.2/commons-digester3-3.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-digester3/3.2/commons-digester3-3.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-beanutils/commons-beanutils/1.8.3/commons-beanutils-1.8.3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-beanutils/commons-beanutils/1.8.3/commons-beanutils-1.8.3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/14/commons-parent-14.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/14/commons-parent-14.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-logging/commons-logging/1.1.1/commons-logging-1.1.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-logging/commons-logging/1.1.1/commons-logging-1.1.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/5/commons-parent-5.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/5/commons-parent-5.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-lang3/3.10/commons-lang3-3.10.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-lang3/3.10/commons-lang3-3.10.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/50/commons-parent-50.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/50/commons-parent-50.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/21/apache-21.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/21/apache-21.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/cliftonlabs/json-simple/3.0.2/json-simple-3.0.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/cliftonlabs/json-simple/3.0.2/json-simple-3.0.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-apt/2.0.0-M12/doxia-module-apt-2.0.0-M12.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-apt/2.0.0-M12/doxia-module-apt-2.0.0-M12.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-xdoc/2.0.0-M12/doxia-module-xdoc-2.0.0-M12.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-xdoc/2.0.0-M12/doxia-module-xdoc-2.0.0-M12.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-archiver/3.6.2/maven-archiver-3.6.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-archiver/3.6.2/maven-archiver-3.6.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/41/maven-shared-components-41.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/41/maven-shared-components-41.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.9.2/plexus-archiver-4.9.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.9.2/plexus-archiver-4.9.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.4.2/plexus-io-3.4.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.4.2/plexus-io-3.4.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.15.1/commons-io-2.15.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.15.1/commons-io-2.15.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/65/commons-parent-65.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/65/commons-parent-65.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.26.1/commons-compress-1.26.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.26.1/commons-compress-1.26.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/66/commons-parent-66.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/66/commons-parent-66.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-codec/commons-codec/1.16.1/commons-codec-1.16.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-codec/commons-codec/1.16.1/commons-codec-1.16.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/iq80/snappy/snappy/0.4/snappy-0.4.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/iq80/snappy/snappy/0.4/snappy-0.4.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/tukaani/xz/1.9/xz-1.9.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/tukaani/xz/1.9/xz-1.9.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.5-11/zstd-jni-1.5.5-11.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.5-11/zstd-jni-1.5.5-11.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver/1.4.1/maven-resolver-1.4.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver/1.4.1/maven-resolver-1.4.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/33/maven-parent-33.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/33/maven-parent-33.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.10.0/plexus-archiver-4.10.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.10.0/plexus-archiver-4.10.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.5.0/plexus-io-3.5.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.5.0/plexus-io-3.5.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.26.2/commons-compress-1.26.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.26.2/commons-compress-1.26.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-codec/commons-codec/1.17.0/commons-codec-1.17.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-codec/commons-codec/1.17.0/commons-codec-1.17.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/io/airlift/aircompressor/0.27/aircompressor-0.27.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/io/airlift/aircompressor/0.27/aircompressor-0.27.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/io/airlift/airbase/112/airbase-112.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/io/airlift/airbase/112/airbase-112.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/junit/junit-bom/5.8.0-M1/junit-bom-5.8.0-M1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/junit/junit-bom/5.8.0-M1/junit-bom-5.8.0-M1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-dependency-analyzer/1.14.1/maven-dependency-analyzer-1.14.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-dependency-analyzer/1.14.1/maven-dependency-analyzer-1.14.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/assertj/assertj-bom/3.25.3/assertj-bom-3.25.3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/assertj/assertj-bom/3.25.3/assertj-bom-3.25.3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/ow2/asm/asm/9.7/asm-9.7.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/ow2/asm/asm/9.7/asm-9.7.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/ow2/ow2/1.5.1/ow2-1.5.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/ow2/ow2/1.5.1/ow2-1.5.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.4.0/maven-common-artifact-filters-3.4.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.4.0/maven-common-artifact-filters-3.4.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/34/maven-shared-components-34.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/34/maven-shared-components-34.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-containers/2.0.0/plexus-containers-2.0.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-containers/2.0.0/plexus-containers-2.0.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.1.0/maven-common-artifact-filters-3.1.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.1.0/maven-common-artifact-filters-3.1.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/33/maven-shared-components-33.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/33/maven-shared-components-33.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-model/3.0/maven-model-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-model/3.0/maven-model-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven/3.0/maven-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven/3.0/maven-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-plugin-api/3.0/maven-plugin-api-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-plugin-api/3.0/maven-plugin-api-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject-plexus/1.4.2/sisu-inject-plexus-1.4.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject-plexus/1.4.2/sisu-inject-plexus-1.4.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/inject/guice-plexus/1.4.2/guice-plexus-1.4.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/inject/guice-plexus/1.4.2/guice-plexus-1.4.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/inject/guice-bean/1.4.2/guice-bean-1.4.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/inject/guice-bean/1.4.2/guice-bean-1.4.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject/1.4.2/sisu-inject-1.4.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject/1.4.2/sisu-inject-1.4.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-parent/1.4.2/sisu-parent-1.4.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-parent/1.4.2/sisu-parent-1.4.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/forge/forge-parent/6/forge-parent-6.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/forge/forge-parent/6/forge-parent-6.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/1.5.4/plexus-component-annotations-1.5.4.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/1.5.4/plexus-component-annotations-1.5.4.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-containers/1.5.4/plexus-containers-1.5.4.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-containers/1.5.4/plexus-containers-1.5.4.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/2.0.5/plexus-2.0.5.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/2.0.5/plexus-2.0.5.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-classworlds/2.2.3/plexus-classworlds-2.2.3.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-classworlds/2.2.3/plexus-classworlds-2.2.3.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject-bean/1.4.2/sisu-inject-bean-1.4.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject-bean/1.4.2/sisu-inject-bean-1.4.2.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-guice/2.1.7/sisu-guice-2.1.7.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-guice/2.1.7/sisu-guice-2.1.7.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.1.0/maven-shared-utils-3.1.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.1.0/maven-shared-utils-3.1.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/30/maven-shared-components-30.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/30/maven-shared-components-30.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/30/maven-parent-30.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/30/maven-parent-30.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/18/apache-18.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/18/apache-18.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.5/commons-io-2.5.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.5/commons-io-2.5.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.5/slf4j-api-1.7.5.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.5/slf4j-api-1.7.5.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-parent/1.7.5/slf4j-parent-1.7.5.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-parent/1.7.5/slf4j-parent-1.7.5.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/spice/spice-parent/15/spice-parent-15.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/spice/spice-parent/15/spice-parent-15.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-sink-api/2.0.0-M12/doxia-sink-api-2.0.0-M12.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/reporting/maven-reporting-api/4.0.0-M12/maven-reporting-api-4.0.0-M12.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/reporting/maven-reporting-impl/4.0.0-M15/maven-reporting-impl-4.0.0-M15.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-site-model/2.0.0-M19/doxia-site-model-2.0.0-M19.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-core/2.0.0-M12/doxia-core-2.0.0-M12.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/reporting/maven-reporting-api/4.0.0-M12/maven-reporting-api-4.0.0-M12.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-integration-tools/2.0.0-M19/doxia-integration-tools-2.0.0-M19.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-integration-tools/2.0.0-M19/doxia-integration-tools-2.0.0-M19.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-interpolation/1.27/plexus-interpolation-1.27.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-interpolation/1.27/plexus-interpolation-1.27.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-site-renderer/2.0.0-M19/doxia-site-renderer-2.0.0-M19.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-site-renderer/2.0.0-M19/doxia-site-renderer-2.0.0-M19.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-skin-model/2.0.0-M19/doxia-skin-model-2.0.0-M19.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-skin-model/2.0.0-M19/doxia-skin-model-2.0.0-M19.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-xhtml5/2.0.0-M12/doxia-module-xhtml5-2.0.0-M12.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-site-model/2.0.0-M19/doxia-site-model-2.0.0-M19.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-velocity/2.1.0/plexus-velocity-2.1.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-xhtml5/2.0.0-M12/doxia-module-xhtml5-2.0.0-M12.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/velocity-engine-core/2.3/velocity-engine-core-2.3.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-velocity/2.1.0/plexus-velocity-2.1.0.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/tools/velocity-tools-generic/3.1/velocity-tools-generic-3.1.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/velocity-engine-core/2.3/velocity-engine-core-2.3.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-beanutils/commons-beanutils/1.9.4/commons-beanutils-1.9.4.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-sink-api/2.0.0-M12/doxia-sink-api-2.0.0-M12.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-logging/commons-logging/1.2/commons-logging-1.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/reporting/maven-reporting-impl/4.0.0-M15/maven-reporting-impl-4.0.0-M15.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-collections/commons-collections/3.2.2/commons-collections-3.2.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/velocity/tools/velocity-tools-generic/3.1/velocity-tools-generic-3.1.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-digester3/3.2/commons-digester3-3.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-logging/commons-logging/1.2/commons-logging-1.2.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/cliftonlabs/json-simple/3.0.2/json-simple-3.0.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-beanutils/commons-beanutils/1.9.4/commons-beanutils-1.9.4.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-apt/2.0.0-M12/doxia-module-apt-2.0.0-M12.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-collections/commons-collections/3.2.2/commons-collections-3.2.2.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-xdoc/2.0.0-M12/doxia-module-xdoc-2.0.0-M12.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-core/2.0.0-M12/doxia-core-2.0.0-M12.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-archiver/3.6.2/maven-archiver-3.6.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-digester3/3.2/commons-digester3-3.2.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-apt/2.0.0-M12/doxia-module-apt-2.0.0-M12.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/org.eclipse.sisu.plexus/0.9.0.M3/org.eclipse.sisu.plexus-0.9.0.M3.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/cliftonlabs/json-simple/3.0.2/json-simple-3.0.2.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/org.eclipse.sisu.inject/0.9.0.M3/org.eclipse.sisu.inject-0.9.0.M3.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/doxia/doxia-module-xdoc/2.0.0-M12/doxia-module-xdoc-2.0.0-M12.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-classworlds/2.6.0/plexus-classworlds-2.6.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.10.0/plexus-archiver-4.10.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-archiver/3.6.2/maven-archiver-3.6.2.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/javax/inject/javax.inject/1/javax.inject-1.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/org.eclipse.sisu.inject/0.9.0.M3/org.eclipse.sisu.inject-0.9.0.M3.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.16.1/commons-io-2.16.1.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/eclipse/sisu/org.eclipse.sisu.plexus/0.9.0.M3/org.eclipse.sisu.plexus-0.9.0.M3.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.26.2/commons-compress-1.26.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-classworlds/2.6.0/plexus-classworlds-2.6.0.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-codec/commons-codec/1.17.0/commons-codec-1.17.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.10.0/plexus-archiver-4.10.0.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/io/airlift/aircompressor/0.27/aircompressor-0.27.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/javax/inject/javax.inject/1/javax.inject-1.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/tukaani/xz/1.9/xz-1.9.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.16.1/commons-io-2.16.1.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.26.2/commons-compress-1.26.2.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-codec/commons-codec/1.17.0/commons-codec-1.17.0.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.5.0/plexus-io-3.5.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/tukaani/xz/1.9/xz-1.9.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-i18n/1.0-beta-10/plexus-i18n-1.0-beta-10.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-dependency-analyzer/1.14.1/maven-dependency-analyzer-1.14.1.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/io/airlift/aircompressor/0.27/aircompressor-0.27.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/ow2/asm/asm/9.7/asm-9.7.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-i18n/1.0-beta-10/plexus-i18n-1.0-beta-10.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.4.0/maven-common-artifact-filters-3.4.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.5.0/plexus-io-3.5.0.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-dependency-analyzer/1.14.1/maven-dependency-analyzer-1.14.1.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/ow2/asm/asm/9.7/asm-9.7.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.4.0/maven-common-artifact-filters-3.4.0.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar (0 B at 0 B/s)
+[INFO] Resolving gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT:pom
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/pom/env-pom.pom
+[WARNING] The POM for gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT:pom is missing, no dependency information available
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/pom/env-pom.02.00.000.167-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Conexus Domain Aggregator 02.00.000.173-SNAPSHOT:
+[INFO] 
+[INFO] Conexus Domain Aggregator .......................... FAILURE [01:23 min]
+[INFO] Conexus Domain ..................................... SKIPPED
+[INFO] domain-test-aggregator ............................. SKIPPED
+[INFO] domain-test-api .................................... SKIPPED
+[INFO] domain-test-core ................................... SKIPPED
+[INFO] domain-test-ear .................................... SKIPPED
+[INFO] Conexus Domain System Test ......................... SKIPPED
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:38 min
+[INFO] Finished at: 2026-04-07T01:52:57Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-dependency-plugin:3.8.0:get (default-cli) on project domain-aggregator: Couldn't download artifact: Could not find artifact gov.gsa.cnxs.bom:env:02.00.000.167-SNAPSHOT:pom in conexus-plugin-repository (https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository) -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
 
-    <properties>
-        <jboss-home>${project.build.directory}/jboss</jboss-home>
-        <dir.output.dist>${project.build.directory}/dist</dir.output.dist>
-        <dir.output.deploy>${dir.output.dist}/deploy</dir.output.deploy>
-        <postgres.docker.volume.directory>${project.build.directory}/cnxs-pg-data</postgres.docker.volume.directory>
-        <!--
-        The postgres.host is simply the alias of the docker container by default. This works when
-        running inside the Bamboo docker agents because the agent, postgres, and jboss are all running
-        within the same, bridge docker network and can resolve each other by container name.
+[sikaj01@ip-10-56-112-33 domain]$ ls -R ~/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT
+/home/sikaj01/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT:
+_remote.repositories                          maven-metadata-conexus-plugin-repository.xml
+env-02.00.000.167-20260406.171647-8.pom       maven-metadata-conexus-plugin-repository.xml.sha1
+env-02.00.000.167-20260406.171647-8.pom.sha1  resolver-status.properties
+env-02.00.000.167-SNAPSHOT.pom
 
-        if you run on your workstation, you are running MVN from the docker host, not a container.
-        So you need to -Dpostgres.host=172.25.0.2. This is the IP of Postgres running within the isolated_nw.
-        -->
-        <postgres.host>${dbPostgresHost}</postgres.host>
-        <pg.datafile.dir>${project.build.directory}/pg-datafile</pg.datafile.dir>
-        <pg.datafile.file>${pg.datafile.dir}/pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</pg.datafile.file>
-    </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>gov.gsa.cnxs.domain.test</groupId>
-            <artifactId>domain-test-ear</artifactId>
-            <version>${project.version}</version>
-            <type>ear</type>
-        </dependency>
+[sikaj01@ip-10-56-112-33 domain]$ RELEASE_VERSION="02.00.000.167"
 
-        <dependency>
-            <groupId>gov.gsa.cnxs.domain.test</groupId>
-            <artifactId>domain-test-api</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data @- <<EOF
+items.find({
+  "repo":{"\$eq":"conexus-snapshot-local"},
+  "name":{"\$match":"*${RELEASE_VERSION}*"},
+  "path":{"\$match":"gov/gsa/cnxs/env*"}
+}).include("name","repo","path")
+EOF
 
-        <dependency>
-            <groupId>gov.gsa.cnxs.domain</groupId>
-            <artifactId>domain</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
+{
+"results" : [  ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 0,
+  "total" : 0
+}
+}
+[sikaj01@ip-10-56-112-33 domain]$ RELEASE_VERSION="02.00.000.173"
 
-        <dependency>
-            <groupId>gov.gsa.cnxs.common</groupId>
-            <artifactId>common-test-utils</artifactId>
-            <version>${conexus-common.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
+curl -sku "sa_bamboo:${TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data @- <<EOF
+items.find({
+  "repo":{"\$eq":"conexus-snapshot-local"},
+  "name":{"\$match":"*${RELEASE_VERSION}*"},
+  "path":{"\$match":"gov/gsa/cnxs/env*"}
+}).include("name","repo","path")
+EOF
 
-        <!-- dependencies needed by the model tests -->
-        <dependency>
-            <groupId>gov.gsa.cnxs.common</groupId>
-            <artifactId>common-utils</artifactId>
-            <version>${conexus-common.version}</version>
-            <scope>test</scope>
-        </dependency>
+{
+"results" : [  ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 0,
+  "total" : 0
+}
+}
 
-        <!-- added the glassfish one so we can do some constraint testing
-             For example the InterAgencyAgreementTest.minCeiling test
-        -->
-        <dependency>
-            <groupId>org.glassfish</groupId>
-            <artifactId>jakarta.el</artifactId>
-            <scope>test</scope>
-        </dependency>
+O] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in gov.gsa.nsfs.persist.converters.YearMonthAttributeConverterTest
+[INFO] gov.gsa.nsfs.persist.converters.YearMonthAttributeConverterTest.testConvertToDatabaseColumn -- Time elapsed: 0 s
+[INFO] gov.gsa.nsfs.persist.converters.YearMonthAttributeConverterTest.testConvertToEntityAttribute -- Time elapsed: 0 s
+[INFO] Running gov.gsa.nsfs.persist.hibernate.CommentHintStatementInspectorTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.105 s -- in gov.gsa.nsfs.persist.hibernate.CommentHintStatementInspectorTest
+[INFO] gov.gsa.nsfs.persist.hibernate.CommentHintStatementInspectorTest.testUncommentedSql -- Time elapsed: 0.001 s
+[INFO] gov.gsa.nsfs.persist.hibernate.CommentHintStatementInspectorTest.testHintedSqlParallel -- Time elapsed: 0 s
+[INFO] gov.gsa.nsfs.persist.hibernate.CommentHintStatementInspectorTest.testHintedSqlParallelBadNumber -- Time elapsed: 0 s
+[INFO] gov.gsa.nsfs.persist.hibernate.CommentHintStatementInspectorTest.testHintedAndCommentedSqlParallel -- Time elapsed: 0.001 s
+[INFO] gov.gsa.nsfs.persist.hibernate.CommentHintStatementInspectorTest.testCommentedSql -- Time elapsed: 0.001 s
+[INFO] Running gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.320 s -- in gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testMrcOptionNoKnowValue -- Time elapsed: 0.001 s
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testGetRCodeForDbvalues -- Time elapsed: 0.133 s
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testGetDbValuesFromRCode -- Time elapsed: 0.006 s
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testNullCase -- Time elapsed: 0.001 s
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testGetRCodeForType -- Time elapsed: 0.177 s
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testEmptyString -- Time elapsed: 0 s
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testMrcOptions -- Time elapsed: 0.001 s
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testDisplayName -- Time elapsed: 0 s
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testMrcOptionUnknownValue -- Time elapsed: 0 s
+[INFO] gov.gsa.nsfs.resources.validation.SREPricingElementTypeTest.testGetDbValue -- Time elapsed: 0 s
+[INFO] Running gov.gsa.nsfs.services.LocationDuplicationCheckerServiceTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.063 s -- in gov.gsa.nsfs.services.LocationDuplicationCheckerServiceTest
+[INFO] gov.gsa.nsfs.services.LocationDuplicationCheckerServiceTest.testUniqueColumnsConstructorBaseLocation -- Time elapsed: 0.062 s
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1076, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- maven-jar-plugin:3.4.1:jar (default-jar) @ domain ---
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/file-management/3.1.0/file-management-3.1.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/file-management/3.1.0/file-management-3.1.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/36/maven-shared-components-36.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/36/maven-shared-components-36.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/36/maven-parent-36.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/36/maven-parent-36.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/26/apache-26.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/26/apache-26.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/file-management/3.1.0/file-management-3.1.0.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.9.2/plexus-archiver-4.9.2.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.4.2/plexus-io-3.4.2.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.26.1/commons-compress-1.26.1.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-codec/commons-codec/1.16.1/commons-codec-1.16.1.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.9.2/plexus-archiver-4.9.2.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/iq80/snappy/snappy/0.4/snappy-0.4.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/iq80/snappy/snappy/0.4/snappy-0.4.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.5-11/zstd-jni-1.5.5-11.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.5-11/zstd-jni-1.5.5-11.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/file-management/3.1.0/file-management-3.1.0.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.26.1/commons-compress-1.26.1.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.4.2/plexus-io-3.4.2.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-codec/commons-codec/1.16.1/commons-codec-1.16.1.jar (0 B at 0 B/s)
+[INFO] Building jar: /efs/devopsdata/sikaj01/domain/domain/target/domain.jar
+[INFO] 
+[INFO] --- maven-jar-plugin:3.4.1:test-jar (default) @ domain ---
+[INFO] Building jar: /efs/devopsdata/sikaj01/domain/domain/target/domain-tests.jar
+[INFO] 
+[INFO] ----------< gov.gsa.cnxs.domain.test:domain-test-aggregator >-----------
+[INFO] Building domain-test-aggregator 02.00.000.173-SNAPSHOT             [3/7]
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ domain-test-aggregator ---
+[INFO] 
+[INFO] --------------< gov.gsa.cnxs.domain.test:domain-test-api >--------------
+[INFO] Building domain-test-api 02.00.000.173-SNAPSHOT                    [4/7]
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/jakarta/el/jakarta.el-api/5.0.0/jakarta.el-api-5.0.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/jakarta/el/jakarta.el-api/5.0.0/jakarta.el-api-5.0.0.jar (88 kB at 745 kB/s)
+[INFO] 
+[INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ domain-test-api ---
+[INFO] Deleting /efs/devopsdata/sikaj01/domain/test-util/api/target
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ domain-test-api ---
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/test-util/api/src/main/resources
+[INFO] Copying 0 resource from src/main/java to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.13.0:compile (default-compile) @ domain-test-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 15 source files with javac [debug deprecation target 17] to target/classes
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ domain-test-api ---
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/test-util/api/src/test/resources
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/test-util/api/src/test/resources
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/test-util/api/src/test/java
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.13.0:testCompile (default-testCompile) @ domain-test-api ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.2:test (default-test) @ domain-test-api ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- maven-jar-plugin:3.4.1:jar (default-jar) @ domain-test-api ---
+[INFO] Building jar: /efs/devopsdata/sikaj01/domain/test-util/api/target/domain-test-api-02.00.000.173-SNAPSHOT.jar
+[INFO] 
+[INFO] --- maven-jar-plugin:3.4.1:test-jar (default) @ domain-test-api ---
+[WARNING] JAR will be empty - no content was marked for inclusion!
+[INFO] Building jar: /efs/devopsdata/sikaj01/domain/test-util/api/target/domain-test-api-02.00.000.173-SNAPSHOT-tests.jar
+[INFO] 
+[INFO] -------------< gov.gsa.cnxs.domain.test:domain-test-core >--------------
+[INFO] Building domain-test-core 02.00.000.173-SNAPSHOT                   [5/7]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ domain-test-core ---
+[INFO] Deleting /efs/devopsdata/sikaj01/domain/test-util/core/target
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ domain-test-core ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/java to target/classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.13.0:compile (default-compile) @ domain-test-core ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 29 source files with javac [debug deprecation target 17] to target/classes
+[INFO] /efs/devopsdata/sikaj01/domain/test-util/core/src/main/java/gov/gsa/nsfs/sample/beans/SetPricePath1Pricing.java: Some input files use unchecked or unsafe operations.
+[INFO] /efs/devopsdata/sikaj01/domain/test-util/core/src/main/java/gov/gsa/nsfs/sample/beans/SetPricePath1Pricing.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ domain-test-core ---
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/test-util/core/src/test/resources
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/test-util/core/src/test/resources
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/test-util/core/src/test/java
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.13.0:testCompile (default-testCompile) @ domain-test-core ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.2:test (default-test) @ domain-test-core ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- maven-jar-plugin:3.4.1:jar (default-jar) @ domain-test-core ---
+[INFO] Building jar: /efs/devopsdata/sikaj01/domain/test-util/core/target/domain-test-core-02.00.000.173-SNAPSHOT.jar
+[INFO] 
+[INFO] --- maven-jar-plugin:3.4.1:test-jar (default) @ domain-test-core ---
+[WARNING] JAR will be empty - no content was marked for inclusion!
+[INFO] Building jar: /efs/devopsdata/sikaj01/domain/test-util/core/target/domain-test-core-02.00.000.173-SNAPSHOT-tests.jar
+[INFO] 
+[INFO] --------------< gov.gsa.cnxs.domain.test:domain-test-ear >--------------
+[INFO] Building domain-test-ear 02.00.000.173-SNAPSHOT                    [6/7]
+[INFO] --------------------------------[ ear ]---------------------------------
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-ear-plugin/3.3.0/maven-ear-plugin-3.3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-ear-plugin/3.3.0/maven-ear-plugin-3.3.0.pom (13 kB at 136 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-plugins/37/maven-plugins-37.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-plugins/37/maven-plugins-37.pom (9.9 kB at 125 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/37/maven-parent-37.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/37/maven-parent-37.pom (47 kB at 463 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/27/apache-27.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/27/apache-27.pom (20 kB at 263 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-ear-plugin/3.3.0/maven-ear-plugin-3.3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/plugins/maven-ear-plugin/3.3.0/maven-ear-plugin-3.3.0.jar (92 kB at 821 kB/s)
+[INFO] 
+[INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ domain-test-ear ---
+[INFO] 
+[INFO] --- maven-ear-plugin:3.3.0:generate-application-xml (default-generate-application-xml) @ domain-test-ear ---
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-archiver/3.6.0/maven-archiver-3.6.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-archiver/3.6.0/maven-archiver-3.6.0.pom (3.9 kB at 52 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.4.0/plexus-io-3.4.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.4.0/plexus-io-3.4.0.pom (6.0 kB at 75 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-utils/3.3.0/plexus-utils-3.3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-utils/3.3.0/plexus-utils-3.3.0.pom (5.2 kB at 60 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.4.0/plexus-archiver-4.4.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.4.0/plexus-archiver-4.4.0.pom (6.3 kB at 80 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.21/commons-compress-1.21.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.21/commons-compress-1.21.pom (20 kB at 243 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.5.0/plexus-archiver-4.5.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.5.0/plexus-archiver-4.5.0.pom (6.5 kB at 84 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.2-4/zstd-jni-1.5.2-4.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.2-4/zstd-jni-1.5.2-4.pom (1.9 kB at 26 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-utils/3.4.2/plexus-utils-3.4.2.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-utils/3.4.2/plexus-utils-3.4.2.pom (8.2 kB at 107 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/8/plexus-8.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/8/plexus-8.pom (25 kB at 307 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-filtering/3.3.0/maven-filtering-3.3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-filtering/3.3.0/maven-filtering-3.3.0.pom (6.9 kB at 81 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-mapping/3.0.0/maven-mapping-3.0.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-mapping/3.0.0/maven-mapping-3.0.0.pom (4.1 kB at 49 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/22/maven-shared-components-22.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-components/22/maven-shared-components-22.pom (4.9 kB at 66 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/27/maven-parent-27.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-parent/27/maven-parent-27.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/17/apache-17.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/apache/17/apache-17.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-core/3.0/maven-core-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-core/3.0/maven-core-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-settings/3.0/maven-settings-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-settings/3.0/maven-settings-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-settings-builder/3.0/maven-settings-builder-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-settings-builder/3.0/maven-settings-builder-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-interpolation/1.14/plexus-interpolation-1.14.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-interpolation/1.14/plexus-interpolation-1.14.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-components/1.1.18/plexus-components-1.1.18.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-components/1.1.18/plexus-components-1.1.18.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.1.1/plexus-component-annotations-2.1.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.1.1/plexus-component-annotations-2.1.1.pom (770 B at 9.9 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-containers/2.1.1/plexus-containers-2.1.1.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-containers/2.1.1/plexus-containers-2.1.1.pom (6.0 kB at 78 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/6.5/plexus-6.5.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus/6.5/plexus-6.5.pom (26 kB at 321 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-repository-metadata/3.0/maven-repository-metadata-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-repository-metadata/3.0/maven-repository-metadata-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-artifact/3.0/maven-artifact-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-artifact/3.0/maven-artifact-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-model-builder/3.0/maven-model-builder-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-model-builder/3.0/maven-model-builder-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-aether-provider/3.0/maven-aether-provider-3.0.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-aether-provider/3.0/maven-aether-provider-3.0.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-api/1.7/aether-api-1.7.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-api/1.7/aether-api-1.7.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-parent/1.7/aether-parent-1.7.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-parent/1.7/aether-parent-1.7.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-util/1.7/aether-util-1.7.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-util/1.7/aether-util-1.7.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-impl/1.7/aether-impl-1.7.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-impl/1.7/aether-impl-1.7.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-spi/1.7/aether-spi-1.7.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-spi/1.7/aether-spi-1.7.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-interpolation/1.21/plexus-interpolation-1.21.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-interpolation/1.21/plexus-interpolation-1.21.pom (1.5 kB at 19 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.3.4/maven-shared-utils-3.3.4.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.3.4/maven-shared-utils-3.3.4.pom (5.8 kB at 71 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.6/commons-io-2.6.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/commons-io/commons-io/2.6/commons-io-2.6.pom (14 kB at 180 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/42/commons-parent-42.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-parent/42/commons-parent-42.pom (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-archiver/3.6.0/maven-archiver-3.6.0.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.5.0/plexus-archiver-4.5.0.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.21/commons-compress-1.21.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.2-4/zstd-jni-1.5.2-4.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-utils/3.4.2/plexus-utils-3.4.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-archiver/3.6.0/maven-archiver-3.6.0.jar (26 kB at 312 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.4.0/plexus-io-3.4.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-archiver/4.5.0/plexus-archiver-4.5.0.jar (217 kB at 1.6 MB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-filtering/3.3.0/maven-filtering-3.3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-utils/3.4.2/plexus-utils-3.4.2.jar (267 kB at 1.9 MB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-mapping/3.0.0/maven-mapping-3.0.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-io/3.4.0/plexus-io-3.4.0.jar (79 kB at 443 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-core/3.0/maven-core-3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-compress/1.21/commons-compress-1.21.jar (1.0 MB at 5.4 MB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-model/3.0/maven-model-3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-filtering/3.3.0/maven-filtering-3.3.0.jar (55 kB at 262 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-settings/3.0/maven-settings-3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-mapping/3.0.0/maven-mapping-3.0.0.jar (11 kB at 47 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-settings-builder/3.0/maven-settings-builder-3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-settings/3.0/maven-settings-3.0.jar (47 kB at 167 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-repository-metadata/3.0/maven-repository-metadata-3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-model/3.0/maven-model-3.0.jar (165 kB at 582 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-artifact/3.0/maven-artifact-3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-settings-builder/3.0/maven-settings-builder-3.0.jar (38 kB at 126 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-plugin-api/3.0/maven-plugin-api-3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-core/3.0/maven-core-3.0.jar (527 kB at 1.7 MB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-model-builder/3.0/maven-model-builder-3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-repository-metadata/3.0/maven-repository-metadata-3.0.jar (30 kB at 85 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-aether-provider/3.0/maven-aether-provider-3.0.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-artifact/3.0/maven-artifact-3.0.jar (52 kB at 139 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-impl/1.7/aether-impl-1.7.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-plugin-api/3.0/maven-plugin-api-3.0.jar (49 kB at 128 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-spi/1.7/aether-spi-1.7.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.2-4/zstd-jni-1.5.2-4.jar (5.5 MB at 13 MB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-api/1.7/aether-api-1.7.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-model-builder/3.0/maven-model-builder-3.0.jar (148 kB at 339 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-util/1.7/aether-util-1.7.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/maven-aether-provider/3.0/maven-aether-provider-3.0.jar (51 kB at 111 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject-plexus/1.4.2/sisu-inject-plexus-1.4.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-spi/1.7/aether-spi-1.7.jar (14 kB at 28 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject-bean/1.4.2/sisu-inject-bean-1.4.2.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-api/1.7/aether-api-1.7.jar (74 kB at 149 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-guice/2.1.7/sisu-guice-2.1.7-noaop.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-impl/1.7/aether-impl-1.7.jar (106 kB at 209 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-classworlds/2.2.3/plexus-classworlds-2.2.3.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/aether/aether-util/1.7/aether-util-1.7.jar (108 kB at 203 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.1.1/plexus-component-annotations-2.1.1.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject-plexus/1.4.2/sisu-inject-plexus-1.4.2.jar (202 kB at 352 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-sec-dispatcher/1.3/plexus-sec-dispatcher-1.3.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-sec-dispatcher/1.3/plexus-sec-dispatcher-1.3.jar (0 B at 0 B/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-cipher/1.4/plexus-cipher-1.4.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-classworlds/2.2.3/plexus-classworlds-2.2.3.jar (46 kB at 79 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.3.4/maven-shared-utils-3.3.4.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-cipher/1.4/plexus-cipher-1.4.jar (0 B at 0 B/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-inject-bean/1.4.2/sisu-inject-bean-1.4.2.jar (153 kB at 254 kB/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.1.1/plexus-component-annotations-2.1.1.jar (4.1 kB at 6.7 kB/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/sisu/sisu-guice/2.1.7/sisu-guice-2.1.7-noaop.jar (472 kB at 762 kB/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.3.4/maven-shared-utils-3.3.4.jar (153 kB at 230 kB/s)
+[INFO] Generating application.xml
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ domain-test-ear ---
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/test-util/ear/src/main/resources
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/test-util/ear/src/main/java
+[INFO] 
+[INFO] --- maven-ear-plugin:3.3.0:ear (default-ear) @ domain-test-ear ---
+[INFO] Copying artifact [ejb:gov.gsa.cnxs.domain.test:domain-test-core:02.00.000.173-SNAPSHOT] to [domain-test-core.jar]
+[INFO] Copying artifact [ejb:gov.gsa.cnxs.domain:domain:02.00.000.173-SNAPSHOT] to [domain.jar]
+[INFO] Copying artifact [jar:gov.gsa.cnxs.common:common-utils:02.00.000.161-20260406.171916-15] to [lib/common-utils.jar]
+[INFO] Copying artifact [jar:gov.gsa.cnxs.common:common-base:02.00.000.161-20260406.171916-15] to [lib/common-base.jar]
+[INFO] Copying artifact [jar:com.google.guava:guava:33.3.1-jre] to [lib/guava.jar]
+[INFO] Copying artifact [jar:com.google.guava:failureaccess:1.0.2.redhat-00001] to [lib/failureaccess.jar]
+[INFO] Copying artifact [jar:com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava] to [lib/listenablefuture.jar]
+[INFO] Copying artifact [jar:com.google.code.findbugs:jsr305:3.0.2] to [lib/jsr305.jar]
+[INFO] Copying artifact [jar:com.google.errorprone:error_prone_annotations:2.28.0] to [lib/error_prone_annotations.jar]
+[INFO] Copying artifact [jar:com.google.j2objc:j2objc-annotations:3.0.0] to [lib/j2objc-annotations.jar]
+[INFO] Copying artifact [jar:com.querydsl:querydsl-apt:jakarta:5.1.0] to [lib/querydsl-apt-jakarta.jar]
+[INFO] Copying artifact [jar:com.querydsl:querydsl-codegen:5.1.0] to [lib/querydsl-codegen.jar]
+[INFO] Copying artifact [jar:com.querydsl:codegen-utils:5.1.0] to [lib/codegen-utils.jar]
+[INFO] Copying artifact [jar:org.eclipse.jdt:ecj:3.26.0] to [lib/ecj.jar]
+[INFO] Copying artifact [jar:javax.inject:javax.inject:1] to [lib/javax.inject.jar]
+[INFO] Copying artifact [jar:io.github.classgraph:classgraph:4.8.146] to [lib/classgraph.jar]
+[INFO] Copying artifact [jar:org.apache.shiro:shiro-core:jakarta:2.0.1] to [lib/shiro-core-jakarta.jar]
+[INFO] Copying artifact [jar:org.apache.shiro:shiro-lang:2.0.1] to [lib/shiro-lang.jar]
+[INFO] Copying artifact [jar:org.apache.shiro:shiro-cache:2.0.1] to [lib/shiro-cache.jar]
+[INFO] Copying artifact [jar:org.apache.shiro:shiro-crypto-hash:2.0.1] to [lib/shiro-crypto-hash.jar]
+[INFO] Copying artifact [jar:org.apache.shiro:shiro-crypto-core:2.0.1] to [lib/shiro-crypto-core.jar]
+[INFO] Copying artifact [jar:org.apache.shiro.crypto:shiro-hashes-argon2:2.0.1] to [lib/shiro-hashes-argon2.jar]
+[INFO] Copying artifact [jar:org.apache.shiro.crypto:shiro-hashes-bcrypt:2.0.1] to [lib/shiro-hashes-bcrypt.jar]
+[INFO] Copying artifact [jar:org.apache.shiro:shiro-crypto-cipher:2.0.1] to [lib/shiro-crypto-cipher.jar]
+[INFO] Copying artifact [jar:org.apache.shiro:shiro-config-core:2.0.1] to [lib/shiro-config-core.jar]
+[INFO] Copying artifact [jar:org.apache.shiro:shiro-config-ogdl:2.0.1] to [lib/shiro-config-ogdl.jar]
+[INFO] Copying artifact [jar:org.apache.shiro:shiro-event:2.0.1] to [lib/shiro-event.jar]
+[INFO] Copying artifact [jar:org.apache.commons:commons-lang3:3.18.0] to [lib/commons-lang3.jar]
+[INFO] Copying artifact [jar:org.jboss.weld:weld-api:6.0.Final] to [lib/weld-api.jar]
+[INFO] Copying artifact [jar:jakarta.enterprise:jakarta.enterprise.cdi-el-api:4.1.0] to [lib/jakarta.enterprise.cdi-el-api.jar]
+[INFO] Copying artifact [jar:gov.gsa.cnxs.domain.test:domain-test-api:02.00.000.173-SNAPSHOT] to [lib/domain-test-api.jar]
+[INFO] Copying artifact [test-jar:gov.gsa.cnxs.domain:domain:tests:02.00.000.173-SNAPSHOT] to [lib/domain-tests.jar]
+[INFO] Copying artifact [jar:com.querydsl:querydsl-jpa:jakarta:5.1.0] to [lib/querydsl-jpa-jakarta.jar]
+[INFO] Copying artifact [jar:com.querydsl:querydsl-core:5.1.0] to [lib/querydsl-core.jar]
+[INFO] Copying artifact [jar:com.mysema.commons:mysema-commons-lang:0.2.4] to [lib/mysema-commons-lang.jar]
+[INFO] Copying artifact [jar:net.minidev:json-smart:2.5.2] to [lib/json-smart.jar]
+[INFO] Copying artifact [jar:net.minidev:accessors-smart:2.5.2] to [lib/accessors-smart.jar]
+[INFO] Copying artifact [jar:org.ow2.asm:asm:9.7.1.redhat-00002] to [lib/asm.jar]
+[INFO] Copying artifact [jar:com.jayway.jsonpath:json-path:2.9.0] to [lib/json-path.jar]
+[INFO] Copying artifact [jar:org.bouncycastle:bcprov-jdk18on:1.78.1] to [lib/bcprov-jdk18on.jar]
+[INFO] Copying artifact [jar:commons-beanutils:commons-beanutils:1.11.0] to [lib/commons-beanutils.jar]
+[INFO] Copying artifact [jar:commons-collections:commons-collections:3.2.2.redhat-2] to [lib/commons-collections.jar]
+[INFO] Copying artifact [jar:org.checkerframework:checker-qual:3.49.5] to [lib/checker-qual.jar]
+[INFO] Building ear: /efs/devopsdata/sikaj01/domain/test-util/ear/target/domain-test-ear.ear
+[INFO] 
+[INFO] ------------< gov.gsa.cnxs.domain.test:domain-integration >-------------
+[INFO] Building Conexus Domain System Test 02.00.000.173-SNAPSHOT         [7/7]
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/hibernate/orm/hibernate-c3p0/6.6.36.Final/hibernate-c3p0-6.6.36.Final.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/hibernate/orm/hibernate-c3p0/6.6.36.Final/hibernate-c3p0-6.6.36.Final.pom (3.0 kB at 31 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/mchange/c3p0/0.9.5.5/c3p0-0.9.5.5.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/mchange/c3p0/0.9.5.5/c3p0-0.9.5.5.pom (1.5 kB at 18 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/mchange/mchange-commons-java/0.2.19/mchange-commons-java-0.2.19.pom
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/mchange/mchange-commons-java/0.2.19/mchange-commons-java-0.2.19.pom (3.5 kB at 40 kB/s)
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/hibernate/orm/hibernate-c3p0/6.6.36.Final/hibernate-c3p0-6.6.36.Final.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/mchange/mchange-commons-java/0.2.19/mchange-commons-java-0.2.19.jar
+Downloading from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/mchange/c3p0/0.9.5.5/c3p0-0.9.5.5.jar
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/hibernate/orm/hibernate-c3p0/6.6.36.Final/hibernate-c3p0-6.6.36.Final.jar (12 kB at 142 kB/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/mchange/c3p0/0.9.5.5/c3p0-0.9.5.5.jar (501 kB at 4.0 MB/s)
+Downloaded from conexus-plugin-repository: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/mchange/mchange-commons-java/0.2.19/mchange-commons-java-0.2.19.jar (631 kB at 3.8 MB/s)
+[INFO] 
+[INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ domain-integration ---
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ domain-integration ---
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/integration/src/main/resources
+[INFO] skip non existing resourceDirectory /efs/devopsdata/sikaj01/domain/integration/src/main/java
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.13.0:compile (default-compile) @ domain-integration ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ domain-integration ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] Copying 0 resource from src/test/resources to target/test-classes
+[INFO] Copying 0 resource from src/test/java to target/test-classes
+[INFO] The encoding used to copy filtered properties files have not been set. This means that the same encoding will be used to copy filtered properties files as when copying other filtered resources. This might not be what you want! Run your build with --debug to see which files might be affected. Read more at https://maven.apache.org/plugins/maven-resources-plugin/examples/filtering-properties-files.html
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.13.0:testCompile (default-testCompile) @ domain-integration ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 18 source files with javac [debug deprecation target 17] to target/test-classes
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.5.2:test (default-test) @ domain-integration ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- maven-jar-plugin:3.4.1:jar (default-jar) @ domain-integration ---
+[WARNING] JAR will be empty - no content was marked for inclusion!
+[INFO] Building jar: /efs/devopsdata/sikaj01/domain/integration/target/domain-integration-02.00.000.173-SNAPSHOT.jar
+[INFO] 
+[INFO] --- maven-jar-plugin:3.4.1:test-jar (default) @ domain-integration ---
+[INFO] Building jar: /efs/devopsdata/sikaj01/domain/integration/target/domain-integration-02.00.000.173-SNAPSHOT-tests.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Conexus Domain Aggregator 02.00.000.173-SNAPSHOT:
+[INFO] 
+[INFO] Conexus Domain Aggregator .......................... SUCCESS [  1.210 s]
+[INFO] Conexus Domain ..................................... SUCCESS [05:45 min]
+[INFO] domain-test-aggregator ............................. SUCCESS [  0.014 s]
+[INFO] domain-test-api .................................... SUCCESS [  5.834 s]
+[INFO] domain-test-core ................................... SUCCESS [  3.231 s]
+[INFO] domain-test-ear .................................... SUCCESS [ 16.220 s]
+[INFO] Conexus Domain System Test ......................... SUCCESS [  6.956 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  06:19 min
+[INFO] Finished at: 2026-04-07T02:06:46Z
+[INFO] ------------------------------------------------------------------------
 
-        <dependency>
-            <groupId>jakarta.jms</groupId>
-            <artifactId>jakarta.jms-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
 
-        <dependency>
-            <groupId>jakarta.ejb</groupId>
-            <artifactId>jakarta.ejb-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>jakarta.validation</groupId>
-            <artifactId>jakarta.validation-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.hibernate.orm</groupId>
-            <artifactId>hibernate-c3p0</artifactId>
-            <version>${hibernate-c3p0.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-    </dependencies>
-
-    <profiles>
-        <profile>
-            <id>integration-test</id>
-            <activation>
-                <property>
-                    <name>skip.docker</name>
-                    <value>false</value>
-                </property>
-            </activation>
-
-<!--            <dependencies>-->
-<!--                <dependency>-->
-<!--                    <groupId>gov.gsa.cnxs.db</groupId>-->
-<!--                    <artifactId>pg-datafile</artifactId>-->
-<!--                    <classifier>postgres-data</classifier>-->
-<!--                    <version>${version.cnxs-pg-datafile}</version>-->
-<!--                    <type>tar.gz</type>-->
-<!--                </dependency>-->
-<!--&lt;!&ndash;                <dependency>&ndash;&gt;-->
-<!--&lt;!&ndash;                    <groupId>gov.gsa.cnxs.db</groupId>&ndash;&gt;-->
-<!--&lt;!&ndash;                    <artifactId>schema</artifactId>&ndash;&gt;-->
-<!--&lt;!&ndash;                    <version>${version.schema}</version>&ndash;&gt;-->
-<!--&lt;!&ndash;                    <classifier>data</classifier>&ndash;&gt;-->
-<!--&lt;!&ndash;                    <type>tar.gz</type>&ndash;&gt;-->
-<!--&lt;!&ndash;                </dependency>&ndash;&gt;-->
-<!--            </dependencies>-->
-
-            <build>
-                <plugins>
-                    <!-- compile our integration tests -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <phase>test-compile</phase>
-                                <goals>
-                                    <goal>testCompile</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- Tell surefire to skip trying to run unit tests inside this module, we are using the failsafe plugin for integration tests and surefire for unit tests -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-dependency-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>copy-pg-datafile</id>
-                                <phase>generate-test-resources</phase>
-                                <goals>
-                                    <goal>copy</goal>
-                                </goals>
-                                <configuration>
-                                    <artifactItems>
-                                        <artifactItem>
-                                            <groupId>gov.gsa.cnxs.db</groupId>
-                                            <artifactId>pg-datafile</artifactId>
-                                            <classifier>postgres-data</classifier>
-                                            <version>${version.cnxs-pg-datafile}</version>
-                                            <type>tar.gz</type>
-                                            <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
-                                            <destFileName>pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</destFileName>
-                                            <overWrite>false</overWrite>
-                                        </artifactItem>
-                                    </artifactItems>
-                                </configuration>
-                        </execution>
-                        <execution>
-                                <id>unpack-pg-datafile</id>
-                                <phase>generate-test-resources</phase>
-                                <goals>
-                                    <goal>unpack</goal>
-                                </goals>
-                                <configuration>
-                                    <artifactItems>
-                                        <artifactItem>
-                                            <groupId>gov.gsa.cnxs.db</groupId>
-                                            <artifactId>pg-datafile</artifactId>
-                                            <classifier>postgres-data</classifier>
-                                            <version>${version.cnxs-pg-datafile}</version>
-                                            <type>tar.gz</type>
-                                            <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
-                                            <destFileName>pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</destFileName>
-                                            <overWrite>false</overWrite>
-                                        </artifactItem>
-                                    </artifactItems>
-                                </configuration>
-                        </execution>
-
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>${version.maven-failsafe-plugin}</version>
-                        <configuration>
-                            <systemPropertyVariables>
-                                <pg.datafile.file>${pg.datafile.file}</pg.datafile.file>
-                            </systemPropertyVariables>
-                        </configuration>
-                    </plugin>
-
-                    <!-- copy the tests from the model project as well so we run those against Postgres
-                         Now supposedly I could have added the 'dependenciesToScan' property to the failsafe configuration,
-                         but I was unable to get that working.
-                         -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-dependency-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>unpack-tests</id>
-                                <phase>process-resources</phase>
-                                <goals>
-                                    <goal>unpack-dependencies</goal>
-                                </goals>
-                                <configuration>
-                                    <includeArtifactIds>domain</includeArtifactIds>
-                                    <includeClassifiers>tests</includeClassifiers>
-                                    <includes>gov/gsa/nsfs/domains/**/*Test.class</includes>
-                                    <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>unpack-cnxs-pg-datafile</id>
-                                <phase>process-resources</phase>
-                                <goals>
-                                    <goal>unpack-dependencies</goal>
-                                </goals>
-                                <configuration>
-                                    <includeArtifactIds>pg-datafile</includeArtifactIds>
-                                    <includeClassifiers>postgres-data</includeClassifiers>
-                                    <type>tar.gz</type>
-                                    <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
-                                </configuration>
-                            </execution>
-
-<!--                            <execution>-->
-<!--                                <id>copy-schema</id>-->
-<!--                                <phase>process-resources</phase>-->
-<!--                                <goals>-->
-<!--                                    <goal>copy</goal>-->
-<!--                                </goals>-->
-<!--                                <configuration>-->
-<!--                                    <artifactItems>-->
-<!--                                        <artifactItem>-->
-<!--                                            <groupId>gov.gsa.cnxs.db</groupId>-->
-<!--                                            <artifactId>schema</artifactId>-->
-<!--                                            <version>${version.schema}</version>-->
-<!--                                            <classifier>data</classifier>-->
-<!--                                            <type>tar.gz</type>-->
-<!--                                            <destFileName>schema.tar.gz</destFileName>-->
-<!--                                        </artifactItem>-->
-<!--                                    </artifactItems>-->
-<!--                                    <outputDirectory>${oracle.docker.volume.directory}/upgrade</outputDirectory>-->
-<!--                                </configuration>-->
-<!--                            </execution>-->
-                        </executions>
-                    </plugin>
-                    <!-- create / start docker images for JBoss, Postgres and our artifacts -->
-                    <plugin>
-                        <groupId>io.fabric8</groupId>
-                        <artifactId>docker-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>start-container</id>
-                                <phase>pre-integration-test</phase>
-                                <goals>
-                                    <goal>build</goal>
-                                    <goal>start</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>stop-container</id>
-                                <phase>post-integration-test</phase>
-                                <goals>
-                                    <goal>stop</goal>
-                                    <goal>remove</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <verbose>true</verbose>
-                            <removeAll>true</removeAll>
-                            <images>
-                                <image>
-                                    <name>${dbPostgresHost}</name>
-                                    <alias>${dbPostgresHost}</alias>
-                                    <build>
-                                        <from>${docker.postgres}</from>
-                                        <cleanup>remove</cleanup>
-                                    </build>
-                                    <run>
-                                        <namingStrategy>alias</namingStrategy>
-                                        <network>
-                                            <mode>custom</mode>
-                                            <name>isolated_nw</name>
-                                        </network>
-                                        <wait>
-                                            <log>${postgres.started.message}</log>
-                                            <time>${docker.timeout}</time>
-                                            <kill>60000</kill>
-                                        </wait>
-                                        <volumes>
-                                            <bind>
-                                                <volume>${postgres.docker.volume.directory}:${postgresVolumeMount}</volume>
-                                            </bind>
-                                        </volumes>
-                                        <log>
-                                            <enabled>true</enabled>
-                                            <prefix>CNX-POSTGRES</prefix>
-                                            <color>green</color>
-                                        </log>
-                                    </run>
-                                </image>
-                                <image>
-                                    <name>${jboss.docker.alias}</name>
-                                    <alias>${jboss.docker.alias}</alias>
-                                    <build>
-                                        <from>${docker.jboss-pg}</from>
-                                        <assembly>
-                                            <user>jboss:jboss:jboss</user>
-                                            <basedir>${docker.jboss.home}/standalone</basedir>
-                                            <descriptor>assembly.xml</descriptor>
-                                        </assembly>
-                                        <cleanup>remove</cleanup>
-                                    </build>
-                                    <run>
-                                        <namingStrategy>alias</namingStrategy>
-                                        <network>
-                                            <mode>custom</mode>
-                                            <name>isolated_nw</name>
-                                        </network>
-                                        <wait>
-                                            <log>${jboss.started.message}</log>
-                                            <time>${docker.timeout}</time>
-                                        </wait>
-                                        <dependsOn>
-                                            <container>${dbPostgresHost}</container>
-                                        </dependsOn>
-                                        <env>
-                                            <CONEXUS_DB_URL>jdbc:postgresql://${dbPostgresHost}:${dbPostgresPort}/${dbPostgresService}</CONEXUS_DB_URL>
-                                            <JBOSS_BIND_ADDRESS>${jboss.host}</JBOSS_BIND_ADDRESS>
-                                            <JBOSS_BIND_ADDRESS_MANAGEMENT>${jboss.host}</JBOSS_BIND_ADDRESS_MANAGEMENT>
-                                        </env>
-                                        <log>
-                                            <enabled>true</enabled>
-                                            <prefix>CNX-JBOSS</prefix>
-                                            <color>yellow</color>
-                                        </log>
-                                    </run>
-                                </image>
-                            </images>
-                        </configuration>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>non-forked</id>
-                                <goals>
-                                    <goal>integration-test</goal>
-                                    <goal>verify</goal>
-                                </goals>
-                                <configuration>
-                                    <runOrder>alphabetical</runOrder>
-                                    <includes>
-                                        <include>gov.gsa.nsfs.**</include>
-                                    </includes>
-                                    <systemPropertyVariables>
-                                        <conexus.jboss.host>${jboss.host}</conexus.jboss.host>
-                                        <conexus.jms.host>${jboss.host}</conexus.jms.host>
-                                        <postgres.host>${postgres.host}</postgres.host>
-                                        <!-- See AbstractTestCase -->
-                                        <!-- See db-postgres-properties-->
-                                        <hibernate.properties>db-postgres.properties</hibernate.properties>
-                                    </systemPropertyVariables>
-                                </configuration>
-                            </execution>
-                        </executions>
-                        <version>${version.maven-failsafe-plugin}</version>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-</project>
+[sikaj01@ip-10-56-112-33 domain]$ mvn -pl domain-integration -am clean verify
+[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for gov.gsa.cnxs.domain.test:domain-integration:jar:02.00.000.173-SNAPSHOT
+[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 230, column 29
+[WARNING] 'profiles.profile[integration-test].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-failsafe-plugin @ line 380, column 29
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[ERROR] [ERROR] Could not find the selected project in the reactor: domain-integration @ 
+[ERROR] Could not find the selected project in the reactor: domain-integration -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MavenExecutionException
+[sikaj01@ip-10-56-112-33 domain]$ 
