@@ -294,11 +294,12 @@ Deploy RC:
         working-dir: web/src/main/
         scripts:
           - |
-            set -eu
+            set -euo pipefail
 
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
-            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
-            NPM_HOST_PATH="//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
+
+            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
+            NPM_HOST_PATH="//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
 
             yum install -y google-chrome-stable || true
 
@@ -308,9 +309,9 @@ Deploy RC:
             [ -f .npmrc ] && { echo "=== local .npmrc ==="; cat .npmrc; } || true
             [ -f package-lock.json ] && echo "package-lock.json exists" || true
 
-            echo "Removing old npm registry overrides..."
+            echo "Removing old npm config overrides..."
             npm config delete registry || true
-            rm -f ~/.npmrc
+            rm -f ~/.npmrc .npmrc
 
             echo "Writing clean authenticated ~/.npmrc for current Artifactory..."
             cat > ~/.npmrc <<EOF
@@ -321,12 +322,20 @@ Deploy RC:
             ${NPM_HOST_PATH}:email=bamboo@local
             EOF
 
-            echo "Removing stale lockfile so npm does not use old resolved tarball URLs..."
+            echo "Removing stale lockfile so npm does not reuse old resolved tarball URLs..."
             rm -f package-lock.json
 
             npm cache clean --force || true
 
-            echo "Using registry: $(npm config get registry)"
+            echo "Effective registry:"
+            npm config get registry
+
+            echo "Checking required Angular package in target registry..."
+            if ! npm view @angular-devkit/architect version --registry="${NEW_NPM_REGISTRY}" >/dev/null 2>&1; then
+              echo "ERROR: @angular-devkit/architect is not available in ${NEW_NPM_REGISTRY}"
+              echo "This is now an Artifactory npm repository content/configuration issue, not a Bamboo auth or stale-lockfile issue."
+              exit 1
+            fi
 
             npm install --registry="${NEW_NPM_REGISTRY}"
             npm test --registry="${NEW_NPM_REGISTRY}"
@@ -435,11 +444,12 @@ Update dependencies to latest snapshot versions:
         working-dir: web/src/main/
         scripts:
           - |
-            set -eu
+            set -euo pipefail
 
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
-            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
-            NPM_HOST_PATH="//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
+
+            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
+            NPM_HOST_PATH="//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
 
             yum install -y google-chrome-stable || true
 
@@ -449,9 +459,9 @@ Update dependencies to latest snapshot versions:
             [ -f .npmrc ] && { echo "=== local .npmrc ==="; cat .npmrc; } || true
             [ -f package-lock.json ] && echo "package-lock.json exists" || true
 
-            echo "Removing old npm registry overrides..."
+            echo "Removing old npm config overrides..."
             npm config delete registry || true
-            rm -f ~/.npmrc
+            rm -f ~/.npmrc .npmrc
 
             echo "Writing clean authenticated ~/.npmrc for current Artifactory..."
             cat > ~/.npmrc <<EOF
@@ -462,12 +472,20 @@ Update dependencies to latest snapshot versions:
             ${NPM_HOST_PATH}:email=bamboo@local
             EOF
 
-            echo "Removing stale lockfile so npm does not use old resolved tarball URLs..."
+            echo "Removing stale lockfile so npm does not reuse old resolved tarball URLs..."
             rm -f package-lock.json
 
             npm cache clean --force || true
 
-            echo "Using registry: $(npm config get registry)"
+            echo "Effective registry:"
+            npm config get registry
+
+            echo "Checking required Angular package in target registry..."
+            if ! npm view @angular-devkit/architect version --registry="${NEW_NPM_REGISTRY}" >/dev/null 2>&1; then
+              echo "ERROR: @angular-devkit/architect is not available in ${NEW_NPM_REGISTRY}"
+              echo "This is now an Artifactory npm repository content/configuration issue, not a Bamboo auth or stale-lockfile issue."
+              exit 1
+            fi
 
             npm install --registry="${NEW_NPM_REGISTRY}"
             npm test --registry="${NEW_NPM_REGISTRY}"
