@@ -297,15 +297,15 @@ Deploy RC:
             set -eu
 
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
+            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
 
             yum install -y google-chrome-stable || true
-
-            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
 
             echo "Checking for npm config sources..."
             npm config get registry || true
             [ -f ~/.npmrc ] && { echo "=== ~/.npmrc ==="; cat ~/.npmrc; } || true
             [ -f .npmrc ] && { echo "=== local .npmrc ==="; cat .npmrc; } || true
+            [ -f package-lock.json ] && { echo "package-lock.json exists"; } || true
 
             echo "Removing old npm registry overrides..."
             npm config delete registry || true
@@ -317,6 +317,9 @@ Deploy RC:
             always-auth=false
             strict-ssl=true
             EOF
+
+            echo "Removing stale lockfile so npm does not use old resolved tarball URLs..."
+            rm -f package-lock.json
 
             npm cache clean --force || true
 
@@ -432,15 +435,15 @@ Update dependencies to latest snapshot versions:
             set -eu
 
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
+            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
 
             yum install -y google-chrome-stable || true
-
-            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
 
             echo "Checking for npm config sources..."
             npm config get registry || true
             [ -f ~/.npmrc ] && { echo "=== ~/.npmrc ==="; cat ~/.npmrc; } || true
             [ -f .npmrc ] && { echo "=== local .npmrc ==="; cat .npmrc; } || true
+            [ -f package-lock.json ] && { echo "package-lock.json exists"; } || true
 
             echo "Removing old npm registry overrides..."
             npm config delete registry || true
@@ -452,6 +455,9 @@ Update dependencies to latest snapshot versions:
             always-auth=false
             strict-ssl=true
             EOF
+
+            echo "Removing stale lockfile so npm does not use old resolved tarball URLs..."
+            rm -f package-lock.json
 
             npm cache clean --force || true
 
