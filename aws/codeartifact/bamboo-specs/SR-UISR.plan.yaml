@@ -109,19 +109,21 @@ Gitflow release start:
               exit 1
             fi
 
-            ACTIVE_RELEASES=$(git ls-remote --heads origin 'refs/heads/release/*' | awk '{sub("refs/heads/","",$2); print $2}')
-            OTHER_RELEASES=$(printf '%s\n' "${ACTIVE_RELEASES}" | grep -v "^${RELEASE_BRANCH}$" || true)
-
-            if [ -n "${OTHER_RELEASES}" ]; then
-              echo "ERROR: other active remote release branches already exist:"
-              printf '  %s\n' ${OTHER_RELEASES}
-              exit 1
-            fi
+            ACTIVE_RELEASES=$(git ls-remote --heads origin 'refs/heads/release/*' | awk '{sub("refs/heads/","",$2); print $2}' || true)
 
             if printf '%s\n' "${ACTIVE_RELEASES}" | grep -qx "${RELEASE_BRANCH}"; then
               echo "Target release branch ${RELEASE_BRANCH} already exists; allowing rerun"
             else
-              echo "No conflicting remote release branches found"
+              echo "Target release branch ${RELEASE_BRANCH} does not yet exist"
+            fi
+
+            OTHER_RELEASES=$(printf '%s\n' "${ACTIVE_RELEASES}" | grep -v '^$' | grep -v "^${RELEASE_BRANCH}$" || true)
+
+            if [ -n "${OTHER_RELEASES}" ]; then
+              echo "WARNING: other remote release branches exist, but continuing:"
+              printf '  %s\n' ${OTHER_RELEASES}
+            else
+              echo "No other remote release branches found"
             fi
 
             git fetch origin +refs/heads/*:refs/remotes/origin/* --prune --tags
