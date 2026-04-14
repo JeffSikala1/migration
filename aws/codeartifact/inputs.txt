@@ -1,23 +1,24 @@
-git push origin --delete release/02.00.000.146
+curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/conexus-rc-local/gov/gsa/cnxs/bom/env/02.00.000.167-RC/env-02.00.000.167-RC.pom" \
+  | python3 -m json.tool | grep '"path"'
 
 
-# verify the release branch is deleted
-git ls-remote --heads origin "refs/heads/release/02.00.000.146"
-
-
-git push origin --delete release/01.00.000.142
-git push origin --delete release/02.00.000.143
-git push origin --delete release/02.00.000.144
-git push origin --delete release/02.00.000.145
+git push origin --delete release/02.00.000.147
 
 
 git ls-remote --heads origin "refs/heads/release/*"
 
 
 
-git push origin --delete release/02.00.000.146
-git ls-remote --heads origin "refs/heads/release/02.00.000.146"
-git ls-remote --heads origin "refs/heads/release/*"
+echo "=== parent versions after RC conversion ==="
+grep -R -n "<parent>\|<artifactId>env</artifactId>\|<version>" . --include="pom.xml" || true
+
+
+
+if grep -R -n "<version>02.00.000.167-RC</version>" . --include="pom.xml"; then
+  echo "ERROR: parent/dependency version was incorrectly converted to RC"
+  exit 1
+fi
 
 
 

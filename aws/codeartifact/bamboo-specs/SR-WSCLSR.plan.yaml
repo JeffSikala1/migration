@@ -254,20 +254,18 @@ Gitflow release start:
         description: Convert project version to RC
         scripts:
           - |
-            set -eu
+            set -euo pipefail
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout \
-              -s "${SETTINGS_FILE}" help:evaluate \
-              -Dexpression=project.version 2>/dev/null \
-              | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
+            RC_VERSION="${CURRENT_VERSION%-SNAPSHOT}-RC"
             RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin
+            git fetch origin +refs/heads/*:refs/remotes/origin/* --prune --tags
 
             if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
               echo "ERROR: expected release branch ${RELEASE_BRANCH} was not created"
@@ -275,18 +273,25 @@ Gitflow release start:
               exit 1
             fi
 
-            git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
+            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}"
 
-            find . -type f -name pom.xml -exec sed -i 's/SNAPSHOT/RC/g' {} +
+            /usr/share/maven/bin/mvn -B -U \
+              -s "${SETTINGS_FILE}" \
+              versions:set \
+              -DnewVersion="${RC_VERSION}" \
+              -DprocessAllModules=true \
+              -DgenerateBackupPoms=false
 
             git config user.name "bamboo"
             git config user.email "bamboo@local"
 
-            if ! git diff --quiet; then
-              git commit -am "Update SNAPSHOT to RC"
-              git push origin HEAD:"$RELEASE_BRANCH"
+            git add pom.xml */pom.xml */*/pom.xml 2>/dev/null || true
+
+            if ! git diff --cached --quiet; then
+              git commit -m "Update project version to ${RC_VERSION}"
+              git push origin HEAD:"${RELEASE_BRANCH}"
             else
-              echo "No SNAPSHOT values needed updating"
+              echo "No project version changes needed"
             fi
 
   artifact-subscriptions: []
