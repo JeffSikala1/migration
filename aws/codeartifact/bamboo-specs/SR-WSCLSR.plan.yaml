@@ -192,6 +192,46 @@ Gitflow release start:
 
     - script:
         interpreter: SHELL
+        description: Force clean git working tree before jgitflow
+        scripts:
+          - |
+            set -euo pipefail
+
+            git reset --hard HEAD
+            git clean -fdx
+
+            echo "=== git status --short ==="
+            git status --short || true
+
+            echo "=== untracked files ==="
+            git ls-files --others --exclude-standard || true
+
+            if [ -n "$(git status --porcelain=v1)" ]; then
+              echo "ERROR: working tree is not clean before jgitflow"
+              exit 1
+            fi
+
+            echo "Working tree is clean for jgitflow"
+
+    - script:
+        interpreter: SHELL
+        description: Debug repo state before jgitflow
+        scripts:
+          - |
+            set -euo pipefail
+            echo "=== pwd ==="
+            pwd
+            echo "=== git status --short ==="
+            git status --short || true
+            echo "=== git status --ignored --short ==="
+            git status --ignored --short || true
+            echo "=== untracked files ==="
+            git ls-files --others --exclude-standard || true
+            echo "=== top-level files ==="
+            find . -maxdepth 2 | sort
+
+    - script:
+        interpreter: SHELL
         description: Start Gitflow release
         scripts:
           - |
