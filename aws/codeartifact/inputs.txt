@@ -1,21 +1,33 @@
-I uploaded the missing POM to:
-conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.50/pg-datafile-02.00.000.50.pom
+# Check sa_bamboo's group membership
+curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sa_bamboo" \
+  | python3 -m json.tool
 
 
-cat > /tmp/pg-datafile-02.00.000.50.pom << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-  http://maven.apache.org/xsd/maven-4.0.0.xsd"
-  xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>gov.gsa.cnxs.db</groupId>
-  <artifactId>pg-datafile</artifactId>
-  <version>02.00.000.50</version>
-  <packaging>pom</packaging>
-  <description>Postgres data file for Conexus integration tests</description>
-</project>
-EOF
+
+
+
+# Check which cache repos exist
+for repo in mulesoft fusesource hibernate sonatype; do
+  code=$(curl -s -o /dev/null -w "%{http_code}" \
+    -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/${repo}-cache")
+  echo "${repo}-cache: ${code}"
+done
+
+
+
+
+
+for repo in maven-central redhat-ga redhat-earlyaccess jboss.org-ea jboss.org_releases jaspersoft-thirdpart jaspersoft.jfrog.io wso2-remote; do
+  code=$(curl -s -o /dev/null -w "%{http_code}" \
+    -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/${repo}-cache")
+  echo "${repo}-cache: ${code}"
+done
+
+
+
 
 
 
