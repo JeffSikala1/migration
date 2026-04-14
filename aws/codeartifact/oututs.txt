@@ -1,11 +1,32 @@
-[sikaj01@ip-10-56-112-33 ws-client]$ # 1. Confirm no stale release branches
-git ls-remote --heads origin 'refs/heads/release/*'
-[sikaj01@ip-10-56-112-33 ws-client]$ # 2. Confirm env RC exists
-curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/conexus-rc-local/gov/gsa/cnxs/bom/env/02.00.000.167-RC/env-02.00.000.167-RC.pom" \
-  | python3 -m json.tool | grep '"path"'
-    "path": "/gov/gsa/cnxs/bom/env/02.00.000.167-RC/env-02.00.000.167-RC.pom",
-[sikaj01@ip-10-56-112-33 ws-client]$ # 3. Confirm develop is at 02.00.000.146-SNAPSHOT
-grep "<version>" pom.xml | head -2
+[sikaj01@ip-10-56-112-33 ws-client]$ git log --oneline -3 origin/develop
+git show origin/develop:pom.xml | grep "<version>" | head -3
+1cf05e2 (origin/develop, origin/HEAD) updated-parent-and-properties
+25d0df7 updating poms for 02.00.000.146-SNAPSHOT development
+89fc639 updated-parent-and-properties
         <version>02.00.000.167-SNAPSHOT</version>
-    <version>02.00.000.148-SNAPSHOT</version>
+    <version>02.00.000.146-SNAPSHOT</version>
+                <version>${version.conexus-common}</version>
+[sikaj01@ip-10-56-112-33 ws-client]$ git fetch origin
+git show origin/develop:pom.xml | grep "<version>" | head -2
+        <version>02.00.000.167-SNAPSHOT</version>
+    <version>02.00.000.146-SNAPSHOT</version>
+[sikaj01@ip-10-56-112-33 ws-client]$ curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -d '
+items.find({
+  "repo": "conexus-rc-local",
+  "path": {"$match": "gov/gsa/cnxs/ws-client/*/02.00.000.148*"}
+})
+.include("repo","path","name")
+'
+
+{
+"results" : [  ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 0,
+  "total" : 0
+}
+}
