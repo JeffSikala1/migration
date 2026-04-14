@@ -1,15 +1,20 @@
-git push origin \
-  --delete release/01.00.000.150 \
-  --delete release/02.00.000.151 \
-  --delete release/02.00.000.152 \
-  --delete release/02.00.000.153 \
-  --delete release/02.00.000.155
+# 1. No stale release branches
+git ls-remote --heads origin 'refs/heads/release/*'
+# Expected: empty
 
-
-
-
+# 2. Develop at correct version
 git show origin/develop:pom.xml | grep "<version>" | head -2
-git log --oneline -3 origin/develop
+# Expected: 02.00.000.154-SNAPSHOT
+
+# 3. env RC exists (needed by ws Deploy RC)
+curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/conexus-rc-local/gov/gsa/cnxs/bom/env/02.00.000.167-RC/env-02.00.000.167-RC.pom" \
+  | python3 -m json.tool | grep '"path"'
+
+
+
+
+
 
 
 
