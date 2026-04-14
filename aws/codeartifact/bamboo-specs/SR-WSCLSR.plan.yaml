@@ -128,7 +128,7 @@ Gitflow release start:
 
     - script:
         interpreter: SHELL
-        description: Validate release preconditions
+        description: Validate release preconditions and cleanup stale branches
         scripts:
           - |
             set -eu
@@ -143,20 +143,17 @@ Gitflow release start:
               exit 1
             fi
 
-            ACTIVE_RELEASES=$(git ls-remote --heads origin 'refs/heads/release/*' | awk '{sub("refs/heads/","",$2); print $2}' || true)
+            ACTIVE_RELEASES=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{sub("refs/heads/","",$2); print $2}' || true)
 
-            if printf '%s\n' "${ACTIVE_RELEASES}" | grep -qx "${RELEASE_BRANCH}"; then
-              echo "ERROR: target release branch ${RELEASE_BRANCH} already exists"
-              echo "Delete or finish it before rerunning."
-              exit 1
-            fi
-
-            OTHER_RELEASES=$(printf '%s\n' "${ACTIVE_RELEASES}" | grep -v '^$' || true)
-
-            if [ -n "${OTHER_RELEASES}" ]; then
-              echo "ERROR: remote release branches already exist, and jgitflow will refuse to start:"
-              printf '  %s\n' ${OTHER_RELEASES}
-              exit 1
+            if [ -n "${ACTIVE_RELEASES}" ]; then
+              echo "Deleting existing remote release branches to allow jgitflow to proceed:"
+              printf '  %s\n' ${ACTIVE_RELEASES}
+              for branch in ${ACTIVE_RELEASES}; do
+                git push origin --delete "${branch}" || true
+              done
+            else
+              echo "No existing remote release branches"
             fi
 
             git checkout -B develop origin/develop
@@ -379,41 +376,42 @@ Deploy RC:
 
     - script:
         interpreter: SHELL
-        description: Determine release metadata
-        scripts:
-          - |
-            set -eu
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
-
-            echo "CURRENT_VERSION=${CURRENT_VERSION}" > .release-context
-            echo "RELEASE_VERSION=${RELEASE_VERSION}" >> .release-context
-            echo "RELEASE_BRANCH=${RELEASE_BRANCH}" >> .release-context
-
-    - script:
-        interpreter: SHELL
         description: Checkout release branch
         scripts:
           - |
             set -eu
-            . ./.release-context
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
+            # Derive SNAPSHOT version from develop checkout to find branch name
+            SNAP_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout \
+              -s "${SETTINGS_FILE}" help:evaluate \
+              -Dexpression=project.version 2>/dev/null \
+              | sed '/^\[/d' | grep -v '^$' | tail -1)
+            RELEASE_BRANCH="release/${SNAP_VERSION%-SNAPSHOT}"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin +refs/heads/*:refs/remotes/origin/* --prune --tags
+            git fetch origin
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -qx "origin/${RELEASE_BRANCH}"; then
+            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
               echo "ERROR: expected release branch ${RELEASE_BRANCH} not found"
               git branch -r
               exit 1
             fi
 
-            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}"
+            git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
+            git reset --hard "origin/$RELEASE_BRANCH"
+
+            # Verify RC version is on the branch
+            RC_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout \
+              -s "${SETTINGS_FILE}" help:evaluate \
+              -Dexpression=project.version 2>/dev/null \
+              | sed '/^\[/d' | grep -v '^$' | tail -1)
+            echo "Release branch version: ${RC_VERSION}"
+            if echo "${RC_VERSION}" | grep -q "SNAPSHOT"; then
+              echo "ERROR: release branch still has SNAPSHOT version: ${RC_VERSION}"
+              exit 1
+            fi
 
     - maven:
         executable: Maven 3
