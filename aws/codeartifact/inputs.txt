@@ -1,23 +1,43 @@
-curl -u $ARTIFACTORY_USER:'$ARTIFACTORY_TOKEN' \
+curl -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
   "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/@angular-devkit%2farchitect"
 
-
-curl -u ARTIFACTORY_USER:'$ARTIFACTORY_TOKEN' \
+curl -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
   "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/@angular-devkit%2farchitect"
 
 
+curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -d '
+items.find({
+  "type": "file",
+  "name": {"$match": "architect-*.tgz"},
+  "path": {"$match": "*@angular-devkit*"}
+})
+.include("repo", "path", "name", "size", "modified")
+.sort({"$desc": ["modified"]})
+.limit(20)
+'
 
-cat > ~/.npmrc <<EOF
-registry=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/
-always-auth=true
-//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/:username=$ARTIFACTORY_USER
-//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/:_password=$(printf '%s' '$ARTIFACTORY_TOKEN' | base64 -w0)
-//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/:email=bamboo@local
-EOF
 
 
-
-
+curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -d '
+items.find({
+  "type": "file",
+  "$or": [
+    {"path": {"$match": "*/@angular-devkit/*"}},
+    {"path": {"$match": "*/@angular/*"}}
+  ]
+})
+.include("repo", "path", "name", "modified")
+.sort({"$desc": ["modified"]})
+.limit(50)
+'
 
 
 
