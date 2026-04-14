@@ -1,4 +1,21 @@
-git push origin --delete release/02.00.000.154
+git fetch origin
+git ls-remote --heads origin 'refs/heads/release/*'
+
+
+curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -d '
+items.find({
+  "repo": "conexus-rc-local",
+  "path": {"$match": "gov/gsa/cnxs/ws/ws-aggregator/02.00.000.154-RC*"},
+  "name": {"$match": "*.pom"}
+})
+.include("repo","path","name")
+'
+
+
 
 
 
