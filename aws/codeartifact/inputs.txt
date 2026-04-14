@@ -1,96 +1,9 @@
-curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  -X PUT \
-  -H "Content-Type: application/json" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only" \
-  -d '{
-    "name": "anon_read_only",
-    "repo": {
-        "actions": {
-            "groups": {
-                "anon_read_only": ["read"],
-                "nsfs_developers": ["read"],
-                "nsfs_users": ["read"]
-            }
-        },
-        "repositories": [
-            "centos",
-            "conexus-maven-local",
-            "conexus-plugins-backup",
-            "conexus-rc-local",
-            "conexus-release-local",
-            "conexus-snapshot-local",
-            "docker-local",
-            "docker-remote",
-            "file-local",
-            "fusesource",
-            "hibernate",
-            "jaspersoft-thirdpart",
-            "jboss.org-ea",
-            "jboss.org_releases",
-            "jcenter",
-            "ll-2025-jboss-8",
-            "ll-CNXS-68737-newer-versions",
-            "ll-jboss8",
-            "ll-modelchanges",
-            "ll-postgres",
-            "ll-tops-task-order-ahcs",
-            "maven-central",
-            "mcafee",
-            "mulesoft",
-            "nodesource12x",
-            "nodesource8x",
-            "npm-local",
-            "npm-remote",
-            "pypi-local",
-            "redhat-earlyaccess",
-            "redhat-ga",
-            "redhat-techpreview",
-            "rpm-local",
-            "rpm-remote",
-            "sonatype",
-            "wso2-remote"
-        ],
-        "include-patterns": ["**"],
-        "exclude-patterns": []
-    }
-}' | python3 -m json.tool
+Hey Bob, your reporting-core 403 should be good now. The mulesoft repo backing the plugin repo was missing from read permissions, so it was blocking the openpdf dependency. Give it another run and let me know if anything else pops up.
 
 
 
-# Test sa_bamboo can now resolve through the virtual without 403
-curl -s -u "sa_bamboo:${TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/db/pg-datafile/02.00.000.50/pg-datafile-02.00.000.50.pom" \
-  | head -5
 
-# Also test Bob's dependency path
-curl -s -o /dev/null -w "%{http_code}\n" \
-  -u "sa_bamboo:${TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/librepdf/openpdf/1.3.30.jaspersoft.3/openpdf-1.3.30.jaspersoft.3.pom"
-
-
-
-For future uploads, if you need to manually publish an artifact like this, it’s better to use mvn deploy:deploy-file instead of a direct REST upload.
-
-That ensures the POM and metadata are generated correctly and avoids resolution issues like the one we hit.
-
-
-mvn deploy:deploy-file \
-  -DgroupId=gov.gsa.cnxs.db \
-  -DartifactId=pg-datafile \
-  -Dversion=02.00.000.50 \
-  -Dpackaging=tar.gz \
-  -Dclassifier=postgres-data \
-  -Dfile=pg-datafile-02.00.000.50-postgres-data.tar.gz \
-  -DrepositoryId=conexus-release-local \
-  -Durl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local
-
-
-
-This will automatically generate and publish the corresponding POM alongside the artifact, which Maven requires for dependency resolution.
-
-Also, I verified permissions — you already have the correct access to conexus-release-local, so no changes are needed there.
-
-
+I got Bob’s 403 issue resolved and also fixed the pg-datafile dependency that was blocking sasi's integration tests. Root cause was missing repo permissions and a missing POM, both are now corrected and verified. Everything is resolving cleanly now
 
 
 
