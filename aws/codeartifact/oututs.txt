@@ -1,49 +1,94 @@
 [sikaj01@ip-10-56-112-33 domain]$ curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sa_bamboo" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sasikanth.dale" \
   | python3 -m json.tool
 {
-    "name": "sa_bamboo",
-    "email": "OCIO-EAS-CONEXUS-SYSTEMS@usda.gov",
+    "name": "sasikanth.dale",
+    "email": "sasikanth.dale@gsa.gov",
     "admin": false,
     "policyViewer": false,
     "policyManager": false,
     "watchManager": false,
     "reportsManager": false,
     "profileUpdatable": true,
-    "internalPasswordDisabled": false,
+    "internalPasswordDisabled": true,
     "groups": [
         "anon_read_only",
-        "readers"
+        "nsfs_developers",
+        "readers",
+        "nsfs_users",
+        "conexus_release_local_create",
+        "docker_push_group"
     ],
+    "lastLoggedIn": "2026-03-30T20:35:30.793Z",
     "lastLoggedInMillis": 0,
-    "realm": "internal",
+    "realm": "saml",
     "offlineMode": false,
     "disableUIAccess": false,
     "mfaStatus": "NONE",
     "status": "ENABLED",
     "shouldInvite": false
 }
-[sikaj01@ip-10-56-112-33 domain]$ for repo in mulesoft fusesource hibernate sonatype; do
-  code=$(curl -s -o /dev/null -w "%{http_code}" \
-    -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/${repo}-cache")
-  echo "${repo}-cache: ${code}"
+[sikaj01@ip-10-56-112-33 domain]$ for perm in "docker-wso2mi" "Any%20Remote" "anon_read_only" "conexus-read-only" \ 
+  "antivirus_read_annotate_deploy_delete" "keys_readonly" \
+  "allow%20deletion%20from%20conexus%20builds" \
+  "conexus_release_local_create_permission" "create%20long%20lived%20repo" \
+  "ForOracle19cDev" "OWASP%20Report%20Upload" "conexus-deploy" "Anything" \
+  "file-upload_readonly" "ansible-vault-password-files-readonly" \
+  "publish%20conexus%20build%20info" "uploadOnly" "docker-push"; do
+  result=$(curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/${perm}" \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); repos=d.get('repo',{}).get('repositories',[]); print(' '.join(repos))" 2>/dev/null)
+  if echo "$result" | grep -qi "mulesoft"; then
+    echo "FOUND in: ${perm} -> ${result}"
+  fi
 done
-mulesoft-cache: 400
-fusesource-cache: 400
-hibernate-cache: 400
-sonatype-cache: 400
-[sikaj01@ip-10-56-112-33 domain]$ for repo in maven-central redhat-ga redhat-earlyaccess jboss.org-ea jboss.org_releases jaspersoft-thirdpart jaspersoft.jfrog.io wso2-remote; do
-  code=$(curl -s -o /dev/null -w "%{http_code}" \
-    -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/${repo}-cache")
-  echo "${repo}-cache: ${code}"
-done
-maven-central-cache: 400
-redhat-ga-cache: 400
-redhat-earlyaccess-cache: 400
-jboss.org-ea-cache: 400
-jboss.org_releases-cache: 400
-jaspersoft-thirdpart-cache: 400
-jaspersoft.jfrog.io-cache: 400
-wso2-remote-cache: 400
+[sikaj01@ip-10-56-112-33 domain]$ curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/Any%20Remote" \
+  | python3 -m json.tool
+{
+    "name": "Any Remote",
+    "repo": {
+        "actions": {
+            "users": {
+                "anonymous": [
+                    "read",
+                    "write"
+                ]
+            }
+        },
+        "repositories": [
+            "ANY REMOTE",
+            "yum-local"
+        ],
+        "include-patterns": [
+            "**"
+        ],
+        "exclude-patterns": []
+    }
+}
+[sikaj01@ip-10-56-112-33 domain]$ curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/Anything" \
+  | python3 -m json.tool
+{
+    "name": "Anything",
+    "repo": {
+        "actions": {},
+        "repositories": [
+            "ANY"
+        ],
+        "include-patterns": [
+            "**"
+        ],
+        "exclude-patterns": []
+    },
+    "build": {
+        "actions": {},
+        "repositories": [
+            "artifactory-build-info"
+        ],
+        "include-patterns": [
+            "**"
+        ],
+        "exclude-patterns": []
+    }
+}
