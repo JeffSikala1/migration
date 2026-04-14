@@ -1,13 +1,28 @@
-# 1. Confirm no stale release branches
-git ls-remote --heads origin 'refs/heads/release/*'
+git log --oneline -3 origin/develop
+git show origin/develop:pom.xml | grep "<version>" | head -3
 
-# 2. Confirm env RC exists
+
+git fetch origin
+git show origin/develop:pom.xml | grep "<version>" | head -2
+
+
+
 curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/conexus-rc-local/gov/gsa/cnxs/bom/env/02.00.000.167-RC/env-02.00.000.167-RC.pom" \
-  | python3 -m json.tool | grep '"path"'
+  -X POST \
+  -H "Content-Type: text/plain" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -d '
+items.find({
+  "repo": "conexus-rc-local",
+  "path": {"$match": "gov/gsa/cnxs/ws-client/*/02.00.000.148*"}
+})
+.include("repo","path","name")
+'
 
-# 3. Confirm develop is at 02.00.000.146-SNAPSHOT
-grep "<version>" pom.xml | head -2
+
+
+
+
 
 
 
