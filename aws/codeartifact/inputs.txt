@@ -5,42 +5,24 @@ curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
   -d '
 items.find({
   "repo": "npm-remote-cache",
-  "name": {"$match": "webpack-5.*.tgz"},
-  "path": {"$match": "*/webpack/-"}
+  "name": {"$match": "webpack-*.tgz"},
+  "path": {"$match": "*webpack/-"}
 })
-.include("repo", "path", "name", "modified")
+.include("repo", "path", "name", "size", "modified")
 .sort({"$desc": ["modified"]})
-.limit(10)
+.limit(20)
 '
 
 
 
 curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  -X POST \
-  -H "Content-Type: text/plain" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  -d '
-items.find({
-  "repo": "npm-remote-cache",
-  "name": {"$match": "webpack-subresource-integrity-*.tgz"}
-})
-.include("repo", "path", "name", "modified")
-.sort({"$desc": ["modified"]})
-.limit(10)
-'
+  -o /dev/null -w "%{http_code}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/npm-remote/webpack/-/webpack-5.106.1.tgz"
 
 
 
 
 
-curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/webpack" \
-  | python3 -m json.tool | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-dist_tags = d.get('dist-tags', {})
-print('dist-tags:', dist_tags)
-"
 
 
 

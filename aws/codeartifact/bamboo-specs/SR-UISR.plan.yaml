@@ -309,9 +309,9 @@ Deploy RC:
             [ -f .npmrc ] && { echo "=== local .npmrc ==="; cat .npmrc; } || true
             [ -f package-lock.json ] && echo "package-lock.json exists" || true
 
-            echo "Removing old npm config overrides..."
+            echo "Removing user-level npm config override..."
             npm config delete registry || true
-            rm -f ~/.npmrc .npmrc
+            rm -f ~/.npmrc
 
             echo "Writing clean authenticated ~/.npmrc for current Artifactory..."
             cat > ~/.npmrc <<EOF
@@ -328,20 +328,20 @@ Deploy RC:
             npm config get registry
 
             echo "Checking required Angular package in target registry..."
-            if ! npm view @angular-devkit/architect version --registry="${NEW_NPM_REGISTRY}" >/dev/null 2>&1; then
-              echo "ERROR: @angular-devkit/architect is not available in ${NEW_NPM_REGISTRY}"
-              echo "This is now an Artifactory npm repository content/configuration issue, not a Bamboo auth or stale-lockfile issue."
-              exit 1
-            fi
+            npm view @angular-devkit/architect version --registry="${NEW_NPM_REGISTRY}" >/dev/null
 
             if [ -f package-lock.json ]; then
               echo "Rewriting legacy Artifactory URLs in package-lock.json..."
-              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov:443/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json
-              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json
+              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov:443/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json || true
+              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json || true
+
+              echo "Running npm ci with legacy peer dependency handling..."
               npm ci --legacy-peer-deps --registry="${NEW_NPM_REGISTRY}"
             else
+              echo "No package-lock.json found; falling back to npm install..."
               npm install --legacy-peer-deps --registry="${NEW_NPM_REGISTRY}"
             fi
+
             npm test --registry="${NEW_NPM_REGISTRY}"
 
             ./node_modules/.bin/ng build --configuration production --output-hashing=all --optimization
@@ -463,9 +463,9 @@ Update dependencies to latest snapshot versions:
             [ -f .npmrc ] && { echo "=== local .npmrc ==="; cat .npmrc; } || true
             [ -f package-lock.json ] && echo "package-lock.json exists" || true
 
-            echo "Removing old npm config overrides..."
+            echo "Removing user-level npm config override..."
             npm config delete registry || true
-            rm -f ~/.npmrc .npmrc
+            rm -f ~/.npmrc
 
             echo "Writing clean authenticated ~/.npmrc for current Artifactory..."
             cat > ~/.npmrc <<EOF
@@ -482,20 +482,20 @@ Update dependencies to latest snapshot versions:
             npm config get registry
 
             echo "Checking required Angular package in target registry..."
-            if ! npm view @angular-devkit/architect version --registry="${NEW_NPM_REGISTRY}" >/dev/null 2>&1; then
-              echo "ERROR: @angular-devkit/architect is not available in ${NEW_NPM_REGISTRY}"
-              echo "This is now an Artifactory npm repository content/configuration issue, not a Bamboo auth or stale-lockfile issue."
-              exit 1
-            fi
+            npm view @angular-devkit/architect version --registry="${NEW_NPM_REGISTRY}" >/dev/null
 
             if [ -f package-lock.json ]; then
               echo "Rewriting legacy Artifactory URLs in package-lock.json..."
-              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov:443/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json
-              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json
+              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov:443/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json || true
+              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json || true
+
+              echo "Running npm ci with legacy peer dependency handling..."
               npm ci --legacy-peer-deps --registry="${NEW_NPM_REGISTRY}"
             else
+              echo "No package-lock.json found; falling back to npm install..."
               npm install --legacy-peer-deps --registry="${NEW_NPM_REGISTRY}"
             fi
+
             npm test --registry="${NEW_NPM_REGISTRY}"
 
             ./node_modules/.bin/ng build --configuration production --output-hashing=all --optimization
