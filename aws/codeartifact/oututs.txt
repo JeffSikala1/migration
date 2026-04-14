@@ -1,80 +1,498 @@
-conexus-plugins-backup
-conexus-release-local
-conexus-maven-local
-conexus-rc-local
-conexus-snapshot-local
-fusesource
-wso2-remote
-jaspersoft-thirdpart
-jboss.org-ea
-jboss.org_releases
-maven-central
-mulesoft
-redhat-ga
-sonatype
-redhat-earlyaccess
-hibernate
-jaspersoft.jfrog.io
+[sikaj01@ip-10-56-112-33 domain]$ ll
+total 20
+drwxr-x---. 4 sikaj01 users 6144 Apr  7 11:22 domain
+drwxr-x---. 4 sikaj01 users 6144 Apr  7 11:23 integration
+-rw-r-----. 1 sikaj01 users 3597 Apr  7 01:05 pom.xml
+drwxr-x---. 2 sikaj01 users 6144 Oct  7  2025 script
+drwxr-x---. 5 sikaj01 users 6144 Apr  7 01:05 test-util
+[sikaj01@ip-10-56-112-33 domain]$ ll integration/
+total 32
+-rw-r-----.  1 sikaj01 users 21281 Apr  7 01:31 pom.xml
+drwxr-x---.  4 sikaj01 users  6144 Oct  7  2025 src
+drwxr-x---. 11 sikaj01 users  6144 Apr  7 11:24 target
+[sikaj01@ip-10-56-112-33 domain]$ git pull
+remote: Enumerating objects: 49, done.
+remote: Counting objects: 100% (37/37), done.
+remote: Compressing objects: 100% (13/13), done.
+remote: Total 19 (delta 7), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (19/19), 1.69 KiB | 2.00 KiB/s, done.
+From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/domain
+   31b3e52f8..4d0cd1948  feature/CNXS-76927-build-docker-jboss-image-pust-to-ECR -> origin/feature/CNXS-76927-build-docker-jboss-image-pust-to-ECR
+   0e909ac8e..f80bc6956  develop    -> origin/develop
+Updating 387706a6e..4d0cd1948
+Fast-forward
+ integration/pom.xml | 52 ++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 40 insertions(+), 12 deletions(-)
+[sikaj01@ip-10-56-112-33 domain]$ cat integration/
+cat: integration/: Is a directory
+[sikaj01@ip-10-56-112-33 domain]$ cat integration/
+pom.xml  src/     target/  
+[sikaj01@ip-10-56-112-33 domain]$ cat integration/pom.xml 
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>gov.gsa.cnxs.domain</groupId>
+        <artifactId>domain-aggregator</artifactId>
+        <version>02.00.000.173-SNAPSHOT</version>
+    </parent>
+
+    <groupId>gov.gsa.cnxs.domain.test</groupId>
+    <artifactId>domain-integration</artifactId>
+    <name>Conexus Domain System Test</name>
+    <packaging>jar</packaging>
+
+    <properties>
+        <jboss-home>${project.build.directory}/jboss</jboss-home>
+        <dir.output.dist>${project.build.directory}/dist</dir.output.dist>
+        <dir.output.deploy>${dir.output.dist}/deploy</dir.output.deploy>
+        <postgres.docker.volume.directory>${project.build.directory}/cnxs-pg-data</postgres.docker.volume.directory>
+        <!--
+        The postgres.host is simply the alias of the docker container by default. This works when
+        running inside the Bamboo docker agents because the agent, postgres, and jboss are all running
+        within the same, bridge docker network and can resolve each other by container name.
+
+        if you run on your workstation, you are running MVN from the docker host, not a container.
+        So you need to -Dpostgres.host=172.25.0.2. This is the IP of Postgres running within the isolated_nw.
+        -->
+        <postgres.host>${dbPostgresHost}</postgres.host>
+        <pg.datafile.dir>${project.build.directory}/pg-datafile</pg.datafile.dir>
+        <pg.datafile.file>${pg.datafile.dir}/pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</pg.datafile.file>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>gov.gsa.cnxs.domain.test</groupId>
+            <artifactId>domain-test-ear</artifactId>
+            <version>${project.version}</version>
+            <type>ear</type>
+        </dependency>
+
+        <dependency>
+            <groupId>gov.gsa.cnxs.domain.test</groupId>
+            <artifactId>domain-test-api</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>gov.gsa.cnxs.domain</groupId>
+            <artifactId>domain</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>gov.gsa.cnxs.common</groupId>
+            <artifactId>common-test-utils</artifactId>
+            <version>${conexus-common.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- dependencies needed by the model tests -->
+        <dependency>
+            <groupId>gov.gsa.cnxs.common</groupId>
+            <artifactId>common-utils</artifactId>
+            <version>${conexus-common.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- added the glassfish one so we can do some constraint testing
+             For example the InterAgencyAgreementTest.minCeiling test
+        -->
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>jakarta.el</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.jms</groupId>
+            <artifactId>jakarta.jms-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.ejb</groupId>
+            <artifactId>jakarta.ejb-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-c3p0</artifactId>
+            <version>${hibernate-c3p0.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <id>integration-test</id>
+            <activation>
+                <property>
+                    <name>skip.docker</name>
+                    <value>false</value>
+                </property>
+            </activation>
+
+            <!--            <dependencies>
+                <dependency>
+                    <groupId>gov.gsa.cnxs.db</groupId>
+                    <artifactId>pg-datafile</artifactId>
+                    <classifier>postgres-data</classifier>
+                    <version>${version.cnxs-pg-datafile}</version>
+                    <type>tar.gz</type>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>gov.gsa.cnxs.db</groupId>
+                            <artifactId>pg-datafile</artifactId>
+                        </exclusion>
+                    </exclusions>
+            </dependency>-->
+<!--&lt;!&ndash;                <dependency>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <groupId>gov.gsa.cnxs.db</groupId>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <artifactId>schema</artifactId>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <version>${version.schema}</version>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <classifier>data</classifier>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <type>tar.gz</type>&ndash;&gt;-->
+<!--&lt;!&ndash;                </dependency>&ndash;&gt;-->
+<!--        </dependencies> -->
+
+            <build>
+                <plugins>
+                    <!-- compile our integration tests -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>test-compile</phase>
+                                <goals>
+                                    <goal>testCompile</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Tell surefire to skip trying to run unit tests inside this module, we are using the failsafe plugin for integration tests and surefire for unit tests -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+
+                    <!--<plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-pg-datafile</id>
+                                <phase>generate-test-resources</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>gov.gsa.cnxs.db</groupId>
+                                            <artifactId>pg-datafile</artifactId>
+                                            <classifier>postgres-data</classifier>
+                                            <version>${version.cnxs-pg-datafile}</version>
+                                            <type>tar.gz</type>
+                                            <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
+                                            <destFileName>pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</destFileName>
+                                            <overWrite>false</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                        </execution>
+                        <execution>
+                                <id>unpack-pg-datafile</id>
+                                <phase>generate-test-resources</phase>
+                                <goals>
+                                    <goal>unpack</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>gov.gsa.cnxs.db</groupId>
+                                            <artifactId>pg-datafile</artifactId>
+                                            <classifier>postgres-data</classifier>
+                                            <version>${version.cnxs-pg-datafile}</version>
+                                            <type>tar.gz</type>
+                                            <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
+                                            <destFileName>pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</destFileName>
+                                            <overWrite>false</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                        </execution>
+
+                        </executions>
+                    </plugin>-->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.maven-failsafe-plugin}</version>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <pg.datafile.file>${pg.datafile.file}</pg.datafile.file>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+
+                    <!-- copy the tests from the model project as well so we run those against Postgres
+                         Now supposedly I could have added the 'dependenciesToScan' property to the failsafe configuration,
+                         but I was unable to get that working.
+                         -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                                <execution>
+                                <id>copy-pg-datafile</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>gov.gsa.cnxs.db</groupId>
+                                            <artifactId>pg-datafile</artifactId>
+                                            <classifier>postgres-data</classifier>
+                                            <version>${version.cnxs-pg-datafile}</version>
+                                            <type>tar.gz</type>
+                                            <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
+                                            <destFileName>pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</destFileName>
+                                            <overWrite>false</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                        </execution>
+
+                            <execution>
+                                <id>unpack-tests</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>unpack-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <includeArtifactIds>domain</includeArtifactIds>
+                                    <includeClassifiers>tests</includeClassifiers>
+                                    <includes>gov/gsa/nsfs/domains/**/*Test.class</includes>
+                                    <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>unpack-cnxs-pg-datafile</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>unpack-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <includeArtifactIds>pg-datafile</includeArtifactIds>
+                                    <includeClassifiers>postgres-data</includeClassifiers>
+                                    <type>tar.gz</type>
+                                    <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
+                                </configuration>
+                            </execution>
+
+<!--                            <execution>-->
+<!--                                <id>copy-schema</id>-->
+<!--                                <phase>process-resources</phase>-->
+<!--                                <goals>-->
+<!--                                    <goal>copy</goal>-->
+<!--                                </goals>-->
+<!--                                <configuration>-->
+<!--                                    <artifactItems>-->
+<!--                                        <artifactItem>-->
+<!--                                            <groupId>gov.gsa.cnxs.db</groupId>-->
+<!--                                            <artifactId>schema</artifactId>-->
+<!--                                            <version>${version.schema}</version>-->
+<!--                                            <classifier>data</classifier>-->
+<!--                                            <type>tar.gz</type>-->
+<!--                                            <destFileName>schema.tar.gz</destFileName>-->
+<!--                                        </artifactItem>-->
+<!--                                    </artifactItems>-->
+<!--                                    <outputDirectory>${oracle.docker.volume.directory}/upgrade</outputDirectory>-->
+<!--                                </configuration>-->
+<!--                            </execution>-->
+                        </executions>
+                    </plugin>
+                    <!-- create / start docker images for JBoss, Postgres and our artifacts -->
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>start-container</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop-container</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                    <goal>remove</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <verbose>true</verbose>
+                            <removeAll>true</removeAll>
+                            <images>
+                                <image>
+                                    <name>${dbPostgresHost}</name>
+                                    <alias>${dbPostgresHost}</alias>
+                                    <build>
+                                        <from>${docker.postgres}</from>
+                                        <cleanup>remove</cleanup>
+                                    </build>
+                                    <run>
+                                        <namingStrategy>alias</namingStrategy>
+                                        <network>
+                                            <mode>custom</mode>
+                                            <name>isolated_nw</name>
+                                        </network>
+                                        <wait>
+                                            <log>${postgres.started.message}</log>
+                                            <time>${docker.timeout}</time>
+                                            <kill>60000</kill>
+                                        </wait>
+                                        <volumes>
+                                            <bind>
+                                                <volume>${postgres.docker.volume.directory}:${postgresVolumeMount}</volume>
+                                            </bind>
+                                        </volumes>
+                                        <log>
+                                            <enabled>true</enabled>
+                                            <prefix>CNX-POSTGRES</prefix>
+                                            <color>green</color>
+                                        </log>
+                                    </run>
+                                </image>
+                                <image>
+                                    <name>${jboss.docker.alias}</name>
+                                    <alias>${jboss.docker.alias}</alias>
+                                    <build>
+                                        <from>${docker.jboss-pg}</from>
+                                        <assembly>
+                                            <user>jboss:jboss:jboss</user>
+                                            <basedir>${docker.jboss.home}/standalone</basedir>
+                                            <descriptor>assembly.xml</descriptor>
+                                        </assembly>
+                                        <cleanup>remove</cleanup>
+                                    </build>
+                                    <run>
+                                        <namingStrategy>alias</namingStrategy>
+                                        <network>
+                                            <mode>custom</mode>
+                                            <name>isolated_nw</name>
+                                        </network>
+                                        <wait>
+                                            <log>${jboss.started.message}</log>
+                                            <time>${docker.timeout}</time>
+                                        </wait>
+                                        <dependsOn>
+                                            <container>${dbPostgresHost}</container>
+                                        </dependsOn>
+                                        <env>
+                                            <CONEXUS_DB_URL>jdbc:postgresql://${dbPostgresHost}:${dbPostgresPort}/${dbPostgresService}</CONEXUS_DB_URL>
+                                            <JBOSS_BIND_ADDRESS>${jboss.host}</JBOSS_BIND_ADDRESS>
+                                            <JBOSS_BIND_ADDRESS_MANAGEMENT>${jboss.host}</JBOSS_BIND_ADDRESS_MANAGEMENT>
+                                        </env>
+                                        <log>
+                                            <enabled>true</enabled>
+                                            <prefix>CNX-JBOSS</prefix>
+                                            <color>yellow</color>
+                                        </log>
+                                    </run>
+                                </image>
+                            </images>
+                        </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>non-forked</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                                <configuration>
+                                    <runOrder>alphabetical</runOrder>
+                                    <includes>
+                                        <include>gov.gsa.nsfs.**</include>
+                                    </includes>
+                                    <systemPropertyVariables>
+                                        <conexus.jboss.host>${jboss.host}</conexus.jboss.host>
+                                        <conexus.jms.host>${jboss.host}</conexus.jms.host>
+                                        <postgres.host>${postgres.host}</postgres.host>
+                                        <!-- See AbstractTestCase -->
+                                        <!-- See db-postgres-properties-->
+                                        <hibernate.properties>db-postgres.properties</hibernate.properties>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <version>${version.maven-failsafe-plugin}</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
 
 
-
-https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/mulesoft-cache/     # No virtual repo associations
-Name:	
-mulesoft-cache
-Package Type:	
-Maven
-Repository Path:	
-mulesoft-cache/
-File URL:	
-https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/mulesoft-cache/
-Repository Layout:	
-maven-2-default
-Created:	
-02-11-21 21:00:09 +00:00
-Artifact Count / Size:	
-Show
-
-
-
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -s -u "sa_bamboo:${TOKEN}" \
-  -X POST -H "Content-Type: text/plain" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  -d 'items.find({"repo":"conexus-release-local","path":"gov/gsa/cnxs/db/pg-datafile/02.00.000.50","name":{"$match":"*"}})'
-
-{
-"results" : [ {
-  "repo" : "conexus-release-local",
-  "path" : "gov/gsa/cnxs/db/pg-datafile/02.00.000.50",
-  "name" : "pg-datafile-02.00.000.50-postgres-data.tar.gz",
-  "type" : "file",
-  "size" : 19713915,
-  "created" : "2026-04-10T13:10:29.855Z",
-  "created_by" : "sasikanth.dale@gsa.gov",
-  "modified" : "2026-04-10T13:10:20.560Z",
-  "modified_by" : "sasikanth.dale@gsa.gov",
-  "updated" : "2026-04-10T13:10:30.381Z"
-} ],
-"range" : {
-  "start_pos" : 0,
-  "end_pos" : 1,
-  "total" : 1
-}
-}
-
-
-
-
-https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/mulesoft/
-https://repository.mulesoft.org/nexus/content/repositories/public/
-Name:	
-mulesoft
-Package Type:	
-Maven
-Repository Path:	
-mulesoft/
-File URL:	
-https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/mulesoft/
-Repository Layout:	
-maven-2-default
-Remote Repository URL:	
-https://repository.mulesoft.org/nexus/content/repositories/public/
+[sikaj01@ip-10-56-112-33 domain]$ curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions" \
+  | python3 -m json.tool | grep -i mulesoft
+[sikaj01@ip-10-56-112-33 domain]$ curl -s -u "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions" \
+  | python3 -m json.tool | grep -i mulesoft
+[sikaj01@ip-10-56-112-33 domain]$ curl -s -u "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions" \
+  | python3 -m json.tool
+[]
+[sikaj01@ip-10-56-112-33 domain]$ curl -s -u "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions" \
+  | python3 -m json.tool
+[]
+[sikaj01@ip-10-56-112-33 domain]$ curl -s -o /dev/null -w "%{http_code}\n" \
+  -u "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.50/pg-datafile-02.00.000.50.pom"
+404
+[sikaj01@ip-10-56-112-33 domain]$ curl -s -o /dev/null -w "%{http_code}\n" \
+  -u "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.50/pg-datafile-02.00.000.50-postgres-data.tar.gz"
+200
+[sikaj01@ip-10-56-112-33 domain]$ curl -s -o /dev/null -w "%{http_code}\n" \
+  -u "sa_bamboo:${TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/maven-metadata.xml"
+404
