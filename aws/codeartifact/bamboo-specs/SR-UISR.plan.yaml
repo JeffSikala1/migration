@@ -298,8 +298,8 @@ Deploy RC:
 
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
 
-            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
-            NPM_HOST_PATH="//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
+            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
+            NPM_HOST_PATH="//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
 
             yum install -y google-chrome-stable || true
 
@@ -322,9 +322,6 @@ Deploy RC:
             ${NPM_HOST_PATH}:email=bamboo@local
             EOF
 
-            echo "Removing stale lockfile so npm does not reuse old resolved tarball URLs..."
-            rm -f package-lock.json
-
             npm cache clean --force || true
 
             echo "Effective registry:"
@@ -337,7 +334,14 @@ Deploy RC:
               exit 1
             fi
 
-            npm install --registry="${NEW_NPM_REGISTRY}"
+            if [ -f package-lock.json ]; then
+              echo "Rewriting legacy Artifactory URLs in package-lock.json..."
+              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov:443/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json
+              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json
+              npm ci --legacy-peer-deps --registry="${NEW_NPM_REGISTRY}"
+            else
+              npm install --legacy-peer-deps --registry="${NEW_NPM_REGISTRY}"
+            fi
             npm test --registry="${NEW_NPM_REGISTRY}"
 
             ./node_modules/.bin/ng build --configuration production --output-hashing=all --optimization
@@ -448,8 +452,8 @@ Update dependencies to latest snapshot versions:
 
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
 
-            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
-            NPM_HOST_PATH="//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
+            NEW_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
+            NPM_HOST_PATH="//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
 
             yum install -y google-chrome-stable || true
 
@@ -472,9 +476,6 @@ Update dependencies to latest snapshot versions:
             ${NPM_HOST_PATH}:email=bamboo@local
             EOF
 
-            echo "Removing stale lockfile so npm does not reuse old resolved tarball URLs..."
-            rm -f package-lock.json
-
             npm cache clean --force || true
 
             echo "Effective registry:"
@@ -487,7 +488,14 @@ Update dependencies to latest snapshot versions:
               exit 1
             fi
 
-            npm install --registry="${NEW_NPM_REGISTRY}"
+            if [ -f package-lock.json ]; then
+              echo "Rewriting legacy Artifactory URLs in package-lock.json..."
+              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov:443/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json
+              sed -i 's#https://easartifactory\.edc\.ds1\.usda\.gov/artifactory/api/npm/npm-virtual/#https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/#g' package-lock.json
+              npm ci --legacy-peer-deps --registry="${NEW_NPM_REGISTRY}"
+            else
+              npm install --legacy-peer-deps --registry="${NEW_NPM_REGISTRY}"
+            fi
             npm test --registry="${NEW_NPM_REGISTRY}"
 
             ./node_modules/.bin/ng build --configuration production --output-hashing=all --optimization

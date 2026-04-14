@@ -4,23 +4,49 @@ curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
   "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
   -d '
 items.find({
-  "repo": "npm-local",
-  "path": {"$match": "*angular*"}
+  "repo": "npm-remote-cache",
+  "name": {"$match": "webpack-5.*.tgz"},
+  "path": {"$match": "*/webpack/-"}
 })
 .include("repo", "path", "name", "modified")
-.limit(20)
+.sort({"$desc": ["modified"]})
+.limit(10)
 '
 
 
 
 curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/npm" \
-  | python3 -m json.tool | grep -A 20 "repositories"
+  -X POST \
+  -H "Content-Type: text/plain" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -d '
+items.find({
+  "repo": "npm-remote-cache",
+  "name": {"$match": "webpack-subresource-integrity-*.tgz"}
+})
+.include("repo", "path", "name", "modified")
+.sort({"$desc": ["modified"]})
+.limit(10)
+'
 
 
 
-npm view @angular-devkit/architect version \
-  --registry="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
+
+
+curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/webpack" \
+  | python3 -m json.tool | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+dist_tags = d.get('dist-tags', {})
+print('dist-tags:', dist_tags)
+"
+
+
+
+
+
+
 
 
 
