@@ -146,18 +146,17 @@ Gitflow release start:
             ACTIVE_RELEASES=$(git ls-remote --heads origin 'refs/heads/release/*' | awk '{sub("refs/heads/","",$2); print $2}' || true)
 
             if printf '%s\n' "${ACTIVE_RELEASES}" | grep -qx "${RELEASE_BRANCH}"; then
-              echo "Target release branch ${RELEASE_BRANCH} already exists; allowing rerun"
-            else
-              echo "Target release branch ${RELEASE_BRANCH} does not yet exist"
+              echo "ERROR: target release branch ${RELEASE_BRANCH} already exists"
+              echo "Delete or finish it before rerunning."
+              exit 1
             fi
 
-            OTHER_RELEASES=$(printf '%s\n' "${ACTIVE_RELEASES}" | grep -v '^$' | grep -v "^${RELEASE_BRANCH}$" || true)
+            OTHER_RELEASES=$(printf '%s\n' "${ACTIVE_RELEASES}" | grep -v '^$' || true)
 
             if [ -n "${OTHER_RELEASES}" ]; then
-              echo "WARNING: other remote release branches exist, but continuing:"
+              echo "ERROR: remote release branches already exist, and jgitflow will refuse to start:"
               printf '  %s\n' ${OTHER_RELEASES}
-            else
-              echo "No other remote release branches found"
+              exit 1
             fi
 
             git checkout -B develop origin/develop
