@@ -1,8 +1,5 @@
-cd /path/to/ws
-git fetch origin
-git ls-remote --heads origin 'refs/heads/release/*'
-git show origin/develop:pom.xml | grep "<version>" | head -3
-
+git log --oneline -5 origin/develop
+git show origin/release/02.00.000.153:pom.xml | grep "<version>" | head -3
 
 
 
@@ -15,22 +12,14 @@ curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
   -d '
 items.find({
   "repo": "conexus-rc-local",
-  "path": {"$match": "gov/gsa/cnxs/ws/ws-aggregator/*-RC*"},
+  "path": {"$match": "gov/gsa/cnxs/ws/*/02.00.000.153-RC*"},
   "name": {"$match": "*.pom"}
 })
 .include("repo","path","name","modified")
-.sort({"$desc": ["modified"]})
-.limit(5)
 '
 
 
 
-
-git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws.git 'refs/heads/release/*'
-
-
-
-mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version | sed '/^\[/d' | grep -v '^$' | tail -1
 
 
 
