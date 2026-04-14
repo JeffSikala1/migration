@@ -1,20 +1,35 @@
 curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -d '
+items.find({
+  "$or": [
+    {"repo": "conexus-rc-local"},
+    {"repo": "conexus-snapshot-local"}
+  ],
+  "path": {"$match": "gov/gsa/cnxs/bom/env/02.00.000.167-RC*"}
+})
+.include("repo","path","name")
+'
+
+
+
+
+curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-plugin-repository" \
+  | python3 -m json.tool | grep -A 30 '"repositories"'
+
+
+
+
+
+curl -u "${BITBUCKET_USER}:${BITBUCKET_PASSWORD}" \
   -X DELETE \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local/gov/gsa/cnxs/ui/ui-aggregator/01.00.000.111-RC/"
-
-curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  -X DELETE \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local/gov/gsa/cnxs/ui/ui-war/01.00.000.111-RC/"
+  "https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/api/1.0/projects/CNXS/repos/ws-client/branches?name=refs/heads/release/02.00.000.146"
 
 
 
-curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  -o /dev/null -w "%{http_code}\n" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/conexus-rc-local/gov/gsa/cnxs/ui/ui-aggregator/01.00.000.111-RC/"
-
-curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  -o /dev/null -w "%{http_code}\n" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/conexus-rc-local/gov/gsa/cnxs/ui/ui-war/01.00.000.111-RC/"
 
 
 
