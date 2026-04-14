@@ -1,43 +1,26 @@
-curl -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/@angular-devkit%2farchitect"
-
-curl -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/@angular-devkit%2farchitect"
-
-
 curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
   -X POST \
   -H "Content-Type: text/plain" \
   "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
   -d '
 items.find({
-  "type": "file",
-  "name": {"$match": "architect-*.tgz"},
-  "path": {"$match": "*@angular-devkit*"}
+  "repo": "npm-local",
+  "path": {"$match": "*angular*"}
 })
-.include("repo", "path", "name", "size", "modified")
-.sort({"$desc": ["modified"]})
+.include("repo", "path", "name", "modified")
 .limit(20)
 '
 
 
 
 curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  -X POST \
-  -H "Content-Type: text/plain" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  -d '
-items.find({
-  "type": "file",
-  "$or": [
-    {"path": {"$match": "*/@angular-devkit/*"}},
-    {"path": {"$match": "*/@angular/*"}}
-  ]
-})
-.include("repo", "path", "name", "modified")
-.sort({"$desc": ["modified"]})
-.limit(50)
-'
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/npm" \
+  | python3 -m json.tool | grep -A 20 "repositories"
+
+
+
+npm view @angular-devkit/architect version \
+  --registry="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/"
 
 
 
