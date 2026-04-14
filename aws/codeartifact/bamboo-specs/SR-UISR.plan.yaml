@@ -346,6 +346,35 @@ Deploy RC:
 
             ./node_modules/.bin/ng build --configuration production --output-hashing=all --optimization
 
+    - script:
+        interpreter: SHELL
+        description: Fail if RC artifacts already exist
+        scripts:
+          - |
+            set -euo pipefail
+            . ./.release-context
+
+            SETTINGS_FILE="/tmp/settings-${bamboo.buildResultKey}.xml"
+            VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version | grep -v '^\[' | tail -1)
+            RELEASE_VERSION="${VERSION%-SNAPSHOT}-RC"
+
+            BASE_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
+            AUTH="sa_bamboo:${bamboo.artifactory_access_token_secret}"
+
+            AGG_URL="${BASE_URL}/api/storage/conexus-rc-local/gov/gsa/cnxs/ui/ui-aggregator/${RELEASE_VERSION}/ui-aggregator-${RELEASE_VERSION}.pom"
+            WAR_URL="${BASE_URL}/api/storage/conexus-rc-local/gov/gsa/cnxs/ui/ui-war/${RELEASE_VERSION}/ui-war-${RELEASE_VERSION}.war"
+
+            AGG_CODE=$(curl -s -u "${AUTH}" -o /dev/null -w "%{http_code}" "${AGG_URL}" || true)
+            WAR_CODE=$(curl -s -u "${AUTH}" -o /dev/null -w "%{http_code}" "${WAR_URL}" || true)
+
+            if [ "${AGG_CODE}" = "200" ] || [ "${WAR_CODE}" = "200" ]; then
+              echo "ERROR: RC artifacts already exist for ${RELEASE_VERSION} in conexus-rc-local."
+              echo "This job is attempting to redeploy an immutable RC version."
+              exit 1
+            fi
+
+            echo "No existing RC artifacts found for ${RELEASE_VERSION}"
+
     - maven:
         executable: Maven 3
         jdk: JDK 17
