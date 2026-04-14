@@ -1,71 +1,13 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../ws
-[sikaj01@ip-10-56-112-33 ws]$ git fetch origin
-git ls-remote --heads origin 'refs/heads/release/*'
-git show origin/develop:pom.xml | grep "<version>" | head -3
-remote: Enumerating objects: 48, done.
-remote: Counting objects: 100% (48/48), done.
-remote: Compressing objects: 100% (18/18), done.
-remote: Total 30 (delta 7), reused 0 (delta 0), pack-reused 0 (from 0)
-Unpacking objects: 100% (30/30), 4.70 KiB | 5.00 KiB/s, done.
-From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws
-   0d3ba1615..5055bd495  develop    -> origin/develop
- * [new branch]          feature/CNXS-74932-address-failing-unit-tests-on-gsa-laptop -> origin/feature/CNXS-74932-address-failing-unit-tests-on-gsa-laptop
-4d4b9b0f1bca5f79338ca7dea95216ec5de8195b        refs/heads/release/01.00.000.150
-81279abf982d48261af7cbd7409c97764e49b05c        refs/heads/release/02.00.000.151
-debec8ee3aaa3213ae3325e605d0ccdbcf91190a        refs/heads/release/02.00.000.152
-25054f4b34668171f225879442f5643906911a97        refs/heads/release/02.00.000.153
-        <version>02.00.000.167-SNAPSHOT</version>
-    <version>02.00.000.154-SNAPSHOT</version>
-                <version>${version.common-rest}</version>
-[sikaj01@ip-10-56-112-33 ws]$ curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  -X POST \
-  -H "Content-Type: text/plain" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  -d '
-items.find({
-  "repo": "conexus-rc-local",
-  "path": {"$match": "gov/gsa/cnxs/ws/ws-aggregator/*-RC*"},
-  "name": {"$match": "*.pom"}
-})
-.include("repo","path","name","modified")
-.sort({"$desc": ["modified"]})
-.limit(5)
-'
-
-{
-"results" : [ {
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-aggregator/02.00.000.153-RC",
-  "name" : "ws-aggregator-02.00.000.153-RC.pom",
-  "modified" : "2026-04-06T15:18:07.975Z"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-aggregator/01.00.000.150-RC",
-  "name" : "ws-aggregator-01.00.000.150-RC.pom",
-  "modified" : "2025-11-13T22:14:54.116Z"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-aggregator/01.00.000.149-RC",
-  "name" : "ws-aggregator-01.00.000.149-RC.pom",
-  "modified" : "2025-10-16T16:42:21.730Z"
-},{
-  "repo" : "conexus-rc-local",
-  "path" : "gov/gsa/cnxs/ws/ws-aggregator/01.00.000.148-RC",
-  "name" : "ws-aggregator-01.00.000.148-RC.pom",
-  "modified" : "2025-09-18T19:58:25.073Z"
-} ],
-"range" : {
-  "start_pos" : 0,
-  "end_pos" : 4,
-  "total" : 4,
-  "limit" : 5
-}
-}
-[sikaj01@ip-10-56-112-33 ws]$ git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws.git 'refs/heads/release/*'
-4d4b9b0f1bca5f79338ca7dea95216ec5de8195b        refs/heads/release/01.00.000.150
-81279abf982d48261af7cbd7409c97764e49b05c        refs/heads/release/02.00.000.151
-debec8ee3aaa3213ae3325e605d0ccdbcf91190a        refs/heads/release/02.00.000.152
-25054f4b34668171f225879442f5643906911a97        refs/heads/release/02.00.000.153
-
 [sikaj01@ip-10-56-112-33 ws]$ mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version | sed '/^\[/d' | grep -v '^$' | tail -1
 02.00.000.153-SNAPSHOT
+[sikaj01@ip-10-56-112-33 ws]$ git log --oneline -5 origin/develop
+5055bd495 (origin/develop, origin/HEAD) Pull request #339: Address failing unit tests on the GSA laptop
+49305a273 (origin/feature/CNXS-74932-address-failing-unit-tests-on-gsa-laptop) Remove bogus test class
+be9a62200 Address failing unit tests on the GSA laptop
+5c8ab2f9d Address failing unit tests on the GSA laptop
+0d3ba1615 updated-parent-and-properties
+[sikaj01@ip-10-56-112-33 ws]$ git show origin/release/02.00.000.153:pom.xml | grep "<version>" | head -3
+        <version>02.00.000.166-RC</version>
+    <version>02.00.000.153-RC</version>
+                <version>${version.common-rest}</version>
+[sikaj01@ip-10-56-112-33 ws]$ git show origin/release/02.00.
