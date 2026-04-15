@@ -1,47 +1,5 @@
-[root@ip-10-56-112-35 ui]# git ls-remote --heads \
-  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git \
-  'refs/heads/release/*'
-[root@ip-10-56-112-35 ui]# export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-REPO="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git"
-
-# Fetch latest develop
-git fetch origin refs/heads/develop
-
-# Create release branch from develop tip
-git checkout -B release/01.00.000.111 origin/develop
-
-# Convert SNAPSHOT to RC
-find . -name pom.xml -exec sed -i 's/-SNAPSHOT/-RC/g' {} +
-
-# Verify
-grep -r '01.00.000.111\|SNAPSHOT' pom.xml
-
-# Commit and push
-git config user.name "bamboo"
-git config user.email "bamboo@local"
-git add -A
-git commit -m "Update SNAPSHOT to RC"
-git push "${REPO}" release/01.00.000.111
-From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui
- * branch                  develop    -> FETCH_HEAD
-branch 'release/01.00.000.111' set up to track 'origin/develop'.
-Switched to and reset branch 'release/01.00.000.111'
-Your branch is up to date with 'origin/develop'.
-    <version>01.00.000.111-RC</version>
-[release/01.00.000.111 78bf9ae2a4] Update SNAPSHOT to RC
- 2 files changed, 2 insertions(+), 2 deletions(-)
-Enumerating objects: 9, done.
-Counting objects: 100% (9/9), done.
-Delta compression using up to 16 threads
-Compressing objects: 100% (5/5), done.
-Writing objects: 100% (5/5), 439 bytes | 439.00 KiB/s, done.
-Total 5 (delta 3), reused 0 (delta 0), pack-reused 0 (from 0)
-remote: 
-remote: Create pull request for release/01.00.000.111:
-remote:   https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/projects/CNXS/repos/ui/pull-requests?create&sourceBranch=refs%2Fheads%2Frelease%2F01.00.000.111
-remote: 
-To ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git
- * [new branch]            release/01.00.000.111 -> release/01.00.000.111
+[root@ip-10-56-112-35 ui]# git push "${REPO}" --delete release/01.00.000.111-RC
+error: unable to delete 'release/01.00.000.111-RC': remote ref does not exist
+error: failed to push some refs to 'ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git'
 [root@ip-10-56-112-35 ui]# git ls-remote --heads "${REPO}" 'refs/heads/release/*'
-78bf9ae2a4422ef553a6f3b551766122f375f7cf        refs/heads/release/01.00.000.111
-9c98d336138a78a3373f82e16c9d019bafedcac3        refs/heads/release/01.00.000.111-RC
+78bf9ae2a4422ef553a6f3b551766122f375f7cf        refs/heads/release/01.00.000.11
