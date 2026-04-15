@@ -117,12 +117,15 @@ Promote Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1 || true
 
-            # Discover release branch from remote — never derive from develop
+            # Discover the highest release branch on remote — never derive from develop
             RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
               | awk '{print $2}' \
               | sed 's|refs/heads/||' \
               | grep '^release/' \
-              | head -1)
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | xargs -I{} echo "release/{}")
 
             if [ -z "${RELEASE_BRANCH}" ]; then
               echo "INFO: no release branch found on remote"

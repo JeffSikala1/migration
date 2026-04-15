@@ -1,18 +1,14 @@
-# 1. No stale release branches
-git ls-remote --heads origin 'refs/heads/release/*'
-# Expected: empty
-
-# 2. Develop at correct version
-git show origin/develop:pom.xml | grep "<version>" | head -2
-# Expected: 02.00.000.154-SNAPSHOT
-
-# 3. env RC exists (needed by ws Deploy RC)
-curl -s -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/conexus-rc-local/gov/gsa/cnxs/bom/env/02.00.000.167-RC/env-02.00.000.167-RC.pom" \
-  | python3 -m json.tool | grep '"path"'
-
-
-
+curl -sku "sa_bamboo:${ARTIFACTORY_TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-release-local"},
+  "path":{"$match":"gov/gsa/cnxs/ws*"},
+  "name":{"$match":"*01.00.000.150*"}
+}).include("name","repo","path","size","created")
+'
 
 
 
