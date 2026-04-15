@@ -1,54 +1,54 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ git ls-remote --heads \
-  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git \
-  'refs/heads/release/*'
-2a1ffce4c3e42b6e594152fe3a32a8edfcdb1c3d        refs/heads/release/01.00.000.107
-00acc8b39d28f94f58b46d8e8bbcd2f9a442d990        refs/heads/release/01.00.000.108
-dc9a4e4033c9d756964a3048421cec5775cc5dac        refs/heads/release/01.00.000.109
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ for branch in release/01.00.000.107 release/01.00.000.108 release/01.00.000.109 release/01.00.000.110; do
-  echo "Deleting ${branch}"
-  git push "${REPO}" --delete "${branch}"
-done
-Deleting release/01.00.000.107
-fatal: bad repository ''
-Deleting release/01.00.000.108
-fatal: bad repository ''
-Deleting release/01.00.000.109
-fatal: bad repository ''
-Deleting release/01.00.000.110
-fatal: bad repository ''
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../ui/
-[sikaj01@ip-10-56-112-33 ui]$ for branch in release/01.00.000.107 release/01.00.000.108 release/01.00.000.109 release/01.00.000.110; do
-  echo "Deleting ${branch}"
-  git push "${REPO}" --delete "${branch}"
-done
-Deleting release/01.00.000.107
-fatal: bad repository ''
-Deleting release/01.00.000.108
-fatal: bad repository ''
-Deleting release/01.00.000.109
-fatal: bad repository ''
-Deleting release/01.00.000.110
-fatal: bad repository ''
-[sikaj01@ip-10-56-112-33 ui]$ REPO="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git"
+[ec2-user@ip-10-56-112-35 ~]$ sudo su 
+[root@ip-10-56-112-35 ec2-user]# export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+REPO="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git"
 
-for branch in release/01.00.000.107 release/01.00.000.108 release/01.00.000.109 release/01.00.000.110; do
-  echo "Deleting ${branch}"
-  git push "${REPO}" --delete "${branch}"
-done
-Deleting release/01.00.000.107
-To ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git
- - [deleted]               release/01.00.000.107
-Deleting release/01.00.000.108
-To ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git
- - [deleted]               release/01.00.000.108
-Deleting release/01.00.000.109
-To ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git
- - [deleted]               release/01.00.000.109
-Deleting release/01.00.000.110
-error: unable to delete 'release/01.00.000.110': remote ref does not exist
-error: failed to push some refs to 'ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git'
-[sikaj01@ip-10-56-112-33 ui]$ git fetch origin refs/heads/release/01.00.000.111
-fatal: couldn't find remote ref refs/heads/release/01.00.000.111
-[sikaj01@ip-10-56-112-33 ui]$ git show origin/release/01.00.000.111:pom.xml | grep version
-fatal: invalid object name 'origin/release/01.00.000.111'.
-[sikaj01@ip-10-56-112-33 ui]$ 
+# Fetch latest develop
+git fetch origin refs/heads/develop
+
+# Create release branch from develop tip
+git checkout -B release/01.00.000.111 origin/develop
+git push "${REPO}" release/01.00.000.111
+
+# Confirm it exists
+git ls-remote --heads "${REPO}" 'refs/heads/release/01.00.000.111'
+
+# Convert SNAPSHOT to RC
+find . -name pom.xml -exec sed -i 's/-SNAPSHOT/-RC/g' {} +
+
+# Verify
+grep -r '01.00.000.111\|SNAPSHOT' pom.xml
+
+git config user.name "bamboo"
+git config user.email "bamboo@local"
+git add -A
+git commit -m "Update SNAPSHOT to RC"
+git push "${REPO}" release/01.00.000.111
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+grep: pom.xml: No such file or directory
+fatal: not in a git directory
+fatal: not in a git directory
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+[root@ip-10-56-112-35 ec2-user]# cd ui
+[root@ip-10-56-112-35 ui]# ll
+total 8
+-rw-r-----. 1 root root 1275 Apr 15 15:22 README.md
+-rw-r-----. 1 root root 1451 Apr 15 16:37 pom.xml
+drwxr-x---+ 3 root root   32 Apr 15 16:37 web
+[root@ip-10-56-112-35 ui]# ls -al /opt/bamboo-keys/
+total 16
+drwxr-xr-x.  2 root root  104 Mar 17 16:57 .
+drwxr-xr-x. 10 root root  155 Mar 17 13:50 ..
+-rw-------.  1 root root 3381 Mar 17 13:50 bitbucket_ci
+-rw-r--r--.  1 root root  745 Mar 17 13:50 bitbucket_ci.pub
+-rw-------.  1 root root 3247 Mar 17 17:11 bitbucket_ci_jgit
+-rw-r--r--.  1 root root  759 Mar 17 17:11 bitbucket_ci_jgit.pub
