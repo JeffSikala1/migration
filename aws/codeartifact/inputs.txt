@@ -1,43 +1,7 @@
-BASE="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
-AUTH="${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}"
-VER="01.00.000.150"
-
-for MODULE in \
-  ws-aggregator \
-  ws-api \
-  ws-common \
-  ws-core \
-  ws-integration \
-  ws-integration-api \
-  ws-integration-core \
-  ws-integration-ear \
-  ws-integration-test \
-  ws-services-aggregator \
-  ws-services-ear \
-  ws-services-health-check \
-  ws-services-order-services \
-  ws-services-order-services-impl \
-  ws-test-support \
-  ws-version-war; do
-  echo "Deleting gov/gsa/cnxs/ws/${MODULE}/${VER}"
-  curl -sku "${AUTH}" -X DELETE \
-    "${BASE}/conexus-release-local/gov/gsa/cnxs/ws/${MODULE}/${VER}/"
-done
-
-# Delete the mispathed artifacts at the root ws path
-echo "Deleting gov/gsa/cnxs/ws/${VER} (mispathed)"
-curl -sku "${AUTH}" -X DELETE \
-  "${BASE}/conexus-release-local/gov/gsa/cnxs/ws/${VER}/"
-
-
-
-
-
-
 curl -sku "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
   -H "Content-Type: text/plain" \
   -X POST \
-  "${BASE}/artifactory/api/search/aql" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
   --data '
 items.find({
   "repo":{"$eq":"conexus-release-local"},
@@ -46,6 +10,10 @@ items.find({
 }).include("name","path")
 '
 
+
+
+GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' \
+  git push ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws.git --delete release/01.00.000.150
 
 
 
