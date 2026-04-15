@@ -1,54 +1,59 @@
-[ec2-user@ip-10-56-112-35 ~]$ sudo su 
-[root@ip-10-56-112-35 ec2-user]# export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-REPO="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git"
-
-# Fetch latest develop
-git fetch origin refs/heads/develop
-
-# Create release branch from develop tip
-git checkout -B release/01.00.000.111 origin/develop
-git push "${REPO}" release/01.00.000.111
-
-# Confirm it exists
-git ls-remote --heads "${REPO}" 'refs/heads/release/01.00.000.111'
-
-# Convert SNAPSHOT to RC
-find . -name pom.xml -exec sed -i 's/-SNAPSHOT/-RC/g' {} +
-
-# Verify
-grep -r '01.00.000.111\|SNAPSHOT' pom.xml
-
-git config user.name "bamboo"
-git config user.email "bamboo@local"
-git add -A
-git commit -m "Update SNAPSHOT to RC"
-git push "${REPO}" release/01.00.000.111
-fatal: not a git repository (or any parent up to mount point /)
-Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
-fatal: not a git repository (or any parent up to mount point /)
-Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
-fatal: not a git repository (or any parent up to mount point /)
-Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
-grep: pom.xml: No such file or directory
-fatal: not in a git directory
-fatal: not in a git directory
-fatal: not a git repository (or any parent up to mount point /)
-Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
-fatal: not a git repository (or any parent up to mount point /)
-Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
-fatal: not a git repository (or any parent up to mount point /)
-Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
-[root@ip-10-56-112-35 ec2-user]# cd ui
+[root@ip-10-56-112-35 ui]# pwd
+/home/ec2-user/ui
 [root@ip-10-56-112-35 ui]# ll
 total 8
 -rw-r-----. 1 root root 1275 Apr 15 15:22 README.md
 -rw-r-----. 1 root root 1451 Apr 15 16:37 pom.xml
 drwxr-x---+ 3 root root   32 Apr 15 16:37 web
-[root@ip-10-56-112-35 ui]# ls -al /opt/bamboo-keys/
-total 16
-drwxr-xr-x.  2 root root  104 Mar 17 16:57 .
-drwxr-xr-x. 10 root root  155 Mar 17 13:50 ..
--rw-------.  1 root root 3381 Mar 17 13:50 bitbucket_ci
--rw-r--r--.  1 root root  745 Mar 17 13:50 bitbucket_ci.pub
--rw-------.  1 root root 3247 Mar 17 17:11 bitbucket_ci_jgit
--rw-r--r--.  1 root root  759 Mar 17 17:11 bitbucket_ci_jgit.pub
+[root@ip-10-56-112-35 ui]# git status
+On branch release/01.00.000.111
+Your branch is ahead of 'origin/develop' by 1 commit.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+[root@ip-10-56-112-35 ui]# git branch
+  develop
+* release/01.00.000.111
+[root@ip-10-56-112-35 ui]# git checkout develop
+Switched to branch 'develop'
+Your branch is up to date with 'origin/develop'.
+[root@ip-10-56-112-35 ui]# export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+
+git fetch --prune origin
+
+# Check what release branches currently exist
+git ls-remote --heads origin 'refs/heads/release/*'
+
+# Delete the four stale branches
+for branch in release/01.00.000.107 release/01.00.000.108 release/01.00.000.109 release/01.00.000.110; do
+  echo "Deleting ${branch}"
+  git push origin --delete "${branch}" || echo "WARNING: could not delete ${branch}"
+done
+
+# Confirm release/01.00.000.111 still exists and has RC content
+git fetch origin refs/heads/release/01.00.000.111
+git show origin/release/01.00.000.111:pom.xml | grep version
+From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui
+ - [deleted]               (none)     -> origin/release/01.00.000.107
+ - [deleted]               (none)     -> origin/release/01.00.000.108
+ - [deleted]               (none)     -> origin/release/01.00.000.109
+ - [deleted]               (none)     -> origin/release/01.00.000.110
+ - [deleted]               (none)     -> origin/release/01.00.000.111
+Deleting release/01.00.000.107
+error: unable to delete 'release/01.00.000.107': remote ref does not exist
+error: failed to push some refs to 'ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git'
+WARNING: could not delete release/01.00.000.107
+Deleting release/01.00.000.108
+error: unable to delete 'release/01.00.000.108': remote ref does not exist
+error: failed to push some refs to 'ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git'
+WARNING: could not delete release/01.00.000.108
+Deleting release/01.00.000.109
+error: unable to delete 'release/01.00.000.109': remote ref does not exist
+error: failed to push some refs to 'ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git'
+WARNING: could not delete release/01.00.000.109
+Deleting release/01.00.000.110
+error: unable to delete 'release/01.00.000.110': remote ref does not exist
+error: failed to push some refs to 'ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git'
+WARNING: could not delete release/01.00.000.110
+fatal: couldn't find remote ref refs/heads/release/01.00.000.111
+fatal: invalid object name 'origin/release/01.00.000.111'.
