@@ -1,4 +1,30 @@
-curl -sku "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+BASE="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
+AUTH="${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}"
+
+curl -sku "${AUTH}" -X DELETE \
+  "${BASE}/conexus-release-local/gov/gsa/cnxs/ui/ui-aggregator/01.00.000.111/"
+
+curl -sku "${AUTH}" -X DELETE \
+  "${BASE}/conexus-release-local/gov/gsa/cnxs/ui/ui-war/01.00.000.111/"
+
+
+
+
+curl -sku "${AUTH}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "${BASE}/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-release-local"},
+  "path":{"$match":"gov/gsa/cnxs/ui*"},
+  "name":{"$match":"*01.00.000.111*"}
+}).include("name","path")
+'
+
+
+
+curl -sku "${AUTH}" \
   -H "Content-Type: text/plain" \
   -X POST \
   "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
@@ -7,5 +33,5 @@ items.find({
   "repo":{"$eq":"conexus-release-local"},
   "path":{"$match":"gov/gsa/cnxs/ui*"},
   "name":{"$match":"*01.00.000.111*"}
-}).include("name","path","size","created")
+}).include("name","path")
 '
