@@ -85,6 +85,8 @@ class Promote(object):
             return 'tar'
         if artifact.endswith('.zip'):
             return 'zip'
+        if artifact.endswith('.war'):
+            return 'war'
         if artifact.endswith('.jar'):
             return 'jar'
         return None
@@ -138,7 +140,7 @@ class Promote(object):
     def _group_artifacts_to_publish(self):
         """
         Group staged artifacts by directory + logical artifact base name so that
-        a main jar, pom, and tests jar can be deployed in a single Maven command.
+        a main artifact, pom, and tests jar can be deployed in a single Maven command.
         """
         grouped = {}
 
@@ -161,7 +163,7 @@ class Promote(object):
                     entry['pom'] = file
                 elif file.endswith('-tests.jar'):
                     entry['tests'] = file
-                elif file.endswith('.jar'):
+                elif file.endswith('.jar') or file.endswith('.war'):
                     entry['main'] = file
                 else:
                     entry['others'].append(file)
@@ -191,6 +193,11 @@ class Promote(object):
                 f'-Dfile={pom_path}',
                 f'-DpomFile={pom_path}'
             ])
+
+            if self.maven_args:
+                for argument in self.maven_args:
+                    command.append(f'-D{argument}')
+
             return command
 
         if not pom:
@@ -207,6 +214,9 @@ class Promote(object):
                 f'-DpomFile={pom_path}',
                 '-DgeneratePom=false'
             ])
+            packaging = self._get_packaging(main)
+            if packaging:
+                command.append(f'-Dpackaging={packaging}')
         else:
             raise RuntimeError(
                 f"Missing main artifact for artifact group '{artifact_group['base']}' in {root}"
