@@ -1,20 +1,35 @@
-[sikaj01@ip-10-56-112-33 ui]$ git ls-remote \
-  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git \
-  refs/heads/release/01.00.000.111 \
-  refs/tags/01.00.000.111
-[sikaj01@ip-10-56-112-33 ui]$ git fetch origin refs/heads/develop
-git show origin/develop:pom.xml | grep -A1 '<version>' | head -5
+[sikaj01@ip-10-56-112-33 ui]$ curl -sku "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "path":{"$match":"gov/gsa/cnxs/ui*"},
+  "name":{"$match":"*01.00.000.111-RC*"}
+}).include("name","path","size","created")
+'
 
-remote: Enumerating objects: 20, done.
-remote: Counting objects: 100% (20/20), done.
-remote: Compressing objects: 100% (10/10), done.
-remote: Total 11 (delta 8), reused 0 (delta 0), pack-reused 0 (from 0)
-Unpacking objects: 100% (11/11), 900 bytes | 2.00 KiB/s, done.
-From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui
- * branch                  develop    -> FETCH_HEAD
-   6de08e6c1f..d0d0607afd  develop    -> origin/develop
-    <version>01.00.000.111-SNAPSHOT</version>
-    <packaging>pom</packaging>
---
-             <version>1.0-m5.1</version>
-             <configuration>
+{
+"results" : [ {
+  "path" : "gov/gsa/cnxs/ui/ui-aggregator/01.00.000.111-RC",
+  "name" : "ui-aggregator-01.00.000.111-RC.pom",
+  "size" : 1451,
+  "created" : "2026-04-14T15:44:11.820Z"
+},{
+  "path" : "gov/gsa/cnxs/ui/ui-war/01.00.000.111-RC",
+  "name" : "ui-war-01.00.000.111-RC.pom",
+  "size" : 1531,
+  "created" : "2026-04-14T15:44:13.295Z"
+},{
+  "path" : "gov/gsa/cnxs/ui/ui-war/01.00.000.111-RC",
+  "name" : "ui-war-01.00.000.111-RC.war",
+  "size" : 4094362,
+  "created" : "2026-04-14T15:44:13.624Z"
+} ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 3,
+  "total" : 3
+}
+}
