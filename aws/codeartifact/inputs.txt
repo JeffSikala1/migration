@@ -1,7 +1,25 @@
+# What is develop currently at?
 git ls-remote --heads \
   ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git \
-  'refs/heads/release/*'
+  refs/heads/develop
 
+# What RC artifacts exist for UI in conexus-rc-local?
+curl -sku "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" \
+  -H "Content-Type: text/plain" \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  --data '
+items.find({
+  "repo":{"$eq":"conexus-rc-local"},
+  "path":{"$match":"gov/gsa/cnxs/ui*"},
+  "name":{"$match":"*-RC*"}
+}).include("name","path","created")
+'
+
+# What release tags exist for UI?
+git ls-remote --tags \
+  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git \
+  'refs/tags/*'
 
 
 
