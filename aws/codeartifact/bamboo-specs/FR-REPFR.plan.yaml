@@ -114,11 +114,18 @@ Promote Job:
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            # Discover the highest release branch on remote — never derive from develop
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
 
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
             REPO_URL="${bamboo.repo_url}"
 
             git config user.name "bamboo"
@@ -241,11 +248,18 @@ Promote Job:
             fi
 
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            # Discover the highest release branch on remote — never derive from develop
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
 
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
             REPO_URL="${bamboo.repo_url}"
 
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
@@ -340,10 +354,18 @@ Promote Job:
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            # Discover the highest release branch on remote — never derive from develop
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
 
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
 
             AQL=$(cat <<EOF
             items.find({
@@ -419,10 +441,18 @@ Promote Job:
             fi
 
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            # Discover the highest release branch on remote — never derive from develop
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
 
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
 
             mkdir -p working
 
@@ -523,11 +553,18 @@ Finalize Job:
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            # Discover the highest release branch on remote — never derive from develop
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
 
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
             INTEGRATION_BRANCH="${bamboo.integration.branch}"
             REPO_URL="${bamboo.repo_url}"
             VALIDATE_INTEGRATION_REF="refs/remotes/validate_integration"
@@ -672,13 +709,12 @@ Finalize Job:
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            RELEASE_VERSION="${bamboo_inject_bamboo_release_version:-}"
+            RELEASE_BRANCH="${bamboo_inject_bamboo_release_branch:-}"
+            INTEGRATION_BRANCH="${bamboo_inject_bamboo_integration_branch:-${bamboo.integration.branch}}"
+            [ -n "${RELEASE_VERSION}" ] || { echo "ERROR: bamboo_release_version not set"; exit 1; }
+            [ -n "${RELEASE_BRANCH}" ]  || { echo "ERROR: bamboo_release_branch not set"; exit 1; }
             RELEASE_TAG="${RELEASE_VERSION}"
-            INTEGRATION_BRANCH="${bamboo.integration.branch}"
             REPO_URL="${bamboo.repo_url}"
             VALIDATE_RELEASE_REF="refs/remotes/validate_release"
             VALIDATE_INTEGRATION_REF="refs/remotes/validate_integration"

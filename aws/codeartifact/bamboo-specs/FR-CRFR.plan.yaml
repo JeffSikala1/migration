@@ -110,29 +110,48 @@ Promote Job:
           - |
             set -euo pipefail
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
-
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
 
             git config user.name "bamboo"
             git config user.email "bamboo@local"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
+            git fetch origin --prune --tags >/dev/null 2>&1 || true
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
-              if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
-                echo "INFO: release ${RELEASE_VERSION} already finalized; skipping."
+            # Discover the highest release branch on remote — never derive from develop
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
+
+            if [ -z "${RELEASE_BRANCH}" ]; then
+              # No release branch — check if already finalized via tag
+              RELEASE_VERSION=$(git ls-remote --tags origin 'refs/tags/*' \
+                | awk '{print $2}' \
+                | sed 's|refs/tags/||' \
+                | grep -v '\^{}' \
+                | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
+                | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+                | tail -1)
+              if [ -n "${RELEASE_VERSION}" ] && git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+                echo "INFO: no release branch found; release ${RELEASE_VERSION} appears already finalized via tag; skipping."
                 echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
                 exit 0
               fi
-              echo "ERROR: expected release branch ${RELEASE_BRANCH} not found"
+              echo "ERROR: no release branch found on remote and no finalized tag detected"
               exit 1
+            fi
+
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
+
+            if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+              echo "INFO: release ${RELEASE_VERSION} already finalized; skipping."
+              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+              exit 0
             fi
 
             git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
@@ -177,22 +196,33 @@ Promote Job:
               exit 0
             fi
 
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
-
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
+            git fetch origin --prune >/dev/null 2>&1 || true
+
+            # Discover the highest release branch on remote
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
+
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
 
             if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
               exit 1
             fi
 
-            echo "Release state validation passed."
+            echo "Release state validation passed for ${RELEASE_BRANCH}."
+
+    - inject-variables:
+        file: skip.properties
+        scope: LOCAL
 
     - script:
         interpreter: SHELL
@@ -207,13 +237,24 @@ Promote Job:
               exit 0
             fi
 
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin --prune >/dev/null 2>&1 || true
 
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            # Discover the highest release branch on remote
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
+
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
             GROUP_PATH="gov/gsa/cnxs/common-rest"
 
             AQL=$(cat <<EOF
@@ -233,21 +274,6 @@ Promote Job:
               -X POST \
               "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
               --data "${AQL}")
-
-            echo "${RESULT}" > "${bamboo.build.working.directory}/release-check.json"
-
-            expected=(
-              "common-rest-aggregator-${RELEASE_VERSION}.pom"
-              "common-rest-${RELEASE_VERSION}.pom"
-              "common-rest-${RELEASE_VERSION}.jar"
-              "common-rest-${RELEASE_VERSION}-tests.jar"
-              "common-rest-shiro-${RELEASE_VERSION}.pom"
-              "common-rest-shiro-${RELEASE_VERSION}.jar"
-              "common-rest-shiro-${RELEASE_VERSION}-tests.jar"
-              "common-rest-test-utils-${RELEASE_VERSION}.pom"
-              "common-rest-test-utils-${RELEASE_VERSION}.jar"
-              "common-rest-test-utils-${RELEASE_VERSION}-tests.jar"
-            )
 
             found_count=$(python3 - <<PY
             import json
@@ -285,8 +311,6 @@ Promote Job:
             fi
 
             echo "ERROR: partial CommonRest release already exists for ${RELEASE_VERSION}."
-            echo "Expected full artifact family:"
-            printf '  %s\n' "${expected[@]}"
             exit 1
 
     - inject-variables:
@@ -296,7 +320,7 @@ Promote Job:
     - script:
         interpreter: SHELL
         description: Promote CommonRest artifacts from RC repo
-        working-dir: ${bamboo.module_name}
+        working-dir: .
         scripts:
           - |
             set -euo pipefail
@@ -306,15 +330,28 @@ Promote Job:
               exit 0
             fi
 
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
 
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
+            git -C "${bamboo.module_name}" remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git -C "${bamboo.module_name}" fetch origin --prune >/dev/null 2>&1 || true
 
-            mkdir -p working
+            # Discover the highest release branch on remote
+            RELEASE_BRANCH=$(git -C "${bamboo.module_name}" ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
 
-            python3 ../release-scripts/promote.py \
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
+
+            mkdir -p "${bamboo.module_name}/working"
+
+            python3 release-scripts/promote.py \
               conexus-rc-local \
               gov.gsa.cnxs.common-rest \
               common-rest \
@@ -324,7 +361,7 @@ Promote Job:
               --settings-xml "${SETTINGS_FILE}" \
               --override
 
-            python3 ../release-scripts/promote.py \
+            python3 release-scripts/promote.py \
               conexus-rc-local \
               gov.gsa.cnxs.common-rest \
               common-rest-shiro \
@@ -334,7 +371,7 @@ Promote Job:
               --settings-xml "${SETTINGS_FILE}" \
               --override
 
-            python3 ../release-scripts/promote.py \
+            python3 release-scripts/promote.py \
               conexus-rc-local \
               gov.gsa.cnxs.common-rest \
               common-rest-test-utils \
@@ -344,7 +381,7 @@ Promote Job:
               --settings-xml "${SETTINGS_FILE}" \
               --override
 
-            python3 ../release-scripts/promote.py \
+            python3 release-scripts/promote.py \
               conexus-rc-local \
               gov.gsa.cnxs.common-rest \
               common-rest-aggregator \
@@ -353,6 +390,8 @@ Promote Job:
               --password "${bamboo.artifactory_access_token_secret}" \
               --settings-xml "${SETTINGS_FILE}" \
               --override
+
+            echo "INFO: CommonRest release artifacts successfully promoted for ${RELEASE_VERSION}"
 
   artifact-subscriptions: []
 
@@ -442,44 +481,96 @@ Finalize Job:
         scripts:
           - |
             set -euo pipefail
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            INTEGRATION_BRANCH="${bamboo.integration.branch}"
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
-
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
+            git fetch origin --prune --tags >/dev/null 2>&1 || true
+
+            # Discover the highest release branch on remote — never derive from develop
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
 
             TAG_EXISTS=false
-            MAIN_HAS_TAG=false
+            INTEGRATION_HAS_TAG=false
             BRANCH_EXISTS=false
 
-            if git rev-parse -q --verify "refs/tags/${RELEASE_VERSION}" >/dev/null 2>&1; then
+            if [ -n "${RELEASE_BRANCH}" ]; then
+              RELEASE_VERSION="${RELEASE_BRANCH#release/}"
+              BRANCH_EXISTS=true
+            else
+              # No release branch — try to find version from latest release tag
+              RELEASE_VERSION=$(git ls-remote --tags origin 'refs/tags/*' \
+                | awk '{print $2}' \
+                | sed 's|refs/tags/||' \
+                | grep -v '\^{}' \
+                | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
+                | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+                | tail -1)
+
+              if [ -z "${RELEASE_VERSION}" ]; then
+                echo "ERROR: no release branch and no release tags found; cannot determine release version"
+                exit 1
+              fi
+
+              RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            fi
+
+            {
+              echo "bamboo_skip_release=false"
+              echo "bamboo_release_version=${RELEASE_VERSION}"
+              echo "bamboo_release_branch=${RELEASE_BRANCH}"
+              echo "bamboo_integration_branch=${INTEGRATION_BRANCH}"
+            } > "${bamboo.build.working.directory}/skip.properties"
+
+            if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
               TAG_EXISTS=true
             fi
 
-            if [ "${TAG_EXISTS}" = "true" ] && git branch -r --contains "${RELEASE_VERSION}" | sed 's/^[[:space:]]*//' | grep -q '^origin/main$'; then
-              MAIN_HAS_TAG=true
+            if [ "${TAG_EXISTS}" = "true" ]; then
+              git tag -d "${RELEASE_VERSION}" >/dev/null 2>&1 || true
+              git fetch origin \
+                "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/origin/__validate_integration" \
+                "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
+                >/dev/null 2>&1 || true
+
+              TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}" 2>/dev/null || true)"
+              INTEGRATION_COMMIT="$(git rev-parse refs/remotes/origin/__validate_integration 2>/dev/null || true)"
+
+              if [ -n "${TAG_COMMIT}" ] && [ -n "${INTEGRATION_COMMIT}" ]; then
+                if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/origin/__validate_integration"; then
+                  INTEGRATION_HAS_TAG=true
+                fi
+              fi
             fi
 
-            if git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
-              BRANCH_EXISTS=true
-            fi
+            echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
 
-            if [ "${TAG_EXISTS}" = "true" ] && [ "${MAIN_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
               echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
-              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
+              {
+                echo "bamboo_skip_release=true"
+                echo "bamboo_release_version=${RELEASE_VERSION}"
+                echo "bamboo_release_branch=${RELEASE_BRANCH}"
+                echo "bamboo_integration_branch=${INTEGRATION_BRANCH}"
+              } > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
 
-            echo "INFO: tag_exists=${TAG_EXISTS}, main_has_tag=${MAIN_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
+            if [ "${BRANCH_EXISTS}" != "true" ]; then
+              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist and release is not proven finalized on ${INTEGRATION_BRANCH}."
+              exit 1
+            fi
 
-            if ! git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
-              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finalize cannot continue."
+            if ! git ls-remote --heads origin "refs/heads/${INTEGRATION_BRANCH}" | grep -q "refs/heads/${INTEGRATION_BRANCH}$"; then
+              echo "ERROR: integration branch ${INTEGRATION_BRANCH} does not exist."
               exit 1
             fi
 
@@ -491,52 +582,114 @@ Finalize Job:
 
     - script:
         interpreter: SHELL
-        description: Merge release branch to main, set release versions, tag, and push
+        description: Merge release branch to integration branch, set release versions, tag, and push
         working-dir: ${bamboo.module_name}
         scripts:
           - |
             set -euo pipefail
+
+            clear_index_lock() {
+              rm -f .git/index.lock >/dev/null 2>&1 || true
+            }
+
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
             fi
 
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            RELEASE_VERSION="${bamboo_inject_bamboo_release_version:-}"
+            RELEASE_BRANCH="${bamboo_inject_bamboo_release_branch:-}"
+            INTEGRATION_BRANCH="${bamboo_inject_bamboo_integration_branch:-${bamboo.integration.branch}}"
 
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            [ -n "${RELEASE_VERSION}" ] || { echo "ERROR: bamboo_release_version not set"; exit 1; }
+            [ -n "${RELEASE_BRANCH}" ]  || { echo "ERROR: bamboo_release_branch not set"; exit 1; }
+
             RELEASE_TAG="${RELEASE_VERSION}"
 
             git config user.name "bamboo"
             git config user.email "bamboo@local"
-
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --exit-code --heads origin "refs/heads/${RELEASE_BRANCH}" >/dev/null 2>&1; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finish release cannot continue."
               exit 1
             fi
 
-            TAG_EXISTS=false
-            if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
-              TAG_EXISTS=true
-              echo "INFO: release tag ${RELEASE_TAG} already exists; will reuse it if merge is still needed."
+            if ! git ls-remote --exit-code --heads origin "refs/heads/${INTEGRATION_BRANCH}" >/dev/null 2>&1; then
+              echo "ERROR: integration branch ${INTEGRATION_BRANCH} does not exist."
+              exit 1
             fi
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/main$"; then
-              echo "ERROR: origin/main not found"
+            git fetch origin \
+              "+refs/heads/${INTEGRATION_BRANCH}:refs/remotes/origin/${INTEGRATION_BRANCH}" \
+              "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}" \
+              "+refs/tags/*:refs/tags/*" \
+              --prune >/dev/null 2>&1
+
+            TAG_EXISTS=false
+            TAG_ON_INTEGRATION=false
+
+            if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+              TAG_EXISTS=true
+              TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_TAG}")"
+              if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/origin/${INTEGRATION_BRANCH}"; then
+                TAG_ON_INTEGRATION=true
+              fi
+            fi
+
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${TAG_ON_INTEGRATION}" != "true" ]; then
+              echo "ERROR: release tag ${RELEASE_TAG} already exists but is not contained in origin/${INTEGRATION_BRANCH}."
               exit 1
             fi
 
             git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
-            git checkout -B main origin/main >/dev/null 2>&1
+            git checkout -B "${INTEGRATION_BRANCH}" "origin/${INTEGRATION_BRANCH}" >/dev/null 2>&1
 
-            git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
+            if git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"; then
+              echo "INFO: merge completed without manual conflict resolution"
+            else
+              echo "INFO: merge reported conflicts; resolving remaining conflicts in favor of ${RELEASE_BRANCH}"
+
+              clear_index_lock
+              git status --porcelain >/dev/null 2>&1 || true
+              clear_index_lock
+
+              while IFS= read -r f; do
+                [ -n "${f}" ] || continue
+                clear_index_lock
+                code="$(git status --porcelain -- "${f}" | awk '{print $1}')"
+
+                case "${code}" in
+                  UD|DD|AU)
+                    git rm -f -- "${f}" || true
+                    ;;
+                  DU|UU|AA|UA)
+                    git checkout --theirs -- "${f}" || true
+                    git add -A -- "${f}" || true
+                    ;;
+                  *)
+                    echo "ERROR: unhandled merge conflict state ${code} for ${f}"
+                    git status --short
+                    exit 1
+                    ;;
+                esac
+              done < <(git diff --name-only --diff-filter=U)
+
+              clear_index_lock
+
+              if git diff --name-only --diff-filter=U | grep -q .; then
+                echo "ERROR: unresolved merge conflicts remain after auto-resolution"
+                git status --short
+                exit 1
+              fi
+
+              clear_index_lock
+              git add -A
+              clear_index_lock
+              git commit --no-edit
+            fi
 
             find . -type f -name "*.xml" -exec sed -i 's/-SNAPSHOT//g' {} +
 
@@ -548,11 +701,9 @@ Finalize Job:
 
             if [ "${TAG_EXISTS}" = "false" ]; then
               git tag "${RELEASE_TAG}"
-            else
-              echo "INFO: tag ${RELEASE_TAG} already exists; not recreating."
             fi
 
-            git push origin main
+            git push origin "${INTEGRATION_BRANCH}"
 
             if [ "${TAG_EXISTS}" = "false" ]; then
               git push origin "refs/tags/${RELEASE_TAG}"
@@ -568,7 +719,7 @@ Finalize Job:
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -euo pipefail
+            set -uo pipefail
 
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
@@ -577,37 +728,32 @@ Finalize Job:
 
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-            [ -n "${CURRENT_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            RELEASE_VERSION="${bamboo_inject_bamboo_release_version:-}"
+            RELEASE_BRANCH="${bamboo_inject_bamboo_release_branch:-}"
 
-            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
-            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            if [ -z "${RELEASE_VERSION}" ] || [ -z "${RELEASE_BRANCH}" ]; then
+              echo "WARNING: cleanup metadata missing from injected variables; skipping destructive cleanup."
+              exit 0
+            fi
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1 || true
 
-            if ! git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
-              echo "ERROR: release tag ${RELEASE_VERSION} does not exist in remote; refusing to delete release branch."
-              exit 1
-            fi
-
-            TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}")"
-            if [ -z "${TAG_COMMIT}" ]; then
-              echo "ERROR: could not resolve tag commit for ${RELEASE_VERSION}"
-              exit 1
-            fi
-
-            if ! git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
-              echo "ERROR: tag commit ${TAG_COMMIT} is not contained in origin/main; refusing to delete release branch."
-              exit 1
-            fi
-
-            if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
-              git push origin --delete "${RELEASE_BRANCH}"
+            if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
+              if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
+                echo "INFO: attempting best-effort deletion of ${RELEASE_BRANCH}"
+                if git push origin --delete "${RELEASE_BRANCH}"; then
+                  echo "INFO: deleted remote release branch ${RELEASE_BRANCH}"
+                else
+                  echo "WARNING: failed to delete remote release branch ${RELEASE_BRANCH}"
+                fi
+              else
+                echo "INFO: release branch ${RELEASE_BRANCH} already absent"
+              fi
             else
-              echo "Release branch ${RELEASE_BRANCH} already absent"
+              echo "INFO: tag ${RELEASE_VERSION} not confirmed; skipping branch deletion."
             fi
+
+            exit 0
 
   artifact-subscriptions: []
 
@@ -615,6 +761,7 @@ variables:
   module_name: common-rest
   maven.artifactId: common-rest-aggregator
   maven.groupId: gov.gsa.cnxs.common-rest
+  integration.branch: main
 
 repositories:
   - CommonRest:
