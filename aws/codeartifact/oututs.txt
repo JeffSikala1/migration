@@ -1,96 +1,320 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo journalctl -u code-server@pkundm01.service --since "2026-03-01"
--- No entries --
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo systemctl cat code-server@pkundm01.service
-# /usr/lib/systemd/system/code-server@.service
-[Unit]
-Description=code-server
-After=network.target
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo ss -tnp | grep 2387
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo systemctl stop code-server@pkundm01.service
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../docker-jboss-local/
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ ./build_image.sh 
+############################ Caching JBoss Installer and Patch ##############################################
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/jboss/8.1/jboss-eap-8.1.0.zip
+#################################################################################################################################################### 100.0%
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/jboss/8.1/patches/jboss-eap-8.1.3-runtime-maven-repository.zip
+#################################################################################################################################################### 100.0%
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/postgresql/postgresql/42.7.8/postgresql-42.7.8.jar
+#################################################################################################################################################### 100.0%
+downloading https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/fonts/dejavu-fonts-ttf.tar.gz
+#################################################################################################################################################### 100.0%
+############################ Building Jboss ubi8-minimal Docker Image ##############################################
+#0 building with "default" instance using docker driver
 
-[Service]
-Type=exec
-ExecStart=/usr/bin/code-server
-Restart=always
-User=%i
+#1 [internal] load build definition from jboss.ubi8-minimal.Dockerfile
+#1 transferring dockerfile: 4.28kB done
+#1 DONE 0.0s
 
-[Install]
-WantedBy=default.target
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo ls -l /etc/systemd/system/multi-user.target.wants/ | grep code-server
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo ls -l /etc/systemd/system/multi-user.target.wants/ 
-total 0
-lrwxrwxrwx. 1 root root 51 Dec 28  2024 amazon-cloudwatch-agent.service -> /etc/systemd/system/amazon-cloudwatch-agent.service
-lrwxrwxrwx. 1 root root 48 Oct  2  2024 amazon-ssm-agent.service -> /usr/lib/systemd/system/amazon-ssm-agent.service
-lrwxrwxrwx. 1 root root 35 Oct  2  2024 atd.service -> /usr/lib/systemd/system/atd.service
-lrwxrwxrwx. 1 root root 38 Oct  2  2024 auditd.service -> /usr/lib/systemd/system/auditd.service
-lrwxrwxrwx. 1 root root 41 Dec 28  2024 besclient.service -> /usr/lib/systemd/system/besclient.service
-lrwxrwxrwx. 1 root root 39 Oct  2  2024 chronyd.service -> /usr/lib/systemd/system/chronyd.service
-lrwxrwxrwx. 1 root root 37 Dec 28  2024 crond.service -> /usr/lib/systemd/system/crond.service
-lrwxrwxrwx. 1 root root 45 Mar 24 20:51 datadog-agent.service -> /usr/lib/systemd/system/datadog-agent.service
-lrwxrwxrwx. 1 root root 38 Jan 23  2025 docker.service -> /usr/lib/systemd/system/docker.service
-lrwxrwxrwx. 1 root root 41 Jan 23  2025 elastic-agent.service -> /etc/systemd/system/elastic-agent.service
-lrwxrwxrwx. 1 root root 45 Dec 28  2024 falcon-sensor.service -> /usr/lib/systemd/system/falcon-sensor.service
-lrwxrwxrwx. 1 root root 45 Oct  2  2024 hibinit-agent.service -> /usr/lib/systemd/system/hibinit-agent.service
-lrwxrwxrwx. 1 root root 42 Oct  2  2024 irqbalance.service -> /usr/lib/systemd/system/irqbalance.service
-lrwxrwxrwx. 1 root root 46 Oct  2  2024 libstoragemgmt.service -> /usr/lib/systemd/system/libstoragemgmt.service
-lrwxrwxrwx. 1 root root 43 Dec 28  2024 nessusagent.service -> /usr/lib/systemd/system/nessusagent.service
-lrwxrwxrwx. 1 root root 41 Oct  2  2024 nfs-client.target -> /usr/lib/systemd/system/nfs-client.target
-lrwxrwxrwx. 1 root root 40 Dec 28  2024 nftables.service -> /usr/lib/systemd/system/nftables.service
-lrwxrwxrwx. 1 root root 48 Oct  2  2024 remote-cryptsetup.target -> /usr/lib/systemd/system/remote-cryptsetup.target
-lrwxrwxrwx. 1 root root 40 Oct  2  2024 remote-fs.target -> /usr/lib/systemd/system/remote-fs.target
-lrwxrwxrwx. 1 root root 36 Oct  2  2024 rngd.service -> /usr/lib/systemd/system/rngd.service
-lrwxrwxrwx. 1 root root 39 Dec 28  2024 rsyslog.service -> /usr/lib/systemd/system/rsyslog.service
-lrwxrwxrwx. 1 root root 36 Oct  2  2024 sshd.service -> /usr/lib/systemd/system/sshd.service
-lrwxrwxrwx. 1 root root 36 Oct  2  2024 sssd.service -> /usr/lib/systemd/system/sssd.service
-lrwxrwxrwx. 1 root root 39 Oct  2  2024 sysstat.service -> /usr/lib/systemd/system/sysstat.service
-lrwxrwxrwx. 1 root root 45 Oct  2  2024 systemd-homed.service -> /usr/lib/systemd/system/systemd-homed.service
-lrwxrwxrwx. 1 root root 48 Oct  2  2024 systemd-networkd.service -> /usr/lib/systemd/system/systemd-networkd.service
-lrwxrwxrwx. 1 root root 43 Oct  2  2024 update-motd.service -> /usr/lib/systemd/system/update-motd.service
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ rpm -qi code-server
-Name        : code-server
-Epoch       : 0
-Version     : 4.105.1
-Release     : 1
-Architecture: x86_64
-Install Date: Fri Oct 24 14:11:49 2025
-Group       : 
-Size        : 457636275
-License     : MIT
-Signature   : (none)
-Source RPM  : code-server-4.105.1-1.src.rpm
-Build Date  : Mon Oct 20 18:15:24 2025
-Build Host  : eb52a5163983
-Packager    : Joe Previte <joe@coder.com>
-Vendor      : Coder
-URL         : https://github.com/coder/code-server
-Summary     : Run VS Code in the browser.
-Description :
-Run VS Code in the browser.
+#2 [internal] load metadata for docker.io/redhat/ubi8-minimal:latest
+#2 DONE 0.2s
 
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo grep -i code-server /home/pkundm01/.bash_history
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo grep -i code-server /home/pkundm01/.bash_history
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo journalctl -u code-server@pkundm01.service
--- No entries --
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo journalctl -u code-server@pkundm01.service --no-pager | head -30
--- No entries --
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo rpm -qi code-server 2>/dev/null || sudo dpkg -l code-server 2>/dev/null
-Name        : code-server
-Epoch       : 0
-Version     : 4.105.1
-Release     : 1
-Architecture: x86_64
-Install Date: Fri Oct 24 14:11:49 2025
-Group       : 
-Size        : 457636275
-License     : MIT
-Signature   : (none)
-Source RPM  : code-server-4.105.1-1.src.rpm
-Build Date  : Mon Oct 20 18:15:24 2025
-Build Host  : eb52a5163983
-Packager    : Joe Previte <joe@coder.com>
-Vendor      : Coder
-URL         : https://github.com/coder/code-server
-Summary     : Run VS Code in the browser.
-Description :
-Run VS Code in the browser.
+#3 [internal] load .dockerignore
+#3 transferring context: 137B done
+#3 DONE 0.0s
 
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo ls -la /usr/lib/systemd/system/code-server@.service
--rw-rw-r--. 1 root root 162 Oct 17 22:32 /usr/lib/systemd/system/code-server@.service
+#4 [ 1/25] FROM docker.io/redhat/ubi8-minimal:latest@sha256:a2b9823a9883ca2d6de30079da84afce32cd1f3777905aca1a46d4383ff096f9
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 478.75MB 2.9s done
+#5 DONE 2.9s
+
+#6 [ 6/25] COPY tmp/installers/jboss-eap-8.1.0.zip /app/jboss-eap.zip
+#6 CACHED
+
+#7 [21/25] RUN sed -i 's|<location name="/" handler="welcome-content"/>||' /app/jboss-eap-8.1/standalone/configuration/standalone-full.xml
+#7 CACHED
+
+#8 [ 7/25] RUN unzip -q jboss-eap.zip &&     rm jboss-eap.zip
+#8 CACHED
+
+#9 [13/25] COPY tmp/fonts/dejavu-fonts-ttf.tar.gz  /tmp/dejavu-fonts-ttf.tar.gz
+#9 CACHED
+
+#10 [17/25] WORKDIR /app/jboss_config/
+#10 CACHED
+
+#11 [ 5/25] WORKDIR /app/
+#11 CACHED
+
+#12 [15/25] RUN tar -C /usr/share/fonts/dejavu -xzvf /tmp/dejavu-fonts-ttf.tar.gz
+#12 CACHED
+
+#13 [19/25] RUN chmod a+x /app/jboss-eap-8.1/bin/restart-clean.sh
+#13 CACHED
+
+#14 [ 3/25] RUN useradd -U -m -d /app/ jboss
+#14 CACHED
+
+#15 [ 4/25] RUN chown -R jboss:jboss NSFS_NAS
+#15 CACHED
+
+#16 [ 9/25] RUN chown -R jboss:jboss /app/*
+#16 CACHED
+
+#17 [23/25] RUN rm -rf /app/jboss-*-patch.zip /app/jboss_config/
+#17 CACHED
+
+#18 [24/25] RUN chown -R jboss:jboss /app/jboss-eap*
+#18 CACHED
+
+#19 [20/25] RUN chmod a+x config.sh &&     bash config.sh /app/jboss-eap-patch.zip
+#19 CACHED
+
+#20 [ 8/25] COPY tmp/patches/jboss-eap-8.1.3-patch.zip /app/jboss-eap-patch.zip
+#20 CACHED
+
+#21 [18/25] RUN cp restart-clean.sh /app/jboss-eap-8.1/bin
+#21 CACHED
+
+#22 [22/25] WORKDIR /app/
+#22 CACHED
+
+#23 [10/25] COPY --chown=jboss:jboss jboss_config /app/jboss_config/
+#23 CACHED
+
+#24 [16/25] RUN fc-cache /usr/share/fonts/
+#24 CACHED
+
+#25 [12/25] COPY tmp/driver/postgresql-42.7.8.jar /tmp/postgresql-42.7.8.jar
+#25 CACHED
+
+#26 [14/25] RUN mkdir -p /usr/share/fonts/dejavu/
+#26 CACHED
+
+#27 [11/25] COPY jboss_config/java.security /app/jboss-eap-8.1/standalone/configuration/java.security
+#27 CACHED
+
+#28 [ 2/25] RUN ln -s /usr/share/zoneinfo/America/Chicago /etc/localtime &&     microdnf update -y  &&     microdnf install -y java-17-openjdk-headless less nss unzip tar gzip shadow-utils vi fontconfig &&     microdnf clean all &&     mkdir -p NSFS_NAS/database &&     rm -rf /var/cache/yum /tmp/*
+#28 CACHED
+
+#29 [25/25] WORKDIR /app/jboss-eap-8.1/
+#29 CACHED
+
+#30 exporting to image
+#30 exporting layers done
+#30 writing image sha256:ebae8d680c1496fe217dcf77dcac4721fb526ff015cb4ad85c83c2ecf5b55932 done
+#30 naming to docker.io/local/jboss-local-tmp-miminal-1-pg:latest done
+#30 DONE 0.0s
+############################ Tag ubi8 Docker Image ###################################################
+############################ Test ###################################################
+  adding: WEB-INF/ (stored 0%)
+  adding: WEB-INF/web.xml (deflated 40%)
+  adding: WEB-INF/jboss-web.xml (deflated 29%)
+  adding: index.jsp (deflated 72%)
+If the following command fails, it's safe to continue
+jboss-test
+If the following command fails, it's safe to continue
+jboss-test
+Starting jboss-test
+4d33b1e9fadda9d5956e76f9a7f81e992ed74ef3e246d6a80bf9bba2ee0e44f7
+Successfully copied 3.58kB to jboss-test:/app/jboss-eap-8.1/standalone/deployments/test_war.war
+Waiting for JBoss to start
+Waiting for deployment scanner to pick up WAR
+Testing deployed URL
+<pre>
+Test WAR deployed: true
+
+appKey set: true
+appEnv set: true
+tenantKey set: true
+conexus.jboss.host set: true
+
+org.hibernate.SQL warn enabled: true
+org.jboss.as info enabled: true
+ROOT warn enabled: true
+
+Oracle datasource XAConexusDS is not null: true
+
+Oracle datasource XAContractModDS is not null: true
+
+JMX Connection Factory is not null: true
+
+Audit Queue is not null: true
+
+Task Queue is not null: true
+
+SLA Queue is not null: true
+
+ATP Centralized Queue is not null: true
+
+BPM Centralized Queue is not null: true
+
+Lifecycle topic is not null: true
+
+Mail Session is not null: true
+
+</pre>
+jboss-test
+jboss-test
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker ps
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker container ls
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker container ls -a
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ docker container ls -a
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[sikaj01@ip-10-56-112-33 docker-jboss-local]$ cat build_image.sh 
+#!/usr/bin/env bash
+
+source ./common.sh
+
+function downloadFile() {
+  downloadUrl=$1
+  targetPathWithFileName=$2
+  exitCode=0
+
+  # -C is "continue at" for resuming download from a specified byte position
+  # NOTE: the dash AFTER the -C (-C -) has meaning. This means curl should automatically figure out where to resume from based on the on-disk file being downloaded
+  # -o {filename} write response to a file with the provided path/name
+  echo "downloading $downloadUrl"
+  httpStatusCode=$(curl -L -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" "$downloadUrl" -o $targetPathWithFileName -w "%{http_code}" --progress-bar ) || exitCode="$?"
+
+  # just give up if we get http status over 200 but ignoring 416 which happens with -C if you are trying to resume on a file that is already fully downloaded
+  # NOTE: This error handling is similar to how the --fail flag works in curl but I found this easier than dealing with exit codes which can sometimes be set to non-zero
+  # in cases where the downloaded content is fine (like the http 416 resume case or the 206 partial content returned case)
+  if [[ "$httpStatusCode" -gt 200 && "$httpStatusCode" -ne 416 && "$httpStatusCode" -ne 206 ]] ;
+  then
+    echo "Download of $downloadUrl failed with http status $httpStatusCode"
+    exit 1
+  fi
+
+  # these curl downloads are configured to allow downloads to pick up where they left off if a file was partially downloaded earlier
+  # occasionally the response code will be 200 even though there was an exit code of 18 which means the transfer closed with outstanding read data remaining
+  # this depends on certain responses from artifactory which sometimes return unexpected results if the server returns an unexpected byte length
+  # we need to bail out here and not continue since the file on disk is most likely incomplete even though the http response code was 200
+  # restarting the script/download again is the correct and safe thing to do if this happens
+  # normally I've only seen this on really large files
+  if [[ "$exitCode" -eq 18 ]] ;
+  then
+    echo "Download of $downloadUrl failed due to a closed transfer. Just re-run the script again."
+    exit 1
+  fi
+}
+
+function cacheArtifacts() {
+  echo "############################ Caching JBoss Installer and Patch ##############################################"
+  ARTIFACTORY_BASE=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local
+
+  downloadFile $ARTIFACTORY_BASE/jboss/$JBOSS_VER/$JBOSS_INSTALL_ZIP $JBOSS_INSTALL_ZIP_PATH
+  downloadFile $ARTIFACTORY_BASE/jboss/$JBOSS_VER/patches/$JBOSS_ZIPPED_PATCH_MAVEN_REPO_FILENAME $JBOSS_PATCH_ZIP_PATH
+
+  # deleting the driver as a precaution and since it's fast to download it
+  rm -f "$DRIVER_HOME/ojdbc8.jar"
+  rm -f "$DRIVER_HOME/postgresql-42.7.8.jar"
+#  downloadFile $ARTIFACTORY_BASE/oracle/ojdbc/19c/ojdbc8.jar $DRIVER_HOME/ojdbc8.jar
+  downloadFile https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/postgresql/postgresql/42.7.8/postgresql-42.7.8.jar $DRIVER_HOME/postgresql-42.7.8.jar
+
+  # For JasperReports in /reporting WAR
+  downloadFile $ARTIFACTORY_BASE/fonts/$DEJAVU_FONT $FONTS_HOME/$DEJAVU_FONT
+}
+
+function testImage() {
+  echo "############################ Test ###################################################"
+  TEST_ALIAS=jboss-test
+  JBOSS_HOME=/app/jboss-eap-$JBOSS_VER
+  DEPLOYMENTS_DIR=$JBOSS_HOME/standalone/deployments
+
+  rm -f tmp/test_war.war
+  cd test_war && zip -r ../tmp/test_war.war . && cd ../
+
+  # Stop and remove the test container just in case the test did not finish cleanly the prior run.
+  echo "If the following command fails, it's safe to continue"
+  docker stop "$TEST_ALIAS" || true
+
+  echo "If the following command fails, it's safe to continue"
+  docker rm "$TEST_ALIAS" || true
+
+  echo "Starting $TEST_ALIAS"
+  docker run -d -p 8080:8080 --name="$TEST_ALIAS" "$JBOSS_TMP_NAME"
+  docker exec --user root "$TEST_ALIAS" sh -c "
+    rm -f $DEPLOYMENTS_DIR/test_war.war*
+  "
+
+  docker cp tmp/test_war.war "$TEST_ALIAS:$DEPLOYMENTS_DIR/test_war.war"
+  docker exec --user root "$TEST_ALIAS" sh -c "
+    chown jboss:jboss $DEPLOYMENTS_DIR/test_war.war &&
+    chmod 644 $DEPLOYMENTS_DIR/test_war.war &&
+    touch $DEPLOYMENTS_DIR/test_war.war.dodeploy
+  "
+
+  until docker exec "$TEST_ALIAS" /app/jboss-eap-"$JBOSS_VER"/bin/jboss-cli.sh -c ":read-attribute(name=server-state)" 2>/dev/null | grep -q "running"; do
+    echo "Waiting for JBoss to start"
+    sleep 1
+  done
+
+  echo "Waiting for deployment scanner to pick up WAR"
+  until docker exec "$TEST_ALIAS" test -f "$DEPLOYMENTS_DIR/test_war.war.deployed"; do
+    if docker exec "$TEST_ALIAS" test -f "$DEPLOYMENTS_DIR/test_war.war.failed"; then
+      echo "JBoss deployment scanner reported a failed deployment"
+      docker exec "$TEST_ALIAS" cat "$DEPLOYMENTS_DIR/test_war.war.failed"
+      exit 1
+    fi
+
+    echo "Waiting for test_war.war deployment"
+    sleep 1
+  done
+
+  echo "Testing deployed URL"
+  curl --fail --silent --show-error http://localhost:8080/test_war/index.jsp || \
+  curl --fail --silent --show-error http://localhost:8080/index.jsp
+
+  docker stop "$TEST_ALIAS"
+  docker rm "$TEST_ALIAS"
+}
+
+function buildImage() {
+  echo "############################ Building Jboss ubi8-minimal Docker Image ##############################################"
+
+  docker build \
+  --force-rm --pull --network host --progress=plain \
+  --build-arg JBOSS_VER=$JBOSS_VER \
+  --build-arg JBOSS_ZIP=$JBOSS_INSTALL_ZIP_PATH \
+  --build-arg JBOSS_PATCH_ZIP=$JBOSS_PATCH_ZIP_PATH \
+  --build-arg DEJAVU_FONT_TARBALL="$FONTS_HOME/$DEJAVU_FONT" \
+  -t $JBOSS_TMP_NAME --file dockerfiles/jboss.ubi8-minimal.Dockerfile .
+
+  if [ $? -ne 0 ];
+  then
+    echo "docker build command failed"
+    exit 1
+  fi
+}
+
+function tagImage() {
+  echo "############################ Tag ubi8 Docker Image ###################################################"
+  docker tag $JBOSS_TMP_NAME $DOCKER_USER/$DOCKER_FULL_IMAGE_NAME:$DOCKER_TAG_NAME
+
+  if [ $? -ne 0 ];
+  then
+    echo "docker tag command failed"
+    exit 1
+  fi
+}
+
+function createTempDirectories() {
+  mkdir -p $INSTALLERS_HOME
+  mkdir -p $PATCHES_HOME
+  mkdir -p $DRIVER_HOME
+  mkdir -p $FONTS_HOME
+}
+
+createTempDirectories
+cacheArtifacts
+buildImage
+tagImage
+testImage
