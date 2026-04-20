@@ -1,50 +1,38 @@
-# On .33, as ec2-user
-sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem /tmp/mgmt_wildcard.pem
-sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem   /tmp/privatekey.key
-sudo chown ec2-user:ec2-user /tmp/mgmt_wildcard.pem /tmp/privatekey.key
-sudo chmod 640 /tmp/mgmt_wildcard.pem /tmp/privatekey.key
+echo | openssl s_client -connect 127.0.0.1:443 \
+  -servername bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov 2>/dev/null \
+  | openssl x509 -noout -subject -issuer -dates
 
 
-sudo ssh-keygen -R 10.56.112.34
+# on 33
+# On .33
+echo | openssl s_client -connect 10.56.112.34:443 \
+  -servername bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov 2>/dev/null \
+  | openssl x509 -noout -subject -issuer -dates
 
 
-# Step 1: stage files in /tmp with readable permissions
-sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem /tmp/mgmt_wildcard.pem
-sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem   /tmp/privatekey.key
-sudo chown ec2-user:ec2-user /tmp/mgmt_wildcard.pem /tmp/privatekey.key
-sudo chmod 640 /tmp/mgmt_wildcard.pem /tmp/privatekey.key
-
-# Step 2: scp to .34 using ec2-user's key
-scp -i ~/.ssh/id_rsa /tmp/mgmt_wildcard.pem ec2-user@10.56.112.34:/tmp/mgmt_wildcard.pem
-scp -i ~/.ssh/id_rsa /tmp/privatekey.key    ec2-user@10.56.112.34:/tmp/privatekey.key
-
-# Step 3: clean up staging files
-rm /tmp/mgmt_wildcard.pem /tmp/privatekey.key
+# On .34 as root
+keytool -list -v \
+  -keystore /app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks \
+  -storepass <password> \
+  | grep -E 'Alias|Valid|until'
 
 
-scp -i ~/.ssh/id_rsa /tmp/mgmt_wildcard.pem ec2-user@10.56.112.34:/tmp/mgmt_wildcard.pem
-scp -i ~/.ssh/id_rsa /tmp/privatekey.key   ec2-user@10.56.112.34:/tmp/privatekey.key
-
-install -m 644 -o root -g root /tmp/mgmt_wildcard.pem /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
-install -m 600 -o root -g root /tmp/privatekey.key   /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key
+grep -i 'broker\|keystore\|jms\|password' \
+  /app/docker/volumes/bambooVolume/_data/shared/configuration/bamboo-shared.cfg.xml
 
 
-openssl x509 -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -pubkey -noout \
-  | openssl pkey -pubin -outform DER \
-  | openssl dgst -sha256
+docker inspect prod-bamboo | grep -i 'broker\|keystore\|jms\|ATL_'
 
-openssl pkey -in /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key -pubout -outform DER \
-  | openssl dgst -sha256
+timeout 10 openssl s_client -connect 127.0.0.1:443 -servername bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 
-
-docker exec nginx nginx -t
-docker exec nginx nginx -s reload
-
-openssl s_client -connect bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:443 -servername bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
-
-openssl s_client -connect bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov:443 -servername bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+timeout 10 openssl s_client -connect 127.0.0.1:443 -servername bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 
 
+
+
+grep -nE 'bamboo.jms.broker.uri|bamboo.jms.broker.client.uri|ssl' /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+
+keytool -v -list -keystore /app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks -alias jmsbrokerkey
 
 
 
