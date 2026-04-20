@@ -1,42 +1,54 @@
-echo | openssl s_client -connect 127.0.0.1:443 \
-  -servername bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov 2>/dev/null \
-  | openssl x509 -noout -subject -issuer -dates
+CERT=/app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
+KEY=/app/docker/volumes/nginxVolume/_data/certificates/privatekey.key
+KS=/app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks
+PASS=bamboo
 
+# Backup first
+cp -p ${KS} ${KS}.bak.$(date +%F_%H%M%S)
 
-# on 33
-# On .33
-echo | openssl s_client -connect 10.56.112.34:443 \
-  -servername bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov 2>/dev/null \
-  | openssl x509 -noout -subject -issuer -dates
-
-
-# On .34 as root
-keytool -list -v \
-  -keystore /app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks \
-  -storepass '<password>' | grep -E 'Alias|Valid|until'
-
-
-grep -i 'broker\|keystore\|jms\|password' \
-  /app/docker/volumes/bambooVolume/_data/shared/configuration/bamboo-shared.cfg.xml
-
-
-docker inspect prod-bamboo | grep -i 'broker\|keystore\|jms\|ATL_'
-
-timeout 10 openssl s_client -connect 127.0.0.1:443 -servername bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
-
-timeout 10 openssl s_client -connect 127.0.0.1:443 -servername bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+# Convert to PKCS12
+openssl pkcs12 -export \
+  -in ${CERT} \
+  -inkey ${KEY} \
+  -out /tmp/broker_new.p12 \
+  -name jmsbrokerkey \
+  -passout pass:${PASS}
 
 
 
+# Delete expired entry
+keytool -delete \
+  -alias jmsbrokerkey \
+  -keystore ${KS} \
+  -storepass ${PASS}
 
-grep -nE 'bamboo.jms.broker.uri|bamboo.jms.broker.client.uri|ssl' /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+# Import new cert from PKCS12
+keytool -importkeystore \
+  -srckeystore /tmp/broker_new.p12 \
+  -srcstoretype PKCS12 \
+  -srcstorepass ${PASS} \
+  -srcalias jmsbrokerkey \
+  -destkeystore ${KS} \
+  -deststorepass ${PASS} \
+  -destalias jmsbrokerkey \
+  -noprompt
 
-keytool -v -list -keystore /app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks -alias jmsbrokerkey
+
+keytool -v -list \
+  -keystore ${KS} \
+  -storepass ${PASS} \
+  -alias jmsbrokerkey \
+  | grep -E 'Alias|Valid|until|Owner'
 
 
+docker restart prod-bamboo
 
 
+docker logs prod-bamboo --follow --since 30s 2>&1 | grep -iE 'jms|broker|ssl|error|started'
 
+rm /tmp/broker_new.p12
+
+docker inspect prod-bamboo | grep -i bamboo.manage.jms.ssl
 
 
 
