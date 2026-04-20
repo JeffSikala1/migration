@@ -1,22 +1,13 @@
-BASE="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
-AUTH="${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}"
+REPO="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/billingsftp.git"
 
-curl -sku "${AUTH}" -X DELETE \
-  "${BASE}/conexus-rc-local/gov/gsa/cnxs/ui/ui-aggregator/01.00.000.111-RC/"
-
-curl -sku "${AUTH}" -X DELETE \
-  "${BASE}/conexus-rc-local/gov/gsa/cnxs/ui/ui-war/01.00.000.111-RC/"
+for branch in release/01.00.000.119 release/02.00.000.120 release/02.00.000.121 release/02.00.000.122; do
+  echo "Deleting ${branch}..."
+  git push "${REPO}" --delete "${branch}"
+done
 
 
+git ls-remote --heads "${REPO}" 'refs/heads/release/*'
 
-curl -sku "${AUTH}" \
-  -H "Content-Type: text/plain" \
-  -X POST \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  --data '
-items.find({
-  "repo":{"$eq":"conexus-rc-local"},
-  "path":{"$match":"gov/gsa/cnxs/ui*"},
-  "name":{"$match":"*01.00.000.111-RC*"}
-}).include("name","path")
-'
+
+git fetch "${REPO}" refs/heads/develop
+git show FETCH_HEAD:pom.xml | grep '<version>' | head -3
