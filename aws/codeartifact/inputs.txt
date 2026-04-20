@@ -1,125 +1,48 @@
-# while on .33
-
-sudo openssl x509 -in /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem -noout -subject -issuer -dates
-
-# Check cert modulus hash
-sudo openssl x509 -noout -modulus \
-  -in /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/cert.pem \
-  | openssl sha256
-
-# Check private key modulus hash
-sudo openssl rsa -noout -modulus \
-  -in /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem \
-  | openssl sha256
-
-grep -RniE 'ssl_certificate|ssl_certificate_key' /app/docker/volumes/nginxVolume/_data
-
-
-
-cd /app/docker/volumes/nginxVolume/_data/certificates
-
-cp -p mgmt_wildcard.pem mgmt_wildcard.pem.bak.$(date +%F_%H%M%S)
-cp -p privatekey.key   privatekey.key.bak.$(date +%F_%H%M%S)
-
-
-
-
-sudo scp \
-  /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem \
-  ec2-user@10.56.112.34:/tmp/mgmt_wildcard.pem
-
-sudo scp \
-  /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem \
-  ec2-user@10.56.112.34:/tmp/privatekey.key
-
-
+# On .33, as ec2-user
 sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem /tmp/mgmt_wildcard.pem
 sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem   /tmp/privatekey.key
 sudo chown ec2-user:ec2-user /tmp/mgmt_wildcard.pem /tmp/privatekey.key
-chmod 600 /tmp/privatekey.key
+sudo chmod 640 /tmp/mgmt_wildcard.pem /tmp/privatekey.key
 
+
+sudo ssh-keygen -R 10.56.112.34
+
+
+# Step 1: stage files in /tmp with readable permissions
+sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem /tmp/mgmt_wildcard.pem
+sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem   /tmp/privatekey.key
+sudo chown ec2-user:ec2-user /tmp/mgmt_wildcard.pem /tmp/privatekey.key
+sudo chmod 640 /tmp/mgmt_wildcard.pem /tmp/privatekey.key
+
+# Step 2: scp to .34 using ec2-user's key
+scp -i ~/.ssh/id_rsa /tmp/mgmt_wildcard.pem ec2-user@10.56.112.34:/tmp/mgmt_wildcard.pem
+scp -i ~/.ssh/id_rsa /tmp/privatekey.key    ec2-user@10.56.112.34:/tmp/privatekey.key
+
+# Step 3: clean up staging files
+rm /tmp/mgmt_wildcard.pem /tmp/privatekey.key
+
+
+scp -i ~/.ssh/id_rsa /tmp/mgmt_wildcard.pem ec2-user@10.56.112.34:/tmp/mgmt_wildcard.pem
+scp -i ~/.ssh/id_rsa /tmp/privatekey.key   ec2-user@10.56.112.34:/tmp/privatekey.key
 
 install -m 644 -o root -g root /tmp/mgmt_wildcard.pem /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
 install -m 600 -o root -g root /tmp/privatekey.key   /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key
 
-openssl x509 -noout -modulus -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem | openssl sha256
-openssl rsa  -noout -modulus -in /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key   | openssl sha256
 
+openssl x509 -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -pubkey -noout \
+  | openssl pkey -pubin -outform DER \
+  | openssl dgst -sha256
 
-openssl x509 -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -subject -issuer -dates
+openssl pkey -in /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key -pubout -outform DER \
+  | openssl dgst -sha256
+
 
 docker exec nginx nginx -t
-
 docker exec nginx nginx -s reload
-
-openssl s_client -connect bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov:443 -servername bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 
 openssl s_client -connect bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:443 -servername bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 
-
-
-
-
-
-
-
-
-
-
-# Still on .34 as root
-# Copy new fullchain (cert + chain)
-scp -i /home/ec2-user/.ssh/id_rsa \
-  ec2-user@10.56.112.33:/etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem \
-  /tmp/mgmt_fullchain_new.pem
-
-# Copy new private key
-scp -i /home/ec2-user/.ssh/id_rsa \
-  ec2-user@10.56.112.33:/etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem \
-  /tmp/mgmt_privkey_new.pem
-
-
-CERT_DIR=/app/docker/volumes/nginxVolume/_data/certificates
-DATESTAMP=$(date +%Y-%m-%d_%H%M%S)
-
-cp ${CERT_DIR}/mgmt_wildcard.pem    ${CERT_DIR}/mgmt_wildcard.pem.bak.${DATESTAMP}
-cp ${CERT_DIR}/privatekey.key       ${CERT_DIR}/privatekey.key.bak.${DATESTAMP}
-
-
-cp /tmp/mgmt_fullchain_new.pem ${CERT_DIR}/mgmt_wildcard.pem
-cp /tmp/mgmt_privkey_new.pem   ${CERT_DIR}/privatekey.key
-
-# Match existing ownership
-chown ec2-user:ec2-user ${CERT_DIR}/mgmt_wildcard.pem
-chown ec2-user:ec2-user ${CERT_DIR}/privatekey.key
-chmod 644 ${CERT_DIR}/mgmt_wildcard.pem
-chmod 640 ${CERT_DIR}/privatekey.key
-
-
-
-grep -E 'ssl_certificate|ssl_certificate_key' \
-  /app/docker/volumes/nginxVolume/_data/conf.d/*.conf
-
-
-
-
-
-# Test config inside the container
-docker exec nginx nginx -t
-
-# If clean, reload (zero-downtime)
-docker exec nginx nginx -s reload
-
-
-
-
-echo | openssl s_client -connect localhost:443 -servername mgmt.cnxs.vpcaas.fcs.gsa.gov 2>/dev/null \
-  | openssl x509 -noout -dates
-
-
-sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem /tmp/mgmt_privkey_tmp.pem
-sudo chown ec2-user:ec2-user /tmp/mgmt_privkey_tmp.pem
-
-
+openssl s_client -connect bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov:443 -servername bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 
 
 
