@@ -2,8 +2,15 @@
 
 sudo openssl x509 -in /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem -noout -subject -issuer -dates
 
-sudo openssl x509 -noout -modulus -in /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/cert.pem | openssl md5
-sudo openssl rsa  -noout -modulus -in /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem | openssl md5
+# Check cert modulus hash
+sudo openssl x509 -noout -modulus \
+  -in /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/cert.pem \
+  | openssl sha256
+
+# Check private key modulus hash
+sudo openssl rsa -noout -modulus \
+  -in /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem \
+  | openssl sha256
 
 grep -RniE 'ssl_certificate|ssl_certificate_key' /app/docker/volumes/nginxVolume/_data
 
@@ -25,8 +32,8 @@ chmod 600 /tmp/privatekey.key
 install -m 644 -o root -g root /tmp/mgmt_wildcard.pem /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
 install -m 600 -o root -g root /tmp/privatekey.key   /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key
 
-openssl x509 -noout -modulus -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem | openssl md5
-openssl rsa  -noout -modulus -in /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key   | openssl md5
+openssl x509 -noout -modulus -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem | openssl sha256
+openssl rsa  -noout -modulus -in /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key   | openssl sha256
 
 
 openssl x509 -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -subject -issuer -dates
