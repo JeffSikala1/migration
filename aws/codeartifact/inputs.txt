@@ -1,23 +1,17 @@
-find /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 \
-  -name "*.jks" -o -name "*.ks" -o -name "*.truststore" \
-  -o -name "ssl-truststore" 2>/dev/null
-
-
-
-
-ls -la /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/conf/
-ls -la /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/configuration/
-
-
-cat /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bamboo-agent.cfg.xml
-
-# On .35 as root — do this for all 6 agents
+# On .35 as root
 for i in 1 2 3 4 5 6; do
-  echo "=== ba-${i} ==="
-  find /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i} \
-    -name "*.jks" -o -name "*.ks" -o -name "*.truststore" \
-    -o -name "ssl-truststore" 2>/dev/null
+  echo "Deleting jmsclient.ts for ba-${i}"
+  rm -f /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i}/configuration/jmsclient.ts
 done
+
+# Restart all 6
+for i in 1 2 3 4 5 6; do
+  docker restart ip-10-56-112-35.ec2.internal-ba-${i}
+done
+
+
+docker logs ip-10-56-112-35.ec2.internal-ba-1 --follow --since 60s \
+  | grep -iE 'registering|registered|connected|ssl|error|failed|broker|jms'
 
 
 
