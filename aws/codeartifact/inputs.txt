@@ -1,15 +1,23 @@
-ls /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/_git-repositories-cache/
+# On .35 as root
+
+# What user is the agent process running as inside the container?
+docker exec ip-10-56-112-35.ec2.internal-ba-1 id
+
+# What are the permissions on the git cache directory inside the container?
+docker exec ip-10-56-112-35.ec2.internal-ba-1 \
+  ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/_git-repositories-cache/
+
+# Can the container write to the cache?
+docker exec ip-10-56-112-35.ec2.internal-ba-1 \
+  touch /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/_git-repositories-cache/test_write && echo "writable" || echo "NOT writable"
+
+# What does git config say about the safe directory?
+docker exec ip-10-56-112-35.ec2.internal-ba-1 \
+  git config --global --list 2>/dev/null || echo "no global git config"
 
 
 
-# On .35 as root — clear git repo cache for all agents
-for i in 1 2 3 4 5 6; do
-  CACHE_DIR="/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i}/xml-data/build-dir/_git-repositories-cache"
-  if [ -d "${CACHE_DIR}" ]; then
-    echo "Clearing cache for ba-${i}"
-    rm -rf "${CACHE_DIR:?}"/*
-  fi
-done
+
 
 
 
