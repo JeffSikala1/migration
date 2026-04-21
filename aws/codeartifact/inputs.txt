@@ -1,6 +1,32 @@
-docker inspect ip-10-56-112-35.ec2.internal-ba-1 \
-  | python3 -c "import json,sys; d=json.load(sys.stdin); [print(m['Source'],'->',m['Destination']) for m in d[0]['Mounts']]"
+# On .35 as root
+for i in 1 2 3 4 5 6; do
+  HOST_PATH="/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i}"
+  CONT_PATH="/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i}"
 
+  # Write .gitconfig to the persistent host volume
+  cat > "${HOST_PATH}/.gitconfig" <<'EOF'
+[user]
+    name = bamboo-agent
+    email = OCIO-EAS-CONEXUS-SYSTEMS@usda.gov
+[core]
+    symlinks = false
+[filter "lfs"]
+    smudge = git-lfs smudge -- %f
+    required = false
+EOF
+
+  # Point GIT_CONFIG_GLOBAL at the persistent path inside the container
+  docker exec ip-10-56-112-35.ec2.internal-ba-${i} bash -c "
+    echo 'export GIT_CONFIG_GLOBAL=${CONT_PATH}/.gitconfig' >> /etc/profile.d/gitconfig.sh
+    chmod +x /etc/profile.d/gitconfig.sh
+    ln -sf ${CONT_PATH}/.gitconfig /root/.gitconfig
+  "
+  echo "ba-${i}: done"
+done
+
+
+
+docker exec ip-10-56-112-35.ec2.internal-ba-1 bash -c "ls -la /root/.gitconfig && git config --global --list"
 
 
 
