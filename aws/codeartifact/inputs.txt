@@ -1,19 +1,21 @@
-# On .35 as root
+docker exec ip-10-56-112-35.ec2.internal-ba-1 git --version
 
-# What user is the agent process running as inside the container?
-docker exec ip-10-56-112-35.ec2.internal-ba-1 id
 
-# What are the permissions on the git cache directory inside the container?
-docker exec ip-10-56-112-35.ec2.internal-ba-1 \
-  ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/_git-repositories-cache/
 
-# Can the container write to the cache?
-docker exec ip-10-56-112-35.ec2.internal-ba-1 \
-  touch /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/_git-repositories-cache/test_write && echo "writable" || echo "NOT writable"
+# Apply to all 6 agents
+for i in 1 2 3 4 5 6; do
+  docker exec ip-10-56-112-35.ec2.internal-ba-${i} \
+    git config --global filter.lfs.smudge "git-lfs smudge -- %f"
+  docker exec ip-10-56-112-35.ec2.internal-ba-${i} \
+    git config --global filter.lfs.required false
+  echo "ba-${i}: git lfs config applied"
+done
 
-# What does git config say about the safe directory?
-docker exec ip-10-56-112-35.ec2.internal-ba-1 \
-  git config --global --list 2>/dev/null || echo "no global git config"
+
+
+docker exec ip-10-56-112-35.ec2.internal-ba-1 git config --global --list
+
+
 
 
 
