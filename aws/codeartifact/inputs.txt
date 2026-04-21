@@ -1,26 +1,21 @@
-docker exec ip-10-56-112-35.ec2.internal-ba-2 git config --global --list
+# On .35 as root - test exactly what the build is doing
+docker exec ip-10-56-112-35.ec2.internal-ba-1 bash -c "
+  rm -rf /tmp/test_clone
+  git clone \
+    /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/_git-repositories-cache/4a7dd014782666cd59ed818ba62a9ac2c26e24ea \
+    --shared --no-checkout \
+    '-c filter.lfs.smudge=' \
+    '-c filter.lfs.required=false' \
+    /tmp/test_clone 2>&1
+  echo exit: \$?
+"
 
 
-# On .35 as root
-for i in 1 2 3 4 5 6; do
-  AGENT_HOME="/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i}"
-  cat > "${AGENT_HOME}/.gitconfig" <<'EOF'
-[user]
-    name = bamboo-agent
-    email = OCIO-EAS-CONEXUS-SYSTEMS@usda.gov
-[core]
-    symlinks = false
-[filter "lfs"]
-    smudge = git-lfs smudge -- %f
-    required = false
-EOF
-  echo "ba-${i}: .gitconfig written to host volume"
-done
+docker exec ip-10-56-112-35.ec2.internal-ba-1 bash -c "echo HOME=\$HOME && ls -la \$HOME/.gitconfig 2>/dev/null || echo 'no .gitconfig at HOME'"
 
 
 
-docker exec ip-10-56-112-35.ec2.internal-ba-1 git config --global --list
-
+docker inspect ip-10-56-112-35.ec2.internal-ba-1 | grep -A5 '"Mounts"'
 
 
 
