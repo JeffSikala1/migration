@@ -1,5 +1,39 @@
-[root@ip-10-56-112-35 ec2-user]# docker inspect ip-10-56-112-35.ec2.internal-ba-1 \
-  | python3 -c "import json,sys; d=json.load(sys.stdin); [print(m['Source'],'->',m['Destination']) for m in d[0]['Mounts']]"
-/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 -> /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
-/var/run/docker.sock -> /var/run/docker.sock
-/opt/bamboo-keys -> /opt/bamboo-keys
+[root@ip-10-56-112-35 ec2-user]# for i in 1 2 3 4 5 6; do
+  HOST_PATH="/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i}"
+  CONT_PATH="/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i}"
+
+  # Write .gitconfig to the persistent host volume
+  cat > "${HOST_PATH}/.gitconfig" <<'EOF'
+[user]
+    name = bamboo-agent
+    email = OCIO-EAS-CONEXUS-SYSTEMS@usda.gov
+[core]
+    symlinks = false
+[filter "lfs"]
+    smudge = git-lfs smudge -- %f
+    required = false
+EOF
+
+  docker exec ip-10-56-112-35.ec2.internal-ba-${i} bash -c "
+    echo 'export GIT_CONFIG_GLOBAL=${CONT_PATH}/.gitconfig' >> /etc/profile.d/gitconfig.sh
+    chmod +x /etc/profile.d/gitconfig.sh
+    ln -sf ${CONT_PATH}/.gitconfig /root/.gitconfig
+  "
+  echo "ba-${i}: done"
+done
+ba-1: done
+ba-2: done
+ba-3: done
+ba-4: done
+ba-5: done
+ba-6: done
+[root@ip-10-56-112-35 ec2-user]# docker exec ip-10-56-112-35.ec2.internal-ba-1 bash -c "ls -la /root/.gitconfig && git config --global --list"
+lrwxrwxrwx. 1 root root 58 Apr 21 16:28 /root/.gitconfig -> /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/.gitconfig
+user.name=bamboo-agent
+user.email=OCIO-EAS-CONEXUS-SYSTEMS@usda.gov
+core.symlinks=false
+filter.lfs.smudge=git-lfs smudge -- %f
+filter.lfs.required=false
+[root@ip-10-56-112-35 ec2-user
+
+
