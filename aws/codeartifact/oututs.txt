@@ -1,136 +1,101 @@
-[ec2-user@ip-10-56-112-35 ~]$ docker ps
-CONTAINER ID   IMAGE                                                                                            COMMAND                   CREATED       STATUS       PORTS     NAMES
-eb2c87bc48df   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324   "bash -lc '\n      se…"   4 weeks ago   Up 3 weeks             ip-10-56-112-35.ec2.internal-ba-6
-a3e05b5fdf36   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324   "bash -lc '\n      se…"   4 weeks ago   Up 3 weeks             ip-10-56-112-35.ec2.internal-ba-5
-cdf5133e4469   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324   "bash -lc '\n      se…"   4 weeks ago   Up 3 weeks             ip-10-56-112-35.ec2.internal-ba-4
-a6b25b98c5e3   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324   "bash -lc '\n      se…"   4 weeks ago   Up 3 weeks             ip-10-56-112-35.ec2.internal-ba-3
-80255f7a15b6   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324   "bash -lc '\n      se…"   4 weeks ago   Up 3 weeks             ip-10-56-112-35.ec2.internal-ba-2
-53ad08f9a1b9   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324   "bash -lc '\n      se…"   4 weeks ago   Up 3 weeks             ip-10-56-112-35.ec2.internal-ba-1
-[ec2-user@ip-10-56-112-35 ~]$ docker images
-REPOSITORY                                                              TAG                                         IMAGE ID       CREATED         SIZE
-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents               node22-angular20-el9-2026-4-14-0953         f5a43ca9ea30   6 days ago      4.08GB
-
-
-[ec2-user@ip-10-56-112-35 ~]$ cat /app/create_agents.sh
-#!/usr/bin/env bash
-set -Eeuo pipefail
-
-DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324}"
-NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
-
-BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
-
-NETWORK_NAME="${NETWORK_NAME:-isolated_nw}"
-NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
-
-HOST_CACHE_BASE="${HOST_CACHE_BASE:-/app/cache/bamboo}"
-DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
-SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
-
-SKIP_PULL="${SKIP_PULL:-1}"
-
-command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
-systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
-
-[ -d "$SSH_KEYS_DIR" ] || { echo "ERROR: SSH key directory not found at $SSH_KEYS_DIR"; exit 1; }
-[ -f "$SSH_KEYS_DIR/bitbucket_ci" ] || { echo "ERROR: SSH key not found at $SSH_KEYS_DIR/bitbucket_ci"; exit 1; }
-chmod 600 "$SSH_KEYS_DIR/bitbucket_ci" || true
-[ -f "$SSH_KEYS_DIR/bitbucket_ci_jgit" ] && chmod 600 "$SSH_KEYS_DIR/bitbucket_ci_jgit" || true
-
-mkdir -p "$HOST_CACHE_BASE"
-
-if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
-  echo "Creating docker network $NETWORK_NAME ($NETWORK_SUBNET)..."
-  docker network create -d bridge --subnet "$NETWORK_SUBNET" "$NETWORK_NAME" >/dev/null
-else
-  echo "Docker network $NETWORK_NAME already exists."
-fi
-
-HOSTNAME_SHORT="$(hostname)"
-
-if [[ "$SKIP_PULL" != "1" ]]; then
-  echo
-  echo "Pulling build agent image..."
-  docker pull "$DOCKER_BUILD_AGENT_IMAGE"
-else
-  echo
-  echo "Skipping docker pull because SKIP_PULL=1"
-  docker image inspect "$DOCKER_BUILD_AGENT_IMAGE" >/dev/null 2>&1 || {
-    echo "ERROR: image not found locally: $DOCKER_BUILD_AGENT_IMAGE"
-    exit 1
-  }
-fi
-
-echo
-echo "Stopping/removing existing build agents..."
-docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
-
-echo
-echo "Starting build agents..."
-for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
-  AGENT_NAME="${HOSTNAME_SHORT}-ba-${num}"
-  HOST_AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
-  CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
-
-  mkdir -p "$HOST_AGENT_HOME"
-
-  docker run -d \
-    --net="$NETWORK_NAME" \
-    -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
-    -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
-    -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
-    --name="$AGENT_NAME" \
-    -h "$AGENT_NAME" \
-    --init \
-    --restart=always \
-    --sysctl net.ipv4.ip_forward=1 \
-    "$DOCKER_BUILD_AGENT_IMAGE" \
-    bash -lc "
-      set -e
-      mkdir -p /opt/java
-      ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk
-      mkdir -p /opt/bamboo-keys
-      mkdir -p '${CONTAINER_AGENT_HOME}'
-      exec java -Dbamboo.home='${CONTAINER_AGENT_HOME}' -jar /opt/bamboo-agent.jar '${BAMBOO_URL}'
-    "
-done
-
-echo
-echo "Running Bamboo agent containers:"
-docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-
-
-
-Bonaventure Ezeh is working on several different projects and tasks:
-
-  * **Datadog/Log Updates:**
-    
-      * They were working on providing a file to Peter, and confirmed they sent it before lunch.
-      * They led the next session on creating a Data Dog dashboard and widget.
-      * They demonstrated the DevOps dashboard, which organizes cluster health and Kubernetes container metrics.
-      * They completed an update to the Datadog pipeline to roll out changes to production for a log levels and time synchronization fix. Kristian Fitzgerald later confirmed the BRMS PROD Datadog pipeline changes looked great.
-      * They provided additional Datadog insights into JBOSS.
-      * They previously worked with Kristian Fitzgerald to fix the JBoss BRMS log timestamp issue in the pipeline and intended to extend the fix to all JBoss systems. This issue had caused log events to be re-timestamped incorrectly and created an apparent gap in the reporting window for CERT, TEST, and DEV environments (PROD was reverted to the old behavior).
-      * They were adjusting the BRMS deployment in Cert to revert an annotation added for Datadog log split to fix log lag in Datadog, which required a BRMS pod restart and was tracked by Gavin and Kristian. They completed this change, and the Cert log fixed to the right timestamp.
-      * They were looking into why BRMS in Cert was restarted on April 16 and confirmed the pod restarted due to configmap changes.
-      * They were working on adding a Datadog Java tracer to the WSO2 image by providing the Dockerfile commands to Tyler Goll.
-
-  * **CI/CD and AWS Access:**
-    
-      * They will tag along with Jeff Sikala in the work related to the CI/CD pipeline.
-      * They were working on a proof of concept (POC) task.
-      * They asked for a Jira ticket so Jeff Sikala could create a user SSH key user access to the `test-selinux-00` EC2 instance for them.
-      * They were having a discussion with Jeff Sikala and planned to set up a call with Chris Tackie regarding SELinux whitelisting. They tested OS level on SELinux(enforced) on `test-selinux-00` without internet access and planned a second test including application processes.
-      * They requested and received permission to create the following endpoints in the dev VPC using the console to continue their test on `test-selenium-00`: `com.amazonaws.us-east-1.ssm`, `ssmmessages`, and `ec2messages`.
-      * They were one of the people Gavin Ecker asked to look into the process for adding public keys to the QA EC2 for new QA access.
-      * They were helping Tyler Goll and Jeff Sikala go through Pauline's key setup on the DB Admin host.
-      * They were working on getting cluster access, as they were getting an unauthorized code 400 when trying to access the EKS cluster, believing their IAM identity might need to be added to the cluster access list.
-
-  * **Other Tasks:**
-    
-      * They were confirming details about the April 1st JMS outage (App affected: JMS; Timeline: 11am - 6pm EST) and tracking ticket 77032, a portal outage due to a multi file upload error in the database.
-      * They confirmed no open or in-progress stories were remaining in Sprint 174.
-      * They planned to continue on Prisma cloud intro videos.
-      * They were on a Chime call with AWS.
-      * They clarified that the "Journal issue" was because journal logs are stored on EFS, which can be slow sometimes.
-      * They had lunch on April 3 and April 7.
+[ec2-user@ip-10-56-112-35 ~]$ docker logs ip-10-56-112-35.ec2.internal-ba-1 --tail 100
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,498 INFO [ThreadPoolAsyncTaskExecutor::Thread 6] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.dotnet.atlassian-bamboo-plugin-dotnet, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,514 INFO [ThreadPoolAsyncTaskExecutor::Thread 1] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.atlassian-bamboo-plugin-clover, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,523 INFO [ThreadPoolAsyncTaskExecutor::Thread 4] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.atlassian-bamboo-plugin-clover, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,526 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [Bamboo conditional tasks (com.atlassian.bamboo.plugins.bamboo-conditional-tasks)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,533 INFO [ThreadPoolAsyncTaskExecutor::Thread 1] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-conditional-tasks, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,544 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [Bamboo Docker Support (com.atlassian.bamboo.plugins.bamboo-docker-plugin)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,550 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [Atlassian Bamboo Test Result Processing Plugin (com.atlassian.bamboo.plugins.testresultparser.atlassian-bamboo-plugin-testresultparser)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,573 INFO [ThreadPoolAsyncTaskExecutor::Thread 2] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.testresultparser.atlassian-bamboo-plugin-testresultparser, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,576 INFO [ThreadPoolAsyncTaskExecutor::Thread 4] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-conditional-tasks, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,580 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [com.atlassian.bamboo.plugins.bamboo-nodejs-plugin (com.atlassian.bamboo.plugins.bamboo-nodejs-plugin)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,582 INFO [ThreadPoolAsyncTaskExecutor::Thread 6] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.testresultparser.atlassian-bamboo-plugin-testresultparser, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,598 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [Bamboo SCP and SSH Tasks (com.atlassian.bamboo.plugins.bamboo-scp-plugin)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,626 INFO [ThreadPoolAsyncTaskExecutor::Thread 8] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.atlassian-bamboo-plugin-git, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,634 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [Bamboo Inject Variables Plugin (com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,654 INFO [ThreadPoolAsyncTaskExecutor::Thread 1] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-docker-plugin, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,657 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [com.atlassian.bamboo.plugins.maven (com.atlassian.bamboo.plugins.maven)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,675 INFO [ThreadPoolAsyncTaskExecutor::Thread 7] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.atlassian-bamboo-plugin-bitbucket, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,676 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [Atlassian Bamboo Built-in triggers (com.atlassian.bamboo.triggers.atlassian-bamboo-triggers)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,682 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [Atlassian Bamboo Stash Repository Plugin (com.atlassian.bamboo.plugins.stash.atlassian-bamboo-plugin-stash)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,734 INFO [ThreadPoolAsyncTaskExecutor::Thread 1] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.maven, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,736 INFO [ThreadPoolAsyncTaskExecutor::Thread 5] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.maven, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,736 INFO [ThreadPoolAsyncTaskExecutor::Thread 4] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-nodejs-plugin, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,747 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [bamboo-tomcat-plugin (com.atlassian.bamboo.plugins.tomcat.bamboo-tomcat-plugin)]
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,848 INFO [ThreadPoolAsyncTaskExecutor::Thread 6] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-scp-plugin, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,852 INFO [ThreadPoolAsyncTaskExecutor::Thread 8] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,875 INFO [ThreadPoolAsyncTaskExecutor::Thread 3] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-nodejs-plugin, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,881 INFO [ThreadPoolAsyncTaskExecutor::Thread 1] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.stash.atlassian-bamboo-plugin-stash, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:48 | 2026-04-21 11:29:48,905 INFO [ThreadPoolAsyncTaskExecutor::Thread 4] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.tomcat.bamboo-tomcat-plugin, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:48,910 INFO [ThreadPoolAsyncTaskExecutor::Thread 7] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.triggers.atlassian-bamboo-triggers, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:48,936 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [Bamboo iOS, Cocoa and Xcode Support (com.atlassian.bamboo.plugins.xcode.bamboo-xcode-plugin)]
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:48,949 INFO [ThreadPoolAsyncTaskExecutor::Thread 2] [OsgiServiceFactoryBean] Publishing service under classes [{com.atlassian.bamboo.plugins.docker.PollingService}]
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,008 INFO [ThreadPoolAsyncTaskExecutor::Thread 7] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.xcode.bamboo-xcode-plugin, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,011 INFO [ThreadPoolAsyncTaskExecutor::Thread 6] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,013 INFO [ThreadPoolAsyncTaskExecutor::Thread 8] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.xcode.bamboo-xcode-plugin, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,043 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [Atlassian Bamboo Build Warnings Parsers (com.atlassian.bamboo.warnings.atlassian-bamboo-warnings)]
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,067 INFO [ThreadPoolAsyncTaskExecutor::Thread 5] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-scp-plugin, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,071 INFO [ThreadPoolAsyncTaskExecutor::Thread 4] [OsgiServiceFactoryBean] Publishing service under classes [{com.atlassian.bamboo.trigger.dependency.EnvironmentDependencyService}]
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,075 INFO [ThreadPoolAsyncTaskExecutor::Thread 4] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.triggers.atlassian-bamboo-triggers, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,080 INFO [ThreadPoolAsyncTaskExecutor::Thread 1] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.tomcat.bamboo-tomcat-plugin, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,084 INFO [ThreadPoolAsyncTaskExecutor::Thread 2] [OsgiServiceFactoryBean] Publishing service under classes [{com.atlassian.bamboo.plugins.docker.service.DockerServiceFactory}]
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,109 INFO [AgentRunnerThread] [DefaultOsgiApplicationContextCreator] Discovered configurations {osgibundle:/META-INF/spring/*.xml} in bundle [org.jfrog.bamboo.bamboo-jfrog-plugin (org.jfrog.bamboo.bamboo-jfrog-plugin)]
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,127 INFO [ThreadPoolAsyncTaskExecutor::Thread 3] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.stash.atlassian-bamboo-plugin-stash, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,341 INFO [ThreadPoolAsyncTaskExecutor::Thread 1] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=org.jfrog.bamboo.bamboo-jfrog-plugin, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,346 INFO [ThreadPoolAsyncTaskExecutor::Thread 8] [DependencyWaiterApplicationContextExecutor] No outstanding OSGi service dependencies, completing initialization for NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.warnings.atlassian-bamboo-warnings, config=osgibundle:/META-INF/spring/*.xml)
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,349 INFO [ThreadPoolAsyncTaskExecutor::Thread 3] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=org.jfrog.bamboo.bamboo-jfrog-plugin, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,412 INFO [ThreadPoolAsyncTaskExecutor::Thread 2] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.plugins.bamboo-docker-plugin, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,468 INFO [ThreadPoolAsyncTaskExecutor::Thread 1] [OsgiServiceFactoryBean] Publishing service under classes [{com.atlassian.bamboo.warnings.parsers.ParsersListProvider}]
+INFO   | jvm 1    | 2026/04/21 11:29:49 | 2026-04-21 11:29:49,514 INFO [ThreadPoolAsyncTaskExecutor::Thread 1] [ExtenderConfiguration] Application context successfully refreshed (NonValidatingOsgiBundleXmlApplicationContext(bundle=com.atlassian.bamboo.warnings.atlassian-bamboo-warnings, config=osgibundle:/META-INF/spring/*.xml))
+INFO   | jvm 1    | 2026/04/21 11:29:50 | 2026-04-21 11:29:50,788 INFO [AgentRunnerThread] [StdSchedulerFactory] Using default implementation for ThreadExecutor
+INFO   | jvm 1    | 2026/04/21 11:29:50 | 2026-04-21 11:29:50,861 INFO [AgentRunnerThread] [SchedulerSignalerImpl] Initialized Scheduler Signaller of type: class org.quartz.core.SchedulerSignalerImpl
+INFO   | jvm 1    | 2026/04/21 11:29:50 | 2026-04-21 11:29:50,861 INFO [AgentRunnerThread] [QuartzScheduler] Quartz Scheduler v.2.3.2 created.
+INFO   | jvm 1    | 2026/04/21 11:29:50 | 2026-04-21 11:29:50,862 INFO [AgentRunnerThread] [RAMJobStore] RAMJobStore initialized.
+INFO   | jvm 1    | 2026/04/21 11:29:50 | 2026-04-21 11:29:50,862 INFO [AgentRunnerThread] [QuartzScheduler] Scheduler meta-data: Quartz Scheduler (v2.3.2) 'scheduler' with instanceId 'NON_CLUSTERED'
+INFO   | jvm 1    | 2026/04/21 11:29:50 |   Scheduler class: 'org.quartz.core.QuartzScheduler' - running locally.
+INFO   | jvm 1    | 2026/04/21 11:29:50 |   NOT STARTED.
+INFO   | jvm 1    | 2026/04/21 11:29:50 |   Currently in standby mode.
+INFO   | jvm 1    | 2026/04/21 11:29:50 |   Number of jobs executed: 0
+INFO   | jvm 1    | 2026/04/21 11:29:50 |   Using thread pool 'com.atlassian.bamboo.quartz.SystemAuthorizedThreadPool' - with 10 threads.
+INFO   | jvm 1    | 2026/04/21 11:29:50 |   Using job-store 'org.quartz.simpl.RAMJobStore' - which does not support persistence. and is not clustered.
+INFO   | jvm 1    | 2026/04/21 11:29:50 | 
+INFO   | jvm 1    | 2026/04/21 11:29:50 | 2026-04-21 11:29:50,862 INFO [AgentRunnerThread] [StdSchedulerFactory] Quartz scheduler 'scheduler' initialized from an externally provided properties instance.
+INFO   | jvm 1    | 2026/04/21 11:29:50 | 2026-04-21 11:29:50,862 INFO [AgentRunnerThread] [StdSchedulerFactory] Quartz scheduler version: 2.3.2
+INFO   | jvm 1    | 2026/04/21 11:29:50 | 2026-04-21 11:29:50,863 INFO [AgentRunnerThread] [QuartzScheduler] JobFactory set to: com.atlassian.bamboo.quartz.AutowiringJobFactory@6efba28c
+INFO   | jvm 1    | 2026/04/21 11:29:51 | 2026-04-21 11:29:50,928 INFO [AgentRunnerThread] [lifecycle] *******************************
+INFO   | jvm 1    | 2026/04/21 11:29:51 | 2026-04-21 11:29:50,928 INFO [AgentRunnerThread] [lifecycle] *      System information     *
+INFO   | jvm 1    | 2026/04/21 11:29:51 | 2026-04-21 11:29:50,928 INFO [AgentRunnerThread] [lifecycle] *******************************
+INFO   | jvm 1    | 2026/04/21 11:29:51 | 2026-04-21 11:29:50,962 INFO [AgentRunnerThread] [lifecycle] com.atlassian.bamboo.configuration.SystemInfoImpl@30f2914[
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   applicationHome=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   availableProcessors=16
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   buildWorkingDirectory=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   currentDate=Tue Apr 21 11:29:50 CDT 2026
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   currentDirectory=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   freeDiskSpace=232309996
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   freeMemory=170
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   hostName=ip-10-56-112-35.ec2.internal-ba-1
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   ipAddress=172.25.0.2
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   localAgents=unsupported
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   localHomeDirectory=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   maxMemory=512
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   operatingSystem=Linux 6.1.158-180.294.amzn2023.x86_64
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   operatingSystemArchitecture=amd64
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   sharedHomeDirectory=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   splitHome=false
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   startupTimestamp=1776788990927
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   systemDate=Tuesday, 21 Apr 2026
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   systemEncoding=UTF-8
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   systemTime=11:29:50
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   tempDir=/tmp
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   totalMemory=256
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   uptime=0 seconds (since Tue Apr 21 11:29:50 CDT 2026)
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   usedMemory=86
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   userHome=/root
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   userLocale=English
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   userName=root
+INFO   | jvm 1    | 2026/04/21 11:29:51 |   userTimezone=America/Chicago
+INFO   | jvm 1    | 2026/04/21 11:29:51 | ]
+INFO   | jvm 1    | 2026/04/21 11:29:51 | 2026-04-21 11:29:51,043 INFO [AgentRunnerThread] [AgentRegistrationBean] Current agent remote definition: ip-10-56-112-35.ec2.internal-ba-1 (2) Remote agent on host ip-10-56-112-35.ec2.internal-ba-1
+INFO   | jvm 1    | 2026/04/21 11:29:51 | 2026-04-21 11:29:51,281 INFO [AgentRunnerThread] [PerforceManager] Could not find system variable. If you wish to use perforce please set the location as a capability.
+INFO   | jvm 1    | 2026/04/21 11:29:53 | 2026-04-21 11:29:53,275 INFO [AgentRunnerThread] [AgentRegistrationBean] Registering agent on the server,
+INFO   | jvm 1    | 2026/04/21 11:29:53 | 2026-04-21 11:29:53,674 WARN [ActiveMQ Task-1] [FailoverTransport] Failed to connect to [ssl://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov:8443?socket.verifyHostName=false&wireFormat.maxInactivityDuration=90000] after: 1 attempt(s) with PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target, continuing to retry.
