@@ -1,47 +1,24 @@
-ssh -i ~/.ssh/id_rsa ec2-user@10.56.112.35
-sudo su
+find /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 \
+  -name "*.jks" -o -name "*.ks" -o -name "*.truststore" \
+  -o -name "ssl-truststore" 2>/dev/null
 
 
-docker exec ip-10-56-112-35.ec2.internal-ba-1 \
-  find / -name cacerts -path "*/security/cacerts" 2>/dev/null
 
 
-docker exec ip-10-56-112-35.ec2.internal-ba-1 \
-  keytool -list -cacerts -storepass changeit 2>/dev/null \
-  | grep -i "letsencrypt\|isrg\|R10\|R11\|R12"
+ls -la /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/conf/
+ls -la /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/configuration/
 
 
-# On .33 — extract just the R12 intermediate (cert[2] in the chain)
-sudo openssl x509 -in \
-  /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/chain.pem \
-  -out /tmp/r12.pem
-sudo chown ec2-user:ec2-user /tmp/r12.pem
+cat /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bamboo-agent.cfg.xml
 
-# Then scp it to .35
-scp -i ~/.ssh/id_rsa /tmp/r12.pem ec2-user@10.56.112.35:/tmp/r12.pem
+# On .35 as root — do this for all 6 agents
+for i in 1 2 3 4 5 6; do
+  echo "=== ba-${i} ==="
+  find /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i} \
+    -name "*.jks" -o -name "*.ks" -o -name "*.truststore" \
+    -o -name "ssl-truststore" 2>/dev/null
+done
 
-
-# Copy cert into running container
-docker cp /tmp/r12.pem \
-  ip-10-56-112-35.ec2.internal-ba-1:/tmp/r12.pem
-
-# Import into the container's JVM truststore
-docker exec ip-10-56-112-35.ec2.internal-ba-1 \
-  keytool -import \
-  -alias letsencrypt-r12 \
-  -file /tmp/r12.pem \
-  -cacerts \
-  -storepass changeit \
-  -noprompt
-
-
-docker restart ip-10-56-112-35.ec2.internal-ba-1
-
-
-docker logs ip-10-56-112-35.ec2.internal-ba-1 --follow --since 30s \
-  | grep -iE 'registering|connected|ssl|error|failed|broker'
-
-  
 
 
 
