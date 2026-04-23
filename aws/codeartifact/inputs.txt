@@ -1,86 +1,3 @@
-# On .34 as root
-docker stop prod-bamboo
-
-# Create a timestamped backup of the data volume
-tar -czf /bamboobackup/bamboo-data-backup-$(date +%F_%H%M%S).tar.gz \
-  -C /app/docker/volumes/bambooVolume/_data .
-
-# Verify backup created successfully
-ls -lh /bamboobackup/bamboo-data-backup-*.tar.gz
-
-
-
-
-
-
-# Get postgres container name and backup the bamboo DB
-docker exec prod-postgres pg_dump -U bamboouser bamboo \
-  > /app/bamboobackup/bamboo-db-backup-$(date +%F_%H%M%S).sql
-
-ls -lh /app/bamboobackup/bamboo-db-backup-*.sql
-
-
-
-grep -i 'jdbc\|database\|username' \
-  /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
-
-
-
-
-docker pull atlassian/bamboo:10.2.11
-
-
-
-docker stop prod-bamboo
-docker rm prod-bamboo
-
-
-
-docker run -d \
-  --name prod-bamboo \
-  --net prod-net \
-  --restart no \
-  -p 8085:8085 \
-  -p 8443:8443 \
-  -p 54663:54664 \
-  -v bambooVolume:/var/atlassian/application-data/bamboo \
-  -v optbambooVolume:/opt/Atlassian \
-  -e "JVM_SUPPORT_RECOMMENDED_ARGS=-Duser.timezone=America/Denver" \
-  -e "ATL_TOMCAT_SECURE=true" \
-  -e "ATL_TOMCAT_SCHEME=https" \
-  -e "ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov" \
-  -e "ATL_PROXY_PORT=443" \
-  -e "JVM_MINIMUM_MEMORY=1g" \
-  -e "JVM_MAXIMUM_MEMORY=3g" \
-  atlassian/bamboo:10.2.11
-
-
-
-
-docker logs prod-bamboo --follow 2>&1 | grep -iE 'started|error|upgrade|migration|bamboo|ready'
-
-
-
-docker logs prod-bamboo --follow 2>&1 | grep -iE 'started|error|upgrade|migration|bamboo is ready|server startup|liquibase|fatal'
-
-keytool -v -list \
-  -keystore /app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks \
-  -storepass bamboo -alias jmsbrokerkey \
-  | grep -E 'Valid|until'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 REPO="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git"
 
 for branch in release/01.00.000.119 release/02.00.000.120 release/02.00.000.121 release/02.00.000.122; do
@@ -96,7 +13,7 @@ git fetch "${REPO}" refs/heads/develop
 git show FETCH_HEAD:pom.xml | grep '<version>' | head -3
 
 
-for branch in release/01.00.000.107 release/01.00.000.108 release/01.00.000.109 release/01.00.000.110; do
+for branch in release/01.00.000.163 release/02.00.000.164 release/02.00.000.165 release/02.00.000.166; do
   echo "Deleting ${branch}..."
   git push "${REPO}" --delete "${branch}"
 done
