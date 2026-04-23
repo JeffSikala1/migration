@@ -1,232 +1,124 @@
-build-determination.sh
-
-#!/usr/bin/env bash
-
-artifactoryRepositoryUrl="https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/repositories"
-user="sa_conexus"
-# Set from global Bamboo variables
-api_key="${bamboo_artifactory_admin_api_key_secret}"
-
-longLivedPrefix="ll-"
-BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
-
-RepositoryBaseUrl="https://conexus-artifactory.edc.ds1.usda.gov/artifactory/"
- 
-## Check to see if this is a long lived branch child
-if [[ "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
-    echo "This is a long lived branch"
-    # Split the parent and child branch name
-    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
-    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-    
-    # Set the plugin repo to conexus-ll-plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${ParentBranchName}" >> file.properties
-    echo "ChildBranchName=${ChildBranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-    
-    # Check that the long lived parent maven repo exists - if it doesn't create it
-    mavenRepoExists=$(curl -s -X GET "$artifactoryRepositoryUrl?type=local&packageType=maven" | grep $BranchName | head -n1)
-    echo "Checking if repo exists"
-    if [[ -z "${mavenRepoExists}" ]]; then
-        echo "Repo does not exist. Creating Maven repo: ${BranchName}"
-        curl -X PUT \
-           -H "Content-type: application/json" \
-           -H "X-JFrog-Art-Api:$api_key" \
-           "$artifactoryRepositoryUrl/${BranchName}" \
-           -d '{ "key": "'${BranchName}'", "rclass" : "local", "packageType": "maven", "repoLayoutRef" : "maven-2-default", "snapshotVersionBehavior": "unique"}'
-        echo "Updating permsissions on new repo"
-        # Getting the anon_read_only permission model, add new repo name, and push changes
-        curl -s -X GET -H "X-JFrog-Art-Api:${api_key}" https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/anon_read_only \
-            | jq ".repo.repositories += [\"${BranchName}\"]" \
-            | curl -s -X PUT -H "X-JFrog-Art-Api:${api_key}" -H "Content-Type: application/json" https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/anon_read_only -d@-
-        # Getting the uploadOnly permission model, add new repo name, and push changes
-        curl -s -X GET -H "X-JFrog-Art-Api:${api_key}" https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/uploadOnly \
-            | jq ".repo.repositories += [\"${BranchName}\"]" \
-            | curl -s -X PUT -H "X-JFrog-Art-Api:${api_key}" -H "Content-Type: application/json" https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/uploadOnly -d@-
-    else
-        echo "Repo does exist"
-    fi
-elif [[ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
-    echo "Not a long lived branch"
-    # Not a long lived branch
-    BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
-
-    # Set the plugin repo to conexus--plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${BranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-else
-      echo "Cannot determine parent branch"
-      exit 1
-fi
-
-
-
-
-deploy-to-artifactory-and-create-bamboo-version.sh
-
-#!/usr/bin/env bash
-
-# Determine if a deploy is needed
-
-longLivedPrefix="ll-"
-BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
-
-# Used for debugging #######################
-#buildVersionQueryArtifact=task-ear
-#buildVersionQueryGroup=gov.gsa.cnxs.task
-#mavenVersion=01.00.000.73
-############################################
-
-RepositoryBaseUrl="https://conexus-artifactory.edc.ds1.usda.gov/artifactory/"
-
-## Check to see if this is a long lived branch child
-if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-    echo "This is a long lived branch"
-    # Split the parent and child branch name
-    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
-    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-
-    # Set the plugin repo to conexus-ll-plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${ParentBranchName}" >> file.properties
-    echo "ChildBranchName=${ChildBranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a long lived parent or child branch
-    if [ -z ${ChildBranchName} ]; then
-        echo "This is a parent long-lived branch"
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName"
-        echo -e "latestVersion=$(curl -s -k -L "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName")" >> file.properties
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child long-lived branch. Not deploying to Artifactory"
-    fi
-
- elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-     echo "Not a long lived branch"
-     # Not a long lived branch
-     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
-
-     # Set the plugin repo to conexus--plugin-repository
-     # Set the branch repo to the parent branch
-     echo "BranchName=${BranchName}" >> file.properties
-     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a development parent or child (feature) branch
-    if [ "$BranchName" == "develop" ]; then
-        echo "This is a development branch"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
-        # The buildVersionQuery variables are defined in the plan as variables
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo -e "latestVersion=$(curl -k -s "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
-    else
-        echo "This is not a develop branch but may be a feature branch"
-	#echo "This is NOT a development branch"
-	#mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-rc-local/"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
-        # The buildVersionQuery variables are defined in the plan as variables
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo -e "latestVersion=$(curl -k -s "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
-        #---old code start
-        #echo "This is a child (feature) development branch. Not deploying to Artifactory"
-        # Clear out the file.properties contents so that the injection does nothing
-        #echo -e "" > file.properties
-	#---old code end
-    fi
-
-  else
-      echo "Cannot determine parent branch"
-      exit 1
-fi
-echo "contents of file.properties"
-echo " "
-cat file.properties
-
-
-
-
-
-
-deploy-to-artifactory-skip-bamboo-version.sh
-
-#!/usr/bin/env bash
-
-# Determine if a deploy is needed
-
-longLivedPrefix="ll-"
-BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
-
-RepositoryBaseUrl="https://conexus-artifactory.edc.ds1.usda.gov/artifactory/"
-
-## Check to see if this is a long lived branch child
-if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-    echo "This is a long lived branch"
-    # Split the parent and child branch name
-    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
-    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-
-    # Set the plugin repo to conexus-ll-plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${ParentBranchName}" >> file.properties
-    echo "ChildBranchName=${ChildBranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a long lived parent or child branch
-    if [ -z ${ChildBranchName} ]; then
-        echo "This is a parent long-lived branch"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child long-lived branch. Not deploying to Artifactory"
-    fi
-
- elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-     echo "Not a long lived branch"
-     # Not a long lived branch
-     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
-
-     # Set the plugin repo to conexus--plugin-repository
-     # Set the branch repo to the parent branch
-     echo "BranchName=${BranchName}" >> file.properties
-     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a development parent or child (feature) branch
-    if [ "$BranchName" == "develop" ]; then
-        echo "This is a development branch.  Deploying to Artifactory"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child (feature) development branch. Not deploying to Artifactory"
-    fi
-
-  else
-      echo "Cannot determine parent branch"
-      exit 1
-fi
+---
+version: 2
+plan:
+  project-key: BT
+  key: REC
+  name: Reconciliation - Build
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  other:
+    clean-working-dir: true
+    all-other-apps:
+      custom:
+        auto: {}
+        buildHangingConfig.enabled: 'false'
+  tasks:
+# com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli is disabled. This state is not supported at YAML
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - rm -rf ~/.m2/repository/gov/gsa/
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: "clean verify -B -P integration-test -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} \n-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
+      description: Build and Verify
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
+      configuration:
+        variable: mavenVersion
+        variableScope: JOB
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
+      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
+      description: Deploy to Artifactory if needed
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+      description: Inject the build information to be used in Bamboo Deploy
+  artifacts:
+  - name: Jboss Log
+    location: integration/target/
+    pattern: jboss.log
+    shared: true
+    required: false
+  - name: Oracle Log
+    location: integration/target/
+    pattern: oracle.log
+    shared: true
+    required: false
+  artifact-subscriptions: []
+variables:
+  buildVersionQueryArtifact: reconciliation-war
+  buildVersionQueryGroup: gov.gsa.cnxs.reconciliation
+repositories:
+- Reconciliation:
+    scope: global
+- bamboo-deployment:
+    scope: global
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - Reconciliation
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 7
+    after-inactive-days: 200
+  link-to-jira: true
+notifications:
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+  - watchers
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
