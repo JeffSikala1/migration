@@ -33,10 +33,11 @@ Default Job:
         description: Checkout bamboo-deployment
 
     - script:
-        interpreter: SHELL
+        interpreter: BINSH_OR_CMDEXE
         scripts:
           - |-
             rm -rf ~/.m2/repository/gov/gsa/
+            rm -rf /tmp/BT-REC-JOB1
             mkdir -p /tmp/BT-REC-JOB1
         description: Remove existing cnxs maven repo directory
 
@@ -50,6 +51,10 @@ Default Job:
         scope: LOCAL
         namespace: inject
         description: Inject values
+
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+        configuration: {}
 
     - script:
         interpreter: SHELL
@@ -134,123 +139,30 @@ Default Job:
             XML
         description: Write Artifactory Maven settings
 
-    - script:
-        interpreter: SHELL
-        scripts:
-          - >-
-            /usr/share/maven/bin/mvn
-            -s settings-artifactory.xml
-            -Djava.io.tmpdir=/tmp/BT-REC-JOB1
-            clean package -B -U
-            -pl :reconciliation-war -am
-            -DskipTests -DskipITs=true -Dmaven.test.skip=true
-            -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
-            -Dbamboo.inject.RawBranchName=${bamboo.inject.RawBranchName}
-            -Dbamboo.inject.ParentBranchName=${bamboo.inject.ParentBranchName}
-            -Dbamboo.inject.ChildBranchName=${bamboo.inject.ChildBranchName}
-            -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
-            -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
-            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        description: Build (package only, skip tests/ITs) using Artifactory settings
+    - maven:
+        executable: Maven 3
+        jdk: JDK 17
+        goal: >-
+          clean verify -B
+          -s settings-artifactory.xml
+          -Djava.io.tmpdir=/tmp/BT-REC-JOB1
+          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+          -Dbamboo.inject.RawBranchName=${bamboo.inject.RawBranchName}
+          -Dbamboo.inject.ParentBranchName=${bamboo.inject.ParentBranchName}
+          -Dbamboo.inject.ChildBranchName=${bamboo.inject.ChildBranchName}
+          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
+          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        tests: '**/target/surefire-reports/*.xml'
+        description: Build and Verify
 
     - script:
         interpreter: SHELL
-        scripts:
-          - >-
-            /usr/share/maven/bin/mvn
-            -s settings-artifactory.xml
-            -Djava.io.tmpdir=/tmp/BT-REC-JOB1
-            test -B
-            -pl :reconciliation-war -am
-            -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
-            -Dbamboo.inject.RawBranchName=${bamboo.inject.RawBranchName}
-            -Dbamboo.inject.ParentBranchName=${bamboo.inject.ParentBranchName}
-            -Dbamboo.inject.ChildBranchName=${bamboo.inject.ChildBranchName}
-            -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
-            -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
-            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        description: Run unit tests
-
-    - junit:
-        tests: "**/target/surefire-reports/TEST-*.xml"
-        description: Publish JUnit test results
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            ARTIFACT_ID=$(/usr/share/maven/bin/mvn -f war/pom.xml -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.artifactId | sed '/^\[/d' | grep -v '^$' | tail -1)
-            MVN_VERSION=$(/usr/share/maven/bin/mvn -f war/pom.xml -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version | sed '/^\[/d' | grep -v '^$' | tail -1)
-            GROUP_ID=$(/usr/share/maven/bin/mvn -f war/pom.xml -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.groupId | sed '/^\[/d' | grep -v '^$' | tail -1)
-
-            [ -n "${ARTIFACT_ID}" ] || { echo "ERROR: could not determine artifactId"; exit 1; }
-            [ -n "${MVN_VERSION}" ]  || { echo "ERROR: could not determine Maven version"; exit 1; }
-            [ -n "${GROUP_ID}" ]     || { echo "ERROR: could not determine groupId"; exit 1; }
-
-            echo "mavenVersion=${ARTIFACT_ID}-${MVN_VERSION}" >> file.properties
-            echo "mavenArtifactId=${ARTIFACT_ID}" >> file.properties
-            echo "mavenRawVersion=${MVN_VERSION}" >> file.properties
-            echo "mavenGroupId=${GROUP_ID}" >> file.properties
-        description: Determine deployable module version
-
-    - inject-variables:
-        file: file.properties
-        scope: LOCAL
-        namespace: inject
-        description: Inject updated values (mavenVersion)
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - >-
-            /usr/share/maven/bin/mvn
-            -s settings-artifactory.xml
-            -Djava.io.tmpdir=/tmp/BT-REC-JOB1
-            deploy -B -U
-            -pl :reconciliation-war -am
-            -DaltDeploymentRepository=artifactory::${bamboo.inject.mavenFeatureRepositoryUrl}
-            -DskipTests -DskipITs=true -Dmaven.test.skip=true
-            -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
-            -Dbamboo.inject.RawBranchName=${bamboo.inject.RawBranchName}
-            -Dbamboo.inject.ParentBranchName=${bamboo.inject.ParentBranchName}
-            -Dbamboo.inject.ChildBranchName=${bamboo.inject.ChildBranchName}
-            -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
-            -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
-            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        description: Deploy WAR only to Artifactory (skip tests/ITs)
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            ARTIFACT_ID="${bamboo.inject.mavenArtifactId}"
-            MVN_VERSION="${bamboo.inject.mavenRawVersion}"
-            GROUP_ID="${bamboo.inject.mavenGroupId}"
-
-            [ -n "${ARTIFACT_ID}" ] || { echo "ERROR: mavenArtifactId not available from inject"; exit 1; }
-            [ -n "${MVN_VERSION}" ]  || { echo "ERROR: mavenRawVersion not available from inject"; exit 1; }
-            [ -n "${GROUP_ID}" ]     || { echo "ERROR: mavenGroupId not available from inject"; exit 1; }
-
-            GROUP_PATH=$(echo "${GROUP_ID}" | tr '.' '/')
-            METADATA_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/${GROUP_PATH}/${ARTIFACT_ID}/${MVN_VERSION}/maven-metadata.xml"
-
-            LATEST_VERSION=$(curl -sf -u "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
-              "${METADATA_URL}" \
-              | grep -oP '(?<=<value>)[^<]+' | tail -1) || LATEST_VERSION=""
-
-            echo "buildVersionQueryArtifact=${ARTIFACT_ID}"
-            echo "buildVersionQueryGroup=${GROUP_ID}"
-            echo "mavenVersion=${MVN_VERSION}"
-            echo "contents of file.properties"
-            echo " "
-            cat file.properties
-            if [ -n "${LATEST_VERSION}" ]; then
-              echo "latestVersion=${LATEST_VERSION}"
-            else
-              echo "WARNING: latestVersion could not be resolved from Artifactory metadata — metadata may not yet be indexed"
-              echo "latestVersion=UNRESOLVED"
-            fi
-        description: Resolve deployed artifact latestVersion and log build summary
+        file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
+        environment: >-
+          buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+          buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+        description: Deploy to Artifactory and resolve build version
 
     - inject-variables:
         file: file.properties
@@ -339,3 +251,8 @@ dependencies:
   enabled-for-branches: true
   block-strategy: none
   plans: []
+
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
