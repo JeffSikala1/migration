@@ -13,6 +13,12 @@ git fetch "${REPO}" refs/heads/develop
 git show FETCH_HEAD:pom.xml | grep '<version>' | head -3
 
 
+git ls-remote --heads "${REPO}" 'refs/heads/release/*' \
+  | awk '{print $2}' \
+  | sed 's|refs/heads/||' \
+  | xargs -r -I{} git push "${REPO}" --delete {}
+  
+
 for branch in release/01.00.000.163 release/02.00.000.164 release/02.00.000.165 release/02.00.000.166; do
   echo "Deleting ${branch}..."
   git push "${REPO}" --delete "${branch}"
