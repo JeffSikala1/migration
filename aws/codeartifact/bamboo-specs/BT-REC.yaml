@@ -35,7 +35,9 @@ Default Job:
     - script:
         interpreter: SHELL
         scripts:
-          - rm -rf ~/.m2/repository/gov/gsa/
+          - |-
+            rm -rf ~/.m2/repository/gov/gsa/
+            mkdir -p /tmp/BT-REC-JOB1
         description: Remove existing cnxs maven repo directory
 
     - script:
@@ -185,23 +187,10 @@ Default Job:
             [ -n "${MVN_VERSION}" ]  || { echo "ERROR: could not determine Maven version"; exit 1; }
             [ -n "${GROUP_ID}" ]     || { echo "ERROR: could not determine groupId"; exit 1; }
 
-            GROUP_PATH=$(echo "${GROUP_ID}" | tr '.' '/')
-            METADATA_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/${GROUP_PATH}/${ARTIFACT_ID}/${MVN_VERSION}/maven-metadata.xml"
-            LATEST_VERSION=$(curl -sf -u "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
-              "${METADATA_URL}" \
-              | grep -oP '(?<=<value>)[^<]+' | tail -1) || LATEST_VERSION=""
-
             echo "mavenVersion=${ARTIFACT_ID}-${MVN_VERSION}" >> file.properties
             echo "mavenArtifactId=${ARTIFACT_ID}" >> file.properties
             echo "mavenRawVersion=${MVN_VERSION}" >> file.properties
-
-            echo "buildVersionQueryArtifact=${ARTIFACT_ID}"
-            echo "buildVersionQueryGroup=${GROUP_ID}"
-            echo "mavenVersion=${MVN_VERSION}"
-            echo "contents of file.properties"
-            echo " "
-            cat file.properties
-            [ -n "${LATEST_VERSION}" ] && echo "latestVersion=${LATEST_VERSION}" || echo "latestVersion=(not yet resolvable - artifact may not be deployed yet)"
+            echo "mavenGroupId=${GROUP_ID}" >> file.properties
         description: Determine deployable module version
 
     - inject-variables:
@@ -229,6 +218,39 @@ Default Job:
             -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         description: Deploy WAR only to Artifactory (skip tests/ITs)
+
+    - script:
+        interpreter: SHELL
+        scripts:
+          - |-
+            ARTIFACT_ID="${bamboo.inject.mavenArtifactId}"
+            MVN_VERSION="${bamboo.inject.mavenRawVersion}"
+            GROUP_ID="${bamboo.inject.mavenGroupId}"
+
+            [ -n "${ARTIFACT_ID}" ] || { echo "ERROR: mavenArtifactId not available from inject"; exit 1; }
+            [ -n "${MVN_VERSION}" ]  || { echo "ERROR: mavenRawVersion not available from inject"; exit 1; }
+            [ -n "${GROUP_ID}" ]     || { echo "ERROR: mavenGroupId not available from inject"; exit 1; }
+
+            GROUP_PATH=$(echo "${GROUP_ID}" | tr '.' '/')
+            METADATA_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/${GROUP_PATH}/${ARTIFACT_ID}/${MVN_VERSION}/maven-metadata.xml"
+
+            LATEST_VERSION=$(curl -sf -u "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+              "${METADATA_URL}" \
+              | grep -oP '(?<=<value>)[^<]+' | tail -1) || LATEST_VERSION=""
+
+            echo "buildVersionQueryArtifact=${ARTIFACT_ID}"
+            echo "buildVersionQueryGroup=${GROUP_ID}"
+            echo "mavenVersion=${MVN_VERSION}"
+            echo "contents of file.properties"
+            echo " "
+            cat file.properties
+            if [ -n "${LATEST_VERSION}" ]; then
+              echo "latestVersion=${LATEST_VERSION}"
+            else
+              echo "WARNING: latestVersion could not be resolved from Artifactory metadata — metadata may not yet be indexed"
+              echo "latestVersion=UNRESOLVED"
+            fi
+        description: Resolve deployed artifact latestVersion and log build summary
 
     - inject-variables:
         file: file.properties
