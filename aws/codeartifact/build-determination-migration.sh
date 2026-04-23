@@ -1,112 +1,87 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
-
-# Determine if a deploy is needed
+artifactoryRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories"
 
 longLivedPrefix="ll-"
 BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
 
 RepositoryBaseUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/"
 
-# Derive mavenVersion from POM since Variable Extractor is not used in AWS
-# buildVersionQueryArtifact and buildVersionQueryGroup are passed in as environment variables from the plan
-MVN_SETTINGS="settings-artifactory.xml"
-MVN_BIN="/usr/share/maven/bin/mvn"
-
-ARTIFACT_ID=$(${MVN_BIN} -f war/pom.xml -s ${MVN_SETTINGS} -q -DforceStdout help:evaluate \
-  -Dexpression=project.artifactId | sed '/^\[/d' | grep -v '^$' | tail -1)
-MVN_VERSION=$(${MVN_BIN} -f war/pom.xml -s ${MVN_SETTINGS} -q -DforceStdout help:evaluate \
-  -Dexpression=project.version | sed '/^\[/d' | grep -v '^$' | tail -1)
-GROUP_ID=$(${MVN_BIN} -f war/pom.xml -s ${MVN_SETTINGS} -q -DforceStdout help:evaluate \
-  -Dexpression=project.groupId | sed '/^\[/d' | grep -v '^$' | tail -1)
-
-[ -n "${ARTIFACT_ID}" ] || { echo "ERROR: could not determine artifactId"; exit 1; }
-[ -n "${MVN_VERSION}" ]  || { echo "ERROR: could not determine Maven version"; exit 1; }
-[ -n "${GROUP_ID}" ]     || { echo "ERROR: could not determine groupId"; exit 1; }
-
-# Use plan variables if passed, otherwise fall back to POM-derived values
-buildVersionQueryArtifact="${buildVersionQueryArtifact:-${ARTIFACT_ID}}"
-buildVersionQueryGroup="${buildVersionQueryGroup:-${GROUP_ID}}"
-mavenVersion="${MVN_VERSION}"
-
-echo "mavenVersion=${ARTIFACT_ID}-${MVN_VERSION}" >> file.properties
-echo "mavenArtifactId=${ARTIFACT_ID}" >> file.properties
-echo "mavenRawVersion=${MVN_VERSION}" >> file.properties
-echo "mavenGroupId=${GROUP_ID}" >> file.properties
+# Set from global Bamboo variables
+# Bamboo exposes secret variables to scripts with dots replaced by underscores
+access_token="${bamboo_artifactory_access_token_secret}"
 
 ## Check to see if this is a long lived branch child
-if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
+if [[ "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
     echo "This is a long lived branch"
+    # Split the parent and child branch name
     ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
     ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
 
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
+    # Set the plugin repo to conexus-ll-plugin-repository
+    # Set the branch repo to the parent branch
     echo "BranchName=${ParentBranchName}" >> file.properties
     echo "ChildBranchName=${ChildBranchName}" >> file.properties
+    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
+    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
 
-    if [ -z "${ChildBranchName}" ]; then
-        echo "This is a parent long-lived branch"
-        echo "buildVersionQueryArtifact=${buildVersionQueryArtifact}"
-        echo "buildVersionQueryGroup=${buildVersionQueryGroup}"
-        echo "mavenVersion=${mavenVersion}"
+    # Check that the long lived parent maven repo exists - if it doesn't create it
+    mavenRepoExists=$(curl -s \
+      -H "Authorization: Bearer ${access_token}" \
+      -X GET "${artifactoryRepositoryUrl}?type=local&packageType=maven" \
+      | grep "${BranchName}" | head -n1)
 
-        ${MVN_BIN} deploy -DskipTests=true -U \
-          -s ${MVN_SETTINGS} \
-          -Djava.io.tmpdir=/tmp/BT-REC-JOB1 \
-          -Dbamboo.inject.BranchName=${BranchName} \
-          -Dbamboo.inject.mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl} \
-          -Dbamboo.inject.pluginRepositoryUrl=${pluginRepositoryUrl} \
-          -DaltDeploymentRepository=artifactory::${mavenFeatureRepositoryUrl}
+    echo "Checking if repo exists"
+    if [[ -z "${mavenRepoExists}" ]]; then
+        echo "Repo does not exist. Creating Maven repo: ${BranchName}"
+        curl -s -X PUT \
+          -H "Content-type: application/json" \
+          -H "Authorization: Bearer ${access_token}" \
+          "${artifactoryRepositoryUrl}/${BranchName}" \
+          -d '{ "key": "'${BranchName}'", "rclass" : "local", "packageType": "maven", "repoLayoutRef" : "maven-2-default", "snapshotVersionBehavior": "unique"}'
 
-        echo -e "latestVersion=$(curl -k -s \
-          -H "Authorization: Bearer ${bamboo_artifactory_access_token_secret}" \
-          "${RepositoryBaseUrl}api/search/latestVersion?g=${buildVersionQueryGroup}&a=${buildVersionQueryArtifact}&v=${mavenVersion}&repos=${ParentBranchName}")" >> file.properties
+        echo "Updating permissions on new repo"
+        # Getting the anon_read_only permission model, add new repo name, and push changes
+        curl -s -X GET \
+          -H "Authorization: Bearer ${access_token}" \
+          "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only" \
+          | jq ".repo.repositories += [\"${BranchName}\"]" \
+          | curl -s -X PUT \
+              -H "Authorization: Bearer ${access_token}" \
+              -H "Content-Type: application/json" \
+              "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only" \
+              -d@-
+
+        # Getting the uploadOnly permission model, add new repo name, and push changes
+        curl -s -X GET \
+          -H "Authorization: Bearer ${access_token}" \
+          "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly" \
+          | jq ".repo.repositories += [\"${BranchName}\"]" \
+          | curl -s -X PUT \
+              -H "Authorization: Bearer ${access_token}" \
+              -H "Content-Type: application/json" \
+              "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly" \
+              -d@-
     else
-        echo "This is a child long-lived branch. Not deploying to Artifactory"
+        echo "Repo does exist"
     fi
 
-elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
+elif [[ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
     echo "Not a long lived branch"
+    # Not a long lived branch
     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
 
+    # Set the plugin repo to conexus-plugin-repository
+    # Set the feature repo to conexus-snapshot-local for SNAPSHOT artifact storage
+    echo "BranchName=${BranchName}" >> file.properties
     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-snapshot-local/"
-    echo "BranchName=${BranchName}" >> file.properties
     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    if [ "$BranchName" == "develop" ]; then
-        echo "This is a development branch"
-    else
-        echo "This is not a develop branch but may be a feature branch"
-    fi
-
-    # Both develop and feature branches deploy and query latestVersion
-    ${MVN_BIN} deploy -DskipTests=true -U \
-      -s ${MVN_SETTINGS} \
-      -Djava.io.tmpdir=/tmp/BT-REC-JOB1 \
-      -Dbamboo.inject.BranchName=${BranchName} \
-      -Dbamboo.inject.mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl} \
-      -Dbamboo.inject.pluginRepositoryUrl=${pluginRepositoryUrl} \
-      -DaltDeploymentRepository=artifactory::${mavenFeatureRepositoryUrl}
-
-    echo "buildVersionQueryArtifact=${buildVersionQueryArtifact}"
-    echo "buildVersionQueryGroup=${buildVersionQueryGroup}"
-    echo "mavenVersion=${mavenVersion}"
-
-    echo -e "latestVersion=$(curl -k -s \
-      -H "Authorization: Bearer ${bamboo_artifactory_access_token_secret}" \
-      "${RepositoryBaseUrl}api/search/latestVersion?g=${buildVersionQueryGroup}&a=${buildVersionQueryArtifact}&v=${mavenVersion}&repos=conexus-snapshot-local")" >> file.properties
 
 else
     echo "Cannot determine parent branch"
     exit 1
 fi
-
-echo "contents of file.properties"
-echo " "
-cat file.properties
