@@ -22,7 +22,6 @@ Default Job:
         buildHangingConfig.enabled: 'false'
 
   tasks:
-    # com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli is disabled. This state is not supported at YAML
     - checkout:
         force-clean-build: true
         description: Checkout Default Repository
@@ -59,7 +58,6 @@ Default Job:
               <mirrors>
                 <mirror>
                   <id>ArtifactoryPluginRepos</id>
-                  <!-- Mirror everything EXCEPT snapshot-local so SNAPSHOT deps can come from snapshot-local -->
                   <mirrorOf>*,!conexus-snapshot-local</mirrorOf>
                   <url>${bamboo.inject.pluginRepositoryUrl}</url>
                 </mirror>
@@ -104,31 +102,26 @@ Default Job:
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>artifactory</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>conexus-plugin-repository</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>conexus-snapshot-local</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>ArtifactoryPluginRepos</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>ArtifactoryMavenFeatureRepos</id>
                   <username>sa_bamboo</username>
@@ -161,18 +154,54 @@ Default Job:
     - script:
         interpreter: SHELL
         scripts:
+          - >-
+            /usr/share/maven/bin/mvn
+            -s settings-artifactory.xml
+            -Djava.io.tmpdir=/tmp/BT-REC-JOB1
+            test -B
+            -pl :reconciliation-war -am
+            -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+            -Dbamboo.inject.RawBranchName=${bamboo.inject.RawBranchName}
+            -Dbamboo.inject.ParentBranchName=${bamboo.inject.ParentBranchName}
+            -Dbamboo.inject.ChildBranchName=${bamboo.inject.ChildBranchName}
+            -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
+            -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        description: Run unit tests
+
+    - junit:
+        tests: "**/target/surefire-reports/TEST-*.xml"
+        description: Publish JUnit test results
+
+    - script:
+        interpreter: SHELL
+        scripts:
           - |-
             ARTIFACT_ID=$(/usr/share/maven/bin/mvn -f war/pom.xml -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.artifactId | sed '/^\[/d' | grep -v '^$' | tail -1)
             MVN_VERSION=$(/usr/share/maven/bin/mvn -f war/pom.xml -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version | sed '/^\[/d' | grep -v '^$' | tail -1)
+            GROUP_ID=$(/usr/share/maven/bin/mvn -f war/pom.xml -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.groupId | sed '/^\[/d' | grep -v '^$' | tail -1)
 
             [ -n "${ARTIFACT_ID}" ] || { echo "ERROR: could not determine artifactId"; exit 1; }
-            [ -n "${MVN_VERSION}" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
+            [ -n "${MVN_VERSION}" ]  || { echo "ERROR: could not determine Maven version"; exit 1; }
+            [ -n "${GROUP_ID}" ]     || { echo "ERROR: could not determine groupId"; exit 1; }
+
+            GROUP_PATH=$(echo "${GROUP_ID}" | tr '.' '/')
+            METADATA_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/${GROUP_PATH}/${ARTIFACT_ID}/${MVN_VERSION}/maven-metadata.xml"
+            LATEST_VERSION=$(curl -sf -u "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
+              "${METADATA_URL}" \
+              | grep -oP '(?<=<value>)[^<]+' | tail -1) || LATEST_VERSION=""
 
             echo "mavenVersion=${ARTIFACT_ID}-${MVN_VERSION}" >> file.properties
             echo "mavenArtifactId=${ARTIFACT_ID}" >> file.properties
             echo "mavenRawVersion=${MVN_VERSION}" >> file.properties
 
-            echo "Detected mavenVersion=${ARTIFACT_ID}-${MVN_VERSION}"
+            echo "buildVersionQueryArtifact=${ARTIFACT_ID}"
+            echo "buildVersionQueryGroup=${GROUP_ID}"
+            echo "mavenVersion=${MVN_VERSION}"
+            echo "contents of file.properties"
+            echo " "
+            cat file.properties
+            [ -n "${LATEST_VERSION}" ] && echo "latestVersion=${LATEST_VERSION}" || echo "latestVersion=(not yet resolvable - artifact may not be deployed yet)"
         description: Determine deployable module version
 
     - inject-variables:
@@ -207,7 +236,36 @@ Default Job:
         namespace: inject
         description: Inject the build information to be used in Bamboo Deploy
 
-  artifacts: []
+  artifacts:
+    - name: reconciliation-war
+      location: war/target
+      copy-pattern: reconciliation-war*.war
+      shared: true
+      required: true
+
+    - name: reconciliation-domain
+      location: domain/target
+      copy-pattern: reconciliation-domain*.jar
+      shared: true
+      required: true
+
+    - name: reconciliation-db-support
+      location: database-support/target
+      copy-pattern: reconciliation-db-support*.jar
+      shared: true
+      required: true
+
+    - name: reconciliation-rules-engine
+      location: rules-engine/target
+      copy-pattern: reconciliation-rules-engine*.jar
+      shared: true
+      required: true
+
+    - name: reconciliation-routes
+      location: routes/target
+      copy-pattern: reconciliation-routes*.jar
+      shared: true
+      required: true
 
   artifact-subscriptions: []
 
