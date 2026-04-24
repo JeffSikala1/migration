@@ -1,17 +1,14 @@
----
 version: 2
 plan:
   project-key: BT
   key: VE
   name: Vendor Emulator - Build
-
 stages:
-  - Default Stage:
-      manual: false
-      final: false
-      jobs:
-        - Default Job
-
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
 Default Job:
   key: JOB1
   other:
@@ -19,254 +16,177 @@ Default Job:
     all-other-apps:
       custom:
         auto: {}
-        buildHangingConfig.enabled: "false"
-
+        buildHangingConfig.enabled: 'false'
   tasks:
-    - checkout:
-        force-clean-build: true
-        description: Checkout Default Repository
-
-    - checkout:
-        repository: bamboo-deployment
-        path: bamboo-deployment
-        force-clean-build: true
-        description: Checkout bamboo-deployment
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            rm -rf .m2
-            mkdir -p .m2/repository
-        description: Prepare isolated Maven repo
-
-    - script:
-        interpreter: SHELL
-        file: bamboo-deployment/build-determination-migration.sh
-        description: Determine parent branch and pass correct variables
-
-    - inject-variables:
-        file: file.properties
-        scope: LOCAL
-        namespace: inject
-        description: Inject values
-
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-        configuration: {}
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            cat > settings-artifactory.xml <<XML
-            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
-              <mirrors>
-                <mirror>
-                  <id>ArtifactoryPluginRepos</id>
-                  <mirrorOf>*,!conexus-snapshot-local</mirrorOf>
-                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                </mirror>
-              </mirrors>
-
-              <profiles>
-                <profile>
-                  <id>use-artifactory</id>
-
-                  <repositories>
-                    <repository>
-                      <id>conexus-plugin-repository</id>
-                      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                      <releases><enabled>true</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </repository>
-
-                    <repository>
-                      <id>conexus-snapshot-local</id>
-                      <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
-                      <releases><enabled>false</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </repository>
-                  </repositories>
-
-                  <pluginRepositories>
-                    <pluginRepository>
-                      <id>conexus-plugin-repository</id>
-                      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                      <releases><enabled>true</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </pluginRepository>
-                  </pluginRepositories>
-                </profile>
-              </profiles>
-
-              <activeProfiles>
-                <activeProfile>use-artifactory</activeProfile>
-              </activeProfiles>
-
-              <servers>
-                <server>
-                  <id>cnxs-artifactory</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-
-                <server>
-                  <id>artifactory</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-
-                <server>
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - |-
+        dirName=~/.m2/repository/gov/gsa/cnxs/
+        if [ -d "$dirName" ]; then
+          echo "Removing snapshot folders from $dirName"
+          find "$dirName" -type d -name '*SNAPSHOT' -exec rm -rf {} +
+        fi
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination-migration.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        cat > settings-artifactory.xml << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+          <mirrors>
+            <mirror>
+              <id>ArtifactoryPluginRepos</id>
+              <mirrorOf>*,!conexus-snapshot-local</mirrorOf>
+              <url>${bamboo.inject.pluginRepositoryUrl}</url>
+            </mirror>
+          </mirrors>
+          <profiles>
+            <profile>
+              <id>artifactory</id>
+              <repositories>
+                <repository>
                   <id>conexus-plugin-repository</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-
-                <server>
+                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                  <releases><enabled>true</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </repository>
+                <repository>
                   <id>conexus-snapshot-local</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-
-                <server>
-                  <id>conexus-feature-repo</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-
-                <server>
-                  <id>ArtifactoryPluginRepos</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-
-                <server>
-                  <id>ArtifactoryMavenFeatureRepos</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-              </servers>
-            </settings>
-            XML
-        description: Write Artifactory Maven settings
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            sed -E 's#<password>.*</password>#<password>***</password>#g' settings-artifactory.xml
-        description: Debug generated Maven settings
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            set -e
-            curl -sf -u sa_bamboo:${bamboo.artifactory_access_token_secret} \
-              "${bamboo.inject.mavenFeatureRepositoryUrl}gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml" \
-              >/dev/null
-            echo "Artifactory dependency auth check passed"
-        description: Validate Artifactory dependency access
-
-    - maven:
-        executable: Maven 3
-        jdk: JDK 17
-        goal: >
-          -Dmaven.repo.local=${bamboo.build.working.directory}/.m2/repository
-          -s settings-artifactory.xml
-          clean verify -B -U
-          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
-          -Dbamboo.inject.RawBranchName=${bamboo.inject.RawBranchName}
-          -Dbamboo.inject.ParentBranchName=${bamboo.inject.ParentBranchName}
-          -Dbamboo.inject.ChildBranchName=${bamboo.inject.ChildBranchName}
-          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
-          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        tests: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
-        description: Common Build and Verify
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            MVN_VERSION=$(/usr/share/maven/bin/mvn \
-              -Dmaven.repo.local=${bamboo.build.working.directory}/.m2/repository \
-              -s settings-artifactory.xml \
-              -q -DforceStdout help:evaluate -Dexpression=project.version | sed '/^\[/d' | grep -v '^$' | tail -1)
-            echo "mavenVersion=${MVN_VERSION}" >> file.properties
-            echo "Detected mavenVersion=${MVN_VERSION}"
-        description: Determine Maven version
-
-    - inject-variables:
-        file: file.properties
-        scope: LOCAL
-        namespace: inject
-        description: Inject updated values (mavenVersion)
-
-    - script:
-        interpreter: SHELL
-        file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
-        environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.inject.mavenVersion}
-        description: Deploy to Artifactory if needed
-
-    - inject-variables:
-        file: file.properties
-        scope: RESULT
-        namespace: inject
-        description: Inject the build information to be used in Bamboo Deploy
-
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-        configuration: {}
-
+                  <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
+                  <releases><enabled>false</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </repository>
+              </repositories>
+              <pluginRepositories>
+                <pluginRepository>
+                  <id>conexus-plugin-repository</id>
+                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                  <releases><enabled>true</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </pluginRepository>
+              </pluginRepositories>
+            </profile>
+          </profiles>
+          <activeProfiles>
+            <activeProfile>artifactory</activeProfile>
+          </activeProfiles>
+          <servers>
+            <server>
+              <id>cnxs-artifactory</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>artifactory</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>conexus-plugin-repository</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>conexus-snapshot-local</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>ArtifactoryPluginRepos</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>ArtifactoryMavenFeatureRepos</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+          </servers>
+        </settings>
+        EOF
+      description: Write Artifactory Maven settings
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: clean verify -B -U -s settings-artifactory.xml -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
+      description: Common Build and Verify
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} deployablePomPath=ear/pom.xml
+      description: Deploy to Artifactory if needed
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+      description: Inject the build information to be used in Bamboo Deploy
   artifact-subscriptions: []
-
 variables:
   buildVersionQueryArtifact: vendor-emulator-ear
   buildVersionQueryGroup: gov.gsa.cnxs.emulator
-
 repositories:
-  - Vendor Emulator:
-      scope: global
-  - bamboo-deployment:
-      scope: global
-
+- Vendor Emulator:
+    scope: global
+- bamboo-deployment:
+    scope: global
 triggers:
-  - bitbucket-server-trigger:
-      repositories:
-        - Vendor Emulator
-
+- bitbucket-server-trigger:
+    repositories:
+    - Vendor Emulator
 branches:
   create: for-new-branch
   delete:
     after-deleted-days: 7
     after-inactive-days: 200
   link-to-jira: true
-
 notifications:
-  - events:
-      - plan-failed
-    recipients:
-      - responsible
-      - committers
-
-  - events:
-      - plan-completed
-    recipients:
-      - watchers
-
-  - events:
-      - plan-failed
-    recipients:
-      - responsible
-      - committers
-
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
 labels: []
-
 dependencies:
   require-all-stages-passing: false
   enabled-for-branches: true
   block-strategy: none
   plans:
-    - BT-WS
+  - BT-WS
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
