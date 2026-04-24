@@ -1,112 +1,292 @@
----
-version: 2
-plan:
-  project-key: BT
-  key: VE
-  name: Vendor Emulator - Build
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
-  key: JOB1
-  other:
-    clean-working-dir: true
-    all-other-apps:
-      custom:
-        auto: {}
-        buildHangingConfig.enabled: 'false'
-  tasks:
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: bamboo-deployment
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: BINSH_OR_CMDEXE
-      scripts:
-      - rm -rf ~/.m2/repository/gov/gsa/
-      description: Remove existing cnxs maven repo directory
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/build-determination.sh
-      description: Determine parent branch and pass correct variables
-  - inject-variables:
-      file: file.properties
-      scope: LOCAL
-      namespace: inject
-      description: Inject values
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: clean verify -B -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
-      description: Common Build and Verify
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: mavenVersion
-        variableScope: JOB
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
-      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
-      description: Deploy to Artifactory if needed
-  - inject-variables:
-      file: file.properties
-      scope: RESULT
-      namespace: inject
-      description: Inject the build information to be used in Bamboo Deploy
-  artifact-subscriptions: []
-variables:
-  buildVersionQueryArtifact: vendor-emulator-ear
-  buildVersionQueryGroup: gov.gsa.cnxs.emulator
-repositories:
-- Vendor Emulator:
-    scope: global
-- bamboo-deployment:
-    scope: global
-triggers:
-- bitbucket-server-trigger:
-    repositories:
-    - Vendor Emulator
-branches:
-  create: for-new-branch
-  delete:
-    after-deleted-days: 7
-    after-inactive-days: 200
-  link-to-jira: true
-notifications:
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-- events:
-  - plan-completed
-  recipients:
-  - watchers
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans:
-  - BT-WS
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 25/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 26/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 27/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 28/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29/29 MB
+build	21-Apr-2026 16:09:58	Progress (1): 29 MB   
+build	21-Apr-2026 16:09:58	                   
+build	21-Apr-2026 16:09:58	Uploaded to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-war/02.00.000.142-SNAPSHOT/vendor-emulator-war-02.00.000.142-20260421.210950-13.war (29 MB at 54 MB/s)
+build	21-Apr-2026 16:09:58	Downloading from central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-war/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 855 B
+build	21-Apr-2026 16:09:58	                   
+build	21-Apr-2026 16:09:58	Downloaded from central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-war/maven-metadata.xml (855 B at 122 kB/s)
+build	21-Apr-2026 16:09:58	Uploading to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-war/02.00.000.142-SNAPSHOT/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 817 B
+build	21-Apr-2026 16:09:58	                   
+build	21-Apr-2026 16:09:58	Uploaded to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-war/02.00.000.142-SNAPSHOT/maven-metadata.xml (817 B at 36 kB/s)
+build	21-Apr-2026 16:09:58	Uploading to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-war/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 796 B
+build	21-Apr-2026 16:09:58	                   
+build	21-Apr-2026 16:09:58	Uploaded to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-war/maven-metadata.xml (796 B at 53 kB/s)
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] ---------< gov.gsa.cnxs.emulator:vendor-emulator-integration >----------
+build	21-Apr-2026 16:09:58	[INFO] Building Conexus - Vendor Emulator Integration Tests 02.00.000.142-SNAPSHOT [10/10]
+build	21-Apr-2026 16:09:58	[INFO]   from integration/pom.xml
+build	21-Apr-2026 16:09:58	[INFO] --------------------------------[ jar ]---------------------------------
+build	21-Apr-2026 16:09:58	Downloading from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/common/common-test-utils/02.00.000.161-SNAPSHOT/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 1.0 kB
+build	21-Apr-2026 16:09:58	                    
+build	21-Apr-2026 16:09:58	Downloaded from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/common/common-test-utils/02.00.000.161-SNAPSHOT/maven-metadata.xml (1.0 kB at 172 kB/s)
+build	21-Apr-2026 16:09:58	Downloading from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/domain/test/domain-test-api/02.00.000.173-SNAPSHOT/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 1.0 kB
+build	21-Apr-2026 16:09:58	                    
+build	21-Apr-2026 16:09:58	Downloaded from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/domain/test/domain-test-api/02.00.000.173-SNAPSHOT/maven-metadata.xml (1.0 kB at 173 kB/s)
+build	21-Apr-2026 16:09:58	Downloading from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/domain/test/domain-test-aggregator/02.00.000.173-SNAPSHOT/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 641 B
+build	21-Apr-2026 16:09:58	                   
+build	21-Apr-2026 16:09:58	Downloaded from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/domain/test/domain-test-aggregator/02.00.000.173-SNAPSHOT/maven-metadata.xml (641 B at 128 kB/s)
+build	21-Apr-2026 16:09:58	Downloading from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/domain/test/domain-integration/02.00.000.173-SNAPSHOT/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 1.0 kB
+build	21-Apr-2026 16:09:58	                    
+build	21-Apr-2026 16:09:58	Downloaded from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/domain/test/domain-integration/02.00.000.173-SNAPSHOT/maven-metadata.xml (1.0 kB at 173 kB/s)
+build	21-Apr-2026 16:09:58	Downloading from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/domain/test/domain-test-ear/02.00.000.173-SNAPSHOT/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 816 B
+build	21-Apr-2026 16:09:58	                   
+build	21-Apr-2026 16:09:58	Downloaded from conexus-feature-repo: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/domain/test/domain-test-ear/02.00.000.173-SNAPSHOT/maven-metadata.xml (816 B at 163 kB/s)
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] --- resources:3.3.1:resources (default-resources) @ vendor-emulator-integration ---
+build	21-Apr-2026 16:09:58	[INFO] skip non existing resourceDirectory /cache/bamboo/gsansfs0066-ba-5/xml-data/build-dir/BT-VE-JOB1/integration/src/main/resources
+build	21-Apr-2026 16:09:58	[INFO] skip non existing resourceDirectory /cache/bamboo/gsansfs0066-ba-5/xml-data/build-dir/BT-VE-JOB1/integration/src/main/java
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] --- compiler:3.13.0:compile (default-compile) @ vendor-emulator-integration ---
+build	21-Apr-2026 16:09:58	[INFO] No sources to compile
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] --- resources:3.3.1:testResources (default-testResources) @ vendor-emulator-integration ---
+build	21-Apr-2026 16:09:58	[INFO] skip non existing resourceDirectory /cache/bamboo/gsansfs0066-ba-5/xml-data/build-dir/BT-VE-JOB1/integration/src/test/resources
+build	21-Apr-2026 16:09:58	[INFO] skip non existing resourceDirectory /cache/bamboo/gsansfs0066-ba-5/xml-data/build-dir/BT-VE-JOB1/integration/src/test/resources
+build	21-Apr-2026 16:09:58	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ vendor-emulator-integration ---
+build	21-Apr-2026 16:09:58	[INFO] Nothing to compile - all classes are up to date.
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] --- surefire:3.5.2:test (default-test) @ vendor-emulator-integration ---
+build	21-Apr-2026 16:09:58	[INFO] Tests are skipped.
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] --- jar:3.4.1:jar (default-jar) @ vendor-emulator-integration ---
+build	21-Apr-2026 16:09:58	[WARNING] JAR will be empty - no content was marked for inclusion!
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] --- jar:3.4.1:test-jar (default) @ vendor-emulator-integration ---
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] --- install:3.1.3:install (default-install) @ vendor-emulator-integration ---
+build	21-Apr-2026 16:09:58	[INFO] Installing /cache/bamboo/gsansfs0066-ba-5/xml-data/build-dir/BT-VE-JOB1/integration/pom.xml to /root/.m2/repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/vendor-emulator-integration-02.00.000.142-SNAPSHOT.pom
+build	21-Apr-2026 16:09:58	[INFO] Installing /cache/bamboo/gsansfs0066-ba-5/xml-data/build-dir/BT-VE-JOB1/integration/target/vendor-emulator-integration-02.00.000.142-SNAPSHOT.jar to /root/.m2/repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/vendor-emulator-integration-02.00.000.142-SNAPSHOT.jar
+build	21-Apr-2026 16:09:58	[INFO] Installing /cache/bamboo/gsansfs0066-ba-5/xml-data/build-dir/BT-VE-JOB1/integration/target/vendor-emulator-integration-02.00.000.142-SNAPSHOT-tests.jar to /root/.m2/repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/vendor-emulator-integration-02.00.000.142-SNAPSHOT-tests.jar
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] --- deploy:3.1.3:deploy (default-deploy) @ vendor-emulator-integration ---
+build	21-Apr-2026 16:09:58	[INFO] Using alternate deployment repository central::default::https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/
+build	21-Apr-2026 16:09:58	[WARNING] Using legacy syntax for alternative repository. Use "central::https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/" instead.
+build	21-Apr-2026 16:09:58	Downloading from central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 1.0 kB
+build	21-Apr-2026 16:09:58	                    
+build	21-Apr-2026 16:09:58	Downloaded from central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/maven-metadata.xml (1.0 kB at 174 kB/s)
+build	21-Apr-2026 16:09:58	Uploading to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/vendor-emulator-integration-02.00.000.142-20260421.210950-13.pom
+build	21-Apr-2026 16:09:58	Progress (1): 16 kB
+build	21-Apr-2026 16:09:58	                   
+build	21-Apr-2026 16:09:58	Uploaded to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/vendor-emulator-integration-02.00.000.142-20260421.210950-13.pom (16 kB at 1.1 MB/s)
+build	21-Apr-2026 16:09:58	Uploading to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/vendor-emulator-integration-02.00.000.142-20260421.210950-13.jar
+build	21-Apr-2026 16:09:58	Uploading to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/vendor-emulator-integration-02.00.000.142-20260421.210950-13-tests.jar
+build	21-Apr-2026 16:09:58	Progress (1): 3.8 kB
+build	21-Apr-2026 16:09:58	Progress (2): 3.8 kB | 29 kB
+build	21-Apr-2026 16:09:58	                            
+build	21-Apr-2026 16:09:58	Uploaded to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/vendor-emulator-integration-02.00.000.142-20260421.210950-13-tests.jar (29 kB at 1.6 MB/s)
+build	21-Apr-2026 16:09:58	Uploaded to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/vendor-emulator-integration-02.00.000.142-20260421.210950-13.jar (3.8 kB at 203 kB/s)
+build	21-Apr-2026 16:09:58	Downloading from central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 863 B
+build	21-Apr-2026 16:09:58	                   
+build	21-Apr-2026 16:09:58	Downloaded from central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/maven-metadata.xml (863 B at 123 kB/s)
+build	21-Apr-2026 16:09:58	Uploading to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 1.0 kB
+build	21-Apr-2026 16:09:58	                    
+build	21-Apr-2026 16:09:58	Uploaded to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/02.00.000.142-SNAPSHOT/maven-metadata.xml (1.0 kB at 80 kB/s)
+build	21-Apr-2026 16:09:58	Uploading to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/maven-metadata.xml
+build	21-Apr-2026 16:09:58	Progress (1): 804 B
+build	21-Apr-2026 16:09:58	                   
+build	21-Apr-2026 16:09:58	Uploaded to central: https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/emulator/vendor-emulator-integration/maven-metadata.xml (804 B at 47 kB/s)
+build	21-Apr-2026 16:09:58	[INFO] ------------------------------------------------------------------------
+build	21-Apr-2026 16:09:58	[INFO] Reactor Summary for Conexus Vendor Emulator 02.00.000.142-SNAPSHOT:
+build	21-Apr-2026 16:09:58	[INFO] 
+build	21-Apr-2026 16:09:58	[INFO] Conexus Vendor Emulator ............................ SUCCESS [  0.293 s]
+build	21-Apr-2026 16:09:58	[INFO] Vendor Emulator Provided Services .................. SUCCESS [  0.099 s]
+build	21-Apr-2026 16:09:58	[INFO] Vendor Emulator Common ............................. SUCCESS [  1.573 s]
+build	21-Apr-2026 16:09:58	[INFO] Vendor Emulator AWS Data Provider .................. SUCCESS [  0.212 s]
+build	21-Apr-2026 16:09:58	[INFO] Vendor Emulator NITC data provider ................. SUCCESS [  0.312 s]
+build	21-Apr-2026 16:09:58	[INFO] Vendor Emulator Order Services ..................... SUCCESS [  0.227 s]
+build	21-Apr-2026 16:09:58	[INFO] Conexus Vendor Emulator EAR ........................ SUCCESS [  1.227 s]
+build	21-Apr-2026 16:09:58	[INFO] Conexus Vendor Emulator AWS EAR .................... SUCCESS [  0.876 s]
+build	21-Apr-2026 16:09:58	[INFO] Conexus Vendor Emulator War ........................ SUCCESS [  2.065 s]
+build	21-Apr-2026 16:09:58	[INFO] Conexus - Vendor Emulator Integration Tests ........ SUCCESS [  0.383 s]
+build	21-Apr-2026 16:09:58	[INFO] ------------------------------------------------------------------------
+build	21-Apr-2026 16:09:58	[INFO] BUILD SUCCESS
+build	21-Apr-2026 16:09:58	[INFO] ------------------------------------------------------------------------
+build	21-Apr-2026 16:09:58	[INFO] Total time:  7.944 s
+build	21-Apr-2026 16:09:58	[INFO] Finished at: 2026-04-21T16:09:58-05:00
+build	21-Apr-2026 16:09:58	[INFO] ------------------------------------------------------------------------
+build	21-Apr-2026 16:09:59	buildVersionQueryArtifact=vendor-emulator-ear
+build	21-Apr-2026 16:09:59	buildVersionQueryGroup=gov.gsa.cnxs.emulator
+build	21-Apr-2026 16:09:59	mavenVersion=02.00.000.142-SNAPSHOT
+build	21-Apr-2026 16:09:59	contents of file.properties
+build	21-Apr-2026 16:09:59	 
+build	21-Apr-2026 16:09:59	BranchName=develop
+build	21-Apr-2026 16:09:59	pluginRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/
+build	21-Apr-2026 16:09:59	mavenFeatureRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/
+build	21-Apr-2026 16:09:59	BranchName=develop
+build	21-Apr-2026 16:09:59	pluginRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/
+build	21-Apr-2026 16:09:59	mavenFeatureRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/
+build	21-Apr-2026 16:09:59	latestVersion=02.00.000.142-20260421.210950-13
+simple	21-Apr-2026 16:09:59	Finished task 'Deploy to Artifactory if needed' with result: Success
+simple	21-Apr-2026 16:09:59	Starting task 'Inject the build information to be used in Bamboo Deploy' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:inject'
+simple	21-Apr-2026 16:09:59	Injected variable bamboo.inject.latestVersion=02.00.000.142-20260421.210950-13 in RESULT scope
+simple	21-Apr-2026 16:09:59	Injected variable bamboo.inject.mavenFeatureRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/ in RESULT scope
+simple	21-Apr-2026 16:09:59	Injected variable bamboo.inject.BranchName=develop in RESULT scope
+simple	21-Apr-2026 16:09:59	Injected variable bamboo.inject.pluginRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/ in RESULT scope
+simple	21-Apr-2026 16:09:59	Finished task 'Inject the build information to be used in Bamboo Deploy' with result: Success
+simple	21-Apr-2026 16:09:59	Running post build plugin 'Docker Container Cleanup'
+simple	21-Apr-2026 16:09:59	Running post build plugin 'NCover Results Collector'
+simple	21-Apr-2026 16:09:59	Running post build plugin 'Build Results Label Collector'
+simple	21-Apr-2026 16:09:59	Running post build plugin 'Clover Results Collector'
+simple	21-Apr-2026 16:09:59	Running post build plugin 'npm Cache Cleanup'
+simple	21-Apr-2026 16:09:59	Running post build plugin 'Artifact Copier'
+simple	21-Apr-2026 16:09:59	Successfully removed working directory at '/cache/bamboo/gsansfs0066-ba-5/xml-data/build-dir/BT-VE-JOB1'
+simple	21-Apr-2026 16:09:59	Finalising the build...
+simple	21-Apr-2026 16:09:59	Stopping timer.
+simple	21-Apr-2026 16:09:59	Build BT-VE-JOB1-1653 completed.
+simple	21-Apr-2026 15:09:59	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	21-Apr-2026 15:09:59	Running on server: post build plugin 'NCover Results Collector'
+simple	21-Apr-2026 15:09:59	Running on server: post build plugin 'Build Labeller'
+simple	21-Apr-2026 15:09:59	Running on server: post build plugin 'Clover Delta Calculator'
+simple	21-Apr-2026 15:09:59	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	21-Apr-2026 15:09:59	All post build plugins have finished
+simple	21-Apr-2026 15:09:59	Generating build results summary...
+simple	21-Apr-2026 15:09:59	Saving build results to disk...
+simple	21-Apr-2026 15:09:59	Store variable context...
+simple	21-Apr-2026 15:09:59	Finished building BT-VE-JOB1-1653.
