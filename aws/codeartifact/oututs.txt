@@ -1,104 +1,809 @@
----
-version: 2
-plan:
-  project-key: BT
-  key: WSCLIEN
-  name: WS-Client - Build
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
-  key: JOB1
-  tasks:
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: bamboo-deployment
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: BINSH_OR_CMDEXE
-      scripts:
-      - rm -rf ~/.m2/repository/gov/gsa/
-      description: Remove existing cnxs maven repo directory
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/build-determination.sh
-      description: Determine parent branch and pass correct variables
-  - inject-variables:
-      file: file.properties
-      scope: LOCAL
-      namespace: inject
-      description: Inject values
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: clean verify -B -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-      tests: 'true'
-      description: Common Build and Verify
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: mavenVersion
-        variableScope: JOB
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
-      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
-      description: Deploy to Artifactory if needed
-  - inject-variables:
-      file: file.properties
-      scope: RESULT
-      namespace: inject
-      description: Inject the build information to be used in Bamboo Deploy
-  artifact-subscriptions: []
-repositories:
-- WS-Client:
-    scope: global
-- bamboo-deployment:
-    scope: global
-triggers:
-- bitbucket-server-trigger:
-    repositories:
-    - WS-Client
-branches:
-  create: for-new-branch
-  delete:
-    after-deleted-days: 7
-    after-inactive-days: 200
-  link-to-jira: true
-notifications:
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-- events:
-  - plan-completed
-  recipients:
-  - watchers
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: block_if_parent_in_progress
-  plans:
-  - BT-VE
-  - BT-WEBSV
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
+simple	24-Apr-2026 12:44:25	Build Build and Test - WS-Client - Build - Default Job #152 (BT-WSCLIEN-JOB1-152) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-3 (2), bamboo version: 10.2.11
+simple	24-Apr-2026 12:44:25	Remote agent on host ip-10-56-112-35.ec2.internal-ba-3
+simple	24-Apr-2026 12:44:25	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1
+simple	24-Apr-2026 12:44:25	Executing build Build and Test - WS-Client - Build - Default Job #152 (BT-WSCLIEN-JOB1-152)
+simple	24-Apr-2026 12:44:25	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	24-Apr-2026 12:44:25	Build always requires a clean checkout
+simple	24-Apr-2026 12:44:25	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1'
+simple	24-Apr-2026 12:44:25	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1
+simple	24-Apr-2026 12:44:25	Updating source code to revision: 1cf05e24cc5ee1035c2accab651133e45cc94495
+simple	24-Apr-2026 12:44:25	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws-client.git'.
+simple	24-Apr-2026 12:44:25	Warning: Permanently added '[127.0.0.1]:43679' (RSA) to the list of known hosts.
+simple	24-Apr-2026 12:44:25	Checking out revision 1cf05e24cc5ee1035c2accab651133e45cc94495.
+simple	24-Apr-2026 12:44:25	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/.git'.
+simple	24-Apr-2026 12:44:25	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1'...
+simple	24-Apr-2026 12:44:25	done.
+simple	24-Apr-2026 12:44:25	Switched to a new branch 'develop'
+simple	24-Apr-2026 12:44:25	branch 'develop' set up to track 'origin/develop'.
+simple	24-Apr-2026 12:44:26	Updated source code to revision: 1cf05e24cc5ee1035c2accab651133e45cc94495
+simple	24-Apr-2026 12:44:26	Finished task 'Checkout Default Repository' with result: Success
+simple	24-Apr-2026 12:44:26	Starting task 'Checkout bamboo-deployment' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	24-Apr-2026 12:44:26	Build always requires a clean checkout
+simple	24-Apr-2026 12:44:26	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/bamboo-deployment'
+simple	24-Apr-2026 12:44:26	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/bamboo-deployment
+simple	24-Apr-2026 12:44:26	Updating source code to revision: e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740
+simple	24-Apr-2026 12:44:26	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git'.
+simple	24-Apr-2026 12:44:26	Warning: Permanently added '[127.0.0.1]:43679' (RSA) to the list of known hosts.
+simple	24-Apr-2026 12:44:26	Checking out revision e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740.
+simple	24-Apr-2026 12:44:26	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/bamboo-deployment/.git'.
+simple	24-Apr-2026 12:44:26	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/bamboo-deployment'...
+simple	24-Apr-2026 12:44:26	done.
+simple	24-Apr-2026 12:44:26	Switched to a new branch 'develop'
+simple	24-Apr-2026 12:44:26	branch 'develop' set up to track 'origin/develop'.
+simple	24-Apr-2026 12:44:26	Updated source code to revision: e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740
+simple	24-Apr-2026 12:44:26	Finished task 'Checkout bamboo-deployment' with result: Success
+simple	24-Apr-2026 12:44:26	Running pre-build action: Build Log Labeller Pre Build Action
+simple	24-Apr-2026 12:44:26	Running pre-build action: VCS Version Collector
+simple	24-Apr-2026 12:44:26	Build Build and Test - WS-Client - Build - Default Job #152 (BT-WSCLIEN-JOB1-152) started building on agent 'ip-10-56-112-35.ec2.internal-ba-3 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-3)
+simple	24-Apr-2026 12:44:26	Starting task 'Remove existing cnxs maven repo directory' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 12:44:26	Beginning to execute external process for build 'Build and Test - WS-Client - Build - Default Job #152 (BT-WSCLIEN-JOB1-152)'\n ... running command line: \n/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp/BT-WSCLIEN-JOB1-152-ScriptBuildTask-13453406793500841932.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1\n
+build	24-Apr-2026 12:44:26	Removing snapshot folders from ~/.m2/repository/gov/gsa/cnxs/
+simple	24-Apr-2026 12:44:26	Finished task 'Remove existing cnxs maven repo directory' with result: Success
+simple	24-Apr-2026 12:44:26	Starting task 'Determine parent branch and pass correct variables' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 12:44:26	Beginning to execute external process for build 'Build and Test - WS-Client - Build - Default Job #152 (BT-WSCLIEN-JOB1-152)'\n ... running command line: \nbamboo-deployment/build-determination-migration.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1\n
+build	24-Apr-2026 12:44:26	Not a long lived branch
+simple	24-Apr-2026 12:44:26	Finished task 'Determine parent branch and pass correct variables' with result: Success
+simple	24-Apr-2026 12:44:26	Starting task 'Inject values' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:inject'
+simple	24-Apr-2026 12:44:26	Injected variable bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ in LOCAL scope
+simple	24-Apr-2026 12:44:26	Injected variable bamboo.inject.BranchName=develop in LOCAL scope
+simple	24-Apr-2026 12:44:26	Injected variable bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ in LOCAL scope
+simple	24-Apr-2026 12:44:26	Finished task 'Inject values' with result: Success
+simple	24-Apr-2026 12:44:26	Starting task 'Dump variables to log' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump'
+simple	24-Apr-2026 12:44:26	---- DUMPING VARIABLES TO LOG --- 
+simple	24-Apr-2026 12:44:26	key: [ManualBuildTriggerReason.userName] value: [jeff.sikala] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [SNYK_CLIENT_ID] value: [004cb1fd-36d1-4c46-84e0-2d4e2654fa9e and the ORG ID is 6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	24-Apr-2026 12:44:26	key: [SNYK_CLIENT_SECRET] value: [**********] type: GLOBAL
+simple	24-Apr-2026 12:44:26	key: [SNYK_ORG_ID] value: [6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	24-Apr-2026 12:44:26	key: [agentId] value: [1572865] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [agentWorkingDirectory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [artifactory_access_token_secret] value: [**********] type: GLOBAL
+simple	24-Apr-2026 12:44:26	key: [artifactory_sa_conexus_password] value: [**********] type: GLOBAL
+simple	24-Apr-2026 12:44:26	key: [bitbucket_branch] value: [feature/ll-postgres] type: GLOBAL
+simple	24-Apr-2026 12:44:26	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.3] value: [/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp/BT-WSCLIEN-JOB1-152-ScriptBuildTask-13453406793500841932.sh] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.4] value: [bamboo-deployment/build-determination-migration.sh] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [build.working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [buildFailed] value: [false] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [buildKey] value: [BT-WSCLIEN-JOB1] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [buildNumber] value: [152] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [buildPlanName] value: [Build and Test - WS-Client - Build - Default Job] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [buildResultKey] value: [BT-WSCLIEN-JOB1-152] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [buildResultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-WSCLIEN-JOB1-152] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [buildTimeStamp] value: [2026-04-24T11:44:25.352-06:00] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.builder.command.aws] value: [/usr/local/bin/aws] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.builder.command.kubectl] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.builder.mvn3.Maven 3] value: [/usr/share/maven] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.builder.node.Node.js] value: [/usr/bin/node] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.docker.executable] value: [/usr/bin/docker] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.git.executable] value: [/usr/bin/git] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.jdk.JDK] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.jdk.JDK 17] value: [/etc/alternatives/java_sdk_17] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.jdk.JDK 17.0.18] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [capability.system.kubectl.executable] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [dependenciesDisabled] value: [false] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [git.cache.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/_git-repositories-cache] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [inject.BranchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [inject.mavenFeatureRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [inject.pluginRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [plan.storageTag] value: [plan-4849699] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planKey] value: [BT-WSCLIEN] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planName] value: [Build and Test - WS-Client - Build] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.1.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.1.branchDisplayName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.1.branchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.1.name] value: [WS-Client] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.1.previousRevision] value: [1cf05e24cc5ee1035c2accab651133e45cc94495] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.1.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws-client.git] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.1.revision] value: [1cf05e24cc5ee1035c2accab651133e45cc94495] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.1.type] value: [bbserver] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.1.username] value: [] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.2.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.2.branchDisplayName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.2.branchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.2.name] value: [bamboo-deployment] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.2.previousRevision] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.2.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.2.revision] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.2.type] value: [bbserver] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.2.username] value: [] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.branchDisplayName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.branchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.name] value: [WS-Client] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.previousRevision] value: [1cf05e24cc5ee1035c2accab651133e45cc94495] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws-client.git] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.revision] value: [1cf05e24cc5ee1035c2accab651133e45cc94495] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.type] value: [bbserver] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [planRepository.username] value: [] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013539.branch.name] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013539.git.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013539.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws-client.git] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013539.git.username] value: [] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013539.name] value: [WS-Client] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013539.previous.revision.number] value: [1cf05e24cc5ee1035c2accab651133e45cc94495] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013539.revision.number] value: [1cf05e24cc5ee1035c2accab651133e45cc94495] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013540.branch.name] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013540.git.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013540.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013540.git.username] value: [] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013540.name] value: [bamboo-deployment] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013540.previous.revision.number] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.5013540.revision.number] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.branch.name] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.git.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws-client.git] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.git.username] value: [] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.name] value: [bamboo-deployment] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.previous.revision.number] value: [1cf05e24cc5ee1035c2accab651133e45cc94495] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [repository.revision.number] value: [1cf05e24cc5ee1035c2accab651133e45cc94495] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [resultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-WSCLIEN-JOB1-152] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [shortJobKey] value: [JOB1] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [shortJobName] value: [Default Job] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [shortPlanBranchName] value: [] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [shortPlanKey] value: [WSCLIEN] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [shortPlanName] value: [WS-Client - Build] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [simpleBuildTimeStamp] value: [20260424114425] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [tmp.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [triggerReason.key] value: [com.atlassian.bamboo.plugin.system.triggerReason:ManualBuildTriggerReason] type: CUSTOM
+simple	24-Apr-2026 12:44:26	key: [working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1] type: CUSTOM
+simple	24-Apr-2026 12:44:26	---- END DUMPING VARIABLES TO LOG  --- 
+simple	24-Apr-2026 12:44:26	Finished task 'Dump variables to log' with result: Success
+command	24-Apr-2026 12:44:26	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	24-Apr-2026 12:44:26	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	24-Apr-2026 12:44:26	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	24-Apr-2026 12:44:26	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	24-Apr-2026 12:44:26	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 12:44:26	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 12:44:26	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 12:44:26	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 12:44:26	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 12:44:26	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+simple	24-Apr-2026 12:44:26	Starting task 'Write Artifactory Maven settings' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 12:44:26	Beginning to execute external process for build 'Build and Test - WS-Client - Build - Default Job #152 (BT-WSCLIEN-JOB1-152)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp/BT-WSCLIEN-JOB1-152-ScriptBuildTask-4952061288195063131.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1\n
+simple	24-Apr-2026 12:44:26	Finished task 'Write Artifactory Maven settings' with result: Success
+command	24-Apr-2026 12:44:26	Substituting variable: ${bamboo.inject.BranchName} with develop
+command	24-Apr-2026 12:44:26	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	24-Apr-2026 12:44:26	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+simple	24-Apr-2026 12:44:26	Starting task 'WS-Client Build and Verify' of type 'com.atlassian.bamboo.plugins.maven:task.builder.mvn3'
+command	24-Apr-2026 12:44:26	Beginning to execute external process for build 'Build and Test - WS-Client - Build - Default Job #152 (BT-WSCLIEN-JOB1-152)'\n ... running command line: \n/usr/share/maven/bin/mvn -Djava.io.tmpdir=/tmp/BT-WSCLIEN-JOB1 clean verify -B -U -s settings-artifactory.xml -Dbamboo.inject.BranchName=develop -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1\n
+build	24-Apr-2026 12:44:27	[INFO] Scanning for projects...
+build	24-Apr-2026 12:44:28	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 12:44:28	[INFO] Reactor Build Order:
+build	24-Apr-2026 12:44:28	[INFO] 
+build	24-Apr-2026 12:44:28	[INFO] Conexus Web Services Client                                        [pom]
+build	24-Apr-2026 12:44:28	[INFO] ws-client-common                                                   [jar]
+build	24-Apr-2026 12:44:28	[INFO] Conexus - Order Services Client                                    [jar]
+build	24-Apr-2026 12:44:28	[INFO] Conexus - Web Services Health Check Client                         [jar]
+build	24-Apr-2026 12:44:28	[INFO] 
+build	24-Apr-2026 12:44:28	[INFO] ------------< gov.gsa.cnxs.ws-client:ws-client-aggregator >-------------
+build	24-Apr-2026 12:44:28	[INFO] Building Conexus Web Services Client 02.00.000.146-SNAPSHOT        [1/4]
+build	24-Apr-2026 12:44:28	[INFO]   from pom.xml
+build	24-Apr-2026 12:44:28	[INFO] --------------------------------[ pom ]---------------------------------
+build	24-Apr-2026 12:44:28	[INFO] 
+build	24-Apr-2026 12:44:28	[INFO] --- clean:3.2.0:clean (default-clean) @ ws-client-aggregator ---
+build	24-Apr-2026 12:44:28	[INFO] 
+build	24-Apr-2026 12:44:28	[INFO] --------------< gov.gsa.cnxs.ws-client:ws-client-common >---------------
+build	24-Apr-2026 12:44:28	[INFO] Building ws-client-common 02.00.000.146-SNAPSHOT                   [2/4]
+build	24-Apr-2026 12:44:28	[INFO]   from common/pom.xml
+build	24-Apr-2026 12:44:28	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 12:44:28	[INFO] 
+build	24-Apr-2026 12:44:28	[INFO] --- clean:3.2.0:clean (default-clean) @ ws-client-common ---
+build	24-Apr-2026 12:44:28	[INFO] 
+build	24-Apr-2026 12:44:28	[INFO] --- resources:3.3.1:resources (default-resources) @ ws-client-common ---
+build	24-Apr-2026 12:44:28	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/src/main/resources
+build	24-Apr-2026 12:44:28	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 12:44:28	[INFO] 
+build	24-Apr-2026 12:44:28	[INFO] --- compiler:3.13.0:compile (default-compile) @ ws-client-common ---
+build	24-Apr-2026 12:44:29	[INFO] Recompiling the module because of changed source code.
+build	24-Apr-2026 12:44:29	[INFO] Compiling 11 source files with javac [debug deprecation target 17] to target/classes
+build	24-Apr-2026 12:44:29	[INFO] 
+build	24-Apr-2026 12:44:29	[INFO] --- resources:3.3.1:testResources (default-testResources) @ ws-client-common ---
+build	24-Apr-2026 12:44:29	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/src/test/resources
+build	24-Apr-2026 12:44:29	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/src/test/resources
+build	24-Apr-2026 12:44:29	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 12:44:29	[INFO] 
+build	24-Apr-2026 12:44:29	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ ws-client-common ---
+build	24-Apr-2026 12:44:29	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 12:44:29	[INFO] Compiling 8 source files with javac [debug deprecation target 17] to target/test-classes
+build	24-Apr-2026 12:44:30	[INFO] 
+build	24-Apr-2026 12:44:30	[INFO] --- surefire:3.5.2:test (default-test) @ ws-client-common ---
+build	24-Apr-2026 12:44:30	[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+build	24-Apr-2026 12:44:30	[WARNING] System property [java.io.tmpdir] overwritten by user properties from Maven session
+build	24-Apr-2026 12:44:30	[INFO] 
+build	24-Apr-2026 12:44:30	[INFO] -------------------------------------------------------
+build	24-Apr-2026 12:44:30	[INFO]  T E S T S
+build	24-Apr-2026 12:44:30	[INFO] -------------------------------------------------------
+build	24-Apr-2026 12:44:30	[INFO] Running WebServiceConstantsTest
+build	24-Apr-2026 12:44:31	[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.038 s -- in WebServiceConstantsTest
+build	24-Apr-2026 12:44:31	[INFO] WebServiceConstantsTest.verifyFieldNamesAreMapped -- Time elapsed: 0.017 s
+build	24-Apr-2026 12:44:31	[INFO] Running gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest
+build	24-Apr-2026 12:44:31	[INFO] Tests run: 23, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.035 s -- in gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testMessageWithParametersWithNoFormatStringAndEmptyMessageParameters -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testMessageWithParametersWithNoFormatString -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20023 -- Time elapsed: 0.007 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20024 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20025 -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20026 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20028 -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20030 -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20032 -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20033 -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20034 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20035 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20036 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor20037 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor30004 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor30011 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor30024 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessageFor30025 -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetCode -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testMessageWithParametersWithEmptyMessageParameters -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testGetMessage -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testMessageWithParameters -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.messages.WebServiceMessagesTest.testMessageWithParameters_20009 -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] Running gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest
+build	24-Apr-2026 12:44:31	[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.063 s -- in gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWith_GSAOID_PrefixButNoOrderItemId -- Time elapsed: 0.046 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWith_GSAOID_PrefixWithColonSeparatorButNoContractorOrderItemId -- Time elapsed: 0.004 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWith_GSAOID_PrefixAndInvalidCentralOrderIdAndInvalidOrderItemId -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWithNo_GSAOID_Prefix -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testIsAsrn2ValuesValid -- Time elapsed: 0.004 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWithNull_ASRN2 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWith_GSAOID_PrefixAndValidCentralOrderIdAndOrderItemId -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWith_GSAOID_PrefixAndValidCentralOrderIdAndInvalidOrderItemId -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWith_GSAOID_PrefixWithColonSeparatorButNoOrderItemId -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWith_GSAOID_PrefixAndValidCentralOrderIdAndOrderItemIdWithDifferentCase -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWith_GSAOID_PrefixButNoCentralOrderIdOrOrderItemId -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.AgencyServiceRequestNumberUtilsTest.testGetCentralOrderIdWith_GSAOID_PrefixAndInvalidCentralOrderIdAndValidOrderItemId -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] Running gov.usda.gsa.nsfs.ws.utils.DataTransactionSequenceNumberGeneratorTest
+build	24-Apr-2026 12:44:31	[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.116 s -- in gov.usda.gsa.nsfs.ws.utils.DataTransactionSequenceNumberGeneratorTest
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.DataTransactionSequenceNumberGeneratorTest.ensureDataTransactionSequenceNumberIsUniqueForMultiThreads -- Time elapsed: 0.107 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.utils.DataTransactionSequenceNumberGeneratorTest.ensureDataTransactionSequenceNumberIsUnique -- Time elapsed: 0.007 s
+build	24-Apr-2026 12:44:31	[INFO] Running gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateAdapterTest
+build	24-Apr-2026 12:44:31	[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.048 s -- in gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateAdapterTest
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateAdapterTest.testMarshalWithNullValue -- Time elapsed: 0.009 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateAdapterTest.testUnmarshalWithNoTimeZone -- Time elapsed: 0.025 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateAdapterTest.testUnmarshalWithNullValue -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateAdapterTest.testUnmarshalWithTimeZoneOffset -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateAdapterTest.testUnmarshalWithNillValue -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateAdapterTest.testMarshalWithValidLocalDate -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateAdapterTest.testUnmarshalWithTimeZone -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] Running gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest
+build	24-Apr-2026 12:44:31	[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testMarshalWithNullValue -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testUnmarshalWithDateTimeHourAt23 -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testUnmarshalWithNoTimeZone -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testUnmarshalWithValidDateTimeValue -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testUnmarshalWithNullValue -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testUnmarshalWithTimeZoneOffset -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testUnmarshalWithNillValue -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testUnmarshalWithDateTimeHourAtZero -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testUnmarshalWithMiliseconds -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalDateTimeAdapterTest.testMarshalWithValidLocalDateTime -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] Running gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest
+build	24-Apr-2026 12:44:31	[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testMarshalWithNullValue -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testUnmarshalWithTimeHourAt23 -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testUnmarshalWithNullValue -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testUnmarshalWithTimeZoneOffset -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testUnmarshalWithNillValue -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testMarshalAndUnmarshal -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testUnmarshalWithMiliseconds -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testUnmarshalWithTimeHourAtZero -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testUnmarshalWithValidTimeValue -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testMarshalWithValidLocalTime -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] gov.usda.gsa.nsfs.ws.xml.adapter.LocalTimeAdapterTest.testUnmarshalWithoutTimeZone -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:31	[INFO] 
+build	24-Apr-2026 12:44:31	[INFO] Results:
+build	24-Apr-2026 12:44:31	[INFO] 
+build	24-Apr-2026 12:44:31	[INFO] Tests run: 66, Failures: 0, Errors: 0, Skipped: 0
+build	24-Apr-2026 12:44:31	[INFO] 
+build	24-Apr-2026 12:44:31	[INFO] 
+build	24-Apr-2026 12:44:31	[INFO] --- jar:3.4.1:jar (default-jar) @ ws-client-common ---
+build	24-Apr-2026 12:44:31	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/target/ws-client-common-02.00.000.146-SNAPSHOT.jar
+build	24-Apr-2026 12:44:31	[INFO] 
+build	24-Apr-2026 12:44:31	[INFO] --- jar:3.4.1:test-jar (default) @ ws-client-common ---
+build	24-Apr-2026 12:44:31	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/target/ws-client-common-02.00.000.146-SNAPSHOT-tests.jar
+build	24-Apr-2026 12:44:31	[INFO] 
+build	24-Apr-2026 12:44:31	[INFO] ----------< gov.gsa.cnxs.ws-client:ws-client-order-services >-----------
+build	24-Apr-2026 12:44:31	[INFO] Building Conexus - Order Services Client 02.00.000.146-SNAPSHOT    [3/4]
+build	24-Apr-2026 12:44:31	[INFO]   from order-services/pom.xml
+build	24-Apr-2026 12:44:31	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 12:44:31	[INFO] 
+build	24-Apr-2026 12:44:31	[INFO] --- clean:3.2.0:clean (default-clean) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:31	[INFO] 
+build	24-Apr-2026 12:44:31	[INFO] --- resources:3.3.1:resources (default-resources) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:31	[INFO] Copying 10 resources from src/main/resources to target/classes
+build	24-Apr-2026 12:44:31	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 12:44:31	[INFO] 
+build	24-Apr-2026 12:44:31	[INFO] --- compiler:3.13.0:compile (default-compile) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:31	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 12:44:31	[INFO] Compiling 52 source files with javac [debug deprecation target 17] to target/classes
+build	24-Apr-2026 12:44:32	[INFO] 
+build	24-Apr-2026 12:44:32	[INFO] --- resources:3.3.1:testResources (default-testResources) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:32	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/src/test/resources
+build	24-Apr-2026 12:44:32	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/src/test/resources
+build	24-Apr-2026 12:44:32	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 12:44:32	[INFO] 
+build	24-Apr-2026 12:44:32	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:32	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 12:44:32	[INFO] Compiling 28 source files with javac [debug deprecation target 17] to target/test-classes
+build	24-Apr-2026 12:44:32	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/src/test/java/gov/usda/gsa/nsfs/ws/orderservices/RequestTestBase.java: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/src/test/java/gov/usda/gsa/nsfs/ws/orderservices/RequestTestBase.java uses unchecked or unsafe operations.
+build	24-Apr-2026 12:44:32	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/src/test/java/gov/usda/gsa/nsfs/ws/orderservices/RequestTestBase.java: Recompile with -Xlint:unchecked for details.
+build	24-Apr-2026 12:44:32	[INFO] 
+build	24-Apr-2026 12:44:32	[INFO] --- surefire:3.5.2:test (default-test) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:32	[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+build	24-Apr-2026 12:44:32	[WARNING] System property [java.io.tmpdir] overwritten by user properties from Maven session
+build	24-Apr-2026 12:44:32	[INFO] 
+build	24-Apr-2026 12:44:32	[INFO] -------------------------------------------------------
+build	24-Apr-2026 12:44:32	[INFO]  T E S T S
+build	24-Apr-2026 12:44:32	[INFO] -------------------------------------------------------
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.common.ConexusResponseStatusTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.046 s -- in gov.usda.gsa.nsfs.ws.orderservices.common.ConexusResponseStatusTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.common.ConexusResponseStatusTest.testGetConexusResponseStatusForSucCess -- Time elapsed: 0.016 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.common.ConexusResponseStatusTest.testGetConexusResponseStatusForSuccess -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.common.ConexusResponseStatusTest.testGetConexusResponseStatusForERROR -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.common.ConexusResponseStatusTest.testGetConexusResponseStatusForError -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.common.ConexusResponseStatusTest.testGetStatusStringForError -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.common.ConexusResponseStatusTest.testGetStatusStringForSuccess -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.common.ConexusResponseStatusTest.testGetConexusResponseStatusForSUCCESS -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.focn.FOCNConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.160 s -- in gov.usda.gsa.nsfs.ws.orderservices.focn.FOCNConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.focn.FOCNConexusResponseTest.testConexusResponseSuccessToString -- Time elapsed: 0.134 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.focn.FOCNConexusResponseTest.testMarshalUnmarshalOfConexusResponse -- Time elapsed: 0.024 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.focn.FOCNConexusResponseTest.testConexusResponseErrorToString -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.focn.FOCNRequestTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.040 s -- in gov.usda.gsa.nsfs.ws.orderservices.focn.FOCNRequestTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.focn.FOCNRequestTest.testMarshalUnmarshalOfRequest -- Time elapsed: 0.037 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.focn.FOCNRequestTest.testRequestToStringWithCompleteDetails -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.so.SOConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in gov.usda.gsa.nsfs.ws.orderservices.so.SOConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.so.SOConexusResponseTest.testConexusResponseSuccessToString -- Time elapsed: 0.004 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.so.SOConexusResponseTest.testMarshalUnmarshalOfConexusResponse -- Time elapsed: 0.005 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.so.SOConexusResponseTest.testConexusResponseErrorToString -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.so.SORequestTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.048 s -- in gov.usda.gsa.nsfs.ws.orderservices.so.SORequestTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.so.SORequestTest.testMarshalUnmarshalOfRequest -- Time elapsed: 0.042 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.so.SORequestTest.testRequestToStringWithCompleteDetails -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.so.SORequestTest.testSORequestToStringWithMinimalDetails -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.soa.SOAConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in gov.usda.gsa.nsfs.ws.orderservices.soa.SOAConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soa.SOAConexusResponseTest.testConexusResponseSuccessToString -- Time elapsed: 0.003 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soa.SOAConexusResponseTest.testMarshalUnmarshalOfConexusResponse -- Time elapsed: 0.004 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soa.SOAConexusResponseTest.testConexusResponseErrorToString -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.soa.SOARequestTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.013 s -- in gov.usda.gsa.nsfs.ws.orderservices.soa.SOARequestTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soa.SOARequestTest.testMarshalUnmarshalOfRequest -- Time elapsed: 0.010 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soa.SOARequestTest.testRequestToStringWithCompleteDetails -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.soac.SOACConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in gov.usda.gsa.nsfs.ws.orderservices.soac.SOACConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soac.SOACConexusResponseTest.testConexusResponseSuccessToString -- Time elapsed: 0.003 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soac.SOACConexusResponseTest.testMarshalUnmarshalOfConexusResponse -- Time elapsed: 0.005 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soac.SOACConexusResponseTest.testConexusResponseErrorToString -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.soac.SOACRequestTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.013 s -- in gov.usda.gsa.nsfs.ws.orderservices.soac.SOACRequestTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soac.SOACRequestTest.testMarshalUnmarshalOfRequest -- Time elapsed: 0.010 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soac.SOACRequestTest.testRequestToStringWithCompleteDetails -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.soc.SOCConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in gov.usda.gsa.nsfs.ws.orderservices.soc.SOCConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soc.SOCConexusResponseTest.testConexusResponseSuccessToString -- Time elapsed: 0.004 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soc.SOCConexusResponseTest.testMarshalUnmarshalOfConexusResponse -- Time elapsed: 0.004 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soc.SOCConexusResponseTest.testConexusResponseErrorToString -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.soc.SOCRequestTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.021 s -- in gov.usda.gsa.nsfs.ws.orderservices.soc.SOCRequestTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soc.SOCRequestTest.testMarshalUnmarshalOfRequest -- Time elapsed: 0.012 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soc.SOCRequestTest.testRequestToStringWithCompleteDetails -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soc.SOCRequestTest.testMarshalUnmarshalOfSOCRequest -- Time elapsed: 0.005 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.soc.SOCRequestTest.testSOCRequestToStringWithCompleteDetails -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNConexusResponseTest.testConexusResponseSuccessToString -- Time elapsed: 0.003 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNConexusResponseTest.testMarshalUnmarshalOfConexusResponse -- Time elapsed: 0.003 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNConexusResponseTest.testConexusResponseErrorToString -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNRequestTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.045 s -- in gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNRequestTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNRequestTest.testMarshalUnmarshalOfRequest -- Time elapsed: 0.021 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNRequestTest.testRequestToStringWithCompleteDetails -- Time elapsed: 0.003 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNRequestTest.testMarshalUnmarshalOfSOCNRequestWithRfpWsdl -- Time elapsed: 0.013 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNRequestTest.testSOCNRequestToStringWithMinimalDetailsAndunformatted -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNRequestTest.testSOCNRequestHeaderToStringWithMinimalDetails -- Time elapsed: 0.004 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.socn.SOCNRequestTest.testSOCNRequestToStringWithMinimalDetails -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.sorn.SORNConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in gov.usda.gsa.nsfs.ws.orderservices.sorn.SORNConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sorn.SORNConexusResponseTest.testConexusResponseSuccessToString -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sorn.SORNConexusResponseTest.testMarshalUnmarshalOfConexusResponse -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sorn.SORNConexusResponseTest.testConexusResponseErrorToString -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.sorn.SORNRequestTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in gov.usda.gsa.nsfs.ws.orderservices.sorn.SORNRequestTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sorn.SORNRequestTest.testMarshalUnmarshalOfRequest -- Time elapsed: 0.008 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sorn.SORNRequestTest.testRequestToStringWithCompleteDetails -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.sscn.SSCNConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in gov.usda.gsa.nsfs.ws.orderservices.sscn.SSCNConexusResponseTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sscn.SSCNConexusResponseTest.testConexusResponseSuccessToString -- Time elapsed: 0.002 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sscn.SSCNConexusResponseTest.testMarshalUnmarshalOfConexusResponse -- Time elapsed: 0.003 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sscn.SSCNConexusResponseTest.testConexusResponseErrorToString -- Time elapsed: 0 s
+build	24-Apr-2026 12:44:33	[INFO] Running gov.usda.gsa.nsfs.ws.orderservices.sscn.SSCNRequestTest
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in gov.usda.gsa.nsfs.ws.orderservices.sscn.SSCNRequestTest
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sscn.SSCNRequestTest.testMarshalUnmarshalOfRequest -- Time elapsed: 0.008 s
+build	24-Apr-2026 12:44:33	[INFO] gov.usda.gsa.nsfs.ws.orderservices.sscn.SSCNRequestTest.testRequestToStringWithCompleteDetails -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] Results:
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] Tests run: 54, Failures: 0, Errors: 0, Skipped: 0
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] --- jar:3.4.1:jar (default-jar) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:33	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/target/ws-client-order-services-02.00.000.146-SNAPSHOT.jar
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] --- jar:3.4.1:test-jar (default) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:33	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/target/ws-client-order-services-02.00.000.146-SNAPSHOT-tests.jar
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] ---------------< gov.gsa.cnxs.ws-client:ws-health-check >---------------
+build	24-Apr-2026 12:44:33	[INFO] Building Conexus - Web Services Health Check Client 02.00.000.146-SNAPSHOT [4/4]
+build	24-Apr-2026 12:44:33	[INFO]   from health-check/pom.xml
+build	24-Apr-2026 12:44:33	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] --- clean:3.2.0:clean (default-clean) @ ws-health-check ---
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] --- resources:3.3.1:resources (default-resources) @ ws-health-check ---
+build	24-Apr-2026 12:44:33	[INFO] Copying 1 resource from src/main/resources to target/classes
+build	24-Apr-2026 12:44:33	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] --- compiler:3.13.0:compile (default-compile) @ ws-health-check ---
+build	24-Apr-2026 12:44:33	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 12:44:33	[INFO] Compiling 8 source files with javac [debug deprecation target 17] to target/classes
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] --- resources:3.3.1:testResources (default-testResources) @ ws-health-check ---
+build	24-Apr-2026 12:44:33	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/health-check/src/test/resources
+build	24-Apr-2026 12:44:33	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/health-check/src/test/resources
+build	24-Apr-2026 12:44:33	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ ws-health-check ---
+build	24-Apr-2026 12:44:33	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 12:44:33	[INFO] Compiling 4 source files with javac [debug deprecation target 17] to target/test-classes
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] --- surefire:3.5.2:test (default-test) @ ws-health-check ---
+build	24-Apr-2026 12:44:33	[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+build	24-Apr-2026 12:44:33	[WARNING] System property [java.io.tmpdir] overwritten by user properties from Maven session
+build	24-Apr-2026 12:44:33	[INFO] 
+build	24-Apr-2026 12:44:33	[INFO] -------------------------------------------------------
+build	24-Apr-2026 12:44:33	[INFO]  T E S T S
+build	24-Apr-2026 12:44:33	[INFO] -------------------------------------------------------
+build	24-Apr-2026 12:44:34	[INFO] Running gov.usda.gsa.nsfs.ws.healthcheck.HealthCheckRequestTest
+build	24-Apr-2026 12:44:34	[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.154 s -- in gov.usda.gsa.nsfs.ws.healthcheck.HealthCheckRequestTest
+build	24-Apr-2026 12:44:34	[INFO] gov.usda.gsa.nsfs.ws.healthcheck.HealthCheckRequestTest.testToString -- Time elapsed: 0.137 s
+build	24-Apr-2026 12:44:34	[INFO] Running gov.usda.gsa.nsfs.ws.healthcheck.HealthCheckResponseTest
+build	24-Apr-2026 12:44:34	[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.030 s -- in gov.usda.gsa.nsfs.ws.healthcheck.HealthCheckResponseTest
+build	24-Apr-2026 12:44:34	[INFO] gov.usda.gsa.nsfs.ws.healthcheck.HealthCheckResponseTest.testToString -- Time elapsed: 0.030 s
+build	24-Apr-2026 12:44:34	[INFO] Running gov.usda.gsa.nsfs.ws.healthcheck.StatusCodeTest
+build	24-Apr-2026 12:44:34	[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in gov.usda.gsa.nsfs.ws.healthcheck.StatusCodeTest
+build	24-Apr-2026 12:44:34	[INFO] gov.usda.gsa.nsfs.ws.healthcheck.StatusCodeTest.testStatusCodeValueOrder -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:34	[INFO] gov.usda.gsa.nsfs.ws.healthcheck.StatusCodeTest.testStatusCodeValueSet -- Time elapsed: 0.001 s
+build	24-Apr-2026 12:44:34	[INFO] 
+build	24-Apr-2026 12:44:34	[INFO] Results:
+build	24-Apr-2026 12:44:34	[INFO] 
+build	24-Apr-2026 12:44:34	[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+build	24-Apr-2026 12:44:34	[INFO] 
+build	24-Apr-2026 12:44:34	[INFO] 
+build	24-Apr-2026 12:44:34	[INFO] --- jar:3.4.1:jar (default-jar) @ ws-health-check ---
+build	24-Apr-2026 12:44:34	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/health-check/target/ws-health-check-02.00.000.146-SNAPSHOT.jar
+build	24-Apr-2026 12:44:34	[INFO] 
+build	24-Apr-2026 12:44:34	[INFO] --- jar:3.4.1:test-jar (default) @ ws-health-check ---
+build	24-Apr-2026 12:44:34	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/health-check/target/ws-health-check-02.00.000.146-SNAPSHOT-tests.jar
+build	24-Apr-2026 12:44:34	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 12:44:34	[INFO] Reactor Summary for Conexus Web Services Client 02.00.000.146-SNAPSHOT:
+build	24-Apr-2026 12:44:34	[INFO] 
+build	24-Apr-2026 12:44:34	[INFO] Conexus Web Services Client ........................ SUCCESS [  0.097 s]
+build	24-Apr-2026 12:44:34	[INFO] ws-client-common ................................... SUCCESS [  3.275 s]
+build	24-Apr-2026 12:44:34	[INFO] Conexus - Order Services Client .................... SUCCESS [  2.060 s]
+build	24-Apr-2026 12:44:34	[INFO] Conexus - Web Services Health Check Client ......... SUCCESS [  1.108 s]
+build	24-Apr-2026 12:44:34	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 12:44:34	[INFO] BUILD SUCCESS
+build	24-Apr-2026 12:44:34	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 12:44:34	[INFO] Total time:  7.109 s
+build	24-Apr-2026 12:44:34	[INFO] Finished at: 2026-04-24T12:44:34-05:00
+build	24-Apr-2026 12:44:34	[INFO] ------------------------------------------------------------------------
+simple	24-Apr-2026 12:44:34	Parsing test results under /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1...
+simple	24-Apr-2026 12:44:34	Finished task 'WS-Client Build and Verify' with result: Success
+simple	24-Apr-2026 12:44:34	Starting task 'Deploy to Artifactory if needed' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 12:44:34	Beginning to execute external process for build 'Build and Test - WS-Client - Build - Default Job #152 (BT-WSCLIEN-JOB1-152)'\n ... running command line: \nbamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1\n
+build	24-Apr-2026 12:44:34	Not a long lived branch
+build	24-Apr-2026 12:44:34	This is a development branch. Deploying to Artifactory
+build	24-Apr-2026 12:44:35	[INFO] Scanning for projects...
+build	24-Apr-2026 12:44:35	Downloading from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:35	Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:36	Progress (1): 614 B
+build	24-Apr-2026 12:44:36	Progress (2): 614 B | 614 B
+build	24-Apr-2026 12:44:36	                           
+build	24-Apr-2026 12:44:36	Downloaded from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml (614 B at 3.4 kB/s)
+build	24-Apr-2026 12:44:36	Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml (614 B at 3.4 kB/s)
+build	24-Apr-2026 12:44:36	Downloading from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:36	Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:36	Progress (1): 619 B
+build	24-Apr-2026 12:44:36	Progress (2): 619 B | 619 B
+build	24-Apr-2026 12:44:36	                           
+build	24-Apr-2026 12:44:36	Downloaded from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/maven-metadata.xml (619 B at 62 kB/s)
+build	24-Apr-2026 12:44:36	Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/bom/env-base/02.00.000.167-SNAPSHOT/maven-metadata.xml (619 B at 62 kB/s)
+build	24-Apr-2026 12:44:36	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 12:44:36	[INFO] Reactor Build Order:
+build	24-Apr-2026 12:44:36	[INFO] 
+build	24-Apr-2026 12:44:36	[INFO] Conexus Web Services Client                                        [pom]
+build	24-Apr-2026 12:44:36	[INFO] ws-client-common                                                   [jar]
+build	24-Apr-2026 12:44:36	[INFO] Conexus - Order Services Client                                    [jar]
+build	24-Apr-2026 12:44:36	[INFO] Conexus - Web Services Health Check Client                         [jar]
+build	24-Apr-2026 12:44:36	[INFO] 
+build	24-Apr-2026 12:44:36	[INFO] ------------< gov.gsa.cnxs.ws-client:ws-client-aggregator >-------------
+build	24-Apr-2026 12:44:36	[INFO] Building Conexus Web Services Client 02.00.000.146-SNAPSHOT        [1/4]
+build	24-Apr-2026 12:44:36	[INFO]   from pom.xml
+build	24-Apr-2026 12:44:36	[INFO] --------------------------------[ pom ]---------------------------------
+build	24-Apr-2026 12:44:36	[INFO] 
+build	24-Apr-2026 12:44:36	[INFO] --- install:3.1.3:install (default-install) @ ws-client-aggregator ---
+build	24-Apr-2026 12:44:36	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/pom.xml to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.146-SNAPSHOT/ws-client-aggregator-02.00.000.146-SNAPSHOT.pom
+build	24-Apr-2026 12:44:36	[INFO] 
+build	24-Apr-2026 12:44:36	[INFO] --- deploy:3.1.3:deploy (default-deploy) @ ws-client-aggregator ---
+build	24-Apr-2026 12:44:36	[INFO] Using alternate deployment repository artifactory::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+build	24-Apr-2026 12:44:36	Downloading from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.146-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:36	Progress (1): 637 B
+build	24-Apr-2026 12:44:36	                   
+build	24-Apr-2026 12:44:36	Downloaded from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.146-SNAPSHOT/maven-metadata.xml (637 B at 64 kB/s)
+build	24-Apr-2026 12:44:36	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.146-SNAPSHOT/ws-client-aggregator-02.00.000.146-20260424.174435-27.pom
+build	24-Apr-2026 12:44:36	Progress (1): 3.8 kB
+build	24-Apr-2026 12:44:36	                    
+build	24-Apr-2026 12:44:36	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.146-SNAPSHOT/ws-client-aggregator-02.00.000.146-20260424.174435-27.pom (3.8 kB at 14 kB/s)
+build	24-Apr-2026 12:44:36	Downloading from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/maven-metadata.xml
+build	24-Apr-2026 12:44:36	Progress (1): 1.2 kB
+build	24-Apr-2026 12:44:36	                    
+build	24-Apr-2026 12:44:36	Downloaded from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/maven-metadata.xml (1.2 kB at 133 kB/s)
+build	24-Apr-2026 12:44:36	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.146-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:36	Progress (1): 637 B
+build	24-Apr-2026 12:44:36	                   
+build	24-Apr-2026 12:44:36	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.146-SNAPSHOT/maven-metadata.xml (637 B at 3.7 kB/s)
+build	24-Apr-2026 12:44:36	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/maven-metadata.xml
+build	24-Apr-2026 12:44:36	Progress (1): 1.2 kB
+build	24-Apr-2026 12:44:37	                    
+build	24-Apr-2026 12:44:37	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/maven-metadata.xml (1.2 kB at 8.2 kB/s)
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --------------< gov.gsa.cnxs.ws-client:ws-client-common >---------------
+build	24-Apr-2026 12:44:37	[INFO] Building ws-client-common 02.00.000.146-SNAPSHOT                   [2/4]
+build	24-Apr-2026 12:44:37	[INFO]   from common/pom.xml
+build	24-Apr-2026 12:44:37	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 12:44:37	Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/common/common-utils/02.00.000.161-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:37	Downloading from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/common/common-utils/02.00.000.161-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:37	Progress (1): 1.0 kB
+build	24-Apr-2026 12:44:37	Progress (2): 1.0 kB | 1.0 kB
+build	24-Apr-2026 12:44:37	                             
+build	24-Apr-2026 12:44:37	Downloaded from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/common/common-utils/02.00.000.161-SNAPSHOT/maven-metadata.xml (1.0 kB at 103 kB/s)
+build	24-Apr-2026 12:44:37	Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/common/common-utils/02.00.000.161-SNAPSHOT/maven-metadata.xml (1.0 kB at 103 kB/s)
+build	24-Apr-2026 12:44:37	Downloading from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/common/common-aggregator/02.00.000.161-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:37	Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/common/common-aggregator/02.00.000.161-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:37	Progress (1): 631 B
+build	24-Apr-2026 12:44:37	                   
+build	24-Apr-2026 12:44:37	Downloaded from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/common/common-aggregator/02.00.000.161-SNAPSHOT/maven-metadata.xml (631 B at 79 kB/s)
+build	24-Apr-2026 12:44:37	Progress (1): 631 B
+build	24-Apr-2026 12:44:37	                   
+build	24-Apr-2026 12:44:37	Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/common/common-aggregator/02.00.000.161-SNAPSHOT/maven-metadata.xml (631 B at 70 kB/s)
+build	24-Apr-2026 12:44:37	Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/common/common-base/02.00.000.161-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:37	Downloading from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/common/common-base/02.00.000.161-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:37	Progress (1): 1.0 kB
+build	24-Apr-2026 12:44:37	                    
+build	24-Apr-2026 12:44:37	Downloaded from conexus-snapshot-local: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/common/common-base/02.00.000.161-SNAPSHOT/maven-metadata.xml (1.0 kB at 103 kB/s)
+build	24-Apr-2026 12:44:37	Progress (1): 1.0 kB
+build	24-Apr-2026 12:44:37	                    
+build	24-Apr-2026 12:44:37	Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/gov/gsa/cnxs/common/common-base/02.00.000.161-SNAPSHOT/maven-metadata.xml (1.0 kB at 103 kB/s)
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --- resources:3.3.1:resources (default-resources) @ ws-client-common ---
+build	24-Apr-2026 12:44:37	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/src/main/resources
+build	24-Apr-2026 12:44:37	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --- compiler:3.13.0:compile (default-compile) @ ws-client-common ---
+build	24-Apr-2026 12:44:37	[INFO] Nothing to compile - all classes are up to date.
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --- resources:3.3.1:testResources (default-testResources) @ ws-client-common ---
+build	24-Apr-2026 12:44:37	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/src/test/resources
+build	24-Apr-2026 12:44:37	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/src/test/resources
+build	24-Apr-2026 12:44:37	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ ws-client-common ---
+build	24-Apr-2026 12:44:37	[INFO] Nothing to compile - all classes are up to date.
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --- surefire:3.5.2:test (default-test) @ ws-client-common ---
+build	24-Apr-2026 12:44:37	[INFO] Tests are skipped.
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --- jar:3.4.1:jar (default-jar) @ ws-client-common ---
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --- jar:3.4.1:test-jar (default) @ ws-client-common ---
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --- install:3.1.3:install (default-install) @ ws-client-common ---
+build	24-Apr-2026 12:44:37	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/pom.xml to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/ws-client-common-02.00.000.146-SNAPSHOT.pom
+build	24-Apr-2026 12:44:37	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/target/ws-client-common-02.00.000.146-SNAPSHOT.jar to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/ws-client-common-02.00.000.146-SNAPSHOT.jar
+build	24-Apr-2026 12:44:37	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/common/target/ws-client-common-02.00.000.146-SNAPSHOT-tests.jar to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/ws-client-common-02.00.000.146-SNAPSHOT-tests.jar
+build	24-Apr-2026 12:44:37	[INFO] 
+build	24-Apr-2026 12:44:37	[INFO] --- deploy:3.1.3:deploy (default-deploy) @ ws-client-common ---
+build	24-Apr-2026 12:44:37	[INFO] Using alternate deployment repository artifactory::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+build	24-Apr-2026 12:44:37	Downloading from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:37	Progress (1): 1.0 kB
+build	24-Apr-2026 12:44:37	                    
+build	24-Apr-2026 12:44:37	Downloaded from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/maven-metadata.xml (1.0 kB at 130 kB/s)
+build	24-Apr-2026 12:44:37	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/ws-client-common-02.00.000.146-20260424.174435-27.pom
+build	24-Apr-2026 12:44:37	Progress (1): 706 B
+build	24-Apr-2026 12:44:38	                   
+build	24-Apr-2026 12:44:38	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/ws-client-common-02.00.000.146-20260424.174435-27.pom (706 B at 4.6 kB/s)
+build	24-Apr-2026 12:44:38	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/ws-client-common-02.00.000.146-20260424.174435-27.jar
+build	24-Apr-2026 12:44:38	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/ws-client-common-02.00.000.146-20260424.174435-27-tests.jar
+build	24-Apr-2026 12:44:38	Progress (1): 18 kB
+build	24-Apr-2026 12:44:38	Progress (2): 18 kB | 21 kB
+build	24-Apr-2026 12:44:38	                           
+build	24-Apr-2026 12:44:38	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/ws-client-common-02.00.000.146-20260424.174435-27-tests.jar (18 kB at 109 kB/s)
+build	24-Apr-2026 12:44:38	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/ws-client-common-02.00.000.146-20260424.174435-27.jar (21 kB at 106 kB/s)
+build	24-Apr-2026 12:44:38	Downloading from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/maven-metadata.xml
+build	24-Apr-2026 12:44:38	Progress (1): 1.2 kB
+build	24-Apr-2026 12:44:38	                    
+build	24-Apr-2026 12:44:38	Downloaded from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/maven-metadata.xml (1.2 kB at 170 kB/s)
+build	24-Apr-2026 12:44:38	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:38	Progress (1): 1.0 kB
+build	24-Apr-2026 12:44:38	                    
+build	24-Apr-2026 12:44:38	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.146-SNAPSHOT/maven-metadata.xml (1.0 kB at 7.0 kB/s)
+build	24-Apr-2026 12:44:38	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/maven-metadata.xml
+build	24-Apr-2026 12:44:38	Progress (1): 1.2 kB
+build	24-Apr-2026 12:44:38	                    
+build	24-Apr-2026 12:44:38	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-common/maven-metadata.xml (1.2 kB at 7.0 kB/s)
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] ----------< gov.gsa.cnxs.ws-client:ws-client-order-services >-----------
+build	24-Apr-2026 12:44:38	[INFO] Building Conexus - Order Services Client 02.00.000.146-SNAPSHOT    [3/4]
+build	24-Apr-2026 12:44:38	[INFO]   from order-services/pom.xml
+build	24-Apr-2026 12:44:38	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] --- resources:3.3.1:resources (default-resources) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:38	[INFO] Copying 10 resources from src/main/resources to target/classes
+build	24-Apr-2026 12:44:38	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] --- compiler:3.13.0:compile (default-compile) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:38	[INFO] Nothing to compile - all classes are up to date.
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] --- resources:3.3.1:testResources (default-testResources) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:38	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/src/test/resources
+build	24-Apr-2026 12:44:38	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/src/test/resources
+build	24-Apr-2026 12:44:38	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:38	[INFO] Nothing to compile - all classes are up to date.
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] --- surefire:3.5.2:test (default-test) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:38	[INFO] Tests are skipped.
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] --- jar:3.4.1:jar (default-jar) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] --- jar:3.4.1:test-jar (default) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] --- install:3.1.3:install (default-install) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:38	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/pom.xml to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/ws-client-order-services-02.00.000.146-SNAPSHOT.pom
+build	24-Apr-2026 12:44:38	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/target/ws-client-order-services-02.00.000.146-SNAPSHOT.jar to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/ws-client-order-services-02.00.000.146-SNAPSHOT.jar
+build	24-Apr-2026 12:44:38	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/order-services/target/ws-client-order-services-02.00.000.146-SNAPSHOT-tests.jar to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/ws-client-order-services-02.00.000.146-SNAPSHOT-tests.jar
+build	24-Apr-2026 12:44:38	[INFO] 
+build	24-Apr-2026 12:44:38	[INFO] --- deploy:3.1.3:deploy (default-deploy) @ ws-client-order-services ---
+build	24-Apr-2026 12:44:38	[INFO] Using alternate deployment repository artifactory::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+build	24-Apr-2026 12:44:38	Downloading from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:38	Progress (1): 1.0 kB
+build	24-Apr-2026 12:44:38	                    
+build	24-Apr-2026 12:44:38	Downloaded from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/maven-metadata.xml (1.0 kB at 130 kB/s)
+build	24-Apr-2026 12:44:38	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/ws-client-order-services-02.00.000.146-20260424.174435-27.pom
+build	24-Apr-2026 12:44:38	Progress (1): 816 B
+build	24-Apr-2026 12:44:39	                   
+build	24-Apr-2026 12:44:39	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/ws-client-order-services-02.00.000.146-20260424.174435-27.pom (816 B at 5.5 kB/s)
+build	24-Apr-2026 12:44:39	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/ws-client-order-services-02.00.000.146-20260424.174435-27.jar
+build	24-Apr-2026 12:44:39	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/ws-client-order-services-02.00.000.146-20260424.174435-27-tests.jar
+build	24-Apr-2026 12:44:39	Progress (1): 33/52 kB
+build	24-Apr-2026 12:44:39	Progress (2): 33/52 kB | 33/113 kB
+build	24-Apr-2026 12:44:39	Progress (2): 52 kB | 33/113 kB   
+build	24-Apr-2026 12:44:39	Progress (2): 52 kB | 66/113 kB
+build	24-Apr-2026 12:44:39	Progress (2): 52 kB | 98/113 kB
+build	24-Apr-2026 12:44:39	Progress (2): 52 kB | 113 kB   
+build	24-Apr-2026 12:44:39	                            
+build	24-Apr-2026 12:44:39	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/ws-client-order-services-02.00.000.146-20260424.174435-27-tests.jar (52 kB at 336 kB/s)
+build	24-Apr-2026 12:44:39	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/ws-client-order-services-02.00.000.146-20260424.174435-27.jar (113 kB at 539 kB/s)
+build	24-Apr-2026 12:44:39	Downloading from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/maven-metadata.xml
+build	24-Apr-2026 12:44:39	Progress (1): 1.2 kB
+build	24-Apr-2026 12:44:39	                    
+build	24-Apr-2026 12:44:39	Downloaded from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/maven-metadata.xml (1.2 kB at 193 kB/s)
+build	24-Apr-2026 12:44:39	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:39	Progress (1): 1.0 kB
+build	24-Apr-2026 12:44:39	                    
+build	24-Apr-2026 12:44:39	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.146-SNAPSHOT/maven-metadata.xml (1.0 kB at 7.4 kB/s)
+build	24-Apr-2026 12:44:39	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/maven-metadata.xml
+build	24-Apr-2026 12:44:39	Progress (1): 1.2 kB
+build	24-Apr-2026 12:44:39	                    
+build	24-Apr-2026 12:44:39	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-client-order-services/maven-metadata.xml (1.2 kB at 6.3 kB/s)
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] ---------------< gov.gsa.cnxs.ws-client:ws-health-check >---------------
+build	24-Apr-2026 12:44:39	[INFO] Building Conexus - Web Services Health Check Client 02.00.000.146-SNAPSHOT [4/4]
+build	24-Apr-2026 12:44:39	[INFO]   from health-check/pom.xml
+build	24-Apr-2026 12:44:39	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] --- resources:3.3.1:resources (default-resources) @ ws-health-check ---
+build	24-Apr-2026 12:44:39	[INFO] Copying 1 resource from src/main/resources to target/classes
+build	24-Apr-2026 12:44:39	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] --- compiler:3.13.0:compile (default-compile) @ ws-health-check ---
+build	24-Apr-2026 12:44:39	[INFO] Nothing to compile - all classes are up to date.
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] --- resources:3.3.1:testResources (default-testResources) @ ws-health-check ---
+build	24-Apr-2026 12:44:39	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/health-check/src/test/resources
+build	24-Apr-2026 12:44:39	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/health-check/src/test/resources
+build	24-Apr-2026 12:44:39	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ ws-health-check ---
+build	24-Apr-2026 12:44:39	[INFO] Nothing to compile - all classes are up to date.
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] --- surefire:3.5.2:test (default-test) @ ws-health-check ---
+build	24-Apr-2026 12:44:39	[INFO] Tests are skipped.
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] --- jar:3.4.1:jar (default-jar) @ ws-health-check ---
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] --- jar:3.4.1:test-jar (default) @ ws-health-check ---
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] --- install:3.1.3:install (default-install) @ ws-health-check ---
+build	24-Apr-2026 12:44:39	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/health-check/pom.xml to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/ws-health-check-02.00.000.146-SNAPSHOT.pom
+build	24-Apr-2026 12:44:39	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/health-check/target/ws-health-check-02.00.000.146-SNAPSHOT.jar to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/ws-health-check-02.00.000.146-SNAPSHOT.jar
+build	24-Apr-2026 12:44:39	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-WSCLIEN-JOB1/health-check/target/ws-health-check-02.00.000.146-SNAPSHOT-tests.jar to /root/.m2/repository/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/ws-health-check-02.00.000.146-SNAPSHOT-tests.jar
+build	24-Apr-2026 12:44:39	[INFO] 
+build	24-Apr-2026 12:44:39	[INFO] --- deploy:3.1.3:deploy (default-deploy) @ ws-health-check ---
+build	24-Apr-2026 12:44:39	[INFO] Using alternate deployment repository artifactory::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+build	24-Apr-2026 12:44:39	Downloading from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:39	Progress (1): 1.0 kB
+build	24-Apr-2026 12:44:39	                    
+build	24-Apr-2026 12:44:39	Downloaded from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/maven-metadata.xml (1.0 kB at 129 kB/s)
+build	24-Apr-2026 12:44:39	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/ws-health-check-02.00.000.146-20260424.174435-26.pom
+build	24-Apr-2026 12:44:39	Progress (1): 818 B
+build	24-Apr-2026 12:44:39	                   
+build	24-Apr-2026 12:44:39	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/ws-health-check-02.00.000.146-20260424.174435-26.pom (818 B at 4.4 kB/s)
+build	24-Apr-2026 12:44:39	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/ws-health-check-02.00.000.146-20260424.174435-26.jar
+build	24-Apr-2026 12:44:39	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/ws-health-check-02.00.000.146-20260424.174435-26-tests.jar
+build	24-Apr-2026 12:44:39	Progress (1): 6.5 kB
+build	24-Apr-2026 12:44:39	Progress (2): 6.5 kB | 11 kB
+build	24-Apr-2026 12:44:39	                            
+build	24-Apr-2026 12:44:39	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/ws-health-check-02.00.000.146-20260424.174435-26.jar (11 kB at 76 kB/s)
+build	24-Apr-2026 12:44:39	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/ws-health-check-02.00.000.146-20260424.174435-26-tests.jar (6.5 kB at 44 kB/s)
+build	24-Apr-2026 12:44:39	Downloading from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/maven-metadata.xml
+build	24-Apr-2026 12:44:39	Progress (1): 1.1 kB
+build	24-Apr-2026 12:44:39	                    
+build	24-Apr-2026 12:44:39	Downloaded from artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/maven-metadata.xml (1.1 kB at 164 kB/s)
+build	24-Apr-2026 12:44:39	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/maven-metadata.xml
+build	24-Apr-2026 12:44:39	Progress (1): 1.0 kB
+build	24-Apr-2026 12:44:40	                    
+build	24-Apr-2026 12:44:40	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.146-SNAPSHOT/maven-metadata.xml (1.0 kB at 6.5 kB/s)
+build	24-Apr-2026 12:44:40	Uploading to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/maven-metadata.xml
+build	24-Apr-2026 12:44:40	Progress (1): 1.1 kB
+build	24-Apr-2026 12:44:40	                    
+build	24-Apr-2026 12:44:40	Uploaded to artifactory: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ws-client/ws-health-check/maven-metadata.xml (1.1 kB at 7.3 kB/s)
+build	24-Apr-2026 12:44:40	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 12:44:40	[INFO] Reactor Summary for Conexus Web Services Client 02.00.000.146-SNAPSHOT:
+build	24-Apr-2026 12:44:40	[INFO] 
+build	24-Apr-2026 12:44:40	[INFO] Conexus Web Services Client ........................ SUCCESS [  0.764 s]
+build	24-Apr-2026 12:44:40	[INFO] ws-client-common ................................... SUCCESS [  1.632 s]
+build	24-Apr-2026 12:44:40	[INFO] Conexus - Order Services Client .................... SUCCESS [  0.910 s]
+build	24-Apr-2026 12:44:40	[INFO] Conexus - Web Services Health Check Client ......... SUCCESS [  0.737 s]
+build	24-Apr-2026 12:44:40	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 12:44:40	[INFO] BUILD SUCCESS
+build	24-Apr-2026 12:44:40	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 12:44:40	[INFO] Total time:  4.591 s
+build	24-Apr-2026 12:44:40	[INFO] Finished at: 2026-04-24T12:44:40-05:00
+build	24-Apr-2026 12:44:40	[INFO] ------------------------------------------------------------------------
+simple	24-Apr-2026 12:44:40	Finished task 'Deploy to Artifactory if needed' with result: Success
+simple	24-Apr-2026 12:44:40	Running post build plugin 'Docker Container Cleanup'
+simple	24-Apr-2026 12:44:40	Running post build plugin 'NCover Results Collector'
+simple	24-Apr-2026 12:44:40	Running post build plugin 'Build Results Label Collector'
+simple	24-Apr-2026 12:44:40	Running post build plugin 'Clover Results Collector'
+simple	24-Apr-2026 12:44:40	Running post build plugin 'npm Cache Cleanup'
+simple	24-Apr-2026 12:44:40	Running post build plugin 'Artifact Copier'
+simple	24-Apr-2026 12:44:40	Finalising the build...
+simple	24-Apr-2026 12:44:40	Stopping timer.
+simple	24-Apr-2026 12:44:40	Build BT-WSCLIEN-JOB1-152 completed.
+simple	24-Apr-2026 11:44:40	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	24-Apr-2026 11:44:40	Running on server: post build plugin 'NCover Results Collector'
+simple	24-Apr-2026 11:44:40	Running on server: post build plugin 'Build Labeller'
+simple	24-Apr-2026 11:44:40	Running on server: post build plugin 'Clover Delta Calculator'
+simple	24-Apr-2026 11:44:40	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	24-Apr-2026 11:44:40	All post build plugins have finished
+simple	24-Apr-2026 11:44:40	Generating build results summary...
+simple	24-Apr-2026 11:44:40	Saving build results to disk...
+simple	24-Apr-2026 11:44:40	Store variable context...
+simple	24-Apr-2026 11:44:40	Finished building BT-WSCLIEN-JOB1-152.
