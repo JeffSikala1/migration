@@ -1,103 +1,137 @@
----
-version: 2
-plan:
-  project-key: BT
-  key: UIPUBPACK
-  name: UI Public - Package
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
-  key: JOB1
-  other:
-    clean-working-dir: true
-    all-other-apps:
-      custom:
-        auto: {}
-        buildHangingConfig.enabled: 'false'
-  tasks:
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: bamboo-deployment
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: BINSH_OR_CMDEXE
-      scripts:
-      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
-      description: Remove existing cnxs maven repo directory
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/build-determination.sh
-      description: Determine parent branch and pass correct variables
-  - inject-variables:
-      file: file.properties
-      scope: LOCAL
-      namespace: inject
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: clean verify -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
-      description: Build
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: mavenVersion
-        variableScope: JOB
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
-      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
-      description: Deploy to Artifactory if needed
-  - inject-variables:
-      file: file.properties
-      scope: RESULT
-      namespace: inject
-  artifact-subscriptions: []
-variables:
-  buildVersionQueryArtifact: ui-public
-  buildVersionQueryGroup: gov.gsa.cnxs.ui-public
-repositories:
-- UI-Public:
-    scope: global
-- bamboo-deployment:
-    scope: global
-triggers:
-- bitbucket-server-trigger:
-    repositories:
-    - UI-Public
-branches:
-  create: for-new-branch
-  delete:
-    after-deleted-days: 7
-    after-inactive-days: 200
-  link-to-jira: true
-notifications:
-- events:
-  - plan-completed
-  recipients:
-  - watchers
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: []
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
+simple	21-Apr-2026 16:43:15	Build Build and Test - Env - Build - Default Job #55 (BT-ENV-JOB1-55) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-2 (2), bamboo version: 9.6.6
+simple	21-Apr-2026 16:43:15	Remote agent on host ip-10-56-112-35.ec2.internal-ba-2
+simple	21-Apr-2026 16:43:15	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1
+simple	21-Apr-2026 16:43:15	Executing build Build and Test - Env - Build - Default Job #55 (BT-ENV-JOB1-55)
+simple	21-Apr-2026 16:43:15	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	21-Apr-2026 16:43:15	Build always requires a clean checkout
+simple	21-Apr-2026 16:43:15	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'
+simple	21-Apr-2026 16:43:15	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1
+simple	21-Apr-2026 16:43:15	Updating source code to revision: 9b939b514c12fc533db7f71d1b71f1d241c0e93c
+simple	21-Apr-2026 16:43:16	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git'.
+simple	21-Apr-2026 16:43:16	Warning: Permanently added '[127.0.0.1]:40489' (RSA) to the list of known hosts.
+simple	21-Apr-2026 16:43:16	Checking out revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c.
+simple	21-Apr-2026 16:43:16	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1/.git'.
+simple	21-Apr-2026 16:43:16	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'...
+simple	21-Apr-2026 16:43:16	error: invalid key:  filter.lfs.smudge
+simple	21-Apr-2026 16:43:16	fatal: unable to write parameters to config file
+error	21-Apr-2026 16:43:16	Checkout to revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c has failed.
+simple	21-Apr-2026 16:43:16	fatal: not a git repository (or any parent up to mount point /cache/bamboo)
+simple	21-Apr-2026 16:43:16	Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+simple	21-Apr-2026 16:43:16	Warning: failed to checkout source code to directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1', trying to recover...
+simple	21-Apr-2026 16:43:16	Cleaned source directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'...
+simple	21-Apr-2026 16:43:16	Checking out revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c.
+simple	21-Apr-2026 16:43:16	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1/.git'.
+simple	21-Apr-2026 16:43:16	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'...
+simple	21-Apr-2026 16:43:16	error: invalid key:  filter.lfs.smudge
+simple	21-Apr-2026 16:43:16	fatal: unable to write parameters to config file
+error	21-Apr-2026 16:43:16	Checkout to revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c has failed.
+simple	21-Apr-2026 16:43:16	fatal: not a git repository (or any parent up to mount point /cache/bamboo)
+simple	21-Apr-2026 16:43:16	Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+simple	21-Apr-2026 16:43:16	Failed to execute git operations on any configured Bitbucket instances. Proceeding with final failing...
+simple	21-Apr-2026 16:43:16	Updating source code to revision: 9b939b514c12fc533db7f71d1b71f1d241c0e93c
+simple	21-Apr-2026 16:43:16	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git'.
+simple	21-Apr-2026 16:43:16	Warning: Permanently added '[127.0.0.1]:40489' (RSA) to the list of known hosts.
+simple	21-Apr-2026 16:43:16	Checking out revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c.
+simple	21-Apr-2026 16:43:16	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1/.git'.
+simple	21-Apr-2026 16:43:16	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'...
+simple	21-Apr-2026 16:43:16	error: invalid key:  filter.lfs.smudge
+simple	21-Apr-2026 16:43:16	fatal: unable to write parameters to config file
+error	21-Apr-2026 16:43:16	Checkout to revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c has failed.
+simple	21-Apr-2026 16:43:16	fatal: not a git repository (or any parent up to mount point /cache/bamboo)
+simple	21-Apr-2026 16:43:16	Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+simple	21-Apr-2026 16:43:16	Warning: failed to checkout source code to directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1', trying to recover...
+simple	21-Apr-2026 16:43:16	Cleaned source directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'...
+simple	21-Apr-2026 16:43:16	Checking out revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c.
+simple	21-Apr-2026 16:43:16	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1/.git'.
+simple	21-Apr-2026 16:43:16	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'...
+simple	21-Apr-2026 16:43:16	error: invalid key:  filter.lfs.smudge
+simple	21-Apr-2026 16:43:16	fatal: unable to write parameters to config file
+error	21-Apr-2026 16:43:16	Checkout to revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c has failed.
+simple	21-Apr-2026 16:43:16	fatal: not a git repository (or any parent up to mount point /cache/bamboo)
+simple	21-Apr-2026 16:43:16	Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+simple	21-Apr-2026 16:43:16	Failed to execute git operations on any configured Bitbucket instances. Proceeding with final failing...
+simple	21-Apr-2026 16:43:17	Updating source code to revision: 9b939b514c12fc533db7f71d1b71f1d241c0e93c
+simple	21-Apr-2026 16:43:17	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git'.
+simple	21-Apr-2026 16:43:17	Warning: Permanently added '[127.0.0.1]:40489' (RSA) to the list of known hosts.
+simple	21-Apr-2026 16:43:17	Checking out revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c.
+simple	21-Apr-2026 16:43:17	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1/.git'.
+simple	21-Apr-2026 16:43:17	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'...
+simple	21-Apr-2026 16:43:17	error: invalid key:  filter.lfs.smudge
+simple	21-Apr-2026 16:43:17	fatal: unable to write parameters to config file
+error	21-Apr-2026 16:43:17	Checkout to revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c has failed.
+simple	21-Apr-2026 16:43:17	fatal: not a git repository (or any parent up to mount point /cache/bamboo)
+simple	21-Apr-2026 16:43:17	Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+simple	21-Apr-2026 16:43:17	Warning: failed to checkout source code to directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1', trying to recover...
+simple	21-Apr-2026 16:43:17	Cleaned source directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'...
+simple	21-Apr-2026 16:43:17	Checking out revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c.
+simple	21-Apr-2026 16:43:17	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1/.git'.
+simple	21-Apr-2026 16:43:17	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1'...
+simple	21-Apr-2026 16:43:17	error: invalid key:  filter.lfs.smudge
+simple	21-Apr-2026 16:43:17	fatal: unable to write parameters to config file
+error	21-Apr-2026 16:43:17	Checkout to revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c has failed.
+simple	21-Apr-2026 16:43:17	fatal: not a git repository (or any parent up to mount point /cache/bamboo)
+simple	21-Apr-2026 16:43:17	Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+simple	21-Apr-2026 16:43:17	Failed to execute git operations on any configured Bitbucket instances. Proceeding with final failing...
+error	21-Apr-2026 16:43:17	Error occurred while running Task 'Checkout Default Repository(1)' of type com.atlassian.bamboo.plugins.vcs:task.vcs.checkout.
+error	21-Apr-2026 16:43:17	java.lang.RuntimeException: com.atlassian.bamboo.plugins.stash.repository.StashRepositoryException: Could not connect to Bitbucket
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.executor.RetryingTaskExecutor.rerun(RetryingTaskExecutor.java:142)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.executor.RetryingTaskExecutor.runTask(RetryingTaskExecutor.java:99)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.executor.RetryingTaskExecutor.retry(RetryingTaskExecutor.java:208)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.executor.RetryingTaskExecutor.retry(RetryingTaskExecutor.java:189)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.vcs.task.VcsCheckoutTask.execute(VcsCheckoutTask.java:130)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.task.TaskExecutorImpl.lambda$executeTasks$3(TaskExecutorImpl.java:323)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.task.TaskExecutorImpl.executeTaskWithPrePostActions(TaskExecutorImpl.java:258)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.task.TaskExecutorImpl.executeTasks(TaskExecutorImpl.java:323)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.task.TaskExecutorImpl.executePreparationTasks(TaskExecutorImpl.java:97)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.build.pipeline.tasks.PrepareBuildTask.call(PrepareBuildTask.java:81)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.v2.build.agent.DefaultBuildAgent.executeBuildPhase(DefaultBuildAgent.java:242)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.v2.build.agent.DefaultBuildAgent.build(DefaultBuildAgent.java:214)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.v2.build.agent.BuildAgentControllerImpl.lambda$waitAndPerformBuild$0(BuildAgentControllerImpl.java:183)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.variable.CustomVariableContextImpl.withVariableSubstitutor(CustomVariableContextImpl.java:115)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.v2.build.agent.BuildAgentControllerImpl.waitAndPerformBuild(BuildAgentControllerImpl.java:176)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.v2.build.agent.DefaultBuildAgent.lambda$start$0(DefaultBuildAgent.java:159)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.utils.BambooRunnables$1.run(BambooRunnables.java:48)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.security.ImpersonationHelper.runWith(ImpersonationHelper.java:26)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.security.ImpersonationHelper.runWithSystemAuthority(ImpersonationHelper.java:17)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.security.ImpersonationHelper.lambda$makeRunnableWithSystemAuthority$0(ImpersonationHelper.java:38)
+error	21-Apr-2026 16:43:17		at java.base/java.lang.Thread.run(Thread.java:840)
+error	21-Apr-2026 16:43:17	Caused by: com.atlassian.bamboo.plugins.stash.repository.StashRepositoryException: Could not connect to Bitbucket
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.stash.v2.BitbucketServerWorkingCopyManager.lambda$retrieveSourceCode$4(BitbucketServerWorkingCopyManager.java:109)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.stash.v2.AbstractBitbucketServerExecutor.executeOnMirrorWithPrimaryFallback(AbstractBitbucketServerExecutor.java:61)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.stash.v2.BitbucketServerWorkingCopyManager.retrieveSourceCode(BitbucketServerWorkingCopyManager.java:103)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.vcs.task.VcsCheckoutTask.fillWorkingDirFromVcs(VcsCheckoutTask.java:214)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.vcs.task.VcsCheckoutTask.lambda$execute$0(VcsCheckoutTask.java:131)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.executor.RetryingTaskExecutor.rerun(RetryingTaskExecutor.java:112)
+error	21-Apr-2026 16:43:17		... 20 more
+error	21-Apr-2026 16:43:17	Caused by: com.atlassian.bamboo.plugins.git.GitCommandException: command [/usr/bin/git remote set-url origin file:///cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/_git-repositories-cache/768e2e05d2692e1d3e7e32d2bc29fff619f2e6dc] failed with code 128. Working directory was [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-ENV-JOB1]., stderr:
+error	21-Apr-2026 16:43:17	fatal: not a git repository (or any parent up to mount point /cache/bamboo)
+error	21-Apr-2026 16:43:17	Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.GitCommandProcessor.runCommand(GitCommandProcessor.java:792)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.GitCommandProcessor.runCommand(GitCommandProcessor.java:721)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.GitCommandProcessor.runCommand(GitCommandProcessor.java:712)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.GitCommandProcessor.setOrigin(GitCommandProcessor.java:606)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.GitCommandProcessor.setOriginToLocalDirectory(GitCommandProcessor.java:663)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.NativeGitOperationHelper.checkout(NativeGitOperationHelper.java:509)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.v2.GitWorkingCopyManager.lambda$checkout$1(GitWorkingCopyManager.java:262)
+error	21-Apr-2026 16:43:17		at io.atlassian.util.concurrent.ManagedLocks$ManagedLockImpl.withLock(ManagedLocks.java:293)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.GitCacheDirectory$LoggingManagedLock.withLock(GitCacheDirectory.java:48)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.v2.GitWorkingCopyManager.checkout(GitWorkingCopyManager.java:250)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.v2.GitWorkingCopyManager.checkout(GitWorkingCopyManager.java:202)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.git.v2.GitWorkingCopyManager.retrieveSourceCode(GitWorkingCopyManager.java:122)
+error	21-Apr-2026 16:43:17		at com.atlassian.bamboo.plugins.stash.v2.BitbucketServerWorkingCopyManager.lambda$retrieveSourceCode$4(BitbucketServerWorkingCopyManager.java:105)
+error	21-Apr-2026 16:43:17		... 25 more
+error	21-Apr-2026 16:43:17	Failed to prepare the build 'Build and Test - Env - Build - Default Job #55 (BT-ENV-JOB1-55)'
+simple	21-Apr-2026 15:43:17	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	21-Apr-2026 15:43:17	Running on server: post build plugin 'NCover Results Collector'
+simple	21-Apr-2026 15:43:17	Running on server: post build plugin 'Build Labeller'
+simple	21-Apr-2026 15:43:17	Running on server: post build plugin 'Clover Delta Calculator'
+simple	21-Apr-2026 15:43:17	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	21-Apr-2026 15:43:17	All post build plugins have finished
+simple	21-Apr-2026 15:43:17	Generating build results summary...
+simple	21-Apr-2026 15:43:17	Saving build results to disk...
+simple	21-Apr-2026 15:43:17	Store variable context...
+simple	21-Apr-2026 15:43:17	Finished building BT-ENV-JOB1-55.
+
+
+
+build 23-Apr-2026 11:37:10 Skipping latestVersion lookup because one or more query inputs are missing
