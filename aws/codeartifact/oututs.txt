@@ -2,8 +2,8 @@
 version: 2
 plan:
   project-key: BT
-  key: REST
-  name: Rest - Build
+  key: RNT
+  name: Rest - Nightly Testing
 stages:
 - Default Stage:
     manual: false
@@ -48,82 +48,25 @@ Default Job:
   - maven:
       executable: Maven 3
       jdk: JDK 17
-      goal: clean verify -B -U -P integration-test -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
-      environment: -Xms512m -Xmx1024m -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
+      goal: clean verify -B -P nightly-integration-test -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      tests: 'true'
+      environment: -Xms512m -Xmx1024m -Dorg.slf4j.simpleLogger.defaultLogLevel=info
       description: Build and Verify
-  - test-parser:
-      type: junit
-      ignore-time: false
-      test-results: facade/api/target/surefire-reports/
-      description: nsfs-rest facade api surefire-reports
-  - test-parser:
-      type: junit
-      ignore-time: false
-      test-results: facade/core/target/surefire-reports/
-      description: nsfs-rest facade core surefire-reports
-  - test-parser:
-      type: junit
-      ignore-time: false
-      test-results: rest/target/surefire-reports/
-      description: nsfs-rest rest surefire-reports
-  - test-parser:
-      type: junit
-      ignore-time: false
-      test-results: assembly/target/failsafe-reports/
-      description: rest module failsafe-reports
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: mavenVersion
-        variableScope: JOB
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
-      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
-      description: Determine if deploy to Artifactory is needed
-  - inject-variables:
-      file: file.properties
-      scope: RESULT
-      namespace: inject
-      description: Inject the build information to be used in Bamboo Deploy
-# com.atlassian.bamboo.plugins.bamboo-artifact-downloader-plugin:cleanWorkingDirectoryTask is disabled. This state is not supported at YAML
-  artifacts:
-  - name: Jboss Log
-    location: integration/target/
-    pattern: jboss.log
-    shared: false
-    required: false
-  - name: Oracle Log
-    location: integration/target/
-    pattern: oracle.log
-    shared: false
-    required: false
   artifact-subscriptions: []
-variables:
-  buildVersionQueryArtifact: rest-ear
-  buildVersionQueryGroup: gov.gsa.cnxs.rest
 repositories:
 - Rest:
     scope: global
 - bamboo-deployment:
     scope: global
 triggers:
-- bitbucket-server-trigger:
-    repositories:
-    - Rest
+# Trigger type TriggerProperties{name='Single daily build', description='Nightly run', conditions=[], enabled=true} is not supported yet
 branches:
-  create: for-new-branch
+  create: manually
   delete:
-    after-deleted-days: 3
+    after-deleted-days: 7
     after-inactive-days: 200
   link-to-jira: true
 notifications:
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
 - events:
   - plan-completed
   recipients:
@@ -135,9 +78,9 @@ notifications:
   - committers
 labels: []
 dependencies:
-  require-all-stages-passing: true
+  require-all-stages-passing: false
   enabled-for-branches: true
-  block-strategy: block_if_parent_in_progress
+  block-strategy: none
   plans: []
 other:
   concurrent-build-plugin:
