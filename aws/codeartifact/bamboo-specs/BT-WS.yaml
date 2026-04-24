@@ -33,7 +33,7 @@ Default Job:
         description: Checkout bamboo-deployment
 
     - script:
-        interpreter: SHELL
+        interpreter: BINSH_OR_CMDEXE
         scripts:
           - rm -rf ~/.m2/repository/gov/gsa/
         description: Remove existing cnxs maven repo directory
@@ -61,9 +61,8 @@ Default Job:
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
               <mirrors>
                 <mirror>
-                  <id>cnxs-artifactory</id>
-                  <!-- Mirror everything (including snapshots) through Artifactory -->
-                  <mirrorOf>*</mirrorOf>
+                  <id>ArtifactoryPluginRepos</id>
+                  <mirrorOf>*,!conexus-snapshot-local</mirrorOf>
                   <url>${bamboo.inject.pluginRepositoryUrl}</url>
                 </mirror>
               </mirrors>
@@ -71,7 +70,6 @@ Default Job:
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
-
                   <repositories>
                     <repository>
                       <id>conexus-plugin-repository</id>
@@ -103,20 +101,16 @@ Default Job:
               </activeProfiles>
 
               <servers>
-                <!-- IMPORTANT: must match the mirror <id> -->
                 <server>
                   <id>cnxs-artifactory</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>artifactory</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
-                <!-- Keep these too (in case repos are referenced directly by ID) -->
                 <server>
                   <id>conexus-plugin-repository</id>
                   <username>sa_bamboo</username>
@@ -127,67 +121,41 @@ Default Job:
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
+                <server>
+                  <id>ArtifactoryPluginRepos</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+                <server>
+                  <id>ArtifactoryMavenFeatureRepos</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
               </servers>
             </settings>
             XML
-          - grep -n "<url>" settings-artifactory.xml
         description: Write Artifactory Maven settings
 
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            mkdir -p /tmp/BT-WS-JOB1
-            export TMPDIR=/tmp/BT-WS-JOB1
-            /usr/share/maven/bin/mvn \
-              -s settings-artifactory.xml \
-              -Djava.io.tmpdir=/tmp/BT-WS-JOB1 \
-              clean package -B -U \
-              -pl :ws-services-ear -am \
-              -DskipTests -DskipITs=true -Dmaven.test.skip=true \
-              -Djboss.standalone.webservices_tenantKey=fbe58f4c-96f3-449e-8d52-306526d56049 \
-              -Djboss.standalone.webservices_appKey=DEVSUXENOC \
-              -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} \
-              -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} \
-              -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} \
-              -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        description: Build (package only, skip tests/ITs) using Artifactory settings
+    - maven:
+        executable: Maven 3
+        jdk: JDK 17
+        goal: >-
+          clean verify -B -U
+          -s settings-artifactory.xml
+          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
+          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        tests: '**/target/surefire-reports/*.xml'
+        description: Build and Verify
 
     - script:
         interpreter: SHELL
-        scripts:
-          - |-
-            MVN_VERSION=$(/usr/share/maven/bin/mvn -s settings-artifactory.xml -q -DforceStdout help:evaluate -Dexpression=project.version)
-            echo "mavenVersion=${MVN_VERSION}" >> file.properties
-            echo "Detected mavenVersion=${MVN_VERSION}"
-        description: Determine Maven version
-
-    - inject-variables:
-        file: file.properties
-        scope: LOCAL
-        namespace: inject
-        description: Inject updated values (mavenVersion)
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            mkdir -p /tmp/BT-WS-JOB1
-            export TMPDIR=/tmp/BT-WS-JOB1
-            /usr/share/maven/bin/mvn \
-              -s settings-artifactory.xml \
-              -Djava.io.tmpdir=/tmp/BT-WS-JOB1 \
-              deploy -B -U \
-              -pl :ws-services-ear -am \
-              -DaltDeploymentRepository=artifactory::${bamboo.inject.mavenFeatureRepositoryUrl} \
-              -DskipTests -DskipITs=true -Dmaven.test.skip=true \
-              -Djboss.standalone.webservices_tenantKey=fbe58f4c-96f3-449e-8d52-306526d56049 \
-              -Djboss.standalone.webservices_appKey=DEVSUXENOC \
-              -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} \
-              -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} \
-              -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} \
-              -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        description: Deploy EAR only to Artifactory (skip integration modules)
+        file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+        environment: >-
+          buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+          buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+        description: Deploy to Artifactory if needed
 
     - inject-variables:
         file: file.properties
@@ -195,11 +163,36 @@ Default Job:
         namespace: inject
         description: Inject the build information to be used in Bamboo Deploy
 
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-        configuration: {}
+  artifacts:
+    - name: ws-services-ear
+      location: ear/target
+      pattern: ws-services-ear*.ear
+      shared: true
+      required: true
 
-  artifacts: []
+    - name: ws-common
+      location: common/target
+      pattern: ws-common*.jar
+      shared: false
+      required: false
+
+    - name: ws-api
+      location: api/target
+      pattern: ws-api*.jar
+      shared: false
+      required: false
+
+    - name: ws-core
+      location: core/target
+      pattern: ws-core*.jar
+      shared: false
+      required: false
+
+    - name: ws-version-war
+      location: version-war/target
+      pattern: ws-version-war*.war
+      shared: false
+      required: false
 
   artifact-subscriptions: []
 
@@ -251,3 +244,8 @@ dependencies:
   block-strategy: none
   plans:
     - BT-REC
+
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
