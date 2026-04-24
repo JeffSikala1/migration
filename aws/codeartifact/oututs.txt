@@ -4,3 +4,141 @@ cb50d1defa0e   atlassian/bamboo:10.2.11     "/usr/bin/tini -- /e…"   2 days ag
 3d7c479b3814   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   6 weeks ago    Up 4 weeks   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp                                        cnxs-mgmt-bitbucket
 704e46755f36   postgres:16.5                "docker-entrypoint.s…"   4 months ago   Up 4 weeks   0.0.0.0:32768->5432/tcp                                                               prod-postgres
 5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   4 months ago   Up 4 weeks   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp                                              nginx
+[root@ip-10-56-112-34 ec2-user]# docker exec -it nginx bashj
+OCI runtime exec failed: exec failed: unable to start container process: exec: "bashj": executable file not found in $PATH: unknown
+[root@ip-10-56-112-34 ec2-user]# docker exec -it nginx bash
+root@nginx:/# cd /etc/nginx/
+root@nginx:/etc/nginx# ls
+BACKUP-cnxs-mgmt-bitbucket.conf  conf.d          mime.types  nginx.conf   uwsgi_params
+certificates                     fastcgi_params  modules     scgi_params
+root@nginx:/etc/nginx# ls -al conf.d/
+total 16
+drwxr-xr-x. 2 root root  101 Feb  4 22:22 .
+drwxr-xr-x. 4 root root  191 Dec  2 17:54 ..
+-rw-r--r--. 1 root root  827 Mar  4 20:29 artifactory.conf
+-rw-r-----. 1 root root  938 Dec  2 19:09 bamboo.conf
+-rw-r-----. 1 root root  952 Dec  2 19:09 cnxs-mgmt-bitbucket.conf
+-rw-r--r--. 1 root root 1093 Mar 25 16:24 default.conf
+root@nginx:/etc/nginx# cat conf.d/bamboo.conf 
+server {
+    server_name bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+    listen 80;
+    return 301 https://$http_host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+
+    ssl_certificate     /etc/nginx/certificates/mgmt_wildcard.pem;
+    ssl_certificate_key /etc/nginx/certificates/privatekey.key;
+
+    resolver 127.0.0.11 ipv6=off;
+
+    location / {
+        proxy_pass http://prod-bamboo:8085;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Port  $server_port;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-Server $host;
+
+        proxy_http_version 1.1;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+}
+root@nginx:/etc/nginx# cat conf.d/default.conf 
+server {
+    listen       80;
+    listen  [::]:80;
+    server_name  localhost;
+
+    #access_log  /var/log/nginx/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+
+    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+    #
+    #location ~ \.php$ {
+    #    proxy_pass   http://127.0.0.1;
+    #}
+
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    #
+    #location ~ \.php$ {
+    #    root           html;
+    #    fastcgi_pass   127.0.0.1:9000;
+    #    fastcgi_index  index.php;
+    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+    #    include        fastcgi_params;
+    #}
+
+    # deny access to .htaccess files, if Apache's document root
+    # concurs with nginx's one
+    #
+    #location ~ /\.ht {
+    #    deny  all;
+    #}
+}
+
+root@nginx:/etc/nginx# pwd
+/etc/nginx
+root@nginx:/etc/nginx# cat nginx.conf               
+user nginx;
+worker_processes auto;
+
+error_log /var/log/nginx/error.log notice;
+pid       /run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+# SSH TCP proxy for Bitbucket on port 7999
+stream {
+    upstream bitbucket_ssh {
+        # Bitbucket container on the Docker network
+        server cnxs-mgmt-bitbucket:7999;
+    }
+
+    server {
+        listen 7999;
+        proxy_pass bitbucket_ssh;
+    }
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log /var/log/nginx/access.log main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout 65;
+
+    #gzip on;
+
+    include /etc/nginx/conf.d/*.conf;
+}
