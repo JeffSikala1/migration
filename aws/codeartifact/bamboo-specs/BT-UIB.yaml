@@ -14,6 +14,13 @@ stages:
 
 Default Job:
   key: JOB1
+  other:
+    clean-working-dir: true
+    all-other-apps:
+      custom:
+        auto: {}
+        buildHangingConfig.enabled: 'false'
+
   tasks:
     - checkout:
         force-clean-build: true
@@ -23,7 +30,7 @@ Default Job:
         repository: bamboo-deployment
         path: bamboo-deployment
         force-clean-build: true
-        description: Checkout bamboo-deployment Repository
+        description: Checkout bamboo-deployment
 
     - script:
         interpreter: BINSH_OR_CMDEXE
@@ -40,73 +47,38 @@ Default Job:
         file: file.properties
         scope: LOCAL
         namespace: inject
+        description: Inject values
 
     - script:
         interpreter: SHELL
-        working-dir: web/src/main/
-        description: ng build
         scripts:
           - |-
             #!/usr/bin/env bash
-            set -o pipefail
-
-            ARTI_NPM_REGISTRY="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
-            OLD_LOCK_PREFIX="https://easartifactory.edc.ds1.usda.gov:443/artifactory/api/npm/npm-virtual/"
-            BAD_NEW_LOCK_PREFIX="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-virtual/"
-            GOOD_NEW_LOCK_PREFIX="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/"
+            source ~/.bashrc
 
             export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
-            export NPM_CONFIG_REGISTRY="${ARTI_NPM_REGISTRY}"
-            export npm_config_registry="${ARTI_NPM_REGISTRY}"
 
-            command -v node >/dev/null 2>&1 || { echo "ERROR: node is not installed on this Bamboo agent"; exit 1; }
-            command -v npm  >/dev/null 2>&1 || { echo "ERROR: npm is not installed on this Bamboo agent"; exit 1; }
+            # Install/Update Google Chrome for Headless testing
+            curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
+            yum install -y google-chrome-stable
 
-            node --version
-            npm --version
+            npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/
 
-            echo "HOME=$HOME"
-            echo "PWD=$(pwd)"
+            #SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
 
-            echo "----- npm config before cleanup -----"
-            npm config get registry || true
-            npm config ls -l | grep -Ei 'registry|proxy|cafile|strict-ssl|replace-registry-host' || true
+            #npm cache clean --force
+            npm install
+            npm test
 
-            echo "repo .npmrc present? $([[ -f .npmrc ]] && echo yes || echo no)"
-            echo "user .npmrc present? $([[ -f "${HOME}/.npmrc" ]] && echo yes || echo no)"
-
-            npm config set registry "${ARTI_NPM_REGISTRY}"
-            npm config delete replace-registry-host || true
-            npm config delete proxy || true
-            npm config delete https-proxy || true
-
-            echo "----- rewriting package-lock registry paths -----"
-            if [[ -f package-lock.json ]]; then
-              sed -i "s|${OLD_LOCK_PREFIX}|${GOOD_NEW_LOCK_PREFIX}|g" package-lock.json
-              sed -i "s|${BAD_NEW_LOCK_PREFIX}|${GOOD_NEW_LOCK_PREFIX}|g" package-lock.json
-            fi
-
-            echo "----- verify lockfile after rewrite -----"
-            [[ -f package-lock.json ]] && grep -n "npm-virtual" package-lock.json | sed -n '1,20p' || true
-            [[ -f package-lock.json ]] && grep -n "artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/" package-lock.json | sed -n '1,20p' || true
-
-            echo "----- npm config after cleanup -----"
-            npm config get registry
-            npm config ls -l | grep -Ei 'registry|proxy|cafile|strict-ssl|replace-registry-host' || true
-
-            echo "----- install/test -----"
-            npm install --force || echo "npm install failed; continuing"
-            npm test || echo "npm test failed; continuing"
-
-            npx ng build --configuration production --output-hashing=all --optimization --source-map=true
+            ng build --configuration production --output-hashing=all --optimization --source-map=true
+        working-dir: web/src/main/
+        description: ng build
 
     - script:
         interpreter: SHELL
         scripts:
           - |-
-            #!/usr/bin/env bash
-            set -e
-            cat > settings-artifactory.xml << 'EOF'
+            cat > settings-artifactory.xml <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
               <mirrors>
                 <mirror>
@@ -115,6 +87,7 @@ Default Job:
                   <url>${bamboo.inject.pluginRepositoryUrl}</url>
                 </mirror>
               </mirrors>
+
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
@@ -132,6 +105,7 @@ Default Job:
                       <snapshots><enabled>true</enabled></snapshots>
                     </repository>
                   </repositories>
+
                   <pluginRepositories>
                     <pluginRepository>
                       <id>conexus-plugin-repository</id>
@@ -142,69 +116,78 @@ Default Job:
                   </pluginRepositories>
                 </profile>
               </profiles>
+
               <activeProfiles>
                 <activeProfile>use-artifactory</activeProfile>
               </activeProfiles>
+
               <servers>
-                <server><id>cnxs-artifactory</id><username>sa_bamboo</username><password>${bamboo.artifactory_access_token_secret}</password></server>
-                <server><id>artifactory</id><username>sa_bamboo</username><password>${bamboo.artifactory_access_token_secret}</password></server>
-                <server><id>conexus-plugin-repository</id><username>sa_bamboo</username><password>${bamboo.artifactory_access_token_secret}</password></server>
-                <server><id>conexus-snapshot-local</id><username>sa_bamboo</username><password>${bamboo.artifactory_access_token_secret}</password></server>
-                <server><id>ArtifactoryPluginRepos</id><username>sa_bamboo</username><password>${bamboo.artifactory_access_token_secret}</password></server>
-                <server><id>ArtifactoryMavenFeatureRepos</id><username>sa_bamboo</username><password>${bamboo.artifactory_access_token_secret}</password></server>
+                <server>
+                  <id>cnxs-artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+                <server>
+                  <id>artifactory</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+                <server>
+                  <id>conexus-plugin-repository</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+                <server>
+                  <id>conexus-snapshot-local</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+                <server>
+                  <id>ArtifactoryPluginRepos</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
+                <server>
+                  <id>ArtifactoryMavenFeatureRepos</id>
+                  <username>sa_bamboo</username>
+                  <password>${bamboo.artifactory_access_token_secret}</password>
+                </server>
               </servers>
             </settings>
-            EOF
+            XML
         description: Write Artifactory Maven settings
 
     - maven:
         executable: Maven 3
         jdk: JDK 17
-        goal: clean verify -B -U -s settings-artifactory.xml -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        goal: >-
+          clean verify -B -U
+          -s settings-artifactory.xml
+          -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
+          -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
+          -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        tests: '**/target/surefire-reports/*.xml'
         description: Package
 
-    - script:
-        interpreter: SHELL
-        description: Extract Maven version
-        scripts:
-          - |-
-            #!/usr/bin/env bash
-            set -eux
-
-            MVN_VERSION="$(awk '
-              /<project/ { inproject=1 }
-              inproject && /<version>/ {
-                gsub(/.*<version>/,"")
-                gsub(/<\/version>.*/,"")
-                print
-                exit
-              }
-            ' pom.xml)"
-
-            if [[ -z "${MVN_VERSION}" ]]; then
-              echo "ERROR: Could not determine Maven version from pom.xml"
-              exit 1
-            fi
-
-            echo "mavenVersion=${MVN_VERSION}" >> file.properties
-            echo "Wrote mavenVersion=${MVN_VERSION} to file.properties"
-            cat file.properties
-
-    - inject-variables:
-        file: file.properties
-        scope: LOCAL
-        namespace: inject
+    - any-task:
+        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+        configuration: {}
 
     - script:
         interpreter: SHELL
         file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh
-        environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.inject.mavenVersion}
+        environment: >-
+          buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact}
+          buildVersionQueryGroup=${bamboo.buildVersionQueryGroup}
+          deployablePomPath=war/pom.xml
         description: Deploy to Artifactory if needed
 
     - inject-variables:
         file: file.properties
         scope: RESULT
         namespace: inject
+        description: Inject the build information to be used in Bamboo Deploy
 
   artifact-subscriptions: []
 
@@ -235,6 +218,7 @@ notifications:
       - plan-completed
     recipients:
       - watchers
+
   - events:
       - plan-failed
     recipients:
@@ -248,3 +232,8 @@ dependencies:
   enabled-for-branches: true
   block-strategy: none
   plans: []
+
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
