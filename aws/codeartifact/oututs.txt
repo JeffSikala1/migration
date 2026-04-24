@@ -2,8 +2,8 @@
 version: 2
 plan:
   project-key: BT
-  key: RNT
-  name: Rest - Nightly Testing
+  key: REP
+  name: Reporting - Build
 stages:
 - Default Stage:
     manual: false
@@ -19,7 +19,7 @@ Default Job:
         auto: {}
         buildHangingConfig.enabled: 'false'
   tasks:
-# com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli is disabled. This state is not supported at YAML
+  - clean
   - checkout:
       force-clean-build: true
       description: Checkout Default Repository
@@ -42,31 +42,61 @@ Default Job:
       scope: LOCAL
       namespace: inject
       description: Inject values
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
   - maven:
       executable: Maven 3
       jdk: JDK 17
-      goal: clean verify -B -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-      tests: 'true'
-      environment: -Xms512m -Xmx1024m -Dorg.slf4j.simpleLogger.defaultLogLevel=info
+      goal: clean verify -B -U -P integration-test -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
       description: Build and Verify
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
+      configuration:
+        variable: mavenVersion
+        variableScope: JOB
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
+      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
+      description: Deploy to Artifactory if needed
+  - inject-variables:
+      file: file.properties
+      scope: RESULT
+      namespace: inject
+      description: Inject the build information to be used in Bamboo Deploy
   artifact-subscriptions: []
+variables:
+  buildVersionQueryArtifact: reporting-war
+  buildVersionQueryGroup: gov.gsa.cnxs.reporting
 repositories:
-- Rest:
+- Reporting:
     scope: global
 - bamboo-deployment:
     scope: global
 triggers:
-# Trigger type TriggerProperties{name='Single daily build', description='Nightly run', conditions=[], enabled=true} is not supported yet
+- bitbucket-server-trigger:
+    repositories:
+    - Reporting
 branches:
-  create: manually
+  create:
+    for-new-branch: ^((?!release).)*$
   delete:
     after-deleted-days: 7
     after-inactive-days: 200
   link-to-jira: true
 notifications:
+- events:
+  - job-hung
+  recipients:
+  - groups:
+    - nsfs_devops
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
 - events:
   - plan-completed
   recipients:
@@ -80,7 +110,7 @@ labels: []
 dependencies:
   require-all-stages-passing: false
   enabled-for-branches: true
-  block-strategy: none
+  block-strategy: block_if_parent_in_progress
   plans: []
 other:
   concurrent-build-plugin:
