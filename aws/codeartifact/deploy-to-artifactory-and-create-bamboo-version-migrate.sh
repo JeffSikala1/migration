@@ -10,12 +10,13 @@ BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
 RepositoryBaseUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/"
 MVN_SETTINGS="settings-artifactory.xml"
 MVN_BIN="/usr/share/maven/bin/mvn"
+POM_PATH="${deployablePomPath:-war/pom.xml}"
 
 # Derive mavenVersion from POM internally
 # Replaces the Variable Extractor task that provided mavenVersion in legacy
 # buildVersionQueryArtifact and buildVersionQueryGroup are still passed in
 # from the plan as environment variables, consistent with legacy behavior
-MVN_VERSION=$(${MVN_BIN} -f war/pom.xml -s ${MVN_SETTINGS} -q -DforceStdout \
+MVN_VERSION=$(${MVN_BIN} -f ${POM_PATH} -s ${MVN_SETTINGS} -q -DforceStdout \
   help:evaluate -Dexpression=project.version \
   | sed '/^\[/d' | grep -v '^$' | tail -1)
 
@@ -46,7 +47,6 @@ if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
 
         ${MVN_BIN} deploy -DskipTests=true -U \
           -s ${MVN_SETTINGS} \
-          -Djava.io.tmpdir=/tmp/BT-REC-JOB1 \
           -Dbamboo.inject.BranchName=${BranchName} \
           -Dbamboo.inject.mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl} \
           -Dbamboo.inject.pluginRepositoryUrl=${pluginRepositoryUrl} \
@@ -79,7 +79,6 @@ elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
     # Both develop and feature branches deploy and query latestVersion
     ${MVN_BIN} deploy -DskipTests=true -U \
       -s ${MVN_SETTINGS} \
-      -Djava.io.tmpdir=/tmp/BT-REC-JOB1 \
       -Dbamboo.inject.BranchName=${BranchName} \
       -Dbamboo.inject.mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl} \
       -Dbamboo.inject.pluginRepositoryUrl=${pluginRepositoryUrl} \

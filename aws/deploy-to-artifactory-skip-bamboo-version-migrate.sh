@@ -32,7 +32,6 @@ if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
         echo "This is a parent long-lived branch"
         ${MVN_BIN} deploy -DskipTests=true -U \
           -s ${MVN_SETTINGS} \
-          -Djava.io.tmpdir=/tmp/BT-REC-JOB1 \
           -Dbamboo.inject.BranchName=${BranchName} \
           -Dbamboo.inject.mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl} \
           -Dbamboo.inject.pluginRepositoryUrl=${pluginRepositoryUrl} \
@@ -58,7 +57,6 @@ elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
         echo "This is a development branch. Deploying to Artifactory"
         ${MVN_BIN} deploy -DskipTests=true -U \
           -s ${MVN_SETTINGS} \
-          -Djava.io.tmpdir=/tmp/BT-REC-JOB1 \
           -Dbamboo.inject.BranchName=${BranchName} \
           -Dbamboo.inject.mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl} \
           -Dbamboo.inject.pluginRepositoryUrl=${pluginRepositoryUrl} \
