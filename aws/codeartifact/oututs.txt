@@ -1,135 +1,266 @@
----
-version: 2
-plan:
-  project-key: BT
-  key: UIB
-  name: UI - Build
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
-  key: JOB1
-  other:
-    clean-working-dir: true
-    all-other-apps:
-      custom:
-        auto: {}
-        buildHangingConfig.enabled: 'false'
-  tasks:
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: bamboo-deployment
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: BINSH_OR_CMDEXE
-      scripts:
-      - rm -rf ~/.m2/repository/gov/gsa/cnxs/
-      description: Remove existing cnxs maven repo directory
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/build-determination.sh
-      description: Determine parent branch and pass correct variables
-  - inject-variables:
-      file: file.properties
-      scope: LOCAL
-      namespace: inject
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-        source ~/.bashrc
-
-        export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
-
-        # Install/Update Google Chrome for Headless testing
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
-        yum install -y google-chrome-stable
-
-        npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/
-
-        #SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
-
-        #npm cache clean --force
-        npm install
-        npm test
-
-        # Original
-        #ng build --prod --build-optimizer --output-hashing=all --vendor-chunk --optimization --progress
-
-        # New - needs extra node parameters because source-map generation takes more memory
-        #node --max_old_space_size=8192 \
-        #    node_modules/@angular/cli/bin/ng build \
-        #    --configuration production --output-hashing=all  --optimization --source-map=true
-
-        ng build --configuration production --output-hashing=all  --optimization --source-map=true
-      working-dir: web/src/main/
-      description: ng build
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: clean verify -B -U -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-      description: Package
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: mavenVersion
-        variableScope: JOB
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version.sh
-      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.mavenVersion}
-      description: Deploy to Artifactory if needed
-  - inject-variables:
-      file: file.properties
-      scope: RESULT
-      namespace: inject
-  artifact-subscriptions: []
-variables:
-  buildVersionQueryArtifact: ui-war
-  buildVersionQueryGroup: gov.gsa.cnxs.ui
-repositories:
-- UI:
-    scope: global
-- bamboo-deployment:
-    scope: global
-triggers:
-- bitbucket-server-trigger:
-    repositories:
-    - UI
-branches:
-  create: for-new-branch
-  delete:
-    after-deleted-days: 7
-    after-inactive-days: 200
-  link-to-jira: true
-notifications:
-- events:
-  - plan-completed
-  recipients:
-  - watchers
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: []
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
+simple	24-Apr-2026 09:34:30	Build Build and Test - UI - Build - Default Job #61 (BT-UIB-JOB1-61) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-3 (2), bamboo version: 10.2.11
+simple	24-Apr-2026 09:34:30	Remote agent on host ip-10-56-112-35.ec2.internal-ba-3
+simple	24-Apr-2026 09:34:30	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1
+simple	24-Apr-2026 09:34:30	Executing build Build and Test - UI - Build - Default Job #61 (BT-UIB-JOB1-61)
+simple	24-Apr-2026 09:34:30	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	24-Apr-2026 09:34:30	Build always requires a clean checkout
+simple	24-Apr-2026 09:34:30	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1'
+simple	24-Apr-2026 09:34:34	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1
+simple	24-Apr-2026 09:34:34	Updating source code to revision: 47e31e7279a9cae572e452ea057d40dbb8f867ab
+simple	24-Apr-2026 09:34:34	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git'.
+simple	24-Apr-2026 09:34:35	Warning: Permanently added '[127.0.0.1]:43679' (RSA) to the list of known hosts.
+simple	24-Apr-2026 09:34:35	Checking out revision 47e31e7279a9cae572e452ea057d40dbb8f867ab.
+simple	24-Apr-2026 09:34:35	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/.git'.
+simple	24-Apr-2026 09:34:35	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1'...
+simple	24-Apr-2026 09:34:35	done.
+simple	24-Apr-2026 09:34:35	Switched to a new branch 'develop'
+simple	24-Apr-2026 09:34:35	branch 'develop' set up to track 'origin/develop'.
+simple	24-Apr-2026 09:34:35	Updated source code to revision: 47e31e7279a9cae572e452ea057d40dbb8f867ab
+simple	24-Apr-2026 09:34:35	Finished task 'Checkout Default Repository' with result: Success
+simple	24-Apr-2026 09:34:35	Starting task 'Checkout bamboo-deployment' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	24-Apr-2026 09:34:35	Build always requires a clean checkout
+simple	24-Apr-2026 09:34:35	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/bamboo-deployment'
+simple	24-Apr-2026 09:34:35	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/bamboo-deployment
+simple	24-Apr-2026 09:34:35	Updating source code to revision: e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740
+simple	24-Apr-2026 09:34:35	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git'.
+simple	24-Apr-2026 09:34:35	Warning: Permanently added '[127.0.0.1]:43679' (RSA) to the list of known hosts.
+simple	24-Apr-2026 09:34:35	Checking out revision e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740.
+simple	24-Apr-2026 09:34:35	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/bamboo-deployment/.git'.
+simple	24-Apr-2026 09:34:35	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/bamboo-deployment'...
+simple	24-Apr-2026 09:34:35	done.
+simple	24-Apr-2026 09:34:35	Switched to a new branch 'develop'
+simple	24-Apr-2026 09:34:35	branch 'develop' set up to track 'origin/develop'.
+simple	24-Apr-2026 09:34:35	Updated source code to revision: e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740
+simple	24-Apr-2026 09:34:35	Finished task 'Checkout bamboo-deployment' with result: Success
+simple	24-Apr-2026 09:34:35	Running pre-build action: Build Log Labeller Pre Build Action
+simple	24-Apr-2026 09:34:35	Running pre-build action: VCS Version Collector
+simple	24-Apr-2026 09:34:35	Build Build and Test - UI - Build - Default Job #61 (BT-UIB-JOB1-61) started building on agent 'ip-10-56-112-35.ec2.internal-ba-3 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-3)
+simple	24-Apr-2026 09:34:35	Starting task 'Remove existing cnxs maven repo directory' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 09:34:35	Beginning to execute external process for build 'Build and Test - UI - Build - Default Job #61 (BT-UIB-JOB1-61)'\n ... running command line: \n/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp/BT-UIB-JOB1-61-ScriptBuildTask-15981064866303639432.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1\n
+simple	24-Apr-2026 09:34:35	Finished task 'Remove existing cnxs maven repo directory' with result: Success
+simple	24-Apr-2026 09:34:35	Starting task 'Determine parent branch and pass correct variables' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 09:34:35	Beginning to execute external process for build 'Build and Test - UI - Build - Default Job #61 (BT-UIB-JOB1-61)'\n ... running command line: \nbamboo-deployment/build-determination-migration.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1\n
+build	24-Apr-2026 09:34:35	Not a long lived branch
+simple	24-Apr-2026 09:34:35	Finished task 'Determine parent branch and pass correct variables' with result: Success
+simple	24-Apr-2026 09:34:35	Starting task 'Inject values' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:inject'
+simple	24-Apr-2026 09:34:35	Injected variable bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ in LOCAL scope
+simple	24-Apr-2026 09:34:35	Injected variable bamboo.inject.BranchName=develop in LOCAL scope
+simple	24-Apr-2026 09:34:35	Injected variable bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ in LOCAL scope
+simple	24-Apr-2026 09:34:35	Finished task 'Inject values' with result: Success
+simple	24-Apr-2026 09:34:35	Starting task 'ng build' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 09:34:35	Beginning to execute external process for build 'Build and Test - UI - Build - Default Job #61 (BT-UIB-JOB1-61)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp/BT-UIB-JOB1-61-ScriptBuildTask-18109422502977585230.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/web/src/main\n
+error	24-Apr-2026 09:34:35	  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+error	24-Apr-2026 09:34:35	                                 Dload  Upload   Total   Spent    Left  Speed
+error	24-Apr-2026 09:34:35	
+error	24-Apr-2026 09:34:35	  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+error	24-Apr-2026 09:34:35	100    91  100    91    0     0   4333      0 --:--:-- --:--:-- --:--:--  4333
+error	24-Apr-2026 09:34:36	Warning: failed loading '/etc/yum.repos.d/google-chrome.repo', skipping.
+build	24-Apr-2026 09:34:36	CentOS Stream 9 - BaseOS                         43 kB/s | 6.4 kB     00:00    
+build	24-Apr-2026 09:34:36	CentOS Stream 9 - AppStream                      30 kB/s | 6.5 kB     00:00    
+build	24-Apr-2026 09:34:36	CentOS Stream 9 - Extras packages               100 kB/s | 6.9 kB     00:00    
+build	24-Apr-2026 09:34:36	Package google-chrome-stable-147.0.7727.55-1.x86_64 is already installed.
+build	24-Apr-2026 09:34:37	Dependencies resolved.
+build	24-Apr-2026 09:34:37	Nothing to do.
+build	24-Apr-2026 09:34:37	Complete!
+error	24-Apr-2026 09:34:41	npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+error	24-Apr-2026 09:34:41	npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+error	24-Apr-2026 09:34:41	npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+error	24-Apr-2026 09:34:41	npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+error	24-Apr-2026 09:34:41	npm warn deprecated glob@5.0.15: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+error	24-Apr-2026 09:34:41	npm warn deprecated uuid@3.4.0: Please upgrade  to version 7 or higher.  Older versions may use Math.random() in certain circumstances, which is known to be problematic.  See https://v8.dev/blog/math-random for details.
+error	24-Apr-2026 09:34:42	npm warn deprecated istanbul@0.4.5: This module is no longer maintained, try this instead:
+error	24-Apr-2026 09:34:42	npm warn deprecated   npm i nyc
+error	24-Apr-2026 09:34:42	npm warn deprecated Visit https://istanbul.js.org/integrations for other alternatives.
+error	24-Apr-2026 09:34:43	npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+error	24-Apr-2026 09:35:51	npm error Exit handler never called!
+error	24-Apr-2026 09:35:51	npm error This is an error with npm itself. Please report this error at:
+error	24-Apr-2026 09:35:51	npm error   <https://github.com/npm/cli/issues>
+error	24-Apr-2026 09:35:51	npm error A complete log of this run can be found in: /root/.npm/_logs/2026-04-24T14_34_37_268Z-debug-0.log
+build	24-Apr-2026 09:35:51	
+build	24-Apr-2026 09:35:51	> conexus@0.0.0 test
+build	24-Apr-2026 09:35:51	> ng test --code-coverage
+build	24-Apr-2026 09:35:51	
+error	24-Apr-2026 09:35:52	One or more browsers which are configured in the project's Browserslist configuration fall outside Angular's browser support for this version.
+error	24-Apr-2026 09:35:52	Unsupported browsers:
+error	24-Apr-2026 09:35:52	and_qq 14.9, and_uc 15.5, android 147, kaios 3.0-3.1, op_mob 80, opera 127, opera 126, samsung 29, samsung 28
+error	24-Apr-2026 09:35:53	- Generating browser application bundles (phase: setup)...
+error	24-Apr-2026 09:36:21	✔ Browser application bundle generation complete.
+build	24-Apr-2026 09:36:21	24 04 2026 09:36:21.957:INFO [karma-server]: Karma v6.4.4 server started at http://localhost:9876/
+build	24-Apr-2026 09:36:21	24 04 2026 09:36:21.958:INFO [launcher]: Launching browsers LocalHeadlessChrome with concurrency unlimited
+build	24-Apr-2026 09:36:21	24 04 2026 09:36:21.962:INFO [launcher]: Starting browser Chrome
+build	24-Apr-2026 09:36:22	24 04 2026 09:36:22.288:INFO [Chrome Headless 147.0.0.0 (Linux 0.0.0)]: Connected on socket -eaxeoh_tZFFAepwAAAB with id 69212313
+build	24-Apr-2026 09:36:25	Chrome Headless 147.0.0.0 (Linux 0.0.0): Executed 0 of 188 SUCCESS (0 secs / 0 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 1 of 188 SUCCESS (0 secs / 0.767 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 2 of 188 SUCCESS (0 secs / 0.768 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 3 of 188 SUCCESS (0 secs / 0.768 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 4 of 188 SUCCESS (0 secs / 0.768 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 5 of 188 SUCCESS (0 secs / 0.772 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 6 of 188 SUCCESS (0 secs / 0.772 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 7 of 188 SUCCESS (0 secs / 0.772 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 8 of 188 SUCCESS (0 secs / 0.772 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 9 of 188 SUCCESS (0 secs / 0.775 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 10 of 188 SUCCESS (0 secs / 0.784 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 11 of 188 SUCCESS (0 secs / 0.786 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 12 of 188 (skipped 8) SUCCESS (0 secs / 0.786 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 13 of 188 (skipped 8) SUCCESS (0 secs / 0.787 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 14 of 188 (skipped 8) SUCCESS (0 secs / 0.787 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 15 of 188 (skipped 8) SUCCESS (0 secs / 0.788 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 16 of 188 (skipped 8) SUCCESS (0 secs / 0.788 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 17 of 188 (skipped 8) SUCCESS (0 secs / 0.789 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 18 of 188 (skipped 8) SUCCESS (0 secs / 0.789 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 19 of 188 (skipped 8) SUCCESS (0 secs / 0.79 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 20 of 188 (skipped 8) SUCCESS (0 secs / 0.79 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 21 of 188 (skipped 8) SUCCESS (0 secs / 0.79 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 22 of 188 (skipped 8) SUCCESS (0 secs / 0.846 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 23 of 188 (skipped 8) SUCCESS (0 secs / 0.851 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 24 of 188 (skipped 8) SUCCESS (0 secs / 0.853 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 25 of 188 (skipped 8) SUCCESS (0 secs / 0.863 secs)
+build	24-Apr-2026 09:36:25	[1A[2KChrome Headless 147.0.0.0 (Linux 0.0.0): Executed 25 of 188 (skipped 163) SUCCESS (0.146 secs / 0.863 secs)
+build	24-Apr-2026 09:36:25	TOTAL: 25 SUCCESS
+build	24-Apr-2026 09:36:25	TOTAL: 25 SUCCESS
+error	24-Apr-2026 09:36:26	✔ Browser application bundle generation complete.
+error	24-Apr-2026 09:36:26	✔ Browser application bundle generation complete.
+build	24-Apr-2026 09:36:27	❯ Building...
+error	24-Apr-2026 09:36:27	One or more browsers which are configured in the project's Browserslist configuration fall outside Angular's browser support for this version.
+error	24-Apr-2026 09:36:27	Unsupported browsers:
+error	24-Apr-2026 09:36:27	and_qq 14.9, and_uc 15.5, android 147, kaios 3.0-3.1, op_mob 80, opera 127, opera 126, samsung 29, samsung 28
+build	24-Apr-2026 09:36:42	✔ Building...
+build	24-Apr-2026 09:36:42	Initial chunk files   | Names                 |  Raw size | Estimated transfer size
+build	24-Apr-2026 09:36:42	polyfills-LWFYTIMY.js | polyfills             |   1.17 MB |               160.52 kB
+build	24-Apr-2026 09:36:42	chunk-75N2AVBT.js     | -                     | 971.53 kB |               211.62 kB
+build	24-Apr-2026 09:36:42	chunk-RPLUL7AZ.js     | -                     | 734.06 kB |                27.05 kB
+build	24-Apr-2026 09:36:42	chunk-OF5BFGLS.js     | -                     | 487.90 kB |                65.02 kB
+build	24-Apr-2026 09:36:42	chunk-4B4THHGT.js     | -                     | 197.31 kB |                28.93 kB
+build	24-Apr-2026 09:36:42	chunk-PIZTFJXI.js     | -                     | 135.21 kB |                23.39 kB
+build	24-Apr-2026 09:36:42	chunk-3ZW3NCET.js     | -                     | 134.58 kB |                23.00 kB
+build	24-Apr-2026 09:36:42	main-OLMNQOAJ.js      | main                  | 117.49 kB |                23.99 kB
+build	24-Apr-2026 09:36:42	chunk-ABW4PLAE.js     | -                     |  59.88 kB |                12.19 kB
+build	24-Apr-2026 09:36:42	chunk-FUX6IWU7.js     | -                     |  39.56 kB |                 7.62 kB
+build	24-Apr-2026 09:36:42	chunk-5YET2WTF.js     | -                     |   9.63 kB |                 2.57 kB
+build	24-Apr-2026 09:36:42	styles-HDWLMUFC.css   | styles                |   2.18 kB |               587 bytes
+build	24-Apr-2026 09:36:42	
+build	24-Apr-2026 09:36:42	                      | Initial total         |   4.06 MB |               586.49 kB
+build	24-Apr-2026 09:36:42	
+build	24-Apr-2026 09:36:42	Lazy chunk files      | Names                 |  Raw size | Estimated transfer size
+build	24-Apr-2026 09:36:42	chunk-CQOQQWPK.js     | billing-module        | 167 bytes |               167 bytes
+build	24-Apr-2026 09:36:42	chunk-2RPS2265.js     | task-orders-module    | 165 bytes |               165 bytes
+build	24-Apr-2026 09:36:42	chunk-HTVCS2UJ.js     | reports-module        | 162 bytes |               162 bytes
+build	24-Apr-2026 09:36:42	chunk-G4CCPJ4K.js     | contracts-module      | 136 bytes |               136 bytes
+build	24-Apr-2026 09:36:42	chunk-NGL6CWR2.js     | inventory-module      | 136 bytes |               136 bytes
+build	24-Apr-2026 09:36:42	chunk-ZZKPL5S6.js     | orders-module         | 133 bytes |               133 bytes
+build	24-Apr-2026 09:36:42	chunk-UQUKNLK5.js     | administration-module | 132 bytes |               132 bytes
+build	24-Apr-2026 09:36:42	
+build	24-Apr-2026 09:36:42	Application bundle generation complete. [15.138 seconds] - 2026-04-24T14:36:42.827Z
+build	24-Apr-2026 09:36:42	
+error	24-Apr-2026 09:36:42	▲ [WARNING] secure/src/assets/fonts/fa-web/css/all.css exceeded maximum budget. Budget 6.00 kB was not met by 63.21 kB with a total of 69.21 kB.
+error	24-Apr-2026 09:36:42	
+error	24-Apr-2026 09:36:42	
+error	24-Apr-2026 09:36:42	▲ [WARNING] Module 'moment' used by 'secure/src/app/modules/billing/billing-data/billing-data.component.ts' is not ESM
+error	24-Apr-2026 09:36:42	
+error	24-Apr-2026 09:36:42	  CommonJS or AMD dependencies can cause optimization bailouts.
+error	24-Apr-2026 09:36:42	  For more information see: https://angular.dev/tools/cli/build#configuring-commonjs-dependencies
+error	24-Apr-2026 09:36:42	
+error	24-Apr-2026 09:36:42	
+build	24-Apr-2026 09:36:42	Output location: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/web/src/main/webapp/secure
+build	24-Apr-2026 09:36:42	
+simple	24-Apr-2026 09:36:42	Finished task 'ng build' with result: Success
+command	24-Apr-2026 09:36:43	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	24-Apr-2026 09:36:43	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	24-Apr-2026 09:36:43	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	24-Apr-2026 09:36:43	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	24-Apr-2026 09:36:43	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 09:36:43	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 09:36:43	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 09:36:43	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 09:36:43	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 09:36:43	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+simple	24-Apr-2026 09:36:43	Starting task 'Write Artifactory Maven settings' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 09:36:43	Beginning to execute external process for build 'Build and Test - UI - Build - Default Job #61 (BT-UIB-JOB1-61)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp/BT-UIB-JOB1-61-ScriptBuildTask-12758109386996566484.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1\n
+simple	24-Apr-2026 09:36:43	Finished task 'Write Artifactory Maven settings' with result: Success
+command	24-Apr-2026 09:36:43	Substituting variable: ${bamboo.inject.BranchName} with develop
+command	24-Apr-2026 09:36:43	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	24-Apr-2026 09:36:43	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+simple	24-Apr-2026 09:36:43	Starting task 'Package' of type 'com.atlassian.bamboo.plugins.maven:task.builder.mvn3'
+command	24-Apr-2026 09:36:43	Beginning to execute external process for build 'Build and Test - UI - Build - Default Job #61 (BT-UIB-JOB1-61)'\n ... running command line: \n/usr/share/maven/bin/mvn -Djava.io.tmpdir=/tmp/BT-UIB-JOB1 clean verify -B -U -s settings-artifactory.xml -Dbamboo.inject.BranchName=develop -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1\n
+build	24-Apr-2026 09:36:43	[INFO] Scanning for projects...
+build	24-Apr-2026 09:36:44	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 09:36:44	[INFO] Reactor Build Order:
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] Conexus - UI                                                       [pom]
+build	24-Apr-2026 09:36:44	[INFO] Conexus UI War                                                     [war]
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] -------------------< gov.gsa.cnxs.ui:ui-aggregator >--------------------
+build	24-Apr-2026 09:36:44	[INFO] Building Conexus - UI 01.00.000.111-SNAPSHOT                       [1/2]
+build	24-Apr-2026 09:36:44	[INFO]   from pom.xml
+build	24-Apr-2026 09:36:44	[INFO] --------------------------------[ pom ]---------------------------------
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] --- clean:3.2.0:clean (default-clean) @ ui-aggregator ---
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] -----------------------< gov.gsa.cnxs.ui:ui-war >-----------------------
+build	24-Apr-2026 09:36:44	[INFO] Building Conexus UI War 01.00.000.111-SNAPSHOT                     [2/2]
+build	24-Apr-2026 09:36:44	[INFO]   from web/pom.xml
+build	24-Apr-2026 09:36:44	[INFO] --------------------------------[ war ]---------------------------------
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] --- clean:3.2.0:clean (default-clean) @ ui-war ---
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] --- resources:3.3.1:resources (default-resources) @ ui-war ---
+build	24-Apr-2026 09:36:44	[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+build	24-Apr-2026 09:36:44	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/web/src/main/resources
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] --- compiler:3.13.0:compile (default-compile) @ ui-war ---
+build	24-Apr-2026 09:36:44	[INFO] No sources to compile
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] --- resources:3.3.1:testResources (default-testResources) @ ui-war ---
+build	24-Apr-2026 09:36:44	[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+build	24-Apr-2026 09:36:44	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/web/src/test/resources
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ ui-war ---
+build	24-Apr-2026 09:36:44	[INFO] No sources to compile
+build	24-Apr-2026 09:36:44	[INFO] 
+build	24-Apr-2026 09:36:44	[INFO] --- surefire:3.2.5:test (default-test) @ ui-war ---
+build	24-Apr-2026 09:36:45	[INFO] Artifact net.java:jvnet-parent:pom:3 is present in the local repository, but cached from a remote repository ID that is unavailable in current build context, verifying that is downloadable from [ArtifactoryPluginRepos (https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/, default, releases+snapshots)]
+build	24-Apr-2026 09:36:45	[INFO] Artifact net.java:jvnet-parent:pom:3 is present in the local repository, but cached from a remote repository ID that is unavailable in current build context, verifying that is downloadable from [ArtifactoryPluginRepos (https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/, default, releases+snapshots)]
+build	24-Apr-2026 09:36:45	[INFO] Artifact org.codehaus.plexus:plexus-classworlds:pom:2.5.2 is present in the local repository, but cached from a remote repository ID that is unavailable in current build context, verifying that is downloadable from [ArtifactoryPluginRepos (https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/, default, releases+snapshots)]
+build	24-Apr-2026 09:36:45	[INFO] Artifact org.codehaus.plexus:plexus-classworlds:pom:2.5.2 is present in the local repository, but cached from a remote repository ID that is unavailable in current build context, verifying that is downloadable from [ArtifactoryPluginRepos (https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/, default, releases+snapshots)]
+build	24-Apr-2026 09:36:45	[INFO] No tests to run.
+build	24-Apr-2026 09:36:45	[INFO] 
+build	24-Apr-2026 09:36:45	[INFO] --- war:3.4.0:war (default-war) @ ui-war ---
+build	24-Apr-2026 09:36:45	[INFO] Packaging webapp
+build	24-Apr-2026 09:36:45	[INFO] Assembling webapp [ui-war] in [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/web/target/ui-war]
+build	24-Apr-2026 09:36:45	[INFO] Processing war project
+build	24-Apr-2026 09:36:45	[INFO] Copying webapp resources [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/web/src/main/webapp]
+build	24-Apr-2026 09:36:45	[INFO] Building war: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1/web/target/ui-war.war
+build	24-Apr-2026 09:36:46	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 09:36:46	[INFO] Reactor Summary for Conexus - UI 01.00.000.111-SNAPSHOT:
+build	24-Apr-2026 09:36:46	[INFO] 
+build	24-Apr-2026 09:36:46	[INFO] Conexus - UI ....................................... SUCCESS [  0.125 s]
+build	24-Apr-2026 09:36:46	[INFO] Conexus UI War ..................................... SUCCESS [  2.094 s]
+build	24-Apr-2026 09:36:46	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 09:36:46	[INFO] BUILD SUCCESS
+build	24-Apr-2026 09:36:46	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 09:36:46	[INFO] Total time:  2.320 s
+build	24-Apr-2026 09:36:46	[INFO] Finished at: 2026-04-24T09:36:46-05:00
+build	24-Apr-2026 09:36:46	[INFO] ------------------------------------------------------------------------
+simple	24-Apr-2026 09:36:46	Parsing test results under /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1...
+simple	24-Apr-2026 09:36:46	Failing task since test cases were expected but none were found.
+simple	24-Apr-2026 09:36:46	Finished task 'Package' with result: Failed
+simple	24-Apr-2026 09:36:46	Running post build plugin 'Docker Container Cleanup'
+simple	24-Apr-2026 09:36:46	Running post build plugin 'NCover Results Collector'
+simple	24-Apr-2026 09:36:46	Running post build plugin 'Build Results Label Collector'
+simple	24-Apr-2026 09:36:46	Running post build plugin 'Clover Results Collector'
+simple	24-Apr-2026 09:36:46	Running post build plugin 'npm Cache Cleanup'
+simple	24-Apr-2026 09:36:46	Running post build plugin 'Artifact Copier'
+simple	24-Apr-2026 09:36:50	Successfully removed working directory at '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-UIB-JOB1'
+simple	24-Apr-2026 09:36:50	Finalising the build...
+simple	24-Apr-2026 09:36:50	Stopping timer.
+simple	24-Apr-2026 09:36:50	Build BT-UIB-JOB1-61 completed.
+simple	24-Apr-2026 08:36:50	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	24-Apr-2026 08:36:50	Running on server: post build plugin 'NCover Results Collector'
+simple	24-Apr-2026 08:36:50	Running on server: post build plugin 'Build Labeller'
+simple	24-Apr-2026 08:36:50	Running on server: post build plugin 'Clover Delta Calculator'
+simple	24-Apr-2026 08:36:50	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	24-Apr-2026 08:36:50	All post build plugins have finished
+simple	24-Apr-2026 08:36:50	Generating build results summary...
+simple	24-Apr-2026 08:36:50	Saving build results to disk...
+simple	24-Apr-2026 08:36:50	Store variable context...
+simple	24-Apr-2026 08:36:50	Finished building BT-UIB-JOB1-61.
