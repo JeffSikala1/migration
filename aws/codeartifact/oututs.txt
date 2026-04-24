@@ -1,92 +1,41 @@
-#!/usr/bin/env bash
-
-# Determine if a deploy is needed
-
-longLivedPrefix="ll-"
-BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
-
-# Used for debugging #######################
-#buildVersionQueryArtifact=task-ear
-#buildVersionQueryGroup=gov.gsa.cnxs.task
-#mavenVersion=01.00.000.73
-############################################
-
-RepositoryBaseUrl="https://conexus-artifactory.edc.ds1.usda.gov/artifactory/"
-
-## Check to see if this is a long lived branch child
-if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-    echo "This is a long lived branch"
-    # Split the parent and child branch name
-    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
-    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-
-    # Set the plugin repo to conexus-ll-plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${ParentBranchName}" >> file.properties
-    echo "ChildBranchName=${ChildBranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a long lived parent or child branch
-    if [ -z ${ChildBranchName} ]; then
-        echo "This is a parent long-lived branch"
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName"
-        echo -e "latestVersion=$(curl -s -k -L "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName")" >> file.properties
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child long-lived branch. Not deploying to Artifactory"
-    fi
-
- elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-     echo "Not a long lived branch"
-     # Not a long lived branch
-     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
-
-     # Set the plugin repo to conexus--plugin-repository
-     # Set the branch repo to the parent branch
-     echo "BranchName=${BranchName}" >> file.properties
-     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a development parent or child (feature) branch
-    if [ "$BranchName" == "develop" ]; then
-        echo "This is a development branch"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
-        # The buildVersionQuery variables are defined in the plan as variables
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo -e "latestVersion=$(curl -k -s "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
-    else
-        echo "This is not a develop branch but may be a feature branch"
-	#echo "This is NOT a development branch"
-	#mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-rc-local/"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
-        # The buildVersionQuery variables are defined in the plan as variables
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo -e "latestVersion=$(curl -k -s "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
-        #---old code start
-        #echo "This is a child (feature) development branch. Not deploying to Artifactory"
-        # Clear out the file.properties contents so that the injection does nothing
-        #echo -e "" > file.properties
-	#---old code end
-    fi
-
-  else
-      echo "Cannot determine parent branch"
-      exit 1
-fi
-echo "contents of file.properties"
-echo " "
-cat file.properties
+[sikaj01@ip-10-56-112-33 ws]$ git pull
+From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws
+ * [new branch]          release/01.00.000.150 -> origin/release/01.00.000.150
+ * [new branch]          release/02.00.000.151 -> origin/release/02.00.000.151
+ * [new branch]          release/02.00.000.152 -> origin/release/02.00.000.152
+ * [new branch]          release/02.00.000.153 -> origin/release/02.00.000.153
+Updating 3e31bc724..5055bd495
+Fast-forward
+ api/pom.xml                                                                               |  2 +-
+ common/pom.xml                                                                            |  2 +-
+ core/pom.xml                                                                              |  2 +-
+ ear/pom.xml                                                                               |  2 +-
+ integration/integration-api/pom.xml                                                       |  2 +-
+ integration/integration-core/pom.xml                                                      |  2 +-
+ integration/integration-ear/pom.xml                                                       |  2 +-
+ integration/integration-test/pom.xml                                                      |  2 +-
+ integration/pom.xml                                                                       |  2 +-
+ pom.xml                                                                                   | 18 +++++++++---------
+ services/health-check/pom.xml                                                             |  2 +-
+ services/order-services/impl/pom.xml                                                      |  2 +-
+ .../test/java/gov/usda/gsa/nsfs/ws/orderservices/socn/SOCNFragmentCleanupBeanTest.java    |  3 ++-
+ services/order-services/pom.xml                                                           |  2 +-
+ services/pom.xml                                                                          |  2 +-
+ test-support/pom.xml                                                                      |  2 +-
+ version/pom.xml                                                                           |  2 +-
+ 17 files changed, 26 insertions(+), 25 deletions(-)
+[sikaj01@ip-10-56-112-33 ws]$ find . -name "ws-services-ear*.ear" -path "*/target/*" 2>/dev/null
+[sikaj01@ip-10-56-112-33 ws]$ find . -name "ws-version-war*.war" -path "*/target/*" 2>/dev/null
+[sikaj01@ip-10-56-112-33 ws]$ git branch
+* develop
+[sikaj01@ip-10-56-112-33 ws]$ ll
+total 40
+drwxr-x---. 3 sikaj01 users 6144 Apr 24 11:08 api
+drwxr-x---. 3 sikaj01 users 6144 Apr 24 11:08 common
+drwxr-x---. 3 sikaj01 users 6144 Apr 24 11:08 core
+drwxr-x---. 2 sikaj01 users 6144 Apr 24 11:08 ear
+drwxr-x---. 6 sikaj01 users 6144 Apr 24 11:08 integration
+-rw-r-----. 1 sikaj01 users 7560 Apr 24 11:08 pom.xml
+drwxr-x---. 4 sikaj01 users 6144 Apr 24 11:08 services
+drwxr-x---. 3 sikaj01 users 6144 Apr 24 11:08 test-support
+drwxr-x---. 3 sikaj01 users 6144 Apr 24 11:08 version
