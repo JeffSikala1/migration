@@ -1,112 +1,452 @@
----
-version: 2
-plan:
-  project-key: BT
-  key: RCNT
-  name: Reconciliation - Nightly Testing
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
-  key: JOB1
-  other:
-    clean-working-dir: true
-    all-other-apps:
-      custom:
-        auto: {}
-        buildHangingConfig.enabled: 'false'
-  tasks:
-# com.atlassian.bamboo.plugins.bamboo-docker-plugin:task.docker.cli is disabled. This state is not supported at YAML
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: bamboo-deployment
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: BINSH_OR_CMDEXE
-      scripts:
-      - rm -rf ~/.m2/repository/gov/gsa/
-      description: Remove existing cnxs maven repo directory
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/build-determination.sh
-      description: Determine parent branch and pass correct variables
-  - inject-variables:
-      file: file.properties
-      scope: LOCAL
-      namespace: inject
-      description: Inject values
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: |-
-        clean verify -B -DskipSurefire=true -U
-        -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
-      description: Build and Verify
-  artifacts:
-  - name: Jboss Log
-    location: integration/target/
-    pattern: jboss.log
-    shared: false
-    required: false
-  - name: Oracle Log
-    location: integration/target/
-    pattern: oracle.log
-    shared: false
-    required: false
-  artifact-subscriptions: []
-repositories:
-- Reconciliation:
-    scope: global
-- bamboo-deployment:
-    scope: global
-triggers:
-# Trigger type TriggerProperties{name='Single daily build', description='Nightly run', conditions=[], enabled=true} is not supported yet
-branches:
-  create: manually
-  delete:
-    after-deleted-days: 7
-    after-inactive-days: 7
-  link-to-jira: true
-notifications:
-- events:
-  - plan-failed
-  recipients:
-  - users:
-    - jon.french
-  - users:
-    - kristian.fitzgerald@usda.gov
-  - watchers
-- events:
-  - plan-completed
-  recipients:
-  - watchers
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-  - users:
-    - jon.french
-  - users:
-    - kristian.fitzgerald@usda.gov
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: []
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
+simple	24-Apr-2026 07:26:49	Build Build and Test - Reconciliation - Nightly Testing - Default Job #31 (BT-RCNT-JOB1-31) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-3 (2), bamboo version: 10.2.11
+simple	24-Apr-2026 07:26:49	Remote agent on host ip-10-56-112-35.ec2.internal-ba-3
+simple	24-Apr-2026 07:26:49	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1
+simple	24-Apr-2026 07:26:49	Executing build Build and Test - Reconciliation - Nightly Testing - Default Job #31 (BT-RCNT-JOB1-31)
+simple	24-Apr-2026 07:26:49	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	24-Apr-2026 07:26:49	Build always requires a clean checkout
+simple	24-Apr-2026 07:26:49	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1'
+simple	24-Apr-2026 07:26:49	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1
+simple	24-Apr-2026 07:26:49	Updating source code to revision: 86158be9f06e0303e61de71f29dd7e14478a05e5
+simple	24-Apr-2026 07:26:49	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reconciliation.git'.
+simple	24-Apr-2026 07:26:49	Warning: Permanently added '[127.0.0.1]:43679' (RSA) to the list of known hosts.
+simple	24-Apr-2026 07:26:49	Checking out revision 86158be9f06e0303e61de71f29dd7e14478a05e5.
+simple	24-Apr-2026 07:26:49	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/.git'.
+simple	24-Apr-2026 07:26:49	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1'...
+simple	24-Apr-2026 07:26:49	done.
+simple	24-Apr-2026 07:26:49	Switched to a new branch 'develop'
+simple	24-Apr-2026 07:26:49	branch 'develop' set up to track 'origin/develop'.
+simple	24-Apr-2026 07:26:49	Updated source code to revision: 86158be9f06e0303e61de71f29dd7e14478a05e5
+simple	24-Apr-2026 07:26:49	Finished task 'Checkout Default Repository' with result: Success
+simple	24-Apr-2026 07:26:49	Starting task 'Checkout bamboo-deployment' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	24-Apr-2026 07:26:49	Build always requires a clean checkout
+simple	24-Apr-2026 07:26:49	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/bamboo-deployment'
+simple	24-Apr-2026 07:26:49	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/bamboo-deployment
+simple	24-Apr-2026 07:26:49	Updating source code to revision: e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740
+simple	24-Apr-2026 07:26:50	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git'.
+simple	24-Apr-2026 07:26:50	Warning: Permanently added '[127.0.0.1]:43679' (RSA) to the list of known hosts.
+simple	24-Apr-2026 07:26:50	Checking out revision e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740.
+simple	24-Apr-2026 07:26:50	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/bamboo-deployment/.git'.
+simple	24-Apr-2026 07:26:50	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/bamboo-deployment'...
+simple	24-Apr-2026 07:26:50	done.
+simple	24-Apr-2026 07:26:50	Switched to a new branch 'develop'
+simple	24-Apr-2026 07:26:50	branch 'develop' set up to track 'origin/develop'.
+simple	24-Apr-2026 07:26:50	Updated source code to revision: e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740
+simple	24-Apr-2026 07:26:50	Finished task 'Checkout bamboo-deployment' with result: Success
+simple	24-Apr-2026 07:26:50	Running pre-build action: Build Log Labeller Pre Build Action
+simple	24-Apr-2026 07:26:50	Running pre-build action: VCS Version Collector
+simple	24-Apr-2026 07:26:50	Build Build and Test - Reconciliation - Nightly Testing - Default Job #31 (BT-RCNT-JOB1-31) started building on agent 'ip-10-56-112-35.ec2.internal-ba-3 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-3)
+simple	24-Apr-2026 07:26:50	Starting task 'Remove existing cnxs maven repo directory' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 07:26:50	Beginning to execute external process for build 'Build and Test - Reconciliation - Nightly Testing - Default Job #31 (BT-RCNT-JOB1-31)'\n ... running command line: \n/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp/BT-RCNT-JOB1-31-ScriptBuildTask-6144804089158999031.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1\n
+simple	24-Apr-2026 07:26:50	Finished task 'Remove existing cnxs maven repo directory' with result: Success
+simple	24-Apr-2026 07:26:50	Starting task 'Determine parent branch and pass correct variables' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 07:26:50	Beginning to execute external process for build 'Build and Test - Reconciliation - Nightly Testing - Default Job #31 (BT-RCNT-JOB1-31)'\n ... running command line: \nbamboo-deployment/build-determination-migration.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1\n
+build	24-Apr-2026 07:26:50	Not a long lived branch
+simple	24-Apr-2026 07:26:50	Finished task 'Determine parent branch and pass correct variables' with result: Success
+simple	24-Apr-2026 07:26:50	Starting task 'Inject values' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:inject'
+simple	24-Apr-2026 07:26:50	Injected variable bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ in LOCAL scope
+simple	24-Apr-2026 07:26:50	Injected variable bamboo.inject.BranchName=develop in LOCAL scope
+simple	24-Apr-2026 07:26:50	Injected variable bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ in LOCAL scope
+simple	24-Apr-2026 07:26:50	Finished task 'Inject values' with result: Success
+simple	24-Apr-2026 07:26:50	Starting task 'Dump variables to log' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump'
+simple	24-Apr-2026 07:26:50	---- DUMPING VARIABLES TO LOG --- 
+simple	24-Apr-2026 07:26:50	key: [ManualBuildTriggerReason.userName] value: [jeff.sikala] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [SNYK_CLIENT_ID] value: [004cb1fd-36d1-4c46-84e0-2d4e2654fa9e and the ORG ID is 6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	24-Apr-2026 07:26:50	key: [SNYK_CLIENT_SECRET] value: [**********] type: GLOBAL
+simple	24-Apr-2026 07:26:50	key: [SNYK_ORG_ID] value: [6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	24-Apr-2026 07:26:50	key: [agentId] value: [1572865] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [agentWorkingDirectory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [artifactory_access_token_secret] value: [**********] type: GLOBAL
+simple	24-Apr-2026 07:26:50	key: [artifactory_sa_conexus_password] value: [**********] type: GLOBAL
+simple	24-Apr-2026 07:26:50	key: [bitbucket_branch] value: [feature/ll-postgres] type: GLOBAL
+simple	24-Apr-2026 07:26:50	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.3] value: [/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp/BT-RCNT-JOB1-31-ScriptBuildTask-6144804089158999031.sh] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.4] value: [bamboo-deployment/build-determination-migration.sh] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [build.working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [buildFailed] value: [false] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [buildKey] value: [BT-RCNT-JOB1] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [buildNumber] value: [31] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [buildPlanName] value: [Build and Test - Reconciliation - Nightly Testing - Default Job] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [buildResultKey] value: [BT-RCNT-JOB1-31] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [buildResultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-RCNT-JOB1-31] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [buildTimeStamp] value: [2026-04-24T06:26:49.039-06:00] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.builder.command.aws] value: [/usr/local/bin/aws] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.builder.command.kubectl] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.builder.mvn3.Maven 3] value: [/usr/share/maven] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.builder.node.Node.js] value: [/usr/bin/node] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.docker.executable] value: [/usr/bin/docker] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.git.executable] value: [/usr/bin/git] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.jdk.JDK] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.jdk.JDK 17] value: [/etc/alternatives/java_sdk_17] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.jdk.JDK 17.0.18] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [capability.system.kubectl.executable] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [dependenciesDisabled] value: [false] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [git.cache.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/_git-repositories-cache] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [inject.BranchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [inject.mavenFeatureRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [inject.pluginRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [plan.storageTag] value: [plan-4849771] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planKey] value: [BT-RCNT] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planName] value: [Build and Test - Reconciliation - Nightly Testing] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.1.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.1.branchDisplayName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.1.branchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.1.name] value: [Reconciliation] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.1.previousRevision] value: [9435edddc97479327f0f4b62f9004f736b92a274] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.1.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reconciliation.git] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.1.revision] value: [86158be9f06e0303e61de71f29dd7e14478a05e5] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.1.type] value: [bbserver] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.1.username] value: [] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.2.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.2.branchDisplayName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.2.branchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.2.name] value: [bamboo-deployment] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.2.previousRevision] value: [465e15bd74f76aa61d08ddfc7b57eb6f6f7c002d] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.2.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.2.revision] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.2.type] value: [bbserver] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.2.username] value: [] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.branchDisplayName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.branchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.name] value: [Reconciliation] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.previousRevision] value: [9435edddc97479327f0f4b62f9004f736b92a274] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reconciliation.git] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.revision] value: [86158be9f06e0303e61de71f29dd7e14478a05e5] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.type] value: [bbserver] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [planRepository.username] value: [] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013610.branch.name] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013610.git.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013610.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reconciliation.git] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013610.git.username] value: [] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013610.name] value: [Reconciliation] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013610.previous.revision.number] value: [9435edddc97479327f0f4b62f9004f736b92a274] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013610.revision.number] value: [86158be9f06e0303e61de71f29dd7e14478a05e5] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013611.branch.name] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013611.git.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013611.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013611.git.username] value: [] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013611.name] value: [bamboo-deployment] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013611.previous.revision.number] value: [465e15bd74f76aa61d08ddfc7b57eb6f6f7c002d] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.5013611.revision.number] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.branch.name] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.git.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reconciliation.git] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.git.username] value: [] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.name] value: [bamboo-deployment] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.previous.revision.number] value: [9435edddc97479327f0f4b62f9004f736b92a274] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [repository.revision.number] value: [86158be9f06e0303e61de71f29dd7e14478a05e5] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [resultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-RCNT-JOB1-31] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [shortJobKey] value: [JOB1] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [shortJobName] value: [Default Job] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [shortPlanBranchName] value: [] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [shortPlanKey] value: [RCNT] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [shortPlanName] value: [Reconciliation - Nightly Testing] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [simpleBuildTimeStamp] value: [20260424062649] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [tmp.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [triggerReason.key] value: [com.atlassian.bamboo.plugin.system.triggerReason:ManualBuildTriggerReason] type: CUSTOM
+simple	24-Apr-2026 07:26:50	key: [working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1] type: CUSTOM
+simple	24-Apr-2026 07:26:50	---- END DUMPING VARIABLES TO LOG  --- 
+simple	24-Apr-2026 07:26:50	Finished task 'Dump variables to log' with result: Success
+command	24-Apr-2026 07:26:50	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	24-Apr-2026 07:26:50	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	24-Apr-2026 07:26:50	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	24-Apr-2026 07:26:50	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	24-Apr-2026 07:26:50	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 07:26:50	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 07:26:50	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 07:26:50	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 07:26:50	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	24-Apr-2026 07:26:50	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+simple	24-Apr-2026 07:26:50	Starting task 'Write Artifactory Maven settings' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 07:26:50	Beginning to execute external process for build 'Build and Test - Reconciliation - Nightly Testing - Default Job #31 (BT-RCNT-JOB1-31)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/temp/BT-RCNT-JOB1-31-ScriptBuildTask-9432021671628192129.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1\n
+simple	24-Apr-2026 07:26:50	Finished task 'Write Artifactory Maven settings' with result: Success
+command	24-Apr-2026 07:26:50	Substituting variable: ${bamboo.inject.BranchName} with develop
+command	24-Apr-2026 07:26:50	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	24-Apr-2026 07:26:50	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+simple	24-Apr-2026 07:26:50	Starting task 'Build and Verify' of type 'com.atlassian.bamboo.plugins.maven:task.builder.mvn3'
+command	24-Apr-2026 07:26:50	Beginning to execute external process for build 'Build and Test - Reconciliation - Nightly Testing - Default Job #31 (BT-RCNT-JOB1-31)'\n ... running command line: \n/usr/share/maven/bin/mvn -Djava.io.tmpdir=/tmp/BT-RCNT-JOB1 clean verify -B -DskipSurefire=true -U -s settings-artifactory.xml -Dbamboo.inject.BranchName=develop -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1\n
+build	24-Apr-2026 07:26:51	[INFO] Scanning for projects...
+build	24-Apr-2026 07:26:51	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 07:26:51	[INFO] Reactor Build Order:
+build	24-Apr-2026 07:26:51	[INFO] 
+build	24-Apr-2026 07:26:51	[INFO] Conexus - Reconciliation                                           [pom]
+build	24-Apr-2026 07:26:51	[INFO] Reconciliation Domain Classes                                      [jar]
+build	24-Apr-2026 07:26:51	[INFO] Reconciliation - Database Support                                  [jar]
+build	24-Apr-2026 07:26:51	[INFO] Reconciliation - Rules Engine                                      [jar]
+build	24-Apr-2026 07:26:51	[INFO] Reconciliation Routes                                              [jar]
+build	24-Apr-2026 07:26:51	[INFO] Reconciliation Processor                                           [war]
+build	24-Apr-2026 07:26:51	[INFO] Reconciliation - Integration Test                                  [jar]
+build	24-Apr-2026 07:26:51	[INFO] 
+build	24-Apr-2026 07:26:51	[INFO] ---------< gov.gsa.cnxs.reconciliation:reconciliation-parent >----------
+build	24-Apr-2026 07:26:51	[INFO] Building Conexus - Reconciliation 02.00.000.150-SNAPSHOT           [1/7]
+build	24-Apr-2026 07:26:51	[INFO]   from pom.xml
+build	24-Apr-2026 07:26:51	[INFO] --------------------------------[ pom ]---------------------------------
+build	24-Apr-2026 07:26:51	[INFO] 
+build	24-Apr-2026 07:26:51	[INFO] --- clean:3.2.0:clean (default-clean) @ reconciliation-parent ---
+build	24-Apr-2026 07:26:52	[INFO] 
+build	24-Apr-2026 07:26:52	[INFO] ---------< gov.gsa.cnxs.reconciliation:reconciliation-domain >----------
+build	24-Apr-2026 07:26:52	[INFO] Building Reconciliation Domain Classes 02.00.000.150-SNAPSHOT      [2/7]
+build	24-Apr-2026 07:26:52	[INFO]   from domain/pom.xml
+build	24-Apr-2026 07:26:52	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 07:26:54	[INFO] 
+build	24-Apr-2026 07:26:54	[INFO] --- clean:3.2.0:clean (default-clean) @ reconciliation-domain ---
+build	24-Apr-2026 07:26:54	[INFO] 
+build	24-Apr-2026 07:26:54	[INFO] --- resources:3.3.1:resources (default-resources) @ reconciliation-domain ---
+build	24-Apr-2026 07:26:54	[INFO] Copying 2 resources from src/main/resources to target/classes
+build	24-Apr-2026 07:26:54	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 07:26:54	[INFO] 
+build	24-Apr-2026 07:26:54	[INFO] --- compiler:3.13.0:compile (default-compile) @ reconciliation-domain ---
+build	24-Apr-2026 07:26:54	[INFO] Recompiling the module because of changed source code.
+build	24-Apr-2026 07:26:54	[INFO] Compiling 274 source files with javac [debug deprecation target 17] to target/classes
+build	24-Apr-2026 07:26:59	[INFO] 
+build	24-Apr-2026 07:26:59	[INFO] --- resources:3.3.1:testResources (default-testResources) @ reconciliation-domain ---
+build	24-Apr-2026 07:26:59	[INFO] Copying 1 resource from src/test/resources to target/test-classes
+build	24-Apr-2026 07:26:59	[INFO] Copying 1 resource from src/test/resources to target/test-classes
+build	24-Apr-2026 07:26:59	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 07:26:59	[INFO] 
+build	24-Apr-2026 07:26:59	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ reconciliation-domain ---
+build	24-Apr-2026 07:26:59	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 07:26:59	[INFO] Compiling 518 source files with javac [debug deprecation target 17] to target/test-classes
+build	24-Apr-2026 07:27:03	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/domain/src/test/java/gov/gsa/nsfs/setup/PerformanceSlaTestSetUp.java: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/domain/src/test/java/gov/gsa/nsfs/setup/PerformanceSlaTestSetUp.java uses unchecked or unsafe operations.
+build	24-Apr-2026 07:27:03	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/domain/src/test/java/gov/gsa/nsfs/setup/PerformanceSlaTestSetUp.java: Recompile with -Xlint:unchecked for details.
+build	24-Apr-2026 07:27:03	[INFO] 
+build	24-Apr-2026 07:27:03	[INFO] --- surefire:3.5.2:test (default-test) @ reconciliation-domain ---
+build	24-Apr-2026 07:27:03	[INFO] Tests are skipped.
+build	24-Apr-2026 07:27:03	[INFO] 
+build	24-Apr-2026 07:27:03	[INFO] --- jar:3.4.1:jar (default-jar) @ reconciliation-domain ---
+build	24-Apr-2026 07:27:03	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/domain/target/reconciliation-domain-02.00.000.150-SNAPSHOT.jar
+build	24-Apr-2026 07:27:03	[INFO] 
+build	24-Apr-2026 07:27:03	[INFO] --- jar:3.4.1:test-jar (default) @ reconciliation-domain ---
+build	24-Apr-2026 07:27:03	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/domain/target/reconciliation-domain-02.00.000.150-SNAPSHOT-tests.jar
+build	24-Apr-2026 07:27:03	[INFO] 
+build	24-Apr-2026 07:27:03	[INFO] -------< gov.gsa.cnxs.reconciliation:reconciliation-db-support >--------
+build	24-Apr-2026 07:27:03	[INFO] Building Reconciliation - Database Support 02.00.000.150-SNAPSHOT  [3/7]
+build	24-Apr-2026 07:27:03	[INFO]   from database-support/pom.xml
+build	24-Apr-2026 07:27:03	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 07:27:03	[INFO] 
+build	24-Apr-2026 07:27:03	[INFO] --- clean:3.2.0:clean (default-clean) @ reconciliation-db-support ---
+build	24-Apr-2026 07:27:03	[INFO] 
+build	24-Apr-2026 07:27:03	[INFO] --- resources:3.3.1:resources (default-resources) @ reconciliation-db-support ---
+build	24-Apr-2026 07:27:03	[INFO] Copying 1 resource from src/main/resources to target/classes
+build	24-Apr-2026 07:27:03	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 07:27:03	[INFO] 
+build	24-Apr-2026 07:27:03	[INFO] --- compiler:3.13.0:compile (default-compile) @ reconciliation-db-support ---
+build	24-Apr-2026 07:27:03	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 07:27:03	[INFO] Compiling 46 source files with javac [debug deprecation target 17] to target/classes
+build	24-Apr-2026 07:27:03	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/database-support/src/main/java/gov/gsa/cnxs/bpm/queries/billing/DisputeByVendor.java: Some input files use unchecked or unsafe operations.
+build	24-Apr-2026 07:27:03	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/database-support/src/main/java/gov/gsa/cnxs/bpm/queries/billing/DisputeByVendor.java: Recompile with -Xlint:unchecked for details.
+build	24-Apr-2026 07:27:03	[INFO] 
+build	24-Apr-2026 07:27:03	[INFO] --- resources:3.3.1:testResources (default-testResources) @ reconciliation-db-support ---
+build	24-Apr-2026 07:27:03	[INFO] Copying 1 resource from src/test/resources to target/test-classes
+build	24-Apr-2026 07:27:03	[INFO] Copying 0 resource from src/test/resources to target/test-classes
+build	24-Apr-2026 07:27:03	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 07:27:03	[INFO] 
+build	24-Apr-2026 07:27:03	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ reconciliation-db-support ---
+build	24-Apr-2026 07:27:03	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 07:27:03	[INFO] Compiling 41 source files with javac [debug deprecation target 17] to target/test-classes
+build	24-Apr-2026 07:27:04	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/database-support/src/test/java/gov/gsa/nsfs/reconcile/db/sla/BillingSlaSummaryBeanTest.java: Some input files use unchecked or unsafe operations.
+build	24-Apr-2026 07:27:04	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/database-support/src/test/java/gov/gsa/nsfs/reconcile/db/sla/BillingSlaSummaryBeanTest.java: Recompile with -Xlint:unchecked for details.
+build	24-Apr-2026 07:27:04	[INFO] 
+build	24-Apr-2026 07:27:04	[INFO] --- surefire:3.5.2:test (default-test) @ reconciliation-db-support ---
+build	24-Apr-2026 07:27:04	[INFO] Tests are skipped.
+build	24-Apr-2026 07:27:04	[INFO] 
+build	24-Apr-2026 07:27:04	[INFO] --- jar:3.4.1:jar (default-jar) @ reconciliation-db-support ---
+build	24-Apr-2026 07:27:04	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/database-support/target/reconciliation-db-support-02.00.000.150-SNAPSHOT.jar
+build	24-Apr-2026 07:27:04	[INFO] 
+build	24-Apr-2026 07:27:04	[INFO] --- jar:3.4.1:test-jar (default) @ reconciliation-db-support ---
+build	24-Apr-2026 07:27:04	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/database-support/target/reconciliation-db-support-02.00.000.150-SNAPSHOT-tests.jar
+build	24-Apr-2026 07:27:04	[INFO] 
+build	24-Apr-2026 07:27:04	[INFO] ------< gov.gsa.cnxs.reconciliation:reconciliation-rules-engine >-------
+build	24-Apr-2026 07:27:04	[INFO] Building Reconciliation - Rules Engine 02.00.000.150-SNAPSHOT      [4/7]
+build	24-Apr-2026 07:27:04	[INFO]   from rules-engine/pom.xml
+build	24-Apr-2026 07:27:04	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 07:27:04	[INFO] 
+build	24-Apr-2026 07:27:04	[INFO] --- clean:3.2.0:clean (default-clean) @ reconciliation-rules-engine ---
+build	24-Apr-2026 07:27:04	[INFO] 
+build	24-Apr-2026 07:27:04	[INFO] --- resources:3.3.1:resources (default-resources) @ reconciliation-rules-engine ---
+build	24-Apr-2026 07:27:04	[INFO] Copying 1 resource from src/main/resources to target/classes
+build	24-Apr-2026 07:27:04	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 07:27:04	[INFO] 
+build	24-Apr-2026 07:27:04	[INFO] --- compiler:3.13.0:compile (default-compile) @ reconciliation-rules-engine ---
+build	24-Apr-2026 07:27:04	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 07:27:04	[INFO] Compiling 11 source files with javac [debug deprecation target 17] to target/classes
+build	24-Apr-2026 07:27:04	[INFO] 
+build	24-Apr-2026 07:27:04	[INFO] --- resources:3.3.1:testResources (default-testResources) @ reconciliation-rules-engine ---
+build	24-Apr-2026 07:27:04	[INFO] Copying 2 resources from src/test/resources to target/test-classes
+build	24-Apr-2026 07:27:04	[INFO] Copying 0 resource from src/test/resources to target/test-classes
+build	24-Apr-2026 07:27:04	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 07:27:04	[INFO] 
+build	24-Apr-2026 07:27:04	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ reconciliation-rules-engine ---
+build	24-Apr-2026 07:27:04	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 07:27:04	[INFO] Compiling 35 source files with javac [debug deprecation target 17] to target/test-classes
+build	24-Apr-2026 07:27:05	[INFO] 
+build	24-Apr-2026 07:27:05	[INFO] --- surefire:3.5.2:test (default-test) @ reconciliation-rules-engine ---
+build	24-Apr-2026 07:27:05	[INFO] Tests are skipped.
+build	24-Apr-2026 07:27:05	[INFO] 
+build	24-Apr-2026 07:27:05	[INFO] --- jar:3.4.1:jar (default-jar) @ reconciliation-rules-engine ---
+build	24-Apr-2026 07:27:05	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/rules-engine/target/reconciliation-rules-engine-02.00.000.150-SNAPSHOT.jar
+build	24-Apr-2026 07:27:05	[INFO] 
+build	24-Apr-2026 07:27:05	[INFO] --- jar:3.4.1:test-jar (default) @ reconciliation-rules-engine ---
+build	24-Apr-2026 07:27:05	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/rules-engine/target/reconciliation-rules-engine-02.00.000.150-SNAPSHOT-tests.jar
+build	24-Apr-2026 07:27:05	[INFO] 
+build	24-Apr-2026 07:27:05	[INFO] ---------< gov.gsa.cnxs.reconciliation:reconciliation-routes >----------
+build	24-Apr-2026 07:27:05	[INFO] Building Reconciliation Routes 02.00.000.150-SNAPSHOT              [5/7]
+build	24-Apr-2026 07:27:05	[INFO]   from routes/pom.xml
+build	24-Apr-2026 07:27:05	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 07:27:05	[INFO] 
+build	24-Apr-2026 07:27:05	[INFO] --- clean:3.2.0:clean (default-clean) @ reconciliation-routes ---
+build	24-Apr-2026 07:27:05	[INFO] 
+build	24-Apr-2026 07:27:05	[INFO] --- resources:3.3.1:resources (default-resources) @ reconciliation-routes ---
+build	24-Apr-2026 07:27:05	[INFO] Copying 2 resources from src/main/resources to target/classes
+build	24-Apr-2026 07:27:05	[INFO] Copying 0 resource from src/main/java to target/classes
+build	24-Apr-2026 07:27:05	[INFO] The encoding used to copy filtered properties files have not been set. This means that the same encoding will be used to copy filtered properties files as when copying other filtered resources. This might not be what you want! Run your build with --debug to see which files might be affected. Read more at https://maven.apache.org/plugins/maven-resources-plugin/examples/filtering-properties-files.html
+build	24-Apr-2026 07:27:05	[INFO] 
+build	24-Apr-2026 07:27:05	[INFO] --- compiler:3.13.0:compile (default-compile) @ reconciliation-routes ---
+build	24-Apr-2026 07:27:05	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 07:27:05	[INFO] Compiling 665 source files with javac [debug deprecation target 17] to target/classes
+build	24-Apr-2026 07:27:07	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/routes/src/main/java/gov/gsa/nsfs/sftp/ondemand/dpaData/DPAFileGenerator.java: Some input files use unchecked or unsafe operations.
+build	24-Apr-2026 07:27:07	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/routes/src/main/java/gov/gsa/nsfs/sftp/ondemand/dpaData/DPAFileGenerator.java: Recompile with -Xlint:unchecked for details.
+build	24-Apr-2026 07:27:07	[INFO] 
+build	24-Apr-2026 07:27:07	[INFO] --- resources:3.3.1:testResources (default-testResources) @ reconciliation-routes ---
+build	24-Apr-2026 07:27:07	[INFO] Copying 2 resources from src/test/resources to target/test-classes
+build	24-Apr-2026 07:27:07	[INFO] Copying 0 resource from src/test/resources to target/test-classes
+build	24-Apr-2026 07:27:07	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	24-Apr-2026 07:27:07	[INFO] The encoding used to copy filtered properties files have not been set. This means that the same encoding will be used to copy filtered properties files as when copying other filtered resources. This might not be what you want! Run your build with --debug to see which files might be affected. Read more at https://maven.apache.org/plugins/maven-resources-plugin/examples/filtering-properties-files.html
+build	24-Apr-2026 07:27:07	[INFO] 
+build	24-Apr-2026 07:27:07	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ reconciliation-routes ---
+build	24-Apr-2026 07:27:07	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 07:27:07	[INFO] Compiling 551 source files with javac [debug deprecation target 17] to target/test-classes
+build	24-Apr-2026 07:27:10	[WARNING] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/routes/src/test/java/gov/gsa/nsfs/sftp/ondemand/dodData/DODDataProcessorH2Test.java:[297,159] getInternalAccount() in gov.gsa.nsfs.domains.agreement.TaskOrder has been deprecated
+build	24-Apr-2026 07:27:10	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/routes/src/test/java/gov/gsa/nsfs/reconcile/billingInvoice/AtpCacheQueryForBillingInvoiceReconciliationTest.java: Some input files use unchecked or unsafe operations.
+build	24-Apr-2026 07:27:10	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/routes/src/test/java/gov/gsa/nsfs/reconcile/billingInvoice/AtpCacheQueryForBillingInvoiceReconciliationTest.java: Recompile with -Xlint:unchecked for details.
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- surefire:3.5.2:test (default-test) @ reconciliation-routes ---
+build	24-Apr-2026 07:27:10	[INFO] Tests are skipped.
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- jar:3.4.1:jar (default-jar) @ reconciliation-routes ---
+build	24-Apr-2026 07:27:10	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/routes/target/reconciliation-routes-02.00.000.150-SNAPSHOT.jar
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- jar:3.4.1:test-jar (default) @ reconciliation-routes ---
+build	24-Apr-2026 07:27:10	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/routes/target/reconciliation-routes-02.00.000.150-SNAPSHOT-tests.jar
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] -----------< gov.gsa.cnxs.reconciliation:reconciliation-war >-----------
+build	24-Apr-2026 07:27:10	[INFO] Building Reconciliation Processor 02.00.000.150-SNAPSHOT           [6/7]
+build	24-Apr-2026 07:27:10	[INFO]   from war/pom.xml
+build	24-Apr-2026 07:27:10	[INFO] --------------------------------[ war ]---------------------------------
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- clean:3.2.0:clean (default-clean) @ reconciliation-war ---
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- resources:3.3.1:resources (default-resources) @ reconciliation-war ---
+build	24-Apr-2026 07:27:10	[INFO] Copying 1 resource from src/main/resources to target/classes
+build	24-Apr-2026 07:27:10	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/war/src/main/java
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- compiler:3.13.0:compile (default-compile) @ reconciliation-war ---
+build	24-Apr-2026 07:27:10	[INFO] No sources to compile
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- dependency:3.8.0:unpack (default) @ reconciliation-war ---
+build	24-Apr-2026 07:27:10	[INFO] Configured Artifact: org.webjars:swagger-ui:?:jar
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- resources:3.3.1:copy-resources (copy-resources) @ reconciliation-war ---
+build	24-Apr-2026 07:27:10	[INFO] Copying 24 resources from target/tmp/META-INF/resources/webjars/swagger-ui/3.47.1 to src/main/webapp/api
+build	24-Apr-2026 07:27:10	[INFO] Copying 1 resource from src/main/resources to src/main/webapp/api
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- resources:3.3.1:testResources (default-testResources) @ reconciliation-war ---
+build	24-Apr-2026 07:27:10	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/war/src/test/resources
+build	24-Apr-2026 07:27:10	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/war/src/test/resources
+build	24-Apr-2026 07:27:10	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/war/src/test/java
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ reconciliation-war ---
+build	24-Apr-2026 07:27:10	[INFO] No sources to compile
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- surefire:3.5.2:test (default-test) @ reconciliation-war ---
+build	24-Apr-2026 07:27:10	[INFO] Tests are skipped.
+build	24-Apr-2026 07:27:10	[INFO] 
+build	24-Apr-2026 07:27:10	[INFO] --- war:3.4.0:war (default-war) @ reconciliation-war ---
+build	24-Apr-2026 07:27:11	[INFO] Packaging webapp
+build	24-Apr-2026 07:27:11	[INFO] Assembling webapp [reconciliation-war] in [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/war/target/reconciliation-war]
+build	24-Apr-2026 07:27:11	[INFO] Processing war project
+build	24-Apr-2026 07:27:11	[INFO] Copying webapp resources [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/war/src/main/webapp]
+build	24-Apr-2026 07:27:11	[INFO] Building war: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/war/target/reconciliation-war.war
+build	24-Apr-2026 07:27:11	[INFO] 
+build	24-Apr-2026 07:27:11	[INFO] ----< gov.gsa.cnxs.reconciliation:reconciliation-integration-test >-----
+build	24-Apr-2026 07:27:11	[INFO] Building Reconciliation - Integration Test 02.00.000.150-SNAPSHOT  [7/7]
+build	24-Apr-2026 07:27:11	[INFO]   from integration/pom.xml
+build	24-Apr-2026 07:27:11	[INFO] --------------------------------[ jar ]---------------------------------
+build	24-Apr-2026 07:27:15	[INFO] 
+build	24-Apr-2026 07:27:15	[INFO] --- clean:3.2.0:clean (default-clean) @ reconciliation-integration-test ---
+build	24-Apr-2026 07:27:15	[INFO] 
+build	24-Apr-2026 07:27:15	[INFO] --- resources:3.3.1:resources (default-resources) @ reconciliation-integration-test ---
+build	24-Apr-2026 07:27:15	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/integration/src/main/resources
+build	24-Apr-2026 07:27:15	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/integration/src/main/java
+build	24-Apr-2026 07:27:15	[INFO] 
+build	24-Apr-2026 07:27:15	[INFO] --- compiler:3.13.0:compile (default-compile) @ reconciliation-integration-test ---
+build	24-Apr-2026 07:27:15	[INFO] No sources to compile
+build	24-Apr-2026 07:27:15	[INFO] 
+build	24-Apr-2026 07:27:15	[INFO] --- resources:3.3.1:testResources (default-testResources) @ reconciliation-integration-test ---
+build	24-Apr-2026 07:27:15	[INFO] Copying 11 resources from src/test/resources to target/test-classes
+build	24-Apr-2026 07:27:15	[INFO] Copying 0 resource from src/test/resources to target/test-classes
+build	24-Apr-2026 07:27:15	[INFO] Copying 2 resources from src/test/java to target/test-classes
+build	24-Apr-2026 07:27:15	[INFO] 
+build	24-Apr-2026 07:27:15	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ reconciliation-integration-test ---
+build	24-Apr-2026 07:27:15	[INFO] Recompiling the module because of changed dependency.
+build	24-Apr-2026 07:27:15	[INFO] Compiling 285 source files with javac [debug deprecation target 17] to target/test-classes
+build	24-Apr-2026 07:27:18	[WARNING] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/integration/src/test/java/gov/gsa/cnxs/bpm/sftp/ondemand/dodData/DodDataFileProcessSuccessIT.java:[122,159] getInternalAccount() in gov.gsa.nsfs.domains.agreement.TaskOrder has been deprecated
+build	24-Apr-2026 07:27:18	[WARNING] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/integration/src/test/java/gov/gsa/cnxs/bpm/sftp/ondemand/dodData/DodDataFileProcessSuccessIT.java:[133,152] getInternalAccount() in gov.gsa.nsfs.domains.agreement.TaskOrder has been deprecated
+build	24-Apr-2026 07:27:18	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/integration/src/test/java/gov/gsa/cnxs/bpm/atp/processubistatuschange/UbiStatusChangeProcessingAssertHelper.java: Some input files use unchecked or unsafe operations.
+build	24-Apr-2026 07:27:18	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/integration/src/test/java/gov/gsa/cnxs/bpm/atp/processubistatuschange/UbiStatusChangeProcessingAssertHelper.java: Recompile with -Xlint:unchecked for details.
+build	24-Apr-2026 07:27:18	[INFO] 
+build	24-Apr-2026 07:27:18	[INFO] --- surefire:3.5.2:test (default-test) @ reconciliation-integration-test ---
+build	24-Apr-2026 07:27:18	[INFO] Tests are skipped.
+build	24-Apr-2026 07:27:18	[INFO] 
+build	24-Apr-2026 07:27:18	[INFO] --- jar:3.4.1:jar (default-jar) @ reconciliation-integration-test ---
+build	24-Apr-2026 07:27:18	[WARNING] JAR will be empty - no content was marked for inclusion!
+build	24-Apr-2026 07:27:18	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/integration/target/reconciliation-integration-test-02.00.000.150-SNAPSHOT.jar
+build	24-Apr-2026 07:27:18	[INFO] 
+build	24-Apr-2026 07:27:18	[INFO] --- jar:3.4.1:test-jar (default) @ reconciliation-integration-test ---
+build	24-Apr-2026 07:27:18	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1/integration/target/reconciliation-integration-test-02.00.000.150-SNAPSHOT-tests.jar
+build	24-Apr-2026 07:27:18	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 07:27:18	[INFO] Reactor Summary for Conexus - Reconciliation 02.00.000.150-SNAPSHOT:
+build	24-Apr-2026 07:27:18	[INFO] 
+build	24-Apr-2026 07:27:18	[INFO] Conexus - Reconciliation ........................... SUCCESS [  0.094 s]
+build	24-Apr-2026 07:27:18	[INFO] Reconciliation Domain Classes ...................... SUCCESS [ 11.402 s]
+build	24-Apr-2026 07:27:18	[INFO] Reconciliation - Database Support .................. SUCCESS [  1.235 s]
+build	24-Apr-2026 07:27:18	[INFO] Reconciliation - Rules Engine ...................... SUCCESS [  0.711 s]
+build	24-Apr-2026 07:27:18	[INFO] Reconciliation Routes .............................. SUCCESS [  5.065 s]
+build	24-Apr-2026 07:27:18	[INFO] Reconciliation Processor ........................... SUCCESS [  1.280 s]
+build	24-Apr-2026 07:27:18	[INFO] Reconciliation - Integration Test .................. SUCCESS [  6.351 s]
+build	24-Apr-2026 07:27:18	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 07:27:18	[INFO] BUILD SUCCESS
+build	24-Apr-2026 07:27:18	[INFO] ------------------------------------------------------------------------
+build	24-Apr-2026 07:27:18	[INFO] Total time:  26.787 s
+build	24-Apr-2026 07:27:18	[INFO] Finished at: 2026-04-24T07:27:18-05:00
+build	24-Apr-2026 07:27:18	[INFO] ------------------------------------------------------------------------
+simple	24-Apr-2026 07:27:18	Parsing test results under /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1...
+simple	24-Apr-2026 07:27:18	Failing task since test cases were expected but none were found.
+simple	24-Apr-2026 07:27:18	Finished task 'Build and Verify' with result: Failed
+simple	24-Apr-2026 07:27:18	Running post build plugin 'Docker Container Cleanup'
+simple	24-Apr-2026 07:27:18	Running post build plugin 'NCover Results Collector'
+simple	24-Apr-2026 07:27:18	Running post build plugin 'Build Results Label Collector'
+simple	24-Apr-2026 07:27:18	Running post build plugin 'Clover Results Collector'
+simple	24-Apr-2026 07:27:18	Running post build plugin 'npm Cache Cleanup'
+simple	24-Apr-2026 07:27:18	Running post build plugin 'Artifact Copier'
+simple	24-Apr-2026 07:27:18	Publishing an artifact: Jboss Log
+error	24-Apr-2026 07:27:18	Failing as no matching files has been found and empty artifacts are not allowed.
+error	24-Apr-2026 07:27:18	Unable to publish artifact [Jboss Log]: 
+simple	24-Apr-2026 07:27:18	The artifact hasn't been successfully published after 23.69 ms
+simple	24-Apr-2026 07:27:18	Publishing an artifact: Oracle Log
+error	24-Apr-2026 07:27:18	Failing as no matching files has been found and empty artifacts are not allowed.
+error	24-Apr-2026 07:27:18	Unable to publish artifact [Oracle Log]: 
+simple	24-Apr-2026 07:27:18	The artifact hasn't been successfully published after 12.46 ms
+simple	24-Apr-2026 07:27:18	Successfully removed working directory at '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/BT-RCNT-JOB1'
+simple	24-Apr-2026 07:27:18	Finalising the build...
+simple	24-Apr-2026 07:27:18	Stopping timer.
+simple	24-Apr-2026 07:27:18	Build BT-RCNT-JOB1-31 completed.
+simple	24-Apr-2026 06:27:18	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	24-Apr-2026 06:27:18	Running on server: post build plugin 'NCover Results Collector'
+simple	24-Apr-2026 06:27:18	Running on server: post build plugin 'Build Labeller'
+simple	24-Apr-2026 06:27:18	Running on server: post build plugin 'Clover Delta Calculator'
+simple	24-Apr-2026 06:27:18	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	24-Apr-2026 06:27:18	All post build plugins have finished
+simple	24-Apr-2026 06:27:18	Generating build results summary...
+simple	24-Apr-2026 06:27:18	Saving build results to disk...
+simple	24-Apr-2026 06:27:18	Store variable context...
+simple	24-Apr-2026 06:27:18	Finished building BT-RCNT-JOB1-31.
