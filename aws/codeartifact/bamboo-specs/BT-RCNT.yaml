@@ -19,7 +19,7 @@ Default Job:
     all-other-apps:
       custom:
         auto: {}
-        buildHangingConfig.enabled: "false"
+        buildHangingConfig.enabled: 'false'
 
   tasks:
     - checkout:
@@ -33,12 +33,10 @@ Default Job:
         description: Checkout bamboo-deployment
 
     - script:
-        interpreter: SHELL
+        interpreter: BINSH_OR_CMDEXE
         scripts:
-          - |-
-            rm -rf .m2
-            mkdir -p .m2/repository
-        description: Prepare isolated Maven repo
+          - rm -rf ~/.m2/repository/gov/gsa/
+        description: Remove existing cnxs maven repo directory
 
     - script:
         interpreter: SHELL
@@ -72,7 +70,6 @@ Default Job:
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
-
                   <repositories>
                     <repository>
                       <id>conexus-plugin-repository</id>
@@ -80,7 +77,6 @@ Default Job:
                       <releases><enabled>true</enabled></releases>
                       <snapshots><enabled>true</enabled></snapshots>
                     </repository>
-
                     <repository>
                       <id>conexus-snapshot-local</id>
                       <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
@@ -110,31 +106,26 @@ Default Job:
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>artifactory</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>conexus-plugin-repository</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>conexus-snapshot-local</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>ArtifactoryPluginRepos</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-
                 <server>
                   <id>ArtifactoryMavenFeatureRepos</id>
                   <username>sa_bamboo</username>
@@ -145,40 +136,31 @@ Default Job:
             XML
         description: Write Artifactory Maven settings
 
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            sed -E 's#<password>.*</password>#<password>***</password>#g' settings-artifactory.xml
-        description: Debug generated Maven settings
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            set -e
-            curl -sf -u sa_bamboo:${bamboo.artifactory_access_token_secret} \
-              "${bamboo.inject.mavenFeatureRepositoryUrl}gov/gsa/cnxs/bom/env/02.00.000.167-SNAPSHOT/maven-metadata.xml" \
-              >/dev/null
-            echo "Artifactory dependency auth check passed"
-        description: Validate Artifactory dependency access
-
     - maven:
         executable: Maven 3
         jdk: JDK 17
-        goal: >
-          -Dmaven.repo.local=${bamboo.build.working.directory}/.m2/repository
+        goal: >-
+          clean verify -B -DskipSurefire=true -U
           -s settings-artifactory.xml
-          clean verify -B -U
-          -DskipTests=true -DskipSurefire=true -DskipITs=true -Dmaven.test.skip=true
           -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
-          -Dbamboo.inject.RawBranchName=${bamboo.inject.RawBranchName}
-          -Dbamboo.inject.ParentBranchName=${bamboo.inject.ParentBranchName}
-          -Dbamboo.inject.ChildBranchName=${bamboo.inject.ChildBranchName}
           -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
           -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        description: Nightly build and verify using Artifactory settings
+        tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
+        description: Build and Verify
+
+  artifacts:
+    - name: Jboss Log
+      location: integration/target/
+      pattern: jboss.log
+      shared: false
+      required: false
+
+    - name: Oracle Log
+      location: integration/target/
+      pattern: oracle.log
+      shared: false
+      required: false
 
   artifact-subscriptions: []
 
@@ -189,7 +171,6 @@ repositories:
       scope: global
 
 triggers: []
-  # Trigger type TriggerProperties{name='Single daily build', description='Nightly run', conditions=[], enabled=true} is not supported yet
 
 branches:
   create: manually
@@ -204,6 +185,8 @@ notifications:
     recipients:
       - users:
           - jeff.sikala
+      - users:
+          - kristian.fitzgerald@gsa.gov
       - watchers
 
   - events:
@@ -218,6 +201,8 @@ notifications:
       - committers
       - users:
           - jeff.sikala
+      - users:
+          - kristian.fitzgerald@gsa.gov
 
 labels: []
 
@@ -226,3 +211,8 @@ dependencies:
   enabled-for-branches: true
   block-strategy: none
   plans: []
+
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
