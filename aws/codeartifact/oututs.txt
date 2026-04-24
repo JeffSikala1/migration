@@ -1,88 +1,182 @@
----
-version: 2
-plan:
-  project-key: BT
-  key: ENV
-  name: Env - Build
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
-  key: JOB1
-  tasks:
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: bamboo-deployment
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: BINSH_OR_CMDEXE
-      scripts:
-      - |-
-        rm -rf ~/.m2/repository/gov/gsa/
-        yum install jq -y
-      description: Remove existing cnxs maven repo directory
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/build-determination.sh
-      description: Determine parent branch and pass correct variables
-  - inject-variables:
-      file: file.properties
-      scope: LOCAL
-      namespace: inject
-      description: Inject values
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version.sh
-      environment: buildVersionQueryArtifact=${bamboo.buildVersionQueryArtifact} buildVersionQueryGroup=${bamboo.buildVersionQueryGroup} mavenVersion=${bamboo.maven.version}
-      description: Determine if deploy to Artifactory is needed
-# com.atlassian.bamboo.warnings.atlassian-bamboo-warnings:task.warnings.parser is disabled. This state is not supported at YAML
-  requirements:
-  - system.jdk.JDK 17
-  - system.builder.mvn3.Maven 3
-  artifact-subscriptions: []
-repositories:
-- Env:
-    scope: global
-- bamboo-deployment:
-    scope: global
-triggers:
-- bitbucket-server-trigger:
-    repositories:
-    - Env
-branches:
-  create: for-new-branch
-  delete:
-    after-deleted-days: 7
-    after-inactive-days: 200
-  link-to-jira: true
-notifications:
-- events:
-  - plan-completed
-  recipients:
-  - watchers
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-labels: []
-dependencies:
-  require-all-stages-passing: true
-  enabled-for-branches: true
-  block-strategy: block_if_parent_in_progress
-  plans:
-  - BT-COMB
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
+simple	24-Apr-2026 10:07:20	Build Build and Test - Env - Build - Default Job #68 (BT-ENV-JOB1-68) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-5 (2), bamboo version: 10.2.11
+simple	24-Apr-2026 10:07:20	Remote agent on host ip-10-56-112-35.ec2.internal-ba-5
+simple	24-Apr-2026 10:07:20	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1
+simple	24-Apr-2026 10:07:20	Executing build Build and Test - Env - Build - Default Job #68 (BT-ENV-JOB1-68)
+simple	24-Apr-2026 10:07:20	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	24-Apr-2026 10:07:20	Build always requires a clean checkout
+simple	24-Apr-2026 10:07:20	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1'
+simple	24-Apr-2026 10:07:20	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1
+simple	24-Apr-2026 10:07:20	Updating source code to revision: 9b939b514c12fc533db7f71d1b71f1d241c0e93c
+simple	24-Apr-2026 10:07:21	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git'.
+simple	24-Apr-2026 10:07:21	Warning: Permanently added '[127.0.0.1]:42109' (RSA) to the list of known hosts.
+simple	24-Apr-2026 10:07:21	Checking out revision 9b939b514c12fc533db7f71d1b71f1d241c0e93c.
+simple	24-Apr-2026 10:07:21	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1/.git'.
+simple	24-Apr-2026 10:07:21	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1'...
+simple	24-Apr-2026 10:07:21	done.
+simple	24-Apr-2026 10:07:21	Switched to a new branch 'develop'
+simple	24-Apr-2026 10:07:21	branch 'develop' set up to track 'origin/develop'.
+simple	24-Apr-2026 10:07:21	Updated source code to revision: 9b939b514c12fc533db7f71d1b71f1d241c0e93c
+simple	24-Apr-2026 10:07:21	Finished task 'Checkout Default Repository' with result: Success
+simple	24-Apr-2026 10:07:21	Starting task 'Checkout bamboo-deployment' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	24-Apr-2026 10:07:21	Build always requires a clean checkout
+simple	24-Apr-2026 10:07:21	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1/bamboo-deployment'
+simple	24-Apr-2026 10:07:21	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1/bamboo-deployment
+simple	24-Apr-2026 10:07:21	Updating source code to revision: e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740
+simple	24-Apr-2026 10:07:21	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git'.
+simple	24-Apr-2026 10:07:21	Warning: Permanently added '[127.0.0.1]:42109' (RSA) to the list of known hosts.
+simple	24-Apr-2026 10:07:21	Checking out revision e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740.
+simple	24-Apr-2026 10:07:21	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1/bamboo-deployment/.git'.
+simple	24-Apr-2026 10:07:21	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1/bamboo-deployment'...
+simple	24-Apr-2026 10:07:21	done.
+simple	24-Apr-2026 10:07:21	Switched to a new branch 'develop'
+simple	24-Apr-2026 10:07:21	branch 'develop' set up to track 'origin/develop'.
+simple	24-Apr-2026 10:07:21	Updated source code to revision: e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740
+simple	24-Apr-2026 10:07:21	Finished task 'Checkout bamboo-deployment' with result: Success
+simple	24-Apr-2026 10:07:21	Running pre-build action: Build Log Labeller Pre Build Action
+simple	24-Apr-2026 10:07:21	Running pre-build action: VCS Version Collector
+simple	24-Apr-2026 10:07:21	Build Build and Test - Env - Build - Default Job #68 (BT-ENV-JOB1-68) started building on agent 'ip-10-56-112-35.ec2.internal-ba-5 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-5)
+simple	24-Apr-2026 10:07:21	Starting task 'Remove existing cnxs maven repo directory' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 10:07:21	Beginning to execute external process for build 'Build and Test - Env - Build - Default Job #68 (BT-ENV-JOB1-68)'\n ... running command line: \n/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/temp/BT-ENV-JOB1-68-ScriptBuildTask-6952158344861585258.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1\n
+build	24-Apr-2026 10:07:22	CentOS Stream 9 - BaseOS                         35 kB/s | 6.4 kB     00:00    
+build	24-Apr-2026 10:07:22	CentOS Stream 9 - AppStream                      20 kB/s | 6.5 kB     00:00    
+build	24-Apr-2026 10:07:22	CentOS Stream 9 - Extras packages                73 kB/s | 6.9 kB     00:00    
+build	24-Apr-2026 10:07:22	Package jq-1.6-19.el9.x86_64 is already installed.
+build	24-Apr-2026 10:07:22	Dependencies resolved.
+build	24-Apr-2026 10:07:22	Nothing to do.
+build	24-Apr-2026 10:07:22	Complete!
+simple	24-Apr-2026 10:07:22	Finished task 'Remove existing cnxs maven repo directory' with result: Success
+simple	24-Apr-2026 10:07:22	Starting task 'Determine parent branch and pass correct variables' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 10:07:22	Beginning to execute external process for build 'Build and Test - Env - Build - Default Job #68 (BT-ENV-JOB1-68)'\n ... running command line: \nbamboo-deployment/build-determination-migration.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1\n
+build	24-Apr-2026 10:07:22	Not a long lived branch
+simple	24-Apr-2026 10:07:22	Finished task 'Determine parent branch and pass correct variables' with result: Success
+simple	24-Apr-2026 10:07:22	Starting task 'Inject values' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:inject'
+simple	24-Apr-2026 10:07:22	Injected variable bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ in LOCAL scope
+simple	24-Apr-2026 10:07:22	Injected variable bamboo.inject.BranchName=develop in LOCAL scope
+simple	24-Apr-2026 10:07:22	Injected variable bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ in LOCAL scope
+simple	24-Apr-2026 10:07:22	Finished task 'Inject values' with result: Success
+simple	24-Apr-2026 10:07:22	Starting task 'Dump variables to log' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump'
+simple	24-Apr-2026 10:07:22	---- DUMPING VARIABLES TO LOG --- 
+simple	24-Apr-2026 10:07:22	key: [ManualBuildTriggerReason.userName] value: [jeff.sikala] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [SNYK_CLIENT_ID] value: [004cb1fd-36d1-4c46-84e0-2d4e2654fa9e and the ORG ID is 6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	24-Apr-2026 10:07:22	key: [SNYK_CLIENT_SECRET] value: [**********] type: GLOBAL
+simple	24-Apr-2026 10:07:22	key: [SNYK_ORG_ID] value: [6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	24-Apr-2026 10:07:22	key: [agentId] value: [1572868] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [agentWorkingDirectory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [artifactory_access_token_secret] value: [**********] type: GLOBAL
+simple	24-Apr-2026 10:07:22	key: [artifactory_sa_conexus_password] value: [**********] type: GLOBAL
+simple	24-Apr-2026 10:07:22	key: [bitbucket_branch] value: [feature/ll-postgres] type: GLOBAL
+simple	24-Apr-2026 10:07:22	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.3] value: [/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/temp/BT-ENV-JOB1-68-ScriptBuildTask-6952158344861585258.sh] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.4] value: [bamboo-deployment/build-determination-migration.sh] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [build.working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [buildFailed] value: [false] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [buildKey] value: [BT-ENV-JOB1] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [buildNumber] value: [68] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [buildPlanName] value: [Build and Test - Env - Build - Default Job] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [buildResultKey] value: [BT-ENV-JOB1-68] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [buildResultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-ENV-JOB1-68] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [buildTimeStamp] value: [2026-04-24T09:07:20.849-06:00] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.builder.command.aws] value: [/usr/local/bin/aws] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.builder.command.kubectl] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.builder.mvn3.Maven 3] value: [/usr/share/maven] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.builder.node.Node.js] value: [/usr/bin/node] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.docker.executable] value: [/usr/bin/docker] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.git.executable] value: [/usr/bin/git] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.jdk.JDK] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.jdk.JDK 17] value: [/etc/alternatives/java_sdk_17] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.jdk.JDK 17.0.18] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [capability.system.kubectl.executable] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [dependenciesDisabled] value: [false] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [git.cache.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/_git-repositories-cache] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [inject.BranchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [inject.mavenFeatureRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [inject.pluginRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [plan.storageTag] value: [plan-4849703] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planKey] value: [BT-ENV] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planName] value: [Build and Test - Env - Build] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.1.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.1.branchDisplayName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.1.branchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.1.name] value: [Env] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.1.previousRevision] value: [9b939b514c12fc533db7f71d1b71f1d241c0e93c] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.1.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.1.revision] value: [9b939b514c12fc533db7f71d1b71f1d241c0e93c] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.1.type] value: [bbserver] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.1.username] value: [] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.2.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.2.branchDisplayName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.2.branchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.2.name] value: [bamboo-deployment] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.2.previousRevision] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.2.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.2.revision] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.2.type] value: [bbserver] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.2.username] value: [] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.branchDisplayName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.branchName] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.name] value: [Env] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.previousRevision] value: [9b939b514c12fc533db7f71d1b71f1d241c0e93c] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.revision] value: [9b939b514c12fc533db7f71d1b71f1d241c0e93c] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.type] value: [bbserver] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [planRepository.username] value: [] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013543.branch.name] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013543.git.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013543.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013543.git.username] value: [] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013543.name] value: [Env] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013543.previous.revision.number] value: [9b939b514c12fc533db7f71d1b71f1d241c0e93c] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013543.revision.number] value: [9b939b514c12fc533db7f71d1b71f1d241c0e93c] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013544.branch.name] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013544.git.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013544.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013544.git.username] value: [] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013544.name] value: [bamboo-deployment] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013544.previous.revision.number] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.5013544.revision.number] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.branch.name] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.git.branch] value: [develop] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.git.username] value: [] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.name] value: [bamboo-deployment] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.previous.revision.number] value: [9b939b514c12fc533db7f71d1b71f1d241c0e93c] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [repository.revision.number] value: [9b939b514c12fc533db7f71d1b71f1d241c0e93c] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [resultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-ENV-JOB1-68] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [shortJobKey] value: [JOB1] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [shortJobName] value: [Default Job] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [shortPlanBranchName] value: [] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [shortPlanKey] value: [ENV] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [shortPlanName] value: [Env - Build] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [simpleBuildTimeStamp] value: [20260424090720] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [tmp.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/temp] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [triggerReason.key] value: [com.atlassian.bamboo.plugin.system.triggerReason:ManualBuildTriggerReason] type: CUSTOM
+simple	24-Apr-2026 10:07:22	key: [working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1] type: CUSTOM
+simple	24-Apr-2026 10:07:22	---- END DUMPING VARIABLES TO LOG  --- 
+simple	24-Apr-2026 10:07:22	Finished task 'Dump variables to log' with result: Success
+simple	24-Apr-2026 10:07:22	Starting task 'Determine if deploy to Artifactory is needed' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	24-Apr-2026 10:07:22	Beginning to execute external process for build 'Build and Test - Env - Build - Default Job #68 (BT-ENV-JOB1-68)'\n ... running command line: \nbamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1\n
+build	24-Apr-2026 10:07:22	Not a long lived branch
+build	24-Apr-2026 10:07:22	This is a development branch. Deploying to Artifactory
+build	24-Apr-2026 10:07:23	[ERROR] Error executing Maven.
+build	24-Apr-2026 10:07:23	[ERROR] The specified user settings file does not exist: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV-JOB1/settings-artifactory.xml
+simple	24-Apr-2026 10:07:23	Failing task since return code of [bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh] was 1 while expected 0
+simple	24-Apr-2026 10:07:23	Finished task 'Determine if deploy to Artifactory is needed' with result: Failed
+simple	24-Apr-2026 10:07:23	Running post build plugin 'Docker Container Cleanup'
+simple	24-Apr-2026 10:07:23	Running post build plugin 'NCover Results Collector'
+simple	24-Apr-2026 10:07:23	Running post build plugin 'Build Results Label Collector'
+simple	24-Apr-2026 10:07:23	Running post build plugin 'Clover Results Collector'
+simple	24-Apr-2026 10:07:23	Running post build plugin 'npm Cache Cleanup'
+simple	24-Apr-2026 10:07:23	Running post build plugin 'Artifact Copier'
+simple	24-Apr-2026 10:07:23	Finalising the build...
+simple	24-Apr-2026 10:07:23	Stopping timer.
+simple	24-Apr-2026 10:07:23	Build BT-ENV-JOB1-68 completed.
+simple	24-Apr-2026 09:07:23	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	24-Apr-2026 09:07:23	Running on server: post build plugin 'NCover Results Collector'
+simple	24-Apr-2026 09:07:23	Running on server: post build plugin 'Build Labeller'
+simple	24-Apr-2026 09:07:23	Running on server: post build plugin 'Clover Delta Calculator'
+simple	24-Apr-2026 09:07:23	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	24-Apr-2026 09:07:23	All post build plugins have finished
+simple	24-Apr-2026 09:07:23	Generating build results summary...
+simple	24-Apr-2026 09:07:23	Saving build results to disk...
+simple	24-Apr-2026 09:07:23	Store variable context...
+simple	24-Apr-2026 09:07:23	Finished building BT-ENV-JOB1-68.
