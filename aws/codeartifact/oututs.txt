@@ -193,3 +193,163 @@ simple	26-Apr-2026 16:01:33	Generating build results summary...
 simple	26-Apr-2026 16:01:33	Saving build results to disk...
 simple	26-Apr-2026 16:01:33	Store variable context...
 simple	26-Apr-2026 16:01:33	Finished building BT-DOMB-JOB1-130.
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="BT" buildKey="DOMB"><code>---
+version: 2
+plan:
+  project-key: BT
+  key: DOMB
+  name: Domain - Build
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  other:
+    clean-working-dir: true
+    all-other-apps:
+      custom:
+        auto: {}
+        buildHangingConfig.enabled: 'false'
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - "#rm -rf ~/.m2/repository/gov/gsa/cnxs/\n#Bas: made below change; this only deletes snapshot folders so we don't download\n# the big released datafile artifact each time.\ndirName=~/.m2/repository/gov/gsa/cnxs/\nif [ -d \"$dirName\" ]; then\n\techo \"Removing snapshot folders from $dirName\"\n    find \"$dirName\" -type d -name '*SNAPSHOT' -exec rm -rf {} +\nfi"
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination-migration.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: clean verify -B -U -P integration-test  -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
+      description: Common Build and Verify
+  - test-parser:
+      type: junit
+      ignore-time: false
+      test-results: domain/target/surefire-reports
+      description: domain surefire reports
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
+      description: Determine if deploy to Artifactory is needed
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  artifacts:
+  - name: Jboss Log
+    location: integration/integration-test/target/
+    pattern: jboss.log
+    shared: false
+    required: false
+  - name: Oracle Log
+    location: integration/integration-test/target/
+    pattern: oracle.log
+    shared: false
+    required: false
+  artifact-subscriptions: []
+repositories:
+- Domain:
+    type: bitbucket-server
+    server: Conexus Bitbucket
+    project: CNXS
+    slug: domain
+    clone-url: ssh://git@conexus-bitbucket.edc.ds1.usda.gov:7999/cnxs/domain.git
+    branch: develop
+    command-timeout-minutes: '180'
+    use-shallow-clones: false
+    cache-on-agents: true
+    submodules: false
+    ssh-key-applies-to-submodules: false
+    verbose-logs: false
+    fetch-all: false
+    lfs: false
+    viewer:
+      com.atlassian.bamboo.plugins.stash.atlassian-bamboo-plugin-stash:bbServerViewer: {}
+- bamboo-deployment:
+      scope: global
+triggers:
+- bitbucket-server-trigger:
+    repositories:
+    - Domain
+branches:
+  create: for-new-branch
+  delete:
+    after-deleted-days: 30
+    after-inactive-days: 200
+  link-to-jira: true
+notifications:
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: block_if_parent_in_progress
+  plans:
+  - BT-COMRST
+  - BT-WEBSV
+  - BT-CON
+  - BT-VE
+  - BT-TASK
+  - BT-PRIC
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+  force-stop-build: false
+  all-other-apps:
+    custom.buildExpiryConfig.enabled: 'false'
+---
+version: 2
+plan:
+  key: BT-DOMB
+plan-permissions:
+- users:
+  - jeff.sikala
+  groups:
+  - bamboo-admin
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+
+</code></spec></specs>
