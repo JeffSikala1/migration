@@ -1,58 +1,9 @@
-#!/usr/bin/env bash
+feature/ll-my-long-lived-branch
 
-# Determine if a deploy is needed
+This would create the maven repo in artifactory.
 
-longLivedPrefix="ll-"
-BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
+Then, someone can create any number of branches like:
 
-RepositoryBaseUrl="https://conexus-artifactory.edc.ds1.usda.gov/artifactory/"
+feature/ll-my-long-lived-branch+CNXS-1234-some-ticket
 
-## Check to see if this is a long lived branch child
-if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-    echo "This is a long lived branch"
-    # Split the parent and child branch name
-    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
-    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-
-    # Set the plugin repo to conexus-ll-plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${ParentBranchName}" >> file.properties
-    echo "ChildBranchName=${ChildBranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a long lived parent or child branch
-    if [ -z ${ChildBranchName} ]; then
-        echo "This is a parent long-lived branch"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child long-lived branch. Not deploying to Artifactory"
-    fi
-
- elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-     echo "Not a long lived branch"
-     # Not a long lived branch
-     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
-
-     # Set the plugin repo to conexus--plugin-repository
-     # Set the branch repo to the parent branch
-     echo "BranchName=${BranchName}" >> file.properties
-     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a development parent or child (feature) branch
-    if [ "$BranchName" == "develop" ]; then
-        echo "This is a development branch.  Deploying to Artifactory"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child (feature) development branch. Not deploying to Artifactory"
-    fi
-
-  else
-      echo "Cannot determine parent branch"
-      exit 1
-fi
+And all of those will pull from the original maven repo. Does that make sense?
