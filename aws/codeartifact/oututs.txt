@@ -1,22 +1,19 @@
 #!/usr/bin/env bash
 
-artifactoryRepositoryUrl="https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/repositories"
-user="sa_conexus"
-# Set from global Bamboo variables
-api_key="${bamboo_artifactory_admin_api_key_secret}"
+# Determine if a deploy is needed
 
 longLivedPrefix="ll-"
 BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
 
 RepositoryBaseUrl="https://conexus-artifactory.edc.ds1.usda.gov/artifactory/"
- 
+
 ## Check to see if this is a long lived branch child
-if [[ "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
+if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
     echo "This is a long lived branch"
     # Split the parent and child branch name
     ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
     ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-    
+
     # Set the plugin repo to conexus-ll-plugin-repository
     # Set the branch repo to the parent branch
     echo "BranchName=${ParentBranchName}" >> file.properties
@@ -25,42 +22,37 @@ if [[ "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-    
-    # Check that the long lived parent maven repo exists - if it doesn't create it
-    mavenRepoExists=$(curl -s -X GET "$artifactoryRepositoryUrl?type=local&packageType=maven" | grep $BranchName | head -n1)
-    echo "Checking if repo exists"
-    if [[ -z "${mavenRepoExists}" ]]; then
-        echo "Repo does not exist. Creating Maven repo: ${BranchName}"
-        curl -X PUT \
-           -H "Content-type: application/json" \
-           -H "X-JFrog-Art-Api:$api_key" \
-           "$artifactoryRepositoryUrl/${BranchName}" \
-           -d '{ "key": "'${BranchName}'", "rclass" : "local", "packageType": "maven", "repoLayoutRef" : "maven-2-default", "snapshotVersionBehavior": "unique"}'
-        echo "Updating permsissions on new repo"
-        # Getting the anon_read_only permission model, add new repo name, and push changes
-        curl -s -X GET -H "X-JFrog-Art-Api:${api_key}" https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/anon_read_only \
-            | jq ".repo.repositories += [\"${BranchName}\"]" \
-            | curl -s -X PUT -H "X-JFrog-Art-Api:${api_key}" -H "Content-Type: application/json" https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/anon_read_only -d@-
-        # Getting the uploadOnly permission model, add new repo name, and push changes
-        curl -s -X GET -H "X-JFrog-Art-Api:${api_key}" https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/uploadOnly \
-            | jq ".repo.repositories += [\"${BranchName}\"]" \
-            | curl -s -X PUT -H "X-JFrog-Art-Api:${api_key}" -H "Content-Type: application/json" https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/uploadOnly -d@-
-    else
-        echo "Repo does exist"
-    fi
-elif [[ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
-    echo "Not a long lived branch"
-    # Not a long lived branch
-    BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
 
-    # Set the plugin repo to conexus--plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${BranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-else
+    # Determine if this is a long lived parent or child branch
+    if [ -z ${ChildBranchName} ]; then
+        echo "This is a parent long-lived branch"
+        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
+    else
+        echo "This is a child long-lived branch. Not deploying to Artifactory"
+    fi
+
+ elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
+     echo "Not a long lived branch"
+     # Not a long lived branch
+     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
+
+     # Set the plugin repo to conexus--plugin-repository
+     # Set the branch repo to the parent branch
+     echo "BranchName=${BranchName}" >> file.properties
+     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
+     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
+     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
+     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
+
+    # Determine if this is a development parent or child (feature) branch
+    if [ "$BranchName" == "develop" ]; then
+        echo "This is a development branch.  Deploying to Artifactory"
+        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
+    else
+        echo "This is a child (feature) development branch. Not deploying to Artifactory"
+    fi
+
+  else
       echo "Cannot determine parent branch"
       exit 1
 fi
