@@ -1,9 +1,16 @@
-docker exec prod-bamboo cat /var/atlassian/application-data/bamboo/bamboo.cfg.xml | grep -i "username\|password\|connection"
+docker exec -it prod-postgres psql -U bamboouser -d bamboo
+
+
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'CHAIN' 
+AND column_name ILIKE '%spec%' 
+OR column_name ILIKE '%rss%'
+ORDER BY column_name;
 
 
 
-docker exec prod-postgres pg_dump -U bamboouser bamboo > bamboo_backup_$(date +%Y%m%d_%H%M%S).sql
-
-
-
-ls -lh bamboo_backup_*.sql
+SELECT BUILDKEY, BUILD_NAME, LINKED_REPOSITORY_ID, RSS_ENABLED 
+FROM CHAIN 
+WHERE BUILDKEY LIKE 'BT-%' 
+LIMIT 10;
