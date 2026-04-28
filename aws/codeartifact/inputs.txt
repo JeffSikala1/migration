@@ -1,27 +1,5 @@
 for agent in ba-1 ba-2 ba-3 ba-4 ba-5 ba-6; do
-  echo "Cleaning legacy cache on ip-10-56-112-35.ec2.internal-${agent}"
-  docker exec ip-10-56-112-35.ec2.internal-${agent} \
-    rm -rf /cache/bamboo/ip-10-56-112-35.ec2.internal-${agent}/.m2
-done
-
-
-
-for agent in ba-1 ba-2 ba-3 ba-4 ba-5 ba-6; do
-  echo "Cleaning _remote.repositories on ip-10-56-112-35.ec2.internal-${agent}"
-  docker exec ip-10-56-112-35.ec2.internal-${agent} bash -c '
-    find /root/.m2/repository -name "_remote.repositories" | while read f; do
-      sed -i "/^[^#].*>central=/d" "$f"
-      sed -i "/^[^#].*>codeartifact=/d" "$f"
-      sed -i "/^[^#].*>=$/d" "$f"
-    done
-  '
-done
-
-
-
-for agent in ba-1 ba-2 ba-3 ba-4 ba-5 ba-6; do
   echo "=== ${agent} ==="
   docker exec ip-10-56-112-35.ec2.internal-${agent} \
-    grep -rh ">" /root/.m2/repository/org/openclover/*/4.5.2/_remote.repositories 2>/dev/null \
-    | grep -v "ArtifactoryPluginRepos\|artifactory\|cnxs-artifactory"
+    grep -rh ">" /root/.m2/repository/org/openclover/*/4.5.2/_remote.repositories 2>/dev/null
 done
