@@ -9,7 +9,7 @@ RepositoryBaseUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/
 
 # Set from global Bamboo variables
 # Bamboo exposes secret variables to scripts with dots replaced by underscores
-access_token="${bamboo_artifactory_access_token_secret}"
+access_token="${bamboo_artifactory_admin_api_key_secret}"
 
 ## Check to see if this is a long lived branch child
 if [[ "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
