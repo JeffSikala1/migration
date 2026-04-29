@@ -1,45 +1,7 @@
-Backup Database, Repositories and Configuration
-Run a backup.
-# docker exec -it bitbucket_backup_utils /app/bitbucket-scripts/bitbucket.diy-backup.sh
-[http://bitbucket_server:7990]  INFO: Prepared backup of DB bitbucket in /app/bitbucket-backups/bitbucket-backup/bitbucket-db/
-sending incremental file list
-analytics-logs/1366a5d08305cc9a94b2a0c89eb4c45f.ae916f9e-4cde-4837-bf08-7383e2a00cc2.atlassian-analytics.log
-shared/data/avatars/users/68/
-.
-.
-.
-.
-total size is 2.00G  speedup is 295.95
-[http://bitbucket_server:7990]  INFO: Performed backup of /var/atlassian/application-data/bitbucket/ to /app/bitbucket-backups/bitbucket-backup/bitbucket-home/
-[http://bitbucket_server:7990]  INFO: Backup progress updated to 100
-[http://bitbucket_server:7990]  INFO: Bitbucket instance unlocked
-[http://bitbucket_server:7990]  INFO: Archiving /app/bitbucket-backups/bitbucket-backup into /app/bitbucket-backups/bitbucket-backup-archives/bitbucket-20160606-233232-952.tar.gz
-[http://bitbucket_server:7990]  INFO: Archived /app/bitbucket-backups/bitbucket-backup into /app/bitbucket-backups/bitbucket-backup-archives/bitbucket-20160606-233232-952.tar.gz
-The backup will create a tar.gz file on the docker host in the /app/bitbucket-backups/ directory.
-$ ls /app/bitbucket-backups/
-bitbucket-20160603-193649-609.tar.gz  bitbucket-20160604-000937-977.tar.gz  bitbucket-20160606-155836-716.tar.gz
-Restore Database, Repositories and Configuration from a Backup
-Show available restore files.
-# docker exec -it bitbucket_backup_utils /app/bitbucket-scripts/bitbucket.diy-restore.sh
-Usage: /app/bitbucket-scripts/bitbucket.diy-restore.sh <backup-file-name>.tar.gz
-Available backups:
-bitbucket-20160603-193649-609.tar.gz  bitbucket-20160604-000937-977.tar.gz  bitbucket-20160606-155836-716.tar.gz
-Run a restore.
-docker exec -it bitbucket_backup_utils /app/bitbucket-scripts/bitbucket.diy-restore.sh bitbucket-20160606-155836-716.tar.gz
-You must restart the Bitbucket container after a restore.
-docker restart bitbucket_server
-Upgrade Procedure
-Run a backup
-docker exec -it bitbucket_backup_utils /app/bitbucket-scripts/bitbucket.diy-backup.sh
-Destroy current Bitbucket, postgres and util containers
-docker rm -f -v bitbucket_server postgres_server bitbucket_backup_utils
-Run salt
-[root@oireasd0111 ~]# salt 'prod.docker-engine.oireasd0120.edc.ds1.usda.gov' state.apply bitbucket
-or
-[root@oireasd0120 ~]# salt-call state.apply bitbucket
-Run a restore of the file created in step 1 (be sure to wait for Bitbucket to start up completely first)
-docker exec -it bitbucket_backup_utils /app/bitbucket-scripts/bitbucket.diy-restore.sh bitbucket-20160606-155836-716.tar.gz
-Restart Bitibucket container
-docker restart bitbucket_server
+#Ansible: CIS 1.3.2 - Run aide filesystem integrity check
+0 5 * * * /usr/sbin/aide --check
 
-
+0 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/aws_script.sh 2>&1
+15 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/cnxs_script.sh 2>&1
+30 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/devops_script.sh 2>&1
+45 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/docker_script.sh 2>&1
