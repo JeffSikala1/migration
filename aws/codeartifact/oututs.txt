@@ -1,92 +1,649 @@
-#!/usr/bin/env bash
-
-# Determine if a deploy is needed
-
-longLivedPrefix="ll-"
-BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
-
-# Used for debugging #######################
-#buildVersionQueryArtifact=task-ear
-#buildVersionQueryGroup=gov.gsa.cnxs.task
-#mavenVersion=01.00.000.73
-############################################
-
-RepositoryBaseUrl="https://conexus-artifactory.edc.ds1.usda.gov/artifactory/"
-
-## Check to see if this is a long lived branch child
-if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-    echo "This is a long lived branch"
-    # Split the parent and child branch name
-    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
-    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-
-    # Set the plugin repo to conexus-ll-plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${ParentBranchName}" >> file.properties
-    echo "ChildBranchName=${ChildBranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a long lived parent or child branch
-    if [ -z ${ChildBranchName} ]; then
-        echo "This is a parent long-lived branch"
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName"
-        echo -e "latestVersion=$(curl -s -k -L "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName")" >> file.properties
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child long-lived branch. Not deploying to Artifactory"
-    fi
-
- elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-     echo "Not a long lived branch"
-     # Not a long lived branch
-     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
-
-     # Set the plugin repo to conexus--plugin-repository
-     # Set the branch repo to the parent branch
-     echo "BranchName=${BranchName}" >> file.properties
-     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a development parent or child (feature) branch
-    if [ "$BranchName" == "develop" ]; then
-        echo "This is a development branch"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
-        # The buildVersionQuery variables are defined in the plan as variables
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo -e "latestVersion=$(curl -k -s "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
-    else
-        echo "This is not a develop branch but may be a feature branch"
-	#echo "This is NOT a development branch"
-	#mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-rc-local/"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
-        # The buildVersionQuery variables are defined in the plan as variables
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo -e "latestVersion=$(curl -k -s "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
-        #---old code start
-        #echo "This is a child (feature) development branch. Not deploying to Artifactory"
-        # Clear out the file.properties contents so that the injection does nothing
-        #echo -e "" > file.properties
-	#---old code end
-    fi
-
-  else
-      echo "Cannot determine parent branch"
-      exit 1
-fi
-echo "contents of file.properties"
-echo " "
-cat file.properties
+simple	29-Apr-2026 09:55:46	Build Build and Test - DPA - Build - release-02.00.000.133 - Default Job #13 (BT-DPA1-JOB1-13) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-4 (2), bamboo version: 10.2.11
+simple	29-Apr-2026 09:55:46	Remote agent on host ip-10-56-112-35.ec2.internal-ba-4
+simple	29-Apr-2026 09:55:46	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1
+simple	29-Apr-2026 09:55:46	Executing build Build and Test - DPA - Build - release-02.00.000.133 - Default Job #13 (BT-DPA1-JOB1-13)
+simple	29-Apr-2026 09:55:46	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	29-Apr-2026 09:55:46	Build always requires a clean checkout
+simple	29-Apr-2026 09:55:46	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1'
+simple	29-Apr-2026 09:55:46	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1
+simple	29-Apr-2026 09:55:46	Updating source code to revision: c8b67c761c04bfe1f07b25138131911ee6d68a6e
+simple	29-Apr-2026 09:55:46	Fetching 'refs/heads/release/02.00.000.133' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/dpa.git'.
+simple	29-Apr-2026 09:55:46	Warning: Permanently added '[127.0.0.1]:34551' (RSA) to the list of known hosts.
+simple	29-Apr-2026 09:55:46	Checking out revision c8b67c761c04bfe1f07b25138131911ee6d68a6e.
+simple	29-Apr-2026 09:55:46	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/.git'.
+simple	29-Apr-2026 09:55:46	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1'...
+simple	29-Apr-2026 09:55:46	done.
+simple	29-Apr-2026 09:55:46	Switched to a new branch 'release/02.00.000.133'
+simple	29-Apr-2026 09:55:46	branch 'release/02.00.000.133' set up to track 'origin/release/02.00.000.133'.
+simple	29-Apr-2026 09:55:46	Updated source code to revision: c8b67c761c04bfe1f07b25138131911ee6d68a6e
+simple	29-Apr-2026 09:55:46	Finished task 'Checkout Default Repository' with result: Success
+simple	29-Apr-2026 09:55:46	Starting task 'Checkout bamboo-deployment' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	29-Apr-2026 09:55:46	Build always requires a clean checkout
+simple	29-Apr-2026 09:55:46	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/bamboo-deployment'
+simple	29-Apr-2026 09:55:46	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/bamboo-deployment
+simple	29-Apr-2026 09:55:46	Updating source code to revision: 439708947111204f164b4948722ba4f8aa275ca2
+simple	29-Apr-2026 09:55:46	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git'.
+simple	29-Apr-2026 09:55:46	Warning: Permanently added '[127.0.0.1]:34551' (RSA) to the list of known hosts.
+simple	29-Apr-2026 09:55:46	Checking out revision 439708947111204f164b4948722ba4f8aa275ca2.
+simple	29-Apr-2026 09:55:46	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/bamboo-deployment/.git'.
+simple	29-Apr-2026 09:55:46	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/bamboo-deployment'...
+simple	29-Apr-2026 09:55:46	done.
+simple	29-Apr-2026 09:55:46	Switched to a new branch 'develop'
+simple	29-Apr-2026 09:55:46	branch 'develop' set up to track 'origin/develop'.
+simple	29-Apr-2026 09:55:46	Updated source code to revision: 439708947111204f164b4948722ba4f8aa275ca2
+simple	29-Apr-2026 09:55:46	Finished task 'Checkout bamboo-deployment' with result: Success
+simple	29-Apr-2026 09:55:46	Running pre-build action: Build Log Labeller Pre Build Action
+simple	29-Apr-2026 09:55:46	Running pre-build action: VCS Version Collector
+simple	29-Apr-2026 09:55:46	Build Build and Test - DPA - Build - release-02.00.000.133 - Default Job #13 (BT-DPA1-JOB1-13) started building on agent 'ip-10-56-112-35.ec2.internal-ba-4 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-4)
+simple	29-Apr-2026 09:55:46	Starting task 'Remove existing cnxs maven repo directory' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	29-Apr-2026 09:55:46	Beginning to execute external process for build 'Build and Test - DPA - Build - release-02.00.000.133 - Default Job #13 (BT-DPA1-JOB1-13)'\n ... running command line: \n/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/temp/BT-DPA1-JOB1-13-ScriptBuildTask-14376402479711022035.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1\n
+simple	29-Apr-2026 09:55:46	Finished task 'Remove existing cnxs maven repo directory' with result: Success
+simple	29-Apr-2026 09:55:46	Starting task 'Determine parent branch and pass correct variables' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	29-Apr-2026 09:55:46	Beginning to execute external process for build 'Build and Test - DPA - Build - release-02.00.000.133 - Default Job #13 (BT-DPA1-JOB1-13)'\n ... running command line: \nbamboo-deployment/build-determination-migration.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1\n
+build	29-Apr-2026 09:55:46	Not a long lived branch
+simple	29-Apr-2026 09:55:46	Finished task 'Determine parent branch and pass correct variables' with result: Success
+simple	29-Apr-2026 09:55:46	Starting task 'Inject values' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:inject'
+simple	29-Apr-2026 09:55:46	Injected variable bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ in LOCAL scope
+simple	29-Apr-2026 09:55:46	Injected variable bamboo.inject.BranchName=02.00.000.133 in LOCAL scope
+simple	29-Apr-2026 09:55:46	Injected variable bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ in LOCAL scope
+simple	29-Apr-2026 09:55:46	Finished task 'Inject values' with result: Success
+simple	29-Apr-2026 09:55:46	Starting task 'Dump variables to log' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump'
+simple	29-Apr-2026 09:55:46	---- DUMPING VARIABLES TO LOG --- 
+simple	29-Apr-2026 09:55:46	key: [ManualBuildTriggerReason.userName] value: [jeff.sikala] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [SNYK_CLIENT_ID] value: [004cb1fd-36d1-4c46-84e0-2d4e2654fa9e and the ORG ID is 6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	29-Apr-2026 09:55:46	key: [SNYK_CLIENT_SECRET] value: [**********] type: GLOBAL
+simple	29-Apr-2026 09:55:46	key: [SNYK_ORG_ID] value: [6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	29-Apr-2026 09:55:46	key: [agentId] value: [1572869] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [agentWorkingDirectory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [artifactory_access_token_secret] value: [**********] type: GLOBAL
+simple	29-Apr-2026 09:55:46	key: [artifactory_admin_api_key_secret] value: [**********] type: GLOBAL
+simple	29-Apr-2026 09:55:46	key: [artifactory_sa_conexus_password] value: [**********] type: GLOBAL
+simple	29-Apr-2026 09:55:46	key: [bitbucket_branch] value: [feature/ll-postgres] type: GLOBAL
+simple	29-Apr-2026 09:55:46	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.3] value: [/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/temp/BT-DPA1-JOB1-13-ScriptBuildTask-14376402479711022035.sh] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.4] value: [bamboo-deployment/build-determination-migration.sh] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [build.working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [buildFailed] value: [false] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [buildKey] value: [BT-DPA1-JOB1] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [buildNumber] value: [13] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [buildPlanName] value: [Build and Test - DPA - Build - release-02.00.000.133 - Default Job] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [buildResultKey] value: [BT-DPA1-JOB1-13] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [buildResultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-DPA1-JOB1-13] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [buildTimeStamp] value: [2026-04-29T08:55:46.055-06:00] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [buildVersionQueryArtifact] value: [dpa-ear] type: PLAN
+simple	29-Apr-2026 09:55:46	key: [buildVersionQueryGroup] value: [gov.gsa.cnxs.dpa] type: PLAN
+simple	29-Apr-2026 09:55:46	key: [capability.system.builder.command.aws] value: [/usr/local/bin/aws] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [capability.system.builder.command.kubectl] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [capability.system.builder.mvn3.Maven 3] value: [/usr/share/maven] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [capability.system.builder.node.Node.js] value: [/usr/bin/node] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [capability.system.docker.executable] value: [/usr/bin/docker] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [capability.system.git.executable] value: [/usr/bin/git] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [capability.system.jdk.JDK] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [capability.system.jdk.JDK 17] value: [/etc/alternatives/java_sdk_17] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [capability.system.jdk.JDK 17.0.18] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [capability.system.kubectl.executable] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [dependenciesDisabled] value: [false] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [git.cache.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/_git-repositories-cache] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [inject.BranchName] value: [02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [inject.mavenFeatureRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [inject.pluginRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [plan.storageTag] value: [plan-7766057] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planKey] value: [BT-DPA1] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planName] value: [Build and Test - DPA - Build - release-02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.1.branch] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.1.branchDisplayName] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.1.branchName] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.1.name] value: [DPA] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.1.previousRevision] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.1.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/dpa.git] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.1.revision] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.1.type] value: [bbserver] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.1.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.2.branch] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.2.branchDisplayName] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.2.branchName] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.2.name] value: [bamboo-deployment] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.2.previousRevision] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.2.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.2.revision] value: [439708947111204f164b4948722ba4f8aa275ca2] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.2.type] value: [bbserver] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.2.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.branch] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.branchDisplayName] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.branchName] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.name] value: [DPA] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.previousRevision] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/dpa.git] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.revision] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.type] value: [bbserver] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [planRepository.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.5013534.branch.name] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.5013534.git.branch] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.5013534.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.5013534.git.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.5013534.name] value: [bamboo-deployment] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.5013534.previous.revision.number] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.5013534.revision.number] value: [439708947111204f164b4948722ba4f8aa275ca2] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.7929897.branch.name] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.7929897.git.branch] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.7929897.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/dpa.git] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.7929897.git.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.7929897.name] value: [DPA] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.7929897.previous.revision.number] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.7929897.revision.number] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.branch.name] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.git.branch] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/dpa.git] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.git.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.name] value: [bamboo-deployment] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.previous.revision.number] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [repository.revision.number] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [resultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-DPA1-JOB1-13] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [shortJobKey] value: [JOB1] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [shortJobName] value: [Default Job] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [shortPlanBranchName] value: [release-02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [shortPlanKey] value: [DPA1] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [shortPlanName] value: [DPA - Build] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [simpleBuildTimeStamp] value: [20260429085546] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [tmp.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/temp] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [triggerReason.key] value: [com.atlassian.bamboo.plugin.system.triggerReason:ManualBuildTriggerReason] type: CUSTOM
+simple	29-Apr-2026 09:55:46	key: [working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1] type: CUSTOM
+simple	29-Apr-2026 09:55:46	---- END DUMPING VARIABLES TO LOG  --- 
+simple	29-Apr-2026 09:55:46	Finished task 'Dump variables to log' with result: Success
+command	29-Apr-2026 09:55:46	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	29-Apr-2026 09:55:46	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	29-Apr-2026 09:55:46	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	29-Apr-2026 09:55:46	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	29-Apr-2026 09:55:46	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	29-Apr-2026 09:55:46	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	29-Apr-2026 09:55:46	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	29-Apr-2026 09:55:46	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	29-Apr-2026 09:55:46	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	29-Apr-2026 09:55:46	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+simple	29-Apr-2026 09:55:46	Starting task 'Write Artifactory Maven settings' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	29-Apr-2026 09:55:46	Beginning to execute external process for build 'Build and Test - DPA - Build - release-02.00.000.133 - Default Job #13 (BT-DPA1-JOB1-13)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/temp/BT-DPA1-JOB1-13-ScriptBuildTask-15934688623056344609.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1\n
+simple	29-Apr-2026 09:55:46	Finished task 'Write Artifactory Maven settings' with result: Success
+command	29-Apr-2026 09:55:46	Substituting variable: ${bamboo.inject.BranchName} with 02.00.000.133
+command	29-Apr-2026 09:55:46	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	29-Apr-2026 09:55:46	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+simple	29-Apr-2026 09:55:46	Starting task 'Build and Verify' of type 'com.atlassian.bamboo.plugins.maven:task.builder.mvn3'
+command	29-Apr-2026 09:55:46	Beginning to execute external process for build 'Build and Test - DPA - Build - release-02.00.000.133 - Default Job #13 (BT-DPA1-JOB1-13)'\n ... running command line: \n/usr/share/maven/bin/mvn -Djava.io.tmpdir=/tmp/BT-DPA1-JOB1 clean verify -B -U -s settings-artifactory.xml -Dbamboo.inject.BranchName=02.00.000.133 -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1\n
+build	29-Apr-2026 09:55:47	[INFO] Scanning for projects...
+build	29-Apr-2026 09:55:48	[INFO] ------------------------------------------------------------------------
+build	29-Apr-2026 09:55:48	[INFO] Reactor Build Order:
+build	29-Apr-2026 09:55:48	[INFO] 
+build	29-Apr-2026 09:55:48	[INFO] Conexus DPA Aggregator                                             [pom]
+build	29-Apr-2026 09:55:48	[INFO] dpa-api                                                            [jar]
+build	29-Apr-2026 09:55:48	[INFO] dpa-war                                                            [war]
+build	29-Apr-2026 09:55:48	[INFO] dpa-ear                                                            [ear]
+build	29-Apr-2026 09:55:48	[INFO] Conexus Integration System Test                                    [jar]
+build	29-Apr-2026 09:55:48	[INFO] 
+build	29-Apr-2026 09:55:48	[INFO] ------------------< gov.gsa.cnxs.dpa:dpa-aggregator >-------------------
+build	29-Apr-2026 09:55:48	[INFO] Building Conexus DPA Aggregator 02.00.000.133-RC                   [1/5]
+build	29-Apr-2026 09:55:48	[INFO]   from pom.xml
+build	29-Apr-2026 09:55:48	[INFO] --------------------------------[ pom ]---------------------------------
+build	29-Apr-2026 09:55:48	[INFO] 
+build	29-Apr-2026 09:55:48	[INFO] --- clean:3.2.0:clean (default-clean) @ dpa-aggregator ---
+build	29-Apr-2026 09:55:48	[INFO] 
+build	29-Apr-2026 09:55:48	[INFO] ----------------------< gov.gsa.cnxs.dpa:dpa-api >----------------------
+build	29-Apr-2026 09:55:48	[INFO] Building dpa-api 02.00.000.133-RC                                  [2/5]
+build	29-Apr-2026 09:55:48	[INFO]   from dpa-api/pom.xml
+build	29-Apr-2026 09:55:48	[INFO] --------------------------------[ jar ]---------------------------------
+build	29-Apr-2026 09:55:49	[INFO] 
+build	29-Apr-2026 09:55:49	[INFO] --- clean:3.2.0:clean (default-clean) @ dpa-api ---
+build	29-Apr-2026 09:55:49	[INFO] 
+build	29-Apr-2026 09:55:49	[INFO] --- templating:1.0.0:filter-sources (generate-verion-class) @ dpa-api ---
+build	29-Apr-2026 09:55:49	[INFO] Coping files with filtering to temporary directory.
+build	29-Apr-2026 09:55:49	[INFO] Using 'UTF-8' encoding to copy filtered resources.
+build	29-Apr-2026 09:55:49	[INFO] Copying 1 resource
+build	29-Apr-2026 09:55:49	[INFO] Copied 1 files to output directory: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-api/target/generated-sources/java-templates
+build	29-Apr-2026 09:55:49	[INFO] Source directory: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-api/target/generated-sources/java-templates added.
+build	29-Apr-2026 09:55:49	[INFO] 
+build	29-Apr-2026 09:55:49	[INFO] --- resources:3.3.1:resources (default-resources) @ dpa-api ---
+build	29-Apr-2026 09:55:49	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-api/src/main/resources
+build	29-Apr-2026 09:55:49	[INFO] Copying 0 resource from src/main/java to target/classes
+build	29-Apr-2026 09:55:49	[INFO] 
+build	29-Apr-2026 09:55:49	[INFO] --- compiler:3.13.0:compile (default-compile) @ dpa-api ---
+build	29-Apr-2026 09:55:50	[INFO] Recompiling the module because of changed source code.
+build	29-Apr-2026 09:55:50	[INFO] Compiling 10 source files with javac [debug deprecation target 17] to target/classes
+build	29-Apr-2026 09:55:50	[INFO] 
+build	29-Apr-2026 09:55:50	[INFO] --- resources:3.3.1:testResources (default-testResources) @ dpa-api ---
+build	29-Apr-2026 09:55:50	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-api/src/test/resources
+build	29-Apr-2026 09:55:50	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-api/src/test/resources
+build	29-Apr-2026 09:55:50	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	29-Apr-2026 09:55:50	[INFO] 
+build	29-Apr-2026 09:55:50	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ dpa-api ---
+build	29-Apr-2026 09:55:50	[INFO] Recompiling the module because of changed dependency.
+build	29-Apr-2026 09:55:50	[INFO] Compiling 4 source files with javac [debug deprecation target 17] to target/test-classes
+build	29-Apr-2026 09:55:51	[INFO] 
+build	29-Apr-2026 09:55:51	[INFO] --- surefire:3.5.2:test (default-test) @ dpa-api ---
+build	29-Apr-2026 09:55:51	[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+build	29-Apr-2026 09:55:51	[WARNING] System property [java.io.tmpdir] overwritten by user properties from Maven session
+build	29-Apr-2026 09:55:51	[INFO] 
+build	29-Apr-2026 09:55:51	[INFO] -------------------------------------------------------
+build	29-Apr-2026 09:55:51	[INFO]  T E S T S
+build	29-Apr-2026 09:55:51	[INFO] -------------------------------------------------------
+build	29-Apr-2026 09:55:51	[INFO] Running gov.gsa.nsfs.dpa.resources.DPAAddressResourceTest
+build	29-Apr-2026 09:55:52	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.183 s -- in gov.gsa.nsfs.dpa.resources.DPAAddressResourceTest
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAAddressResourceTest.testFromJson -- Time elapsed: 0.047 s
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAAddressResourceTest.testToJson -- Time elapsed: 0.016 s
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAAddressResourceTest.testWithNullValues -- Time elapsed: 0.001 s
+build	29-Apr-2026 09:55:52	[INFO] Running gov.gsa.nsfs.dpa.resources.DPAApprovalResourceTest
+build	29-Apr-2026 09:55:52	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in gov.gsa.nsfs.dpa.resources.DPAApprovalResourceTest
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAApprovalResourceTest.testFromJson -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAApprovalResourceTest.testToJson -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAApprovalResourceTest.testWithNullValues -- Time elapsed: 0.001 s
+build	29-Apr-2026 09:55:52	[INFO] Running gov.gsa.nsfs.dpa.resources.DPAContractResourceTest
+build	29-Apr-2026 09:55:52	[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.216 s -- in gov.gsa.nsfs.dpa.resources.DPAContractResourceTest
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAContractResourceTest.testFromJson -- Time elapsed: 0.198 s
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAContractResourceTest.testToJson -- Time elapsed: 0.004 s
+build	29-Apr-2026 09:55:52	[INFO] Running gov.gsa.nsfs.dpa.resources.DPAContractingOfficerResourceTest
+build	29-Apr-2026 09:55:52	[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in gov.gsa.nsfs.dpa.resources.DPAContractingOfficerResourceTest
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAContractingOfficerResourceTest.testFromJson -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAContractingOfficerResourceTest.testToJson -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:52	[INFO] gov.gsa.nsfs.dpa.resources.DPAContractingOfficerResourceTest.testWithNullValues -- Time elapsed: 0.001 s
+build	29-Apr-2026 09:55:52	[INFO] 
+build	29-Apr-2026 09:55:52	[INFO] Results:
+build	29-Apr-2026 09:55:52	[INFO] 
+build	29-Apr-2026 09:55:52	[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
+build	29-Apr-2026 09:55:52	[INFO] 
+build	29-Apr-2026 09:55:52	[INFO] 
+build	29-Apr-2026 09:55:52	[INFO] --- jar:3.4.1:jar (default-jar) @ dpa-api ---
+build	29-Apr-2026 09:55:52	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-api/target/dpa-api-02.00.000.133-RC.jar
+build	29-Apr-2026 09:55:52	[INFO] 
+build	29-Apr-2026 09:55:52	[INFO] --- jar:3.4.1:test-jar (default) @ dpa-api ---
+build	29-Apr-2026 09:55:52	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-api/target/dpa-api-02.00.000.133-RC-tests.jar
+build	29-Apr-2026 09:55:52	[INFO] 
+build	29-Apr-2026 09:55:52	[INFO] ---------------------< gov.gsa.cnxs.dpa:dpa-core >----------------------
+build	29-Apr-2026 09:55:52	[INFO] Building dpa-war 02.00.000.133-RC                                  [3/5]
+build	29-Apr-2026 09:55:52	[INFO]   from dpa-core/pom.xml
+build	29-Apr-2026 09:55:52	[INFO] --------------------------------[ war ]---------------------------------
+build	29-Apr-2026 09:55:52	[INFO] 
+build	29-Apr-2026 09:55:52	[INFO] --- clean:3.2.0:clean (default-clean) @ dpa-core ---
+build	29-Apr-2026 09:55:52	[INFO] 
+build	29-Apr-2026 09:55:52	[INFO] --- resources:3.3.1:resources (default-resources) @ dpa-core ---
+build	29-Apr-2026 09:55:52	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-core/src/main/resources
+build	29-Apr-2026 09:55:52	[INFO] 
+build	29-Apr-2026 09:55:52	[INFO] --- compiler:3.13.0:compile (default-compile) @ dpa-core ---
+build	29-Apr-2026 09:55:52	[INFO] Recompiling the module because of changed dependency.
+build	29-Apr-2026 09:55:52	[INFO] Compiling 10 source files with javac [debug deprecation target 17] to target/classes
+build	29-Apr-2026 09:55:53	[INFO] 
+build	29-Apr-2026 09:55:53	[INFO] --- resources:3.3.1:testResources (default-testResources) @ dpa-core ---
+build	29-Apr-2026 09:55:53	[INFO] Copying 1 resource from src/test/resources to target/test-classes
+build	29-Apr-2026 09:55:53	[INFO] 
+build	29-Apr-2026 09:55:53	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ dpa-core ---
+build	29-Apr-2026 09:55:53	[INFO] Recompiling the module because of changed dependency.
+build	29-Apr-2026 09:55:53	[INFO] Compiling 8 source files with javac [debug deprecation target 17] to target/test-classes
+build	29-Apr-2026 09:55:53	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-core/src/test/java/gov/gsa/nsfs/dpa/managers/AbstractBeanTest.java: Some input files use unchecked or unsafe operations.
+build	29-Apr-2026 09:55:53	[INFO] /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-core/src/test/java/gov/gsa/nsfs/dpa/managers/AbstractBeanTest.java: Recompile with -Xlint:unchecked for details.
+build	29-Apr-2026 09:55:53	[INFO] 
+build	29-Apr-2026 09:55:53	[INFO] --- surefire:3.5.2:test (default-test) @ dpa-core ---
+build	29-Apr-2026 09:55:53	[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+build	29-Apr-2026 09:55:53	[WARNING] System property [java.io.tmpdir] overwritten by user properties from Maven session
+build	29-Apr-2026 09:55:53	[INFO] 
+build	29-Apr-2026 09:55:53	[INFO] -------------------------------------------------------
+build	29-Apr-2026 09:55:53	[INFO]  T E S T S
+build	29-Apr-2026 09:55:53	[INFO] -------------------------------------------------------
+build	29-Apr-2026 09:55:54	[INFO] Running gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest
+error	29-Apr-2026 09:55:54	OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+build	29-Apr-2026 09:55:55	[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.282 s -- in gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest.testAuthenticateDpaRequestWithNoApiGatewayEAuthIDInTheDatabase -- Time elapsed: 1.203 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest.testAuthenticateDpaRequestWithInvalidApiGatewayEAuthIDParameter -- Time elapsed: 0.009 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest.testAuthenticateDpaRequestWithNoSiteMinderEAuthIDInTheDatabase -- Time elapsed: 0.006 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest.testAuthenticateDpaRequestWithNoEAuthIDParameters -- Time elapsed: 0.006 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest.testAuthenticateDpaRequestWithGoodDataUsingSiteMinderEAuthId -- Time elapsed: 0.005 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest.testAuthenticateDpaRequestWithMissingSiteMinderEAuthIdHeaderParmParameter -- Time elapsed: 0.009 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest.testAuthenticateDpaRequestWithGoodDataUsingApiGatewayEAuthId -- Time elapsed: 0.005 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.interceptor.DpaAuthenticationInterceptorTest.testAuthenticateDpaRequestWithInvalidSiteMinderEAuthIDParameter -- Time elapsed: 0.006 s
+build	29-Apr-2026 09:55:55	[INFO] Running gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest
+build	29-Apr-2026 09:55:55	[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.237 s -- in gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest.approvalForContractAndOfficer -- Time elapsed: 0.124 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest.associateContractAndOfficer -- Time elapsed: 0.075 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest.associateContractValidation -- Time elapsed: 0.006 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest.noApprovalStatusEffectiveDateValidation -- Time elapsed: 0.005 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest.noApprovalStatusValidation -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest.invalidStatusEffectiveDate -- Time elapsed: 0.005 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest.approvalNotFound -- Time elapsed: 0.004 s
+build	29-Apr-2026 09:55:55	[INFO] gov.gsa.nsfs.dpa.managers.DPAApprovalManagerBeanTest.associateOfficerValidation -- Time elapsed: 0.004 s
+build	29-Apr-2026 09:55:55	[INFO] Running gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest
+build	29-Apr-2026 09:55:56	[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.357 s -- in gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.invalidUpdateDateOnUpdate -- Time elapsed: 0.057 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.getAllContracts -- Time elapsed: 0.265 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.noNameValidation -- Time elapsed: 0.004 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.updateContract -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.createContract -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.getSpecifiedContract -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.noUpdateDateValidation -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.noIdValidation -- Time elapsed: 0.004 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.invalidUpdateDateOnCreate -- Time elapsed: 0.005 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractManagerBeanTest.getContractsForContractingOfficer -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] Running gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest
+build	29-Apr-2026 09:55:56	[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.141 s -- in gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.getOfficerForContract -- Time elapsed: 0.029 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.createContractingOfficer -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.noEmailValidation -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.getAllOfficers -- Time elapsed: 0.047 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.noBureauValidation -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.noAddressValidation -- Time elapsed: 0.005 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.noOfficerValidation -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.getAllOfficersForContract -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.noPhoneValidation -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.updateContractingOfficer -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.noAgencyValidation -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.noIdValidation -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.noLastNameValidation -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.noFirstNameValidation -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.managers.DPAContractingOfficerManagerBeanTest.getSpecifiedOfficer -- Time elapsed: 0.023 s
+build	29-Apr-2026 09:55:56	[INFO] Running gov.gsa.nsfs.dpa.restservices.DPAContractRSTest
+build	29-Apr-2026 09:55:56	[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.088 s -- in gov.gsa.nsfs.dpa.restservices.DPAContractRSTest
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractRSTest.testGetAllContracts -- Time elapsed: 0.059 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractRSTest.testGetOfficerForContract -- Time elapsed: 0.007 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractRSTest.testGetAllOfficersForContract -- Time elapsed: 0.004 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractRSTest.testGetSpecifiedContract -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractRSTest.testGetApprovalForContractAndOfficer -- Time elapsed: 0.001 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractRSTest.testCreateUpdateContract -- Time elapsed: 0.001 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractRSTest.ensureEAuthAnnotationsExist -- Time elapsed: 0.008 s
+build	29-Apr-2026 09:55:56	[INFO] Running gov.gsa.nsfs.dpa.restservices.DPAContractingOfficerRSTest
+build	29-Apr-2026 09:55:56	[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in gov.gsa.nsfs.dpa.restservices.DPAContractingOfficerRSTest
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractingOfficerRSTest.testGetAllContractOfficers -- Time elapsed: 0.003 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractingOfficerRSTest.testGetAllContractsForOfficer -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractingOfficerRSTest.testCreateUpdateContractOfficer -- Time elapsed: 0.001 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractingOfficerRSTest.testGetSpecifiedContractOfficer -- Time elapsed: 0.001 s
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.DPAContractingOfficerRSTest.ensureEAuthAnnotationsExist -- Time elapsed: 0.002 s
+build	29-Apr-2026 09:55:56	[INFO] Running gov.gsa.nsfs.dpa.restservices.VersionRSTest
+build	29-Apr-2026 09:55:56	[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.023 s -- in gov.gsa.nsfs.dpa.restservices.VersionRSTest
+build	29-Apr-2026 09:55:56	[INFO] gov.gsa.nsfs.dpa.restservices.VersionRSTest.testGetVersion -- Time elapsed: 0.022 s
+build	29-Apr-2026 09:55:56	[INFO] 
+build	29-Apr-2026 09:55:56	[INFO] Results:
+build	29-Apr-2026 09:55:56	[INFO] 
+build	29-Apr-2026 09:55:56	[INFO] Tests run: 54, Failures: 0, Errors: 0, Skipped: 0
+build	29-Apr-2026 09:55:56	[INFO] 
+build	29-Apr-2026 09:55:56	[INFO] 
+build	29-Apr-2026 09:55:56	[INFO] --- war:3.4.0:war (default-war) @ dpa-core ---
+build	29-Apr-2026 09:55:56	[INFO] Packaging webapp
+build	29-Apr-2026 09:55:56	[INFO] Assembling webapp [dpa-core] in [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-core/target/dpa-core]
+build	29-Apr-2026 09:55:56	[INFO] Processing war project
+build	29-Apr-2026 09:55:56	[INFO] Copying webapp resources [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-core/src/main/webapp]
+build	29-Apr-2026 09:55:56	[INFO] Building war: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-core/target/dpa-core.war
+build	29-Apr-2026 09:55:56	[INFO] 
+build	29-Apr-2026 09:55:56	[INFO] ----------------------< gov.gsa.cnxs.dpa:dpa-ear >----------------------
+build	29-Apr-2026 09:55:56	[INFO] Building dpa-ear 02.00.000.133-RC                                  [4/5]
+build	29-Apr-2026 09:55:56	[INFO]   from dpa-ear/pom.xml
+build	29-Apr-2026 09:55:56	[INFO] --------------------------------[ ear ]---------------------------------
+build	29-Apr-2026 09:55:56	[INFO] 
+build	29-Apr-2026 09:55:56	[INFO] --- clean:3.2.0:clean (default-clean) @ dpa-ear ---
+build	29-Apr-2026 09:55:56	[INFO] 
+build	29-Apr-2026 09:55:56	[INFO] --- ear:3.3.0:generate-application-xml (default-generate-application-xml) @ dpa-ear ---
+build	29-Apr-2026 09:55:56	[INFO] Generating application.xml
+build	29-Apr-2026 09:55:56	[INFO] 
+build	29-Apr-2026 09:55:56	[INFO] --- resources:3.3.1:resources (default-resources) @ dpa-ear ---
+build	29-Apr-2026 09:55:56	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-ear/src/main/resources
+build	29-Apr-2026 09:55:56	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-ear/src/main/java
+build	29-Apr-2026 09:55:56	[INFO] 
+build	29-Apr-2026 09:55:56	[INFO] --- ear:3.3.0:ear (default-ear) @ dpa-ear ---
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [war:gov.gsa.cnxs.dpa:dpa-core:02.00.000.133-RC] to [dpa-core.war]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [ejb:gov.gsa.cnxs.domain:domain:02.00.000.172-RC] to [domain.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [ejb:gov.gsa.cnxs.common-rest:common-rest:02.00.000.132-RC] to [common-rest.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:gov.gsa.cnxs.common:common-utils:02.00.000.160-RC] to [lib/common-utils.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:gov.gsa.cnxs.common:common-base:02.00.000.160-RC] to [lib/common-base.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.google.guava:guava:33.3.1-jre] to [lib/guava.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.google.guava:failureaccess:1.0.2.redhat-00001] to [lib/failureaccess.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava] to [lib/listenablefuture.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.google.code.findbugs:jsr305:3.0.2] to [lib/jsr305.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.google.errorprone:error_prone_annotations:2.28.0] to [lib/error_prone_annotations.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.google.j2objc:j2objc-annotations:3.0.0] to [lib/j2objc-annotations.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.querydsl:querydsl-apt:jakarta:5.1.0] to [lib/querydsl-apt-jakarta.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.querydsl:querydsl-codegen:5.1.0] to [lib/querydsl-codegen.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.querydsl:codegen-utils:5.1.0] to [lib/codegen-utils.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.eclipse.jdt:ecj:3.26.0] to [lib/ecj.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:javax.inject:javax.inject:1] to [lib/javax.inject.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:io.github.classgraph:classgraph:4.8.146] to [lib/classgraph.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro:shiro-core:jakarta:2.0.1] to [lib/shiro-core-jakarta.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro:shiro-lang:2.0.1] to [lib/shiro-lang.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro:shiro-cache:2.0.1] to [lib/shiro-cache.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro:shiro-crypto-hash:2.0.1] to [lib/shiro-crypto-hash.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro:shiro-crypto-core:2.0.1] to [lib/shiro-crypto-core.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro.crypto:shiro-hashes-argon2:2.0.1] to [lib/shiro-hashes-argon2.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro.crypto:shiro-hashes-bcrypt:2.0.1] to [lib/shiro-hashes-bcrypt.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro:shiro-crypto-cipher:2.0.1] to [lib/shiro-crypto-cipher.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro:shiro-config-core:2.0.1] to [lib/shiro-config-core.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro:shiro-config-ogdl:2.0.1] to [lib/shiro-config-ogdl.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.shiro:shiro-event:2.0.1] to [lib/shiro-event.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.apache.commons:commons-lang3:3.18.0] to [lib/commons-lang3.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.jboss.weld:weld-api:6.0.Final] to [lib/weld-api.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:jakarta.enterprise:jakarta.enterprise.cdi-el-api:4.1.0] to [lib/jakarta.enterprise.cdi-el-api.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:net.minidev:json-smart:2.5.2] to [lib/json-smart.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:net.minidev:accessors-smart:2.5.2] to [lib/accessors-smart.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.ow2.asm:asm:9.7.1.redhat-00002] to [lib/asm.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.jayway.jsonpath:json-path:2.9.0] to [lib/json-path.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:io.jsonwebtoken:jjwt-api:0.11.2] to [lib/jjwt-api.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:io.jsonwebtoken:jjwt-impl:0.11.2] to [lib/jjwt-impl.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:io.jsonwebtoken:jjwt-jackson:0.11.2] to [lib/jjwt-jackson.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:commons-io:commons-io:2.20.0] to [lib/commons-io.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.owasp.encoder:encoder:1.2.3] to [lib/encoder.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.googlecode.libphonenumber:libphonenumber:9.0.2] to [lib/libphonenumber.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.querydsl:querydsl-jpa:jakarta:5.1.0] to [lib/querydsl-jpa-jakarta.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.querydsl:querydsl-core:5.1.0] to [lib/querydsl-core.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.mysema.commons:mysema-commons-lang:0.2.4] to [lib/mysema-commons-lang.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.fasterxml.jackson.core:jackson-annotations:2.18.4.redhat-00002] to [lib/jackson-annotations.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.fasterxml.jackson.core:jackson-core:2.18.4.redhat-00002] to [lib/jackson-core.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:com.fasterxml.jackson.core:jackson-databind:2.18.4.redhat-00002] to [lib/jackson-databind.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.bouncycastle:bcprov-jdk18on:1.78.1] to [lib/bcprov-jdk18on.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:commons-beanutils:commons-beanutils:1.11.0] to [lib/commons-beanutils.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:commons-collections:commons-collections:3.2.2.redhat-2] to [lib/commons-collections.jar]
+build	29-Apr-2026 09:55:56	[INFO] Copying artifact [jar:org.checkerframework:checker-qual:3.49.5] to [lib/checker-qual.jar]
+build	29-Apr-2026 09:55:56	[INFO] Building ear: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/dpa-ear/target/nsfs-dpa-ear.ear
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] -------------< gov.gsa.cnxs.dpa.test:dpa-integration-test >-------------
+build	29-Apr-2026 09:55:57	[INFO] Building Conexus Integration System Test 02.00.000.133-RC          [5/5]
+build	29-Apr-2026 09:55:57	[INFO]   from integration/pom.xml
+build	29-Apr-2026 09:55:57	[INFO] --------------------------------[ jar ]---------------------------------
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] --- clean:3.2.0:clean (default-clean) @ dpa-integration-test ---
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] --- resources:3.3.1:resources (default-resources) @ dpa-integration-test ---
+build	29-Apr-2026 09:55:57	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/integration/src/main/resources
+build	29-Apr-2026 09:55:57	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/integration/src/main/java
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] --- compiler:3.13.0:compile (default-compile) @ dpa-integration-test ---
+build	29-Apr-2026 09:55:57	[INFO] No sources to compile
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] --- resources:3.3.1:testResources (default-testResources) @ dpa-integration-test ---
+build	29-Apr-2026 09:55:57	[INFO] Copying 2 resources from src/test/resources to target/test-classes
+build	29-Apr-2026 09:55:57	[INFO] Copying 0 resource from src/test/resources to target/test-classes
+build	29-Apr-2026 09:55:57	[INFO] Copying 0 resource from src/test/java to target/test-classes
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ dpa-integration-test ---
+build	29-Apr-2026 09:55:57	[INFO] Recompiling the module because of changed dependency.
+build	29-Apr-2026 09:55:57	[INFO] Compiling 4 source files with javac [debug deprecation target 17] to target/test-classes
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] --- surefire:3.5.2:test (default-test) @ dpa-integration-test ---
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] --- jar:3.4.1:jar (default-jar) @ dpa-integration-test ---
+build	29-Apr-2026 09:55:57	[WARNING] JAR will be empty - no content was marked for inclusion!
+build	29-Apr-2026 09:55:57	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/integration/target/dpa-integration-test-02.00.000.133-RC.jar
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] --- jar:3.4.1:test-jar (default) @ dpa-integration-test ---
+build	29-Apr-2026 09:55:57	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1/integration/target/dpa-integration-test-02.00.000.133-RC-tests.jar
+build	29-Apr-2026 09:55:57	[INFO] ------------------------------------------------------------------------
+build	29-Apr-2026 09:55:57	[INFO] Reactor Summary for Conexus DPA Aggregator 02.00.000.133-RC:
+build	29-Apr-2026 09:55:57	[INFO] 
+build	29-Apr-2026 09:55:57	[INFO] Conexus DPA Aggregator ............................. SUCCESS [  0.093 s]
+build	29-Apr-2026 09:55:57	[INFO] dpa-api ............................................ SUCCESS [  4.027 s]
+build	29-Apr-2026 09:55:57	[INFO] dpa-war ............................................ SUCCESS [  4.083 s]
+build	29-Apr-2026 09:55:57	[INFO] dpa-ear ............................................ SUCCESS [  0.441 s]
+build	29-Apr-2026 09:55:57	[INFO] Conexus Integration System Test .................... SUCCESS [  0.652 s]
+build	29-Apr-2026 09:55:57	[INFO] ------------------------------------------------------------------------
+build	29-Apr-2026 09:55:57	[INFO] BUILD SUCCESS
+build	29-Apr-2026 09:55:57	[INFO] ------------------------------------------------------------------------
+build	29-Apr-2026 09:55:57	[INFO] Total time:  9.908 s
+build	29-Apr-2026 09:55:57	[INFO] Finished at: 2026-04-29T09:55:57-05:00
+build	29-Apr-2026 09:55:57	[INFO] ------------------------------------------------------------------------
+simple	29-Apr-2026 09:55:57	Parsing test results under /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1...
+simple	29-Apr-2026 09:55:57	Finished task 'Build and Verify' with result: Success
+command	29-Apr-2026 09:55:57	Substituting variable: ${bamboo.buildVersionQueryArtifact} with dpa-ear
+command	29-Apr-2026 09:55:57	Substituting variable: ${bamboo.buildVersionQueryGroup} with gov.gsa.cnxs.dpa
+simple	29-Apr-2026 09:55:57	Starting task 'Deploy to Artifactory if needed' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	29-Apr-2026 09:55:57	Beginning to execute external process for build 'Build and Test - DPA - Build - release-02.00.000.133 - Default Job #13 (BT-DPA1-JOB1-13)'\n ... running command line: \nbamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1\n
+build	29-Apr-2026 09:56:00	Resolved mavenVersion=02.00.000.133-RC
+build	29-Apr-2026 09:56:00	Not a long lived branch
+build	29-Apr-2026 09:56:00	This is a release branch. RC artifact already published by Start Release. Skipping deploy.
+build	29-Apr-2026 09:56:00	buildVersionQueryArtifact=dpa-ear
+build	29-Apr-2026 09:56:00	buildVersionQueryGroup=gov.gsa.cnxs.dpa
+build	29-Apr-2026 09:56:00	mavenVersion=02.00.000.133-RC
+build	29-Apr-2026 09:56:00	contents of file.properties
+build	29-Apr-2026 09:56:00	 
+build	29-Apr-2026 09:56:00	BranchName=02.00.000.133
+build	29-Apr-2026 09:56:00	pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+build	29-Apr-2026 09:56:00	mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+build	29-Apr-2026 09:56:00	BranchName=02.00.000.133
+build	29-Apr-2026 09:56:00	pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+build	29-Apr-2026 09:56:00	mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+build	29-Apr-2026 09:56:00	latestVersion={
+build	29-Apr-2026 09:56:00	  "errors" : [ {
+build	29-Apr-2026 09:56:00	    "status" : 404,
+build	29-Apr-2026 09:56:00	    "message" : "Unable to find artifact versions"
+build	29-Apr-2026 09:56:00	  } ]
+build	29-Apr-2026 09:56:00	}
+simple	29-Apr-2026 09:56:00	Finished task 'Deploy to Artifactory if needed' with result: Success
+simple	29-Apr-2026 09:56:00	Starting task 'Inject the build information to be used in Bamboo Deploy' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:inject'
+simple	29-Apr-2026 09:56:00	Injected variable bamboo.inject.latestVersion={ in RESULT scope
+simple	29-Apr-2026 09:56:00	Injected variable bamboo.inject."errors"=[ { in RESULT scope
+simple	29-Apr-2026 09:56:00	Injected variable bamboo.inject."message"="Unable to find artifact versions" in RESULT scope
+simple	29-Apr-2026 09:56:00	Injected variable bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ in RESULT scope
+simple	29-Apr-2026 09:56:00	Injected variable bamboo.inject."status"=404, in RESULT scope
+simple	29-Apr-2026 09:56:00	Injected variable bamboo.inject.BranchName=02.00.000.133 in RESULT scope
+simple	29-Apr-2026 09:56:00	Injected variable bamboo.inject.}= in RESULT scope
+simple	29-Apr-2026 09:56:00	Injected variable bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ in RESULT scope
+simple	29-Apr-2026 09:56:00	Finished task 'Inject the build information to be used in Bamboo Deploy' with result: Success
+simple	29-Apr-2026 09:56:00	Starting task 'Dump variables to log' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump'
+simple	29-Apr-2026 09:56:00	---- DUMPING VARIABLES TO LOG --- 
+simple	29-Apr-2026 09:56:00	key: [ManualBuildTriggerReason.userName] value: [jeff.sikala] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [SNYK_CLIENT_ID] value: [004cb1fd-36d1-4c46-84e0-2d4e2654fa9e and the ORG ID is 6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	29-Apr-2026 09:56:00	key: [SNYK_CLIENT_SECRET] value: [**********] type: GLOBAL
+simple	29-Apr-2026 09:56:00	key: [SNYK_ORG_ID] value: [6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	29-Apr-2026 09:56:00	key: [agentId] value: [1572869] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [agentWorkingDirectory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [artifactory_access_token_secret] value: [**********] type: GLOBAL
+simple	29-Apr-2026 09:56:00	key: [artifactory_admin_api_key_secret] value: [**********] type: GLOBAL
+simple	29-Apr-2026 09:56:00	key: [artifactory_sa_conexus_password] value: [**********] type: GLOBAL
+simple	29-Apr-2026 09:56:00	key: [bitbucket_branch] value: [feature/ll-postgres] type: GLOBAL
+simple	29-Apr-2026 09:56:00	key: [build.commandline.com.atlassian.bamboo.plugins.maven:task.builder.mvn3.8] value: [/usr/share/maven/bin/mvn -Djava.io.tmpdir=/tmp/BT-DPA1-JOB1 clean verify -B -U -s settings-artifactory.xml -Dbamboo.inject.BranchName=02.00.000.133 -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.3] value: [/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/temp/BT-DPA1-JOB1-13-ScriptBuildTask-14376402479711022035.sh] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.4] value: [bamboo-deployment/build-determination-migration.sh] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.7] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/temp/BT-DPA1-JOB1-13-ScriptBuildTask-15934688623056344609.sh] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.9] value: [bamboo-deployment/deploy-to-artifactory-and-create-bamboo-version-migrate.sh] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [build.working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [buildFailed] value: [false] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [buildKey] value: [BT-DPA1-JOB1] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [buildNumber] value: [13] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [buildPlanName] value: [Build and Test - DPA - Build - release-02.00.000.133 - Default Job] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [buildResultKey] value: [BT-DPA1-JOB1-13] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [buildResultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-DPA1-JOB1-13] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [buildTimeStamp] value: [2026-04-29T08:55:46.055-06:00] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [buildVersionQueryArtifact] value: [dpa-ear] type: PLAN
+simple	29-Apr-2026 09:56:00	key: [buildVersionQueryGroup] value: [gov.gsa.cnxs.dpa] type: PLAN
+simple	29-Apr-2026 09:56:00	key: [capability.system.builder.command.aws] value: [/usr/local/bin/aws] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [capability.system.builder.command.kubectl] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [capability.system.builder.mvn3.Maven 3] value: [/usr/share/maven] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [capability.system.builder.node.Node.js] value: [/usr/bin/node] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [capability.system.docker.executable] value: [/usr/bin/docker] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [capability.system.git.executable] value: [/usr/bin/git] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [capability.system.jdk.JDK] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [capability.system.jdk.JDK 17] value: [/etc/alternatives/java_sdk_17] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [capability.system.jdk.JDK 17.0.18] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [capability.system.kubectl.executable] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [dependenciesDisabled] value: [false] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [git.cache.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/_git-repositories-cache] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [inject."errors"] value: [[ {] type: RESULT
+simple	29-Apr-2026 09:56:00	key: [inject."message"] value: ["Unable to find artifact versions"] type: RESULT
+simple	29-Apr-2026 09:56:00	key: [inject."status"] value: [404,] type: RESULT
+simple	29-Apr-2026 09:56:00	key: [inject.BranchName] value: [02.00.000.133] type: RESULT
+simple	29-Apr-2026 09:56:00	key: [inject.latestVersion] value: [{] type: RESULT
+simple	29-Apr-2026 09:56:00	key: [inject.mavenFeatureRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/] type: RESULT
+simple	29-Apr-2026 09:56:00	key: [inject.pluginRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/] type: RESULT
+simple	29-Apr-2026 09:56:00	key: [inject.}] value: [] type: RESULT
+simple	29-Apr-2026 09:56:00	key: [plan.storageTag] value: [plan-7766057] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planKey] value: [BT-DPA1] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planName] value: [Build and Test - DPA - Build - release-02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.1.branch] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.1.branchDisplayName] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.1.branchName] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.1.name] value: [DPA] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.1.previousRevision] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.1.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/dpa.git] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.1.revision] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.1.type] value: [bbserver] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.1.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.2.branch] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.2.branchDisplayName] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.2.branchName] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.2.name] value: [bamboo-deployment] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.2.previousRevision] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.2.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.2.revision] value: [439708947111204f164b4948722ba4f8aa275ca2] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.2.type] value: [bbserver] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.2.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.branch] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.branchDisplayName] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.branchName] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.name] value: [DPA] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.previousRevision] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/dpa.git] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.revision] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.type] value: [bbserver] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [planRepository.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.5013534.branch.name] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.5013534.git.branch] value: [develop] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.5013534.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.5013534.git.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.5013534.name] value: [bamboo-deployment] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.5013534.previous.revision.number] value: [e28eb9ec5f1a4bfcd51cfdaf8b4436eaf8478740] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.5013534.revision.number] value: [439708947111204f164b4948722ba4f8aa275ca2] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.7929897.branch.name] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.7929897.git.branch] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.7929897.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/dpa.git] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.7929897.git.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.7929897.name] value: [DPA] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.7929897.previous.revision.number] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.7929897.revision.number] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.branch.name] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.git.branch] value: [release/02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/dpa.git] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.git.username] value: [] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.name] value: [bamboo-deployment] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.previous.revision.number] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [repository.revision.number] value: [c8b67c761c04bfe1f07b25138131911ee6d68a6e] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [resultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-DPA1-JOB1-13] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [shortJobKey] value: [JOB1] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [shortJobName] value: [Default Job] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [shortPlanBranchName] value: [release-02.00.000.133] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [shortPlanKey] value: [DPA1] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [shortPlanName] value: [DPA - Build] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [simpleBuildTimeStamp] value: [20260429085546] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [tmp.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/temp] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [triggerReason.key] value: [com.atlassian.bamboo.plugin.system.triggerReason:ManualBuildTriggerReason] type: CUSTOM
+simple	29-Apr-2026 09:56:00	key: [working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1] type: CUSTOM
+simple	29-Apr-2026 09:56:00	---- END DUMPING VARIABLES TO LOG  --- 
+simple	29-Apr-2026 09:56:00	Finished task 'Dump variables to log' with result: Success
+simple	29-Apr-2026 09:56:00	Running post build plugin 'Docker Container Cleanup'
+simple	29-Apr-2026 09:56:00	Running post build plugin 'NCover Results Collector'
+simple	29-Apr-2026 09:56:00	Running post build plugin 'Build Results Label Collector'
+simple	29-Apr-2026 09:56:00	Running post build plugin 'Clover Results Collector'
+simple	29-Apr-2026 09:56:00	Running post build plugin 'npm Cache Cleanup'
+simple	29-Apr-2026 09:56:00	Running post build plugin 'Artifact Copier'
+simple	29-Apr-2026 09:56:00	Publishing an artifact: dpa-ear
+simple	29-Apr-2026 09:56:01	Finished publishing of artifact Required shared artifact Http Compression On : [dpa-ear], patterns: [nsfs-dpa-ear.ear] anchored at: [dpa-ear/target] in 644.5 ms
+simple	29-Apr-2026 09:56:01	Successfully removed working directory at '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/xml-data/build-dir/BT-DPA1-JOB1'
+simple	29-Apr-2026 09:56:01	Finalising the build...
+simple	29-Apr-2026 09:56:01	Stopping timer.
+simple	29-Apr-2026 09:56:01	Build BT-DPA1-JOB1-13 completed.
+simple	29-Apr-2026 08:56:01	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	29-Apr-2026 08:56:01	Running on server: post build plugin 'NCover Results Collector'
+simple	29-Apr-2026 08:56:01	Running on server: post build plugin 'Build Labeller'
+simple	29-Apr-2026 08:56:01	Running on server: post build plugin 'Clover Delta Calculator'
+simple	29-Apr-2026 08:56:01	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	29-Apr-2026 08:56:01	All post build plugins have finished
+simple	29-Apr-2026 08:56:01	Generating build results summary...
+simple	29-Apr-2026 08:56:01	Saving build results to disk...
+simple	29-Apr-2026 08:56:01	Store variable context...
+simple	29-Apr-2026 08:56:01	Finished building BT-DPA1-JOB1-13.
