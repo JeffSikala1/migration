@@ -72,51 +72,25 @@ elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
 
     if [ "$BranchName" == "develop" ]; then
         echo "This is a development branch"
-
-        ${MVN_BIN} deploy -DskipTests=true -U \
-          -s ${MVN_SETTINGS} \
-          -Dbamboo.inject.BranchName=${BranchName} \
-          -Dbamboo.inject.mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl} \
-          -Dbamboo.inject.pluginRepositoryUrl=${pluginRepositoryUrl} \
-          -DaltDeploymentRepository=artifactory::${mavenFeatureRepositoryUrl}
-
-        echo "buildVersionQueryArtifact=${buildVersionQueryArtifact}"
-        echo "buildVersionQueryGroup=${buildVersionQueryGroup}"
-        echo "mavenVersion=${mavenVersion}"
-
-        echo -e "latestVersion=$(curl -k -s \
-          -H "Authorization: Bearer ${bamboo_artifactory_access_token_secret}" \
-          "${RepositoryBaseUrl}api/search/latestVersion?g=${buildVersionQueryGroup}&a=${buildVersionQueryArtifact}&v=${mavenVersion}&repos=conexus-snapshot-local")" >> file.properties
-
-    elif echo "${BranchName}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
-        echo "This is a release branch. RC artifact already published by Start Release. Skipping deploy."
-
-        echo "buildVersionQueryArtifact=${buildVersionQueryArtifact}"
-        echo "buildVersionQueryGroup=${buildVersionQueryGroup}"
-        echo "mavenVersion=${mavenVersion}"
-
-        echo -e "latestVersion=$(curl -k -s \
-          -H "Authorization: Bearer ${bamboo_artifactory_access_token_secret}" \
-          "${RepositoryBaseUrl}api/search/latestVersion?g=${buildVersionQueryGroup}&a=${buildVersionQueryArtifact}&v=${mavenVersion}&repos=conexus-rc-local")" >> file.properties
-
     else
-        echo "This is a feature branch"
-
-        ${MVN_BIN} deploy -DskipTests=true -U \
-          -s ${MVN_SETTINGS} \
-          -Dbamboo.inject.BranchName=${BranchName} \
-          -Dbamboo.inject.mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl} \
-          -Dbamboo.inject.pluginRepositoryUrl=${pluginRepositoryUrl} \
-          -DaltDeploymentRepository=artifactory::${mavenFeatureRepositoryUrl}
-
-        echo "buildVersionQueryArtifact=${buildVersionQueryArtifact}"
-        echo "buildVersionQueryGroup=${buildVersionQueryGroup}"
-        echo "mavenVersion=${mavenVersion}"
-
-        echo -e "latestVersion=$(curl -k -s \
-          -H "Authorization: Bearer ${bamboo_artifactory_access_token_secret}" \
-          "${RepositoryBaseUrl}api/search/latestVersion?g=${buildVersionQueryGroup}&a=${buildVersionQueryArtifact}&v=${mavenVersion}&repos=conexus-snapshot-local")" >> file.properties
+        echo "This is not a develop branch but may be a feature branch"
     fi
+
+    # Both develop and feature branches deploy and query latestVersion
+    ${MVN_BIN} deploy -DskipTests=true -U \
+      -s ${MVN_SETTINGS} \
+      -Dbamboo.inject.BranchName=${BranchName} \
+      -Dbamboo.inject.mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl} \
+      -Dbamboo.inject.pluginRepositoryUrl=${pluginRepositoryUrl} \
+      -DaltDeploymentRepository=artifactory::${mavenFeatureRepositoryUrl}
+
+    echo "buildVersionQueryArtifact=${buildVersionQueryArtifact}"
+    echo "buildVersionQueryGroup=${buildVersionQueryGroup}"
+    echo "mavenVersion=${mavenVersion}"
+
+    echo -e "latestVersion=$(curl -k -s \
+      -H "Authorization: Bearer ${bamboo_artifactory_access_token_secret}" \
+      "${RepositoryBaseUrl}api/search/latestVersion?g=${buildVersionQueryGroup}&a=${buildVersionQueryArtifact}&v=${mavenVersion}&repos=conexus-snapshot-local")" >> file.properties
 
 else
     echo "Cannot determine parent branch"
