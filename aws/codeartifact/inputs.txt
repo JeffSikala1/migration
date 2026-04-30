@@ -22,3 +22,29 @@ for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
   echo "=== $c logs ==="
   docker logs "$c" 2>&1 | grep -i "startup umask" | head
 done
+
+
+
+
+for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
+  echo "=== $c ==="
+  docker exec "$c" bash -lc '
+    ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[w]rapper"
+
+    echo
+    echo "=== Umask by process ==="
+    for p in $(ps -eo pid,comm,args | awk '\''$2=="java" || $2=="wrapper" || $2=="bamboo-agent.sh" {print $1}'\''); do
+      echo "--- PID $p ---"
+      ps -p "$p" -o pid,ppid,comm,args
+      grep -i Umask /proc/$p/status
+    done
+  '
+done
+
+
+for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
+  echo "=== $c ==="
+  docker exec "$c" bash -lc '
+    grep -Rni "umask\|wrapper.umask" /cache/bamboo/*/bin /cache/bamboo/*/conf 2>/dev/null | head -50
+  '
+done
