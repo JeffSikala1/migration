@@ -1,50 +1,37 @@
-for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
-  echo "=== $c ==="
-  docker exec "$c" bash -lc '
-    echo "Container startup logs:"
-    echo
+POSTGRES=$(docker ps --filter "name=postgres-cnx-it" --format "{{.Names}}" | head -1)
 
-    echo "Process tree:"
-    ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[t]ini|[b]ash"
+echo "Postgres container: $POSTGRES"
 
-    echo
-    p=$(ps -eo pid,args | awk "/[j]ava .*\/opt\/bamboo-agent.jar/ {print \$1; exit}")
-    echo "Selected Bamboo agent PID: ${p:-not found}"
+docker inspect "$POSTGRES" --format '{{json .Mounts}}' | jq
 
-    if [ -n "$p" ]; then
-      grep -i Umask /proc/$p/status
-    fi
-  '
-done
-
-
-for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
-  echo "=== $c logs ==="
-  docker logs "$c" 2>&1 | grep -i "startup umask" | head
-done
+docker exec "$POSTGRES" bash -lc '
+  echo "=== initdb directory ==="
+  ls -la /docker-entrypoint-initdb.d/
+  echo
+  echo "=== setup script ==="
+  sed -n "1,200p" /docker-entrypoint-initdb.d/60_setup_conexus_data_file.sh
+  echo
+  echo "=== search for pg data files ==="
+  find / -name "full-pg-dumpall.sql" -o -name "setup-db.sh" 2>/dev/null
+'
 
 
 
-
-for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
-  echo "=== $c ==="
-  docker exec "$c" bash -lc '
-    ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[w]rapper"
-
-    echo
-    echo "=== Umask by process ==="
-    for p in $(ps -eo pid,comm,args | awk '\''$2=="java" || $2=="wrapper" || $2=="bamboo-agent.sh" {print $1}'\''); do
-      echo "--- PID $p ---"
-      ps -p "$p" -o pid,ppid,comm,args
-      grep -i Umask /proc/$p/status
-    done
-  '
-done
+docker exec ip-10-56-112-35.ec2.internal-ba-2 bash -lc '
+  cd /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1
+  echo "=== unpacked pg data ==="
+  find integration/target/cnxs-pg-data -maxdepth 2 -ls
+'
 
 
-for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
-  echo "=== $c ==="
-  docker exec "$c" bash -lc '
-    grep -Rni "umask\|wrapper.umask" /cache/bamboo/*/bin /cache/bamboo/*/conf 2>/dev/null | head -50
-  '
-done
+# On the host (NOT inside the agent container)
+ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/BT-DOMB-JOB1/integration/target/ 2>/dev/null
+
+
+# As root or with sudo, on the host
+sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data/ 2>/dev/null \
+  || echo "Path not found on host"
+
+
+# During the build, while Postgres is running
+docker exec <postgres-container-name> ls -la /tmp/cnxs-data/
