@@ -1,31 +1,23 @@
-# From earlier in our conversation:
-docker exec ip-10-56-112-35.ec2.internal-ba-6 \
-  tar -tzf /root/.m2/.../pg-datafile-02.00.000.50-postgres-data.tar.gz
-full-pg-dumpall.sql
-setup-db.sh
-reset-db.sh
-drop_tablespace_roles.sql
+#!/bin/sh
+echo "=== Post-build cnxs-pg-data inspection ==="
+echo "Working directory: $(pwd)"
+echo ""
+echo "--- integration/target/ contents ---"
+ls -la integration/target/ 2>&1 || echo "integration/target missing"
+echo ""
+echo "--- integration/target/cnxs-pg-data contents ---"
+ls -la integration/target/cnxs-pg-data/ 2>&1 || echo "cnxs-pg-data missing"
+echo ""
+echo "--- find all files in cnxs-pg-data ---"
+find integration/target/cnxs-pg-data -type f -ls 2>&1 || echo "find returned nothing"
+echo ""
+echo "--- find any pg-dumpall.sql anywhere ---"
+find . -name "full-pg-dumpall.sql" -type f 2>&1 || echo "no pg-dumpall.sql found"
+echo "=== End of inspection ==="
 
 
 
 
 
 
-- script:
-    interpreter: SHELL
-    scripts:
-    - |
-      echo "=== Post-build cnxs-pg-data inspection ==="
-      ls -la integration/target/cnxs-pg-data/ 2>&1 || echo "Directory missing"
-      find integration/target/cnxs-pg-data -type f 2>&1 || echo "Find failed"
-    description: Debug — inspect cnxs-pg-data after build
-
-
-echo "=== host view ==="
-ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data 2>/dev/null || echo "host /cache path missing"
-ls -la /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data 2>/dev/null || echo "host /app/cache path missing"
-
-echo "=== agent container view ==="
-docker exec ip-10-56-112-35.ec2.internal-ba-2 bash -lc '
-ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data 2>/dev/null || echo "agent path missing"
-'
+Adding a debug script task to the Domain plan to capture the state of integration/target/cnxs-pg-data/ right after the Maven build fails — Maven's log says it's unpacking the seed files there, but Postgres sees an empty directory at mount time, so we need to know if the files are actually landing on disk. I'll mark it as a Final task so it runs even when the build fails, then re-run and share what we find.
