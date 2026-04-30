@@ -1,37 +1,31 @@
-POSTGRES=$(docker ps --filter "name=postgres-cnx-it" --format "{{.Names}}" | head -1)
-
-echo "Postgres container: $POSTGRES"
-
-docker inspect "$POSTGRES" --format '{{json .Mounts}}' | jq
-
-docker exec "$POSTGRES" bash -lc '
-  echo "=== initdb directory ==="
-  ls -la /docker-entrypoint-initdb.d/
-  echo
-  echo "=== setup script ==="
-  sed -n "1,200p" /docker-entrypoint-initdb.d/60_setup_conexus_data_file.sh
-  echo
-  echo "=== search for pg data files ==="
-  find / -name "full-pg-dumpall.sql" -o -name "setup-db.sh" 2>/dev/null
-'
+# From earlier in our conversation:
+docker exec ip-10-56-112-35.ec2.internal-ba-6 \
+  tar -tzf /root/.m2/.../pg-datafile-02.00.000.50-postgres-data.tar.gz
+full-pg-dumpall.sql
+setup-db.sh
+reset-db.sh
+drop_tablespace_roles.sql
 
 
 
+
+
+
+- script:
+    interpreter: SHELL
+    scripts:
+    - |
+      echo "=== Post-build cnxs-pg-data inspection ==="
+      ls -la integration/target/cnxs-pg-data/ 2>&1 || echo "Directory missing"
+      find integration/target/cnxs-pg-data -type f 2>&1 || echo "Find failed"
+    description: Debug — inspect cnxs-pg-data after build
+
+
+echo "=== host view ==="
+ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data 2>/dev/null || echo "host /cache path missing"
+ls -la /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data 2>/dev/null || echo "host /app/cache path missing"
+
+echo "=== agent container view ==="
 docker exec ip-10-56-112-35.ec2.internal-ba-2 bash -lc '
-  cd /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1
-  echo "=== unpacked pg data ==="
-  find integration/target/cnxs-pg-data -maxdepth 2 -ls
+ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data 2>/dev/null || echo "agent path missing"
 '
-
-
-# On the host (NOT inside the agent container)
-ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/BT-DOMB-JOB1/integration/target/ 2>/dev/null
-
-
-# As root or with sudo, on the host
-sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data/ 2>/dev/null \
-  || echo "Path not found on host"
-
-
-# During the build, while Postgres is running
-docker exec <postgres-container-name> ls -la /tmp/cnxs-data/
