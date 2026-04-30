@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 0002
 
-DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular19-el9-2025-09-23-1324}"
+DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953}"
 NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
 
 BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
@@ -73,6 +74,7 @@ for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
     "$DOCKER_BUILD_AGENT_IMAGE" \
     bash -lc "
       set -e
+      umask 0002
       mkdir -p /opt/java
       ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk
       mkdir -p /opt/bamboo-keys

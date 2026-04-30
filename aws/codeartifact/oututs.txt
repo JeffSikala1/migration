@@ -1,49 +1,3 @@
-[ec2-user@ip-10-56-112-35 ~]$ sudo su
-[root@ip-10-56-112-35 ec2-user]# umask
-0027
-[root@ip-10-56-112-35 ec2-user]# umask 0002
-[root@ip-10-56-112-35 ec2-user]# for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
-  echo "=== $c ==="
-  docker exec "$c" bash -lc '
-    echo "PID 1 umask:"
-    grep -i Umask /proc/1/status
-
-    echo "Bamboo/Java process umask:"
-    p=$(pgrep -f "bamboo|java" | head -1)
-    [ -n "$p" ] && grep -i Umask /proc/$p/status || echo "No Bamboo/Java process found"
-  '
-done
-=== ip-10-56-112-35.ec2.internal-ba-1 ===
-PID 1 umask:
-Umask:  0022
-Bamboo/Java process umask:
-Umask:  0022
-=== ip-10-56-112-35.ec2.internal-ba-2 ===
-PID 1 umask:
-Umask:  0022
-Bamboo/Java process umask:
-Umask:  0022
-=== ip-10-56-112-35.ec2.internal-ba-3 ===
-PID 1 umask:
-Umask:  0022
-Bamboo/Java process umask:
-Umask:  0022
-=== ip-10-56-112-35.ec2.internal-ba-4 ===
-PID 1 umask:
-Umask:  0022
-Bamboo/Java process umask:
-Umask:  0022
-=== ip-10-56-112-35.ec2.internal-ba-5 ===
-PID 1 umask:
-Umask:  0022
-Bamboo/Java process umask:
-Umask:  0022
-=== ip-10-56-112-35.ec2.internal-ba-6 ===
-PID 1 umask:
-Umask:  0022
-Bamboo/Java process umask:
-Umask:  0022
-[root@ip-10-56-112-35 ec2-user]# cat /app/create_agents.sh
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
@@ -130,16 +84,3 @@ done
 echo
 echo "Running Bamboo agent containers:"
 docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-
-[root@ip-10-56-112-35 ec2-user]# docker ps
-CONTAINER ID   IMAGE                                                                                           COMMAND                   CREATED         STATUS                   PORTS                                                                  NAMES
-3b0d5ce29f55   jboss-cnx-it-202151-354                                                                         "sh -c '$JBOSS_HOME/…"    4 minutes ago   Up 4 minutes             5445/tcp, 8080/tcp, 8443/tcp, 9797/tcp, 9990/tcp, 9993/tcp, 9999/tcp   jboss-cnx-it-202151-354
-2d8436b55a01   postgres-cnx-it-202151-354                                                                      "docker-entrypoint.s…"    4 minutes ago   Up 4 minutes (healthy)   5432/tcp                                                               postgres-cnx-it-202151-354
-0d50c558710c   jboss-cnx-it-202129-496                                                                         "sh -c '$JBOSS_HOME/…"    4 minutes ago   Up 4 minutes             5445/tcp, 8080/tcp, 8443/tcp, 9797/tcp, 9990/tcp, 9993/tcp, 9999/tcp   jboss-cnx-it-202129-496
-b8bfca602b3c   postgres-cnx-it-202129-496                                                                      "docker-entrypoint.s…"    4 minutes ago   Up 4 minutes (healthy)   5432/tcp                                                               postgres-cnx-it-202129-496
-b897549f03fb   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-6
-dcd4cc544f9f   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-5
-bed35c3160c0   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-4
-cc6631afa3ee   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-3
-6f8e735684bc   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-2
-868619f1ba53   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-1
