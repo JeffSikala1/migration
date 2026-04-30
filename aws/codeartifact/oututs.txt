@@ -1,10 +1,11 @@
+[sikaj01@ip-10-56-112-33 ~]$ cat domain/integration/pom.xml 
 <?xml version="1.0"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>gov.gsa.cnxs.domain</groupId>
         <artifactId>domain-aggregator</artifactId>
-        <version>02.00.000.174-SNAPSHOT</version>
+        <version>02.00.000.173-SNAPSHOT</version>
     </parent>
 
     <groupId>gov.gsa.cnxs.domain.test</groupId>
@@ -26,6 +27,8 @@
         So you need to -Dpostgres.host=172.25.0.2. This is the IP of Postgres running within the isolated_nw.
         -->
         <postgres.host>${dbPostgresHost}</postgres.host>
+        <pg.datafile.dir>${project.build.directory}/pg-datafile</pg.datafile.dir>
+        <pg.datafile.file>${pg.datafile.dir}/pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</pg.datafile.file>
     </properties>
 
     <dependencies>
@@ -119,22 +122,28 @@
                 </property>
             </activation>
 
-            <dependencies>
+            <!--            <dependencies>
                 <dependency>
                     <groupId>gov.gsa.cnxs.db</groupId>
                     <artifactId>pg-datafile</artifactId>
                     <classifier>postgres-data</classifier>
                     <version>${version.cnxs-pg-datafile}</version>
                     <type>tar.gz</type>
-                </dependency>
-<!--                <dependency>-->
-<!--                    <groupId>gov.gsa.cnxs.db</groupId>-->
-<!--                    <artifactId>schema</artifactId>-->
-<!--                    <version>${version.schema}</version>-->
-<!--                    <classifier>data</classifier>-->
-<!--                    <type>tar.gz</type>-->
-<!--                </dependency>-->
-            </dependencies>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>gov.gsa.cnxs.db</groupId>
+                            <artifactId>pg-datafile</artifactId>
+                        </exclusion>
+                    </exclusions>
+            </dependency>-->
+<!--&lt;!&ndash;                <dependency>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <groupId>gov.gsa.cnxs.db</groupId>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <artifactId>schema</artifactId>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <version>${version.schema}</version>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <classifier>data</classifier>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <type>tar.gz</type>&ndash;&gt;-->
+<!--&lt;!&ndash;                </dependency>&ndash;&gt;-->
+<!--        </dependencies> -->
 
             <build>
                 <plugins>
@@ -161,6 +170,66 @@
                         </configuration>
                     </plugin>
 
+                    <!--<plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-pg-datafile</id>
+                                <phase>generate-test-resources</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>gov.gsa.cnxs.db</groupId>
+                                            <artifactId>pg-datafile</artifactId>
+                                            <classifier>postgres-data</classifier>
+                                            <version>${version.cnxs-pg-datafile}</version>
+                                            <type>tar.gz</type>
+                                            <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
+                                            <destFileName>pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</destFileName>
+                                            <overWrite>false</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                        </execution>
+                        <execution>
+                                <id>unpack-pg-datafile</id>
+                                <phase>generate-test-resources</phase>
+                                <goals>
+                                    <goal>unpack</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>gov.gsa.cnxs.db</groupId>
+                                            <artifactId>pg-datafile</artifactId>
+                                            <classifier>postgres-data</classifier>
+                                            <version>${version.cnxs-pg-datafile}</version>
+                                            <type>tar.gz</type>
+                                            <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
+                                            <destFileName>pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</destFileName>
+                                            <overWrite>false</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                        </execution>
+
+                        </executions>
+                    </plugin>-->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.maven-failsafe-plugin}</version>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <pg.datafile.file>${pg.datafile.file}</pg.datafile.file>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+
                     <!-- copy the tests from the model project as well so we run those against Postgres
                          Now supposedly I could have added the 'dependenciesToScan' property to the failsafe configuration,
                          but I was unable to get that working.
@@ -169,6 +238,28 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-dependency-plugin</artifactId>
                         <executions>
+                                <execution>
+                                <id>copy-pg-datafile</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>gov.gsa.cnxs.db</groupId>
+                                            <artifactId>pg-datafile</artifactId>
+                                            <classifier>postgres-data</classifier>
+                                            <version>${version.cnxs-pg-datafile}</version>
+                                            <type>tar.gz</type>
+                                            <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
+                                            <destFileName>pg-datafile-${version.cnxs-pg-datafile}-postgres-data.tar.gz</destFileName>
+                                            <overWrite>false</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                        </execution>
+
                             <execution>
                                 <id>unpack-tests</id>
                                 <phase>process-resources</phase>
@@ -348,8 +439,102 @@
         </profile>
     </profiles>
 </project>
+[sikaj01@ip-10-56-112-33 ~]$ cat domain/pom.xml 
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>gov.gsa.cnxs.bom</groupId>
+        <artifactId>env</artifactId>
+        <version>02.00.000.167-SNAPSHOT</version>
+    </parent>
+
+    <version>02.00.000.173-SNAPSHOT</version>
+    <groupId>gov.gsa.cnxs.domain</groupId>
+    <artifactId>domain-aggregator</artifactId>
+    <packaging>pom</packaging>
+    <name>Conexus Domain Aggregator</name>
+
+    <scm>
+        <connection>scm:git:ssh://10.203.62.171/app/git/nsfs/domain.git</connection>
+        <developerConnection>scm:git:ssh://10.203.62.171:/app/git/nsfs/domain.git</developerConnection>
+    </scm>
+
+    <modules>
+        <module>domain</module>
+        <module>test-util</module>
+        <module>integration</module>
+  </modules>
+
+    <properties>
+        <conexus-common.version>02.00.000.161-SNAPSHOT</conexus-common.version>
+    </properties>
+    <dependencies>
+        <!-- JsonPath -->
+        <dependency> <!-- look at removing this dependency when json-path includes a non-vulnerable version -->
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.jayway.jsonpath</groupId>
+            <artifactId>json-path</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.openclover</groupId>
+                <artifactId>clover-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/gov/gsa/nsfs/tests/**/*.java</exclude>  <!-- integration tests -->
+                        <exclude>**/gov/gsa/nsfs/sample/**/*.java</exclude> <!-- sample data -->
+                        <!-- the following two are me playing with hibernate, unused -->
+                        <exclude>**/gov/gsa/nsfs/persist/hibernate/*.java</exclude>
+                        <!-- billing is hardly used by us and data is generated by the BRMS system -->
+                        <exclude>**/gov/gsa/nsfs/domains/billing/*.java</exclude>
+                        <!-- loader package contains test helpers -->
+                        <exclude>**/gov/gsa/nsfs/domains/loader/*.java</exclude>
+                        <!-- views are tested on Postgres only as part of integration testing -->
+                        <exclude>**/domains/views/*.java</exclude>
+                    </excludes>
+                    <setTestFailureIgnore>true</setTestFailureIgnore>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <configuration>
+                    <properties>
+                        <property>
+                            <name>conexus-common.version</name>
+                            <dependencies>
+                                <dependency>
+                                    <groupId>gov.gsa.cnxs.common</groupId>
+                                    <artifactId>common-utils</artifactId>
+                                </dependency>
+                            </dependencies>
+                        </property>
+                    </properties>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
 
 
 
-[sikaj01@ip-10-56-112-33 ~]$ grep -r "postgresVolumeMount" domain
-domain/integration/pom.xml:                                                <volume>${postgres.docker.volume.directory}:${postgresVolumeMount}</volume>
+[sikaj01@ip-10-56-112-33 ~]$ ls domain/pom.xml
+cat domain/pom.xml | grep -E "postgresVolumeMount|docker.postgres|dbPostgresHost"
+domain/pom.xml
+[sikaj01@ip-10-56-112-33 ~]$ cat domain/pom.xml | grep -E "postgresVolumeMount|docker.postgres|dbPostgresHost"
+[sikaj01@ip-10-56-112-33 ~]$ cat domain/pom.xml | grep -iE "postgresVolumeMount|docker.postgres|dbPostgresHost"
+[sikaj01@ip-10-56-112-33 ~]$ cat do
+docker-jboss-local/ domain/             
+[sikaj01@ip-10-56-112-33 ~]$ cat do
+docker-jboss-local/ domain/             
+[sikaj01@ip-10-56-112-33 ~]$ cat domain/pom.xml | grep -iE 'postgresVolumeMount|docker.postgres|dbPostgresHost'
+[sikaj01@ip-10-56-112-33 ~]$ 
