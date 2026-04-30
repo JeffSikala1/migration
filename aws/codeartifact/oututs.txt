@@ -1,86 +1,140 @@
-#!/usr/bin/env bash
-set -Eeuo pipefail
-
-DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953}"
-NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
-
-BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
-
-NETWORK_NAME="${NETWORK_NAME:-isolated_nw}"
-NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
-
-HOST_CACHE_BASE="${HOST_CACHE_BASE:-/app/cache/bamboo}"
-DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
-SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
-
-SKIP_PULL="${SKIP_PULL:-1}"
-
-command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
-systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
-
-[ -d "$SSH_KEYS_DIR" ] || { echo "ERROR: SSH key directory not found at $SSH_KEYS_DIR"; exit 1; }
-[ -f "$SSH_KEYS_DIR/bitbucket_ci" ] || { echo "ERROR: SSH key not found at $SSH_KEYS_DIR/bitbucket_ci"; exit 1; }
-chmod 600 "$SSH_KEYS_DIR/bitbucket_ci" || true
-[ -f "$SSH_KEYS_DIR/bitbucket_ci_jgit" ] && chmod 600 "$SSH_KEYS_DIR/bitbucket_ci_jgit" || true
-
-mkdir -p "$HOST_CACHE_BASE"
-
-if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
-  echo "Creating docker network $NETWORK_NAME ($NETWORK_SUBNET)..."
-  docker network create -d bridge --subnet "$NETWORK_SUBNET" "$NETWORK_NAME" >/dev/null
-else
-  echo "Docker network $NETWORK_NAME already exists."
-fi
-
-HOSTNAME_SHORT="$(hostname)"
-
-if [[ "$SKIP_PULL" != "1" ]]; then
-  echo
-  echo "Pulling build agent image..."
-  docker pull "$DOCKER_BUILD_AGENT_IMAGE"
-else
-  echo
-  echo "Skipping docker pull because SKIP_PULL=1"
-  docker image inspect "$DOCKER_BUILD_AGENT_IMAGE" >/dev/null 2>&1 || {
-    echo "ERROR: image not found locally: $DOCKER_BUILD_AGENT_IMAGE"
-    exit 1
-  }
-fi
-
-echo
-echo "Stopping/removing existing build agents..."
-docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
-
-echo
-echo "Starting build agents..."
-for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
-  AGENT_NAME="${HOSTNAME_SHORT}-ba-${num}"
-  HOST_AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
-  CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
-
-  mkdir -p "$HOST_AGENT_HOME"
-
-  docker run -d \
-    --net="$NETWORK_NAME" \
-    -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
-    -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
-    -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
-    --name="$AGENT_NAME" \
-    -h "$AGENT_NAME" \
-    --init \
-    --restart=always \
-    --sysctl net.ipv4.ip_forward=1 \
-    "$DOCKER_BUILD_AGENT_IMAGE" \
-    bash -lc "
-      set -e
-      mkdir -p /opt/java
-      ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk
-      mkdir -p /opt/bamboo-keys
-      mkdir -p '${CONTAINER_AGENT_HOME}'
-      exec java -Dbamboo.home='${CONTAINER_AGENT_HOME}' -jar /opt/bamboo-agent.jar '${BAMBOO_URL}'
-    "
+[root@ip-10-56-112-35 ec2-user]# docker ps
+CONTAINER ID   IMAGE                                                                                           COMMAND                   CREATED         STATUS                   PORTS                                                                  NAMES
+3b0d5ce29f55   jboss-cnx-it-202151-354                                                                         "sh -c '$JBOSS_HOME/…"    4 minutes ago   Up 4 minutes             5445/tcp, 8080/tcp, 8443/tcp, 9797/tcp, 9990/tcp, 9993/tcp, 9999/tcp   jboss-cnx-it-202151-354
+2d8436b55a01   postgres-cnx-it-202151-354                                                                      "docker-entrypoint.s…"    4 minutes ago   Up 4 minutes (healthy)   5432/tcp                                                               postgres-cnx-it-202151-354
+0d50c558710c   jboss-cnx-it-202129-496                                                                         "sh -c '$JBOSS_HOME/…"    4 minutes ago   Up 4 minutes             5445/tcp, 8080/tcp, 8443/tcp, 9797/tcp, 9990/tcp, 9993/tcp, 9999/tcp   jboss-cnx-it-202129-496
+b8bfca602b3c   postgres-cnx-it-202129-496                                                                      "docker-entrypoint.s…"    4 minutes ago   Up 4 minutes (healthy)   5432/tcp                                                               postgres-cnx-it-202129-496
+b897549f03fb   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-6
+dcd4cc544f9f   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-5
+bed35c3160c0   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-4
+cc6631afa3ee   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-3
+6f8e735684bc   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-2
+868619f1ba53   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 days ago      Up 9 days                                                                                       ip-10-56-112-35.ec2.internal-ba-1
+timed out waiting for input: auto-logout
+[ec2-user@ip-10-56-112-35 ~]$ vim create_agents.sh 
+[ec2-user@ip-10-56-112-35 ~]$ docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
+b897549f03fb
+dcd4cc544f9f
+bed35c3160c0
+cc6631afa3ee
+6f8e735684bc
+868619f1ba53
+[ec2-user@ip-10-56-112-35 ~]$ for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
+  echo "=== $c ==="
+  docker exec "$c" bash -lc '
+    echo "PID 1 umask:"
+    grep -i Umask /proc/1/status
+    echo "Bamboo/Java process umask:"
+    p=$(pgrep -f "bamboo|java" | head -1)
+    [ -n "$p" ] && grep -i Umask /proc/$p/status || echo "No Bamboo/Java process found"
+  '
 done
+=== ip-10-56-112-35.ec2.internal-ba-1 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-1
+=== ip-10-56-112-35.ec2.internal-ba-2 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-2
+=== ip-10-56-112-35.ec2.internal-ba-3 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-3
+=== ip-10-56-112-35.ec2.internal-ba-4 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-4
+=== ip-10-56-112-35.ec2.internal-ba-5 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-5
+=== ip-10-56-112-35.ec2.internal-ba-6 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-6
+[ec2-user@ip-10-56-112-35 ~]$ sudo su
+[root@ip-10-56-112-35 ec2-user]# for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
+  echo "=== $c ==="
+  docker exec "$c" bash -lc '
+    echo "PID 1 umask:"
+    grep -i Umask /proc/1/status
+    echo "Bamboo/Java process umask:"
+    p=$(pgrep -f "bamboo|java" | head -1)
+    [ -n "$p" ] && grep -i Umask /proc/$p/status || echo "No Bamboo/Java process found"
+  '
+done
+=== ip-10-56-112-35.ec2.internal-ba-1 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-1
+=== ip-10-56-112-35.ec2.internal-ba-2 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-2
+=== ip-10-56-112-35.ec2.internal-ba-3 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-3
+=== ip-10-56-112-35.ec2.internal-ba-4 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-4
+=== ip-10-56-112-35.ec2.internal-ba-5 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-5
+=== ip-10-56-112-35.ec2.internal-ba-6 ===
+Error response from daemon: No such container: ip-10-56-112-35.ec2.internal-ba-6
+[root@ip-10-56-112-35 ec2-user]# docker container ls 
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[root@ip-10-56-112-35 ec2-user]# bash /app/create_agents.sh
+Docker network isolated_nw already exists.
 
-echo
-echo "Running Bamboo agent containers:"
-docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+Skipping docker pull because SKIP_PULL=1
+
+Stopping/removing existing build agents...
+
+Starting build agents...
+faa8614ad4f550ff91a4d4ccc0fcf3b29dc0e5d1f9137e6563c3d9c59c38d05e
+37dcaa53429059b3300c91c600e7fd967a7c0742ac3c380c0f07ae712384883d
+d0f3a5fdb1635b1d58eefc5905f8334aaf82e1b61ab43f6a86430e2bbd0ae533
+96d5a55376fa6326cd0c53f7e3b809dfee69cde6d28c467c9920ff9ec4634374
+8bb6b7f8abcc59471f44208e45d9dc26f40e69fb9745aa00df8a36fb25cdb5de
+dc9fb6b7c8677cfb5333d030cf60e9d78a55f33b4413898e0a67255382d4fbab
+
+Running Bamboo agent containers:
+NAMES                               IMAGE                                                                                           STATUS
+ip-10-56-112-35.ec2.internal-ba-6   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up Less than a second
+ip-10-56-112-35.ec2.internal-ba-5   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up Less than a second
+ip-10-56-112-35.ec2.internal-ba-4   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up 1 second
+ip-10-56-112-35.ec2.internal-ba-3   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up 1 second
+ip-10-56-112-35.ec2.internal-ba-2   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up 2 seconds
+ip-10-56-112-35.ec2.internal-ba-1   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up 2 seconds
+[root@ip-10-56-112-35 ec2-user]# docker container ls 
+CONTAINER ID   IMAGE                                                                                           COMMAND                   CREATED          STATUS         PORTS     NAMES
+dc9fb6b7c867   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   8 seconds ago    Up 6 seconds             ip-10-56-112-35.ec2.internal-ba-6
+8bb6b7f8abcc   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   8 seconds ago    Up 7 seconds             ip-10-56-112-35.ec2.internal-ba-5
+96d5a55376fa   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 seconds ago    Up 8 seconds             ip-10-56-112-35.ec2.internal-ba-4
+d0f3a5fdb163   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   9 seconds ago    Up 8 seconds             ip-10-56-112-35.ec2.internal-ba-3
+37dcaa534290   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   10 seconds ago   Up 9 seconds             ip-10-56-112-35.ec2.internal-ba-2
+faa8614ad4f5   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   "bash -lc '\n      se…"   10 seconds ago   Up 9 seconds             ip-10-56-112-35.ec2.internal-ba-1
+[root@ip-10-56-112-35 ec2-user]# for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
+  echo "=== $c ==="
+  docker exec "$c" bash -lc '
+    echo "PID 1 umask:"
+    grep -i Umask /proc/1/status
+
+    echo "Bamboo/Java process umask:"
+    p=$(pgrep -f "bamboo|java" | head -1)
+    [ -n "$p" ] && grep -i Umask /proc/$p/status || echo "No Bamboo/Java process found"
+  '
+done
+=== ip-10-56-112-35.ec2.internal-ba-1 ===
+PID 1 umask:
+Umask:  0022
+Bamboo/Java process umask:
+Umask:  0022
+=== ip-10-56-112-35.ec2.internal-ba-2 ===
+PID 1 umask:
+Umask:  0022
+Bamboo/Java process umask:
+Umask:  0022
+=== ip-10-56-112-35.ec2.internal-ba-3 ===
+PID 1 umask:
+Umask:  0022
+Bamboo/Java process umask:
+Umask:  0022
+=== ip-10-56-112-35.ec2.internal-ba-4 ===
+PID 1 umask:
+Umask:  0022
+Bamboo/Java process umask:
+Umask:  0022
+=== ip-10-56-112-35.ec2.internal-ba-5 ===
+PID 1 umask:
+Umask:  0022
+Bamboo/Java process umask:
+Umask:  0022
+=== ip-10-56-112-35.ec2.internal-ba-6 ===
+PID 1 umask:
+Umask:  0022
+Bamboo/Java process umask:
+Umask:  0022
