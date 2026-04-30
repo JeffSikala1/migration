@@ -46,26 +46,73 @@ docker inspect ip-10-56-112-35.ec2.internal-ba-1 --format '{{json .Mounts}}' | j
 
 
 -------------------------------------------------
-# Step 1: What's still in /app/cache/bamboo/?
-sudo ls -la /app/cache/bamboo/
-sudo du -sh /app/cache/bamboo/*
+# Verify what we're about to remove
+for n in 1 2 4 5 6; do
+  echo "=== /cache/bamboo/.../ba-${n} ==="
+  sudo du -sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/ 2>/dev/null
+done
 
-# Step 2: What's actually in each /cache/bamboo/<agent>/ now?
-for n in 1 2 3 4 5 6; do
-  echo "=== ba-${n} ==="
-  sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/ | head -20
-  echo ""
+# If sizes match what we saw above (0, 0, 104M, 0, 0), proceed:
+for n in 1 2 4 5 6; do
+  sudo rm -rf /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/
+done
+
+# Confirm
+sudo ls -la /cache/bamboo/
+
+
+
+# Move ba-1 (~10GB)
+sudo rsync -a --info=progress2 \
+  /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/ \
+  /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/
+
+# Verify it copied
+sudo du -sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/
+sudo ls /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bamboo-agent.cfg.xml
+
+# Only after verifying, remove from /app/
+sudo rm -rf /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/
+
+
+
+
+for n in 2 4 5 6; do
+  echo "=== Copying ba-${n} ==="
+  sudo rsync -a --info=progress2 \
+    /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/ \
+    /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/
+  
+  echo "=== Verifying ba-${n} ==="
+  sudo du -sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/
+  sudo ls /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml
 done
 
 
-
-# Step 3: Confirm agent homes are intact in their original locations
+# Sanity check first — make sure all agent homes are now in /cache/
 for n in 1 2 3 4 5 6; do
-  if [ -f "/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml" ]; then
-    echo "ba-${n}: OK in /app/"
-  elif [ -f "/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml" ]; then
-    echo "ba-${n}: OK in /cache/"
+  if [ -f "/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml" ]; then
+    SIZE=$(sudo du -sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/ | awk '{print $1}')
+    echo "ba-${n}: OK in /cache/  (${SIZE})"
   else
-    echo "ba-${n}: MISSING — needs investigation"
+    echo "ba-${n}: NOT READY — bamboo-agent.cfg.xml missing"
   fi
 done
+
+
+# Now safe to remove the originals
+for n in 1 2 4 5 6; do
+  sudo rm -rf /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/
+done
+
+# Final check
+sudo ls /app/cache/bamboo/
+# Should show only test-agent and test-ba (which we're not migrating)
+
+
+
+
+docker inspect ip-10-56-112-35.ec2.internal-ba-1 --format '{{json .Mounts}}' | jq
+
+# Source and Destination should both be:
+# /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
