@@ -1,45 +1,11 @@
-docker run --rm --entrypoint cat docker-postgres-local /docker-entrypoint-initdb.d/60_setup_conexus_data_file.sh
+for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
+  echo "=== $c ==="
+  docker exec "$c" bash -lc '
+    echo "PID 1 umask:"
+    grep -i Umask /proc/1/status
 
-
-# Inside the agent container
-docker exec ip-10-56-112-35.ec2.internal-ba-6 bash -c '
-  docker run --rm --entrypoint cat <docker.postgres value> /docker-entrypoint-initdb.d/60_setup_conexus_data_file.sh
-'
-
-
-
-grep -r "postgresVolumeMount" <domain repo path>
-
-
-
-# On the host EC2 (you'll need ECR auth)
-aws ecr get-login-password --region us-east-1 | \
-  docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
-
-docker pull 339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7
-
-docker run --rm --entrypoint cat \
-  339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7 \
-  /docker-entrypoint-initdb.d/60_setup_conexus_data_file.sh
-
-
-
-docker run --rm --entrypoint ls \
-  339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7 \
-  -la /docker-entrypoint-initdb.d/
-
-# And check the volume mount target the bind expects
-docker inspect 339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7 \
-  | grep -A 5 -i "volume\|workdir\|env"
-
-
-grep -r "postgresVolumeMount" <domain repo>
-
-
-ls domain/pom.xml
-cat domain/pom.xml | grep -E "postgresVolumeMount|docker.postgres|dbPostgresHost"
-
-
-docker exec ip-10-56-112-35.ec2.internal-ba-6 \
-  cat /root/.m2/repository/gov/gsa/cnxs/domain/domain-aggregator/02.00.000.174-SNAPSHOT/domain-aggregator-02.00.000.174-SNAPSHOT.pom \
-  | grep -E "postgresVolumeMount|docker.postgres|dbPostgresHost"
+    echo "Bamboo/Java process umask:"
+    p=$(pgrep -f "bamboo|java" | head -1)
+    [ -n "$p" ] && grep -i Umask /proc/$p/status || echo "No Bamboo/Java process found"
+  '
+done
