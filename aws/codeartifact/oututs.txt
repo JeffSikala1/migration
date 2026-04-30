@@ -1,151 +1,176 @@
-[root@ip-10-56-112-35 ec2-user]# bash /app/create_agents.sh
-Docker network isolated_nw already exists.
-
-Skipping docker pull because SKIP_PULL=1
-
-Stopping/removing existing build agents...
-df7d273bd869
-5f279002be7c
-92f4b44dcc28
-bece28f71fe0
-29fa788e0d0c
-ddec266e4729
-
-Starting build agents...
-35d605ad7228cec492e6a7bdfe3c2774de64044a672ba8f45fe9cbd3898d2a54
-6cb8b93e9e5952a372157bf5d5eccb6f1f38e8639991653bfbc2af533d8c32b2
-5e3a513c2d53408827415dd6339dee17c8bcfe24baf306c8c0fb488aec1b615f
-b8a1624759cc6e840435d933f03115c5d6523d0c02c99f7ffc4623b777e0529f
-2607774b0a7f538b1d7150e6b0e07997ebcb6f5a6042e216ccf627a511c4da17
-1d92fbeb92fbf1ae80f214fe4fdca01626226293d7655f60654adecda3974786
-
-Running Bamboo agent containers:
-NAMES                               IMAGE                                                                                           STATUS
-ip-10-56-112-35.ec2.internal-ba-6   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up Less than a second
-ip-10-56-112-35.ec2.internal-ba-5   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up Less than a second
-ip-10-56-112-35.ec2.internal-ba-4   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up 1 second
-ip-10-56-112-35.ec2.internal-ba-3   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up 1 second
-ip-10-56-112-35.ec2.internal-ba-2   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up 2 seconds
-ip-10-56-112-35.ec2.internal-ba-1   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-4-14-0953   Up 2 seconds
-[root@ip-10-56-112-35 ec2-user]# for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
-  echo "=== $c logs ==="
-  docker logs "$c" 2>&1 | grep -i "startup umask" | head
-done
-=== ip-10-56-112-35.ec2.internal-ba-1 logs ===
-startup umask before change: 0022
-startup umask after change: 0002
-=== ip-10-56-112-35.ec2.internal-ba-2 logs ===
-startup umask before change: 0022
-startup umask after change: 0002
-=== ip-10-56-112-35.ec2.internal-ba-3 logs ===
-startup umask before change: 0022
-startup umask after change: 0002
-=== ip-10-56-112-35.ec2.internal-ba-4 logs ===
-startup umask before change: 0022
-startup umask after change: 0002
-startup umask before change: 0022
-startup umask after change: 0002
-=== ip-10-56-112-35.ec2.internal-ba-5 logs ===
-startup umask before change: 0022
-startup umask after change: 0002
-=== ip-10-56-112-35.ec2.internal-ba-6 logs ===
-startup umask before change: 0022
-startup umask after change: 0002
-
-
 [root@ip-10-56-112-35 ec2-user]# for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
   echo "=== $c ==="
   docker exec "$c" bash -lc '
-    echo "Container startup logs:"
-    echo
-
-    echo "Process tree:"
-    ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[t]ini|[b]ash"
+    ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[w]rapper"
 
     echo
-    p=$(ps -eo pid,args | awk "/[j]ava .*\/opt\/bamboo-agent.jar/ {print \$1; exit}")
-    echo "Selected Bamboo agent PID: ${p:-not found}"
-
-    if [ -n "$p" ]; then
+    echo "=== Umask by process ==="
+    for p in $(ps -eo pid,comm,args | awk '\''$2=="java" || $2=="wrapper" || $2=="bamboo-agent.sh" {print $1}'\''); do
+      echo "--- PID $p ---"
+      ps -p "$p" -o pid,ppid,comm,args
       grep -i Umask /proc/$p/status
-    fi
+    done
   '
 done
 === ip-10-56-112-35.ec2.internal-ba-1 ===
-Container startup logs:
-
-Process tree:
       1       0 docker-init     /sbin/docker-init -- bash -lc        set -e       echo 'startup umask before change:' $(umask)       umask 0002       echo 'startup umask after change:' $(umask)       mkdir -p /opt/java       ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk       mkdir -p /opt/bamboo-keys       mkdir -p '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1'       exec java -Dbamboo.home='/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1' -jar /opt/bamboo-agent.jar 'https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/'     
       7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
      57       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/bamboo-agent.sh console
     132      57 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
     153     132 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Djavax.net.ssl.trustStore=/var/atlassian/application-data/bamboo-agent/conf/custom-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=JKS -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=k5tuy6mPup0WjXZ_9O5s9XNXrovPfApp -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=132 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
-    434       0 bash            bash -lc      echo "Container startup logs:"     echo      echo "Process tree:"     ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[t]ini|[b]ash"      echo     p=$(ps -eo pid,args | awk "/[j]ava .*\/opt\/bamboo-agent.jar/ {print \$1; exit}")     echo "Selected Bamboo agent PID: ${p:-not found}"      if [ -n "$p" ]; then       grep -i Umask /proc/$p/status     fi   
+    472       0 bash            bash -lc      ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[w]rapper"      echo     echo "=== Umask by process ==="     for p in $(ps -eo pid,comm,args | awk '$2=="java" || $2=="wrapper" || $2=="bamboo-agent.sh" {print $1}'); do       echo "--- PID $p ---"       ps -p "$p" -o pid,ppid,comm,args       grep -i Umask /proc/$p/status     done   
 
-Selected Bamboo agent PID: 1
-Umask:  0022
+=== Umask by process ===
+--- PID 7 ---
+    PID    PPID COMMAND         COMMAND
+      7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
+--- PID 57 ---
+    PID    PPID COMMAND         COMMAND
+     57       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/bamboo-agent.sh console
+Umask:  0002
+--- PID 132 ---
+    PID    PPID COMMAND         COMMAND
+    132      57 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
+Umask:  0002
+--- PID 153 ---
+    PID    PPID COMMAND         COMMAND
+    153     132 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Djavax.net.ssl.trustStore=/var/atlassian/application-data/bamboo-agent/conf/custom-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=JKS -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=k5tuy6mPup0WjXZ_9O5s9XNXrovPfApp -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=132 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
 === ip-10-56-112-35.ec2.internal-ba-2 ===
-Container startup logs:
-
-Process tree:
       1       0 docker-init     /sbin/docker-init -- bash -lc        set -e       echo 'startup umask before change:' $(umask)       umask 0002       echo 'startup umask after change:' $(umask)       mkdir -p /opt/java       ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk       mkdir -p /opt/bamboo-keys       mkdir -p '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2'       exec java -Dbamboo.home='/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2' -jar /opt/bamboo-agent.jar 'https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/'     
       7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
      58       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/bamboo-agent.sh console
     133      58 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
     154     133 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=b-MPtkd6h_wAI_srXXEnatVvAanUlOJQ -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=133 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
-    438       0 bash            bash -lc      echo "Container startup logs:"     echo      echo "Process tree:"     ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[t]ini|[b]ash"      echo     p=$(ps -eo pid,args | awk "/[j]ava .*\/opt\/bamboo-agent.jar/ {print \$1; exit}")     echo "Selected Bamboo agent PID: ${p:-not found}"      if [ -n "$p" ]; then       grep -i Umask /proc/$p/status     fi   
+    476       0 bash            bash -lc      ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[w]rapper"      echo     echo "=== Umask by process ==="     for p in $(ps -eo pid,comm,args | awk '$2=="java" || $2=="wrapper" || $2=="bamboo-agent.sh" {print $1}'); do       echo "--- PID $p ---"       ps -p "$p" -o pid,ppid,comm,args       grep -i Umask /proc/$p/status     done   
 
-Selected Bamboo agent PID: 1
-Umask:  0022
+=== Umask by process ===
+--- PID 7 ---
+    PID    PPID COMMAND         COMMAND
+      7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
+--- PID 58 ---
+    PID    PPID COMMAND         COMMAND
+     58       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/bamboo-agent.sh console
+Umask:  0002
+--- PID 133 ---
+    PID    PPID COMMAND         COMMAND
+    133      58 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
+Umask:  0002
+--- PID 154 ---
+    PID    PPID COMMAND         COMMAND
+    154     133 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=b-MPtkd6h_wAI_srXXEnatVvAanUlOJQ -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=133 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
 === ip-10-56-112-35.ec2.internal-ba-3 ===
-Container startup logs:
-
-Process tree:
       1       0 docker-init     /sbin/docker-init -- bash -lc        set -e       echo 'startup umask before change:' $(umask)       umask 0002       echo 'startup umask after change:' $(umask)       mkdir -p /opt/java       ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk       mkdir -p /opt/bamboo-keys       mkdir -p '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3'       exec java -Dbamboo.home='/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3' -jar /opt/bamboo-agent.jar 'https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/'     
       7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
      60       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/bamboo-agent.sh console
     135      60 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
     156     135 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=2WADV24p5zxK6xsULRPlY_mvkAlg8hO9 -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=135 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
-    440       0 bash            bash -lc      echo "Container startup logs:"     echo      echo "Process tree:"     ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[t]ini|[b]ash"      echo     p=$(ps -eo pid,args | awk "/[j]ava .*\/opt\/bamboo-agent.jar/ {print \$1; exit}")     echo "Selected Bamboo agent PID: ${p:-not found}"      if [ -n "$p" ]; then       grep -i Umask /proc/$p/status     fi   
+    478       0 bash            bash -lc      ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[w]rapper"      echo     echo "=== Umask by process ==="     for p in $(ps -eo pid,comm,args | awk '$2=="java" || $2=="wrapper" || $2=="bamboo-agent.sh" {print $1}'); do       echo "--- PID $p ---"       ps -p "$p" -o pid,ppid,comm,args       grep -i Umask /proc/$p/status     done   
 
-Selected Bamboo agent PID: 1
-Umask:  0022
+=== Umask by process ===
+--- PID 7 ---
+    PID    PPID COMMAND         COMMAND
+      7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
+--- PID 60 ---
+    PID    PPID COMMAND         COMMAND
+     60       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/bamboo-agent.sh console
+Umask:  0002
+--- PID 135 ---
+    PID    PPID COMMAND         COMMAND
+    135      60 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
+Umask:  0002
+--- PID 156 ---
+    PID    PPID COMMAND         COMMAND
+    156     135 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=2WADV24p5zxK6xsULRPlY_mvkAlg8hO9 -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=135 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
 === ip-10-56-112-35.ec2.internal-ba-4 ===
-Container startup logs:
-
-Process tree:
       1       0 docker-init     /sbin/docker-init -- bash -lc        set -e       echo 'startup umask before change:' $(umask)       umask 0002       echo 'startup umask after change:' $(umask)       mkdir -p /opt/java       ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk       mkdir -p /opt/bamboo-keys       mkdir -p '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4'       exec java -Dbamboo.home='/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4' -jar /opt/bamboo-agent.jar 'https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/'     
       8       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
      58       8 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/bamboo-agent.sh console
     133      58 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
     154     133 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=tANV8WxAPVzUJeqKIF4T3y3dDW-Ab1cd -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=133 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
-    443       0 bash            bash -lc      echo "Container startup logs:"     echo      echo "Process tree:"     ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[t]ini|[b]ash"      echo     p=$(ps -eo pid,args | awk "/[j]ava .*\/opt\/bamboo-agent.jar/ {print \$1; exit}")     echo "Selected Bamboo agent PID: ${p:-not found}"      if [ -n "$p" ]; then       grep -i Umask /proc/$p/status     fi   
+    481       0 bash            bash -lc      ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[w]rapper"      echo     echo "=== Umask by process ==="     for p in $(ps -eo pid,comm,args | awk '$2=="java" || $2=="wrapper" || $2=="bamboo-agent.sh" {print $1}'); do       echo "--- PID $p ---"       ps -p "$p" -o pid,ppid,comm,args       grep -i Umask /proc/$p/status     done   
 
-Selected Bamboo agent PID: 1
-Umask:  0022
+=== Umask by process ===
+--- PID 8 ---
+    PID    PPID COMMAND         COMMAND
+      8       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
+--- PID 58 ---
+    PID    PPID COMMAND         COMMAND
+     58       8 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/bamboo-agent.sh console
+Umask:  0002
+--- PID 133 ---
+    PID    PPID COMMAND         COMMAND
+    133      58 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
+Umask:  0002
+--- PID 154 ---
+    PID    PPID COMMAND         COMMAND
+    154     133 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=tANV8WxAPVzUJeqKIF4T3y3dDW-Ab1cd -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=133 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
 === ip-10-56-112-35.ec2.internal-ba-5 ===
-Container startup logs:
-
-Process tree:
       1       0 docker-init     /sbin/docker-init -- bash -lc        set -e       echo 'startup umask before change:' $(umask)       umask 0002       echo 'startup umask after change:' $(umask)       mkdir -p /opt/java       ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk       mkdir -p /opt/bamboo-keys       mkdir -p '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5'       exec java -Dbamboo.home='/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5' -jar /opt/bamboo-agent.jar 'https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/'     
       7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
      58       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/bamboo-agent.sh console
     133      58 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
     154     133 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=VkTsRMXIU92p05XSE7CVFVcYeM5t9BoW -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=133 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
-    436       0 bash            bash -lc      echo "Container startup logs:"     echo      echo "Process tree:"     ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[t]ini|[b]ash"      echo     p=$(ps -eo pid,args | awk "/[j]ava .*\/opt\/bamboo-agent.jar/ {print \$1; exit}")     echo "Selected Bamboo agent PID: ${p:-not found}"      if [ -n "$p" ]; then       grep -i Umask /proc/$p/status     fi   
+    474       0 bash            bash -lc      ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[w]rapper"      echo     echo "=== Umask by process ==="     for p in $(ps -eo pid,comm,args | awk '$2=="java" || $2=="wrapper" || $2=="bamboo-agent.sh" {print $1}'); do       echo "--- PID $p ---"       ps -p "$p" -o pid,ppid,comm,args       grep -i Umask /proc/$p/status     done   
 
-Selected Bamboo agent PID: 1
-Umask:  0022
+=== Umask by process ===
+--- PID 7 ---
+    PID    PPID COMMAND         COMMAND
+      7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
+--- PID 58 ---
+    PID    PPID COMMAND         COMMAND
+     58       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/bamboo-agent.sh console
+Umask:  0002
+--- PID 133 ---
+    PID    PPID COMMAND         COMMAND
+    133      58 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
+Umask:  0002
+--- PID 154 ---
+    PID    PPID COMMAND         COMMAND
+    154     133 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=VkTsRMXIU92p05XSE7CVFVcYeM5t9BoW -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=133 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
 === ip-10-56-112-35.ec2.internal-ba-6 ===
-Container startup logs:
-
-Process tree:
       1       0 docker-init     /sbin/docker-init -- bash -lc        set -e       echo 'startup umask before change:' $(umask)       umask 0002       echo 'startup umask after change:' $(umask)       mkdir -p /opt/java       ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk       mkdir -p /opt/bamboo-keys       mkdir -p '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6'       exec java -Dbamboo.home='/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6' -jar /opt/bamboo-agent.jar 'https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/'     
       7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
      58       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/bamboo-agent.sh console
     133      58 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
     154     133 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=MLbMNuPvcfyzW8rQbjVeTm9dLNSLUR4o -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=133 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
-    440       0 bash            bash -lc      echo "Container startup logs:"     echo      echo "Process tree:"     ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[t]ini|[b]ash"      echo     p=$(ps -eo pid,args | awk "/[j]ava .*\/opt\/bamboo-agent.jar/ {print \$1; exit}")     echo "Selected Bamboo agent PID: ${p:-not found}"      if [ -n "$p" ]; then       grep -i Umask /proc/$p/status     fi   
+    478       0 bash            bash -lc      ps -eo pid,ppid,comm,args | grep -E "[j]ava|[b]amboo-agent|[w]rapper"      echo     echo "=== Umask by process ==="     for p in $(ps -eo pid,comm,args | awk '$2=="java" || $2=="wrapper" || $2=="bamboo-agent.sh" {print $1}'); do       echo "--- PID $p ---"       ps -p "$p" -o pid,ppid,comm,args       grep -i Umask /proc/$p/status     done   
 
-Selected Bamboo agent PID: 1
-Umask:  0022
+=== Umask by process ===
+--- PID 7 ---
+    PID    PPID COMMAND         COMMAND
+      7       1 java            java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
+--- PID 58 ---
+    PID    PPID COMMAND         COMMAND
+     58       7 bamboo-agent.sh /bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/bamboo-agent.sh console
+Umask:  0002
+--- PID 133 ---
+    PID    PPID COMMAND         COMMAND
+    133      58 wrapper         /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/./wrapper /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/../conf/wrapper.conf wrapper.syslog.ident=bamboo-agent wrapper.pidfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/bamboo-agent.pid wrapper.name=bamboo-agent wrapper.displayname=Bamboo Agent wrapper.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/bamboo-agent.status wrapper.java.statusfile=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/bin/bamboo-agent.java.status wrapper.lockfile=/var/lock/subsys/bamboo-agent wrapper.script.version=3.5.51
+Umask:  0002
+--- PID 154 ---
+    PID    PPID COMMAND         COMMAND
+    154     133 java            /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64/bin/java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6 -Dbamboo.agent.ignoreServerCertName=false -Dbamboo.allow.empty.artifacts=false --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED -Xms256m -Xmx512m -Djava.library.path=../lib -classpath ../lib/wrapper.jar:../lib/bamboo-agent-bootstrap.jar -Dwrapper.key=MLbMNuPvcfyzW8rQbjVeTm9dLNSLUR4o -Dwrapper.port=32000 -Dwrapper.jvm.port.min=31000 -Dwrapper.jvm.port.max=31999 -Dwrapper.pid=133 -Dwrapper.version=3.5.51-st -Dwrapper.native_library=wrapper -Dwrapper.arch=x86 -Dwrapper.cpu.timeout=10 -Dwrapper.jvmid=1 -Dwrapper.lang.domain=wrapper -Dwrapper.lang.folder=../lang org.tanukisoftware.wrapper.WrapperSimpleApp com.atlassian.bamboo.agent.bootstrap.AgentBootstrap https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+Umask:  0002
+[root@ip-10-56-112-35 ec2-user]# for c in ip-10-56-112-35.ec2.internal-ba-{1..6}; do
+  echo "=== $c ==="
+  docker exec "$c" bash -lc '
+    grep -Rni "umask\|wrapper.umask" /cache/bamboo/*/bin /cache/bamboo/*/conf 2>/dev/null | head -50
+  '
+done
+=== ip-10-56-112-35.ec2.internal-ba-1 ===
+=== ip-10-56-112-35.ec2.internal-ba-2 ===
+=== ip-10-56-112-35.ec2.internal-ba-3 ===
+=== ip-10-56-112-35.ec2.internal-ba-4 ===
+=== ip-10-56-112-35.ec2.internal-ba-5 ===
+=== ip-10-56-112-35.ec2.internal-ba-6 ===
