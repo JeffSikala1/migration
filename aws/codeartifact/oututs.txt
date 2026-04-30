@@ -1,64 +1,355 @@
-[root@ip-10-56-112-35 ec2-user]# aws ecr get-login-password --region us-east-1 | \
-  docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
-WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
-Configure a credential helper to remove this warning. See
-https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>gov.gsa.cnxs.domain</groupId>
+        <artifactId>domain-aggregator</artifactId>
+        <version>02.00.000.174-SNAPSHOT</version>
+    </parent>
 
-Login Succeeded
-[root@ip-10-56-112-35 ec2-user]# docker pull 339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7
-17.7: Pulling from docker-local/conexus-postgres
-Digest: sha256:d13c9f00cd19cc5ee83ba72db9634176520750b2c33b4f958d2d6b0ca5c5b83c
-Status: Image is up to date for 339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7
-339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7
-[root@ip-10-56-112-35 ec2-user]# docker run --rm --entrypoint cat \
-  339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7 \
-  /docker-entrypoint-initdb.d/60_setup_conexus_data_file.sh
-#!/bin/sh
+    <groupId>gov.gsa.cnxs.domain.test</groupId>
+    <artifactId>domain-integration</artifactId>
+    <name>Conexus Domain System Test</name>
+    <packaging>jar</packaging>
 
-# initialize the database with the base Conexus Postgres data file
-if [ -e /tmp/cnxs-data/full-pg-dumpall.sql ]
-then
-  psql -d cnxspdb -U postgres -f /tmp/cnxs-data/full-pg-dumpall.sql
-else
-  echo No Postgres data file to load
-fi
-[root@ip-10-56-112-35 ec2-user]# docker run --rm --entrypoint ls \
-  339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7 \
-  -la /docker-entrypoint-initdb.d/
-total 16
-drwxr-xr-x. 1 root root 4096 Apr  6 21:26 .
-drwxr-xr-x. 1 root root 4096 Apr 30 19:53 ..
--rwxrwxrwx. 1 root root  522 Apr  2 13:09 50_pg_ext_setup.sh
--rwxrwxrwx. 1 root root  241 Apr  2 13:09 60_setup_conexus_data_file.sh
-[root@ip-10-56-112-35 ec2-user]# docker inspect 339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7 \
-  | grep -A 5 -i "volume\|workdir\|env"
-            "Env": null,
-            "Cmd": null,
-            "Image": "",
-            "Volumes": null,
-            "WorkingDir": "",
-            "Entrypoint": null,
-            "OnBuild": null,
-            "Labels": null
-        },
---
-            "Env": [
-                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/17/bin",
-                "GOSU_VERSION=1.19",
-                "LANG=en_US.utf8",
-                "PG_MAJOR=17",
-                "PG_VERSION=17.7-3.pgdg13+1",
---
-            "Volumes": {
-                "/var/lib/postgresql/data": {}
-            },
-            "WorkingDir": "",
-            "Entrypoint": [
-                "docker-entrypoint.sh"
---
-                "WorkDir": "/var/lib/docker/overlay2/01553e67ae688dd69c79dcbb50f7113b3baec7d24462ee9a951b055249d41ebd/work"
-            },
-            "Name": "overlay2"
-        },
-        "RootFS": {
-            "Type": "layers",
+    <properties>
+        <jboss-home>${project.build.directory}/jboss</jboss-home>
+        <dir.output.dist>${project.build.directory}/dist</dir.output.dist>
+        <dir.output.deploy>${dir.output.dist}/deploy</dir.output.deploy>
+        <postgres.docker.volume.directory>${project.build.directory}/cnxs-pg-data</postgres.docker.volume.directory>
+        <!--
+        The postgres.host is simply the alias of the docker container by default. This works when
+        running inside the Bamboo docker agents because the agent, postgres, and jboss are all running
+        within the same, bridge docker network and can resolve each other by container name.
+
+        if you run on your workstation, you are running MVN from the docker host, not a container.
+        So you need to -Dpostgres.host=172.25.0.2. This is the IP of Postgres running within the isolated_nw.
+        -->
+        <postgres.host>${dbPostgresHost}</postgres.host>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>gov.gsa.cnxs.domain.test</groupId>
+            <artifactId>domain-test-ear</artifactId>
+            <version>${project.version}</version>
+            <type>ear</type>
+        </dependency>
+
+        <dependency>
+            <groupId>gov.gsa.cnxs.domain.test</groupId>
+            <artifactId>domain-test-api</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>gov.gsa.cnxs.domain</groupId>
+            <artifactId>domain</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>gov.gsa.cnxs.common</groupId>
+            <artifactId>common-test-utils</artifactId>
+            <version>${conexus-common.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- dependencies needed by the model tests -->
+        <dependency>
+            <groupId>gov.gsa.cnxs.common</groupId>
+            <artifactId>common-utils</artifactId>
+            <version>${conexus-common.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- added the glassfish one so we can do some constraint testing
+             For example the InterAgencyAgreementTest.minCeiling test
+        -->
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>jakarta.el</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.jms</groupId>
+            <artifactId>jakarta.jms-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.ejb</groupId>
+            <artifactId>jakarta.ejb-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-c3p0</artifactId>
+            <version>${hibernate-c3p0.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <id>integration-test</id>
+            <activation>
+                <property>
+                    <name>skip.docker</name>
+                    <value>false</value>
+                </property>
+            </activation>
+
+            <dependencies>
+                <dependency>
+                    <groupId>gov.gsa.cnxs.db</groupId>
+                    <artifactId>pg-datafile</artifactId>
+                    <classifier>postgres-data</classifier>
+                    <version>${version.cnxs-pg-datafile}</version>
+                    <type>tar.gz</type>
+                </dependency>
+<!--                <dependency>-->
+<!--                    <groupId>gov.gsa.cnxs.db</groupId>-->
+<!--                    <artifactId>schema</artifactId>-->
+<!--                    <version>${version.schema}</version>-->
+<!--                    <classifier>data</classifier>-->
+<!--                    <type>tar.gz</type>-->
+<!--                </dependency>-->
+            </dependencies>
+
+            <build>
+                <plugins>
+                    <!-- compile our integration tests -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>test-compile</phase>
+                                <goals>
+                                    <goal>testCompile</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Tell surefire to skip trying to run unit tests inside this module, we are using the failsafe plugin for integration tests and surefire for unit tests -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+
+                    <!-- copy the tests from the model project as well so we run those against Postgres
+                         Now supposedly I could have added the 'dependenciesToScan' property to the failsafe configuration,
+                         but I was unable to get that working.
+                         -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>unpack-tests</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>unpack-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <includeArtifactIds>domain</includeArtifactIds>
+                                    <includeClassifiers>tests</includeClassifiers>
+                                    <includes>gov/gsa/nsfs/domains/**/*Test.class</includes>
+                                    <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>unpack-cnxs-pg-datafile</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>unpack-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <includeArtifactIds>pg-datafile</includeArtifactIds>
+                                    <includeClassifiers>postgres-data</includeClassifiers>
+                                    <type>tar.gz</type>
+                                    <outputDirectory>${postgres.docker.volume.directory}</outputDirectory>
+                                </configuration>
+                            </execution>
+
+<!--                            <execution>-->
+<!--                                <id>copy-schema</id>-->
+<!--                                <phase>process-resources</phase>-->
+<!--                                <goals>-->
+<!--                                    <goal>copy</goal>-->
+<!--                                </goals>-->
+<!--                                <configuration>-->
+<!--                                    <artifactItems>-->
+<!--                                        <artifactItem>-->
+<!--                                            <groupId>gov.gsa.cnxs.db</groupId>-->
+<!--                                            <artifactId>schema</artifactId>-->
+<!--                                            <version>${version.schema}</version>-->
+<!--                                            <classifier>data</classifier>-->
+<!--                                            <type>tar.gz</type>-->
+<!--                                            <destFileName>schema.tar.gz</destFileName>-->
+<!--                                        </artifactItem>-->
+<!--                                    </artifactItems>-->
+<!--                                    <outputDirectory>${oracle.docker.volume.directory}/upgrade</outputDirectory>-->
+<!--                                </configuration>-->
+<!--                            </execution>-->
+                        </executions>
+                    </plugin>
+                    <!-- create / start docker images for JBoss, Postgres and our artifacts -->
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>start-container</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop-container</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                    <goal>remove</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <verbose>true</verbose>
+                            <removeAll>true</removeAll>
+                            <images>
+                                <image>
+                                    <name>${dbPostgresHost}</name>
+                                    <alias>${dbPostgresHost}</alias>
+                                    <build>
+                                        <from>${docker.postgres}</from>
+                                        <cleanup>remove</cleanup>
+                                    </build>
+                                    <run>
+                                        <namingStrategy>alias</namingStrategy>
+                                        <network>
+                                            <mode>custom</mode>
+                                            <name>isolated_nw</name>
+                                        </network>
+                                        <wait>
+                                            <log>${postgres.started.message}</log>
+                                            <time>${docker.timeout}</time>
+                                            <kill>60000</kill>
+                                        </wait>
+                                        <volumes>
+                                            <bind>
+                                                <volume>${postgres.docker.volume.directory}:${postgresVolumeMount}</volume>
+                                            </bind>
+                                        </volumes>
+                                        <log>
+                                            <enabled>true</enabled>
+                                            <prefix>CNX-POSTGRES</prefix>
+                                            <color>green</color>
+                                        </log>
+                                    </run>
+                                </image>
+                                <image>
+                                    <name>${jboss.docker.alias}</name>
+                                    <alias>${jboss.docker.alias}</alias>
+                                    <build>
+                                        <from>${docker.jboss-pg}</from>
+                                        <assembly>
+                                            <user>jboss:jboss:jboss</user>
+                                            <basedir>${docker.jboss.home}/standalone</basedir>
+                                            <descriptor>assembly.xml</descriptor>
+                                        </assembly>
+                                        <cleanup>remove</cleanup>
+                                    </build>
+                                    <run>
+                                        <namingStrategy>alias</namingStrategy>
+                                        <network>
+                                            <mode>custom</mode>
+                                            <name>isolated_nw</name>
+                                        </network>
+                                        <wait>
+                                            <log>${jboss.started.message}</log>
+                                            <time>${docker.timeout}</time>
+                                        </wait>
+                                        <dependsOn>
+                                            <container>${dbPostgresHost}</container>
+                                        </dependsOn>
+                                        <env>
+                                            <CONEXUS_DB_URL>jdbc:postgresql://${dbPostgresHost}:${dbPostgresPort}/${dbPostgresService}</CONEXUS_DB_URL>
+                                            <JBOSS_BIND_ADDRESS>${jboss.host}</JBOSS_BIND_ADDRESS>
+                                            <JBOSS_BIND_ADDRESS_MANAGEMENT>${jboss.host}</JBOSS_BIND_ADDRESS_MANAGEMENT>
+                                        </env>
+                                        <log>
+                                            <enabled>true</enabled>
+                                            <prefix>CNX-JBOSS</prefix>
+                                            <color>yellow</color>
+                                        </log>
+                                    </run>
+                                </image>
+                            </images>
+                        </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>non-forked</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                                <configuration>
+                                    <runOrder>alphabetical</runOrder>
+                                    <includes>
+                                        <include>gov.gsa.nsfs.**</include>
+                                    </includes>
+                                    <systemPropertyVariables>
+                                        <conexus.jboss.host>${jboss.host}</conexus.jboss.host>
+                                        <conexus.jms.host>${jboss.host}</conexus.jms.host>
+                                        <postgres.host>${postgres.host}</postgres.host>
+                                        <!-- See AbstractTestCase -->
+                                        <!-- See db-postgres-properties-->
+                                        <hibernate.properties>db-postgres.properties</hibernate.properties>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <version>${version.maven-failsafe-plugin}</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
+
+
+
+[sikaj01@ip-10-56-112-33 ~]$ grep -r "postgresVolumeMount" domain
+domain/integration/pom.xml:                                                <volume>${postgres.docker.volume.directory}:${postgresVolumeMount}</volume>
