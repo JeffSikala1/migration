@@ -40,3 +40,32 @@ docker inspect ip-10-56-112-35.ec2.internal-ba-1 --format '{{json .Mounts}}' | j
 # Should show:
 # Source:      /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
 # Destination: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
+
+
+
+
+
+-------------------------------------------------
+# Step 1: What's still in /app/cache/bamboo/?
+sudo ls -la /app/cache/bamboo/
+sudo du -sh /app/cache/bamboo/*
+
+# Step 2: What's actually in each /cache/bamboo/<agent>/ now?
+for n in 1 2 3 4 5 6; do
+  echo "=== ba-${n} ==="
+  sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/ | head -20
+  echo ""
+done
+
+
+
+# Step 3: Confirm agent homes are intact in their original locations
+for n in 1 2 3 4 5 6; do
+  if [ -f "/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml" ]; then
+    echo "ba-${n}: OK in /app/"
+  elif [ -f "/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml" ]; then
+    echo "ba-${n}: OK in /cache/"
+  else
+    echo "ba-${n}: MISSING — needs investigation"
+  fi
+done
