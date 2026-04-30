@@ -1,49 +1,103 @@
-[ec2-user@ip-10-56-112-35 ~]$ sudo su
-[root@ip-10-56-112-35 ec2-user]# docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "{{.Names}}" | xargs -r docker stop
-ip-10-56-112-35.ec2.internal-ba-6
-ip-10-56-112-35.ec2.internal-ba-5
-ip-10-56-112-35.ec2.internal-ba-4
-ip-10-56-112-35.ec2.internal-ba-3
-ip-10-56-112-35.ec2.internal-ba-2
-ip-10-56-112-35.ec2.internal-ba-1
-[root@ip-10-56-112-35 ec2-user]# sudo mkdir -p /cache/bamboo
+[root@ip-10-56-112-35 ec2-user]# sudo ls -la /app/cache/bamboo/
+total 24
+drwxr-xr-x.  9 root root 4096 Apr 30 23:16 .
+drwxr-xr-x.  3 root root   20 Sep 26  2025 ..
+drwxr-xr-x. 16 2005 2005 4096 Apr 28 21:14 ip-10-56-112-35.ec2.internal-ba-1
+drwxr-xr-x. 16 2005 2005 4096 Apr 28 21:14 ip-10-56-112-35.ec2.internal-ba-2
+drwxr-xr-x. 16 2005 2005 4096 Apr 28 21:15 ip-10-56-112-35.ec2.internal-ba-4
+drwxr-xr-x. 16 2005 2005 4096 Apr 28 21:15 ip-10-56-112-35.ec2.internal-ba-5
+drwxr-xr-x. 16 2005 2005 4096 Apr 28 21:15 ip-10-56-112-35.ec2.internal-ba-6
+drwx------.  7 2005 2005  188 Nov 10 21:52 test-agent
+drwxr-xr-x.  6 root root  147 Mar  9 20:54 test-ba
+[root@ip-10-56-112-35 ec2-user]# sudo du -sh /app/cache/bamboo/*
+9.9G    /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
+11G     /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2
+8.0G    /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4
+12G     /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5
+6.8G    /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6
+4.9M    /app/cache/bamboo/test-agent
+211M    /app/cache/bamboo/test-ba
 [root@ip-10-56-112-35 ec2-user]# for n in 1 2 3 4 5 6; do
-  sudo mv /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n} /cache/bamboo/
+  echo "=== ba-${n} ==="
+  sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/ | head -20
+  echo ""
 done
-mv: inter-device move failed: '/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1' to '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1'; unable to remove target: Directory not empty
-mv: inter-device move failed: '/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2' to '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2'; unable to remove target: Directory not empty
-
-
-[root@ip-10-56-112-35 ec2-user]# sudo rm -rf /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-*/xml-data 2>/dev/null
-[root@ip-10-56-112-35 ec2-user]# sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/
+=== ba-1 ===
 total 16
 drwxr-xr-x. 2 root root     6 Apr 30 23:15 .
-drwxr-xr-x. 8 root root 16384 Apr 30 23:12 ..
-[root@ip-10-56-112-35 ec2-user]# sudo find /cache/bamboo/ -maxdepth 5 -type f | head -20    # should mostly be empty/old residue
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/atlassian-bamboo-agent.log.2
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/atlassian-bamboo-agent.log.7
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/atlassian-bamboo-agent.log.4
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/atlassian-bamboo-agent.log.10
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/atlassian-bamboo-agent.log.1
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/docker-app.pid
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/atlassian-bamboo-agent.log.8
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/atlassian-bamboo-agent.log.6
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/atlassian-bamboo-agent.log.9
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/conf/wrapper.conf
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/conf/custom-truststore.jks
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/conf/wrapper-license.conf
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/logs/atlassian-bamboo.log.1
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/logs/atlassian-bamboo-access.log
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/logs/atlassian-bamboo.log.2
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/logs/emergency-atlassian-bamboo.log
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/logs/js-atlassian-bamboo.log
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/logs/atlassian-bamboo.log
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/bamboo-agent.cfg.xml
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/installer.properties
-[root@ip-10-56-112-35 ec2-user]# sudo du -sh /cache/bamboo/*
-0       /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
-0       /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2
-2.6G    /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3
-0       /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-4
-0       /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5
-0       /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6
+drwxr-xr-x. 8 root root 16384 Apr 30 23:16 ..
+
+=== ba-2 ===
+total 16
+drwxr-xr-x. 2 root root     6 Apr 30 23:15 .
+drwxr-xr-x. 8 root root 16384 Apr 30 23:16 ..
+
+=== ba-3 ===
+total 108248
+drwxr-xr-x. 16 2005 2005    16384 Apr 28 21:15 .
+drwxr-xr-x.  8 root root    16384 Apr 30 23:16 ..
+drwx------.  3 2005 2005       82 Feb 11 16:30 .docker
+-rw-rw-r--.  1 2005 2005      175 Apr 21 21:28 .gitconfig
+lrwxrwxrwx.  1 2005 2005       17 Nov  7 21:34 .ssh -> /home/bamboo/.ssh
+drwxr-xr-x.  2 2005 2005       48 Dec 13 18:45 __pycache__
+drwxr-xr-x.  2 2005 2005        6 Sep 26  2025 agentState
+-rw-r--r--.  1 root root  5720035 Apr 30 23:08 atlassian-bamboo-agent.log
+-rw-r--r--.  1 root root 10485906 Apr 23 17:51 atlassian-bamboo-agent.log.1
+-rw-r--r--.  1 root root 10486009 Apr 17 22:45 atlassian-bamboo-agent.log.10
+-rw-r--r--.  1 root root 10485908 Apr 22 08:36 atlassian-bamboo-agent.log.2
+-rw-r--r--.  1 root root 10485770 Apr 21 22:03 atlassian-bamboo-agent.log.3
+-rw-r--r--.  1 root root 10522225 Apr 21 12:37 atlassian-bamboo-agent.log.4
+-rw-r--r--.  1 root root 10524712 Apr 21 07:12 atlassian-bamboo-agent.log.5
+-rw-r--r--.  1 root root 10510141 Apr 21 01:48 atlassian-bamboo-agent.log.6
+-rw-r--r--.  1 root root 10485914 Apr 20 07:25 atlassian-bamboo-agent.log.7
+-rw-r--r--.  1 root root 10485811 Apr 19 10:34 atlassian-bamboo-agent.log.8
+-rw-r--r--.  1 root root 10485953 Apr 18 17:12 atlassian-bamboo-agent.log.9
+-rw-r--r--.  1 2005 2005      521 Dec 16 01:39 bamboo-agent.cfg.xml
+
+=== ba-4 ===
+total 106192
+drwx------. 13 root root    16384 Apr 30 23:16 .
+drwxr-xr-x.  8 root root    16384 Apr 30 23:16 ..
+drwx------.  2 2005 2005       25 Mar  3 04:35 .docker
+-rw-rw-r--.  1 2005 2005      175 Apr 21 21:28 .gitconfig
+lrwxrwxrwx.  1 2005 2005       17 Nov  7 21:34 .ssh -> /home/bamboo/.ssh
+drwxr-xr-x.  2 2005 2005       48 Dec 13 18:46 __pycache__
+-rw-r--r--.  1 root root  3698301 Apr 30 23:08 atlassian-bamboo-agent.log
+-rw-r--r--.  1 root root 10485929 Apr 27 11:00 atlassian-bamboo-agent.log.1
+-rw-rw-r--.  1 2005 2005 10485830 Feb 25 10:30 atlassian-bamboo-agent.log.10
+-rw-r--r--.  1 root root 10504915 Apr 21 14:16 atlassian-bamboo-agent.log.2
+-rw-r--r--.  1 root root 10495491 Apr 21 08:52 atlassian-bamboo-agent.log.3
+-rw-r--r--.  1 root root 10486089 Apr 21 03:29 atlassian-bamboo-agent.log.4
+-rw-r--r--.  1 root root 10485842 Apr 18 20:07 atlassian-bamboo-agent.log.5
+-rw-r--r--.  1 root root 10485898 Apr  7 17:36 atlassian-bamboo-agent.log.6
+-rw-r--r--.  1 root root 10485918 Mar 23 16:35 atlassian-bamboo-agent.log.7
+-rw-r--r--.  1 root root 10485910 Mar 17 09:06 atlassian-bamboo-agent.log.8
+-rw-rw-r--.  1 2005 2005 10485897 Mar 17 03:55 atlassian-bamboo-agent.log.9
+-rw-r--r--.  1 2005 2005      521 Dec 16 01:39 bamboo-agent.cfg.xml
+drwxr-xr-x.  2 2005 2005      165 Apr 30 21:07 bin
+
+=== ba-5 ===
+total 16
+drwxr-xr-x. 2 root root     6 Apr 30 23:15 .
+drwxr-xr-x. 8 root root 16384 Apr 30 23:16 ..
+
+=== ba-6 ===
+total 16
+drwxr-xr-x. 2 root root     6 Apr 30 23:15 .
+drwxr-xr-x. 8 root root 16384 Apr 30 23:16 ..
+
+[root@ip-10-56-112-35 ec2-user]# for n in 1 2 3 4 5 6; do
+  if [ -f "/app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml" ]; then
+    echo "ba-${n}: OK in /app/"
+  elif [ -f "/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml" ]; then
+    echo "ba-${n}: OK in /cache/"
+  else
+    echo "ba-${n}: MISSING — needs investigation"
+  fi
+done
+ba-1: OK in /app/
+ba-2: OK in /app/
+ba-3: OK in /cache/
+ba-4: OK in /app/
+ba-5: OK in /app/
+ba-6: OK in /app/
