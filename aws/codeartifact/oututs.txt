@@ -1,1 +1,64 @@
+[root@ip-10-56-112-35 ec2-user]# aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+
+Login Succeeded
+[root@ip-10-56-112-35 ec2-user]# docker pull 339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7
+17.7: Pulling from docker-local/conexus-postgres
+Digest: sha256:d13c9f00cd19cc5ee83ba72db9634176520750b2c33b4f958d2d6b0ca5c5b83c
+Status: Image is up to date for 339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7
 339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7
+[root@ip-10-56-112-35 ec2-user]# docker run --rm --entrypoint cat \
+  339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7 \
+  /docker-entrypoint-initdb.d/60_setup_conexus_data_file.sh
+#!/bin/sh
+
+# initialize the database with the base Conexus Postgres data file
+if [ -e /tmp/cnxs-data/full-pg-dumpall.sql ]
+then
+  psql -d cnxspdb -U postgres -f /tmp/cnxs-data/full-pg-dumpall.sql
+else
+  echo No Postgres data file to load
+fi
+[root@ip-10-56-112-35 ec2-user]# docker run --rm --entrypoint ls \
+  339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7 \
+  -la /docker-entrypoint-initdb.d/
+total 16
+drwxr-xr-x. 1 root root 4096 Apr  6 21:26 .
+drwxr-xr-x. 1 root root 4096 Apr 30 19:53 ..
+-rwxrwxrwx. 1 root root  522 Apr  2 13:09 50_pg_ext_setup.sh
+-rwxrwxrwx. 1 root root  241 Apr  2 13:09 60_setup_conexus_data_file.sh
+[root@ip-10-56-112-35 ec2-user]# docker inspect 339713019047.dkr.ecr.us-east-1.amazonaws.com/docker-local/conexus-postgres:17.7 \
+  | grep -A 5 -i "volume\|workdir\|env"
+            "Env": null,
+            "Cmd": null,
+            "Image": "",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": null,
+            "OnBuild": null,
+            "Labels": null
+        },
+--
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/17/bin",
+                "GOSU_VERSION=1.19",
+                "LANG=en_US.utf8",
+                "PG_MAJOR=17",
+                "PG_VERSION=17.7-3.pgdg13+1",
+--
+            "Volumes": {
+                "/var/lib/postgresql/data": {}
+            },
+            "WorkingDir": "",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+--
+                "WorkDir": "/var/lib/docker/overlay2/01553e67ae688dd69c79dcbb50f7113b3baec7d24462ee9a951b055249d41ebd/work"
+            },
+            "Name": "overlay2"
+        },
+        "RootFS": {
+            "Type": "layers",
