@@ -10,7 +10,7 @@ BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServe
 NETWORK_NAME="${NETWORK_NAME:-isolated_nw}"
 NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
 
-HOST_CACHE_BASE="${HOST_CACHE_BASE:-/app/cache/bamboo}"
+HOST_CACHE_BASE="${HOST_CACHE_BASE:-/cache/bamboo}"
 DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
 SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
 

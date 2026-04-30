@@ -1,26 +1,42 @@
-# Find out what's actually mounted at /cache/bamboo/...
-docker inspect ip-10-56-112-35.ec2.internal-ba-2 --format '{{json .Mounts}}' | jq
-
-# And verify by comparing host view vs container view directly
-echo "=== HOST view ==="
-sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/ 2>&1 | head -20
-
-echo ""
-echo "=== AGENT CONTAINER view ==="
-docker exec ip-10-56-112-35.ec2.internal-ba-2 ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/ 2>&1 | head -20
+# As root on the host
+docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "{{.Names}}" | xargs -r docker stop
 
 
+# Move the real bamboo homes to the new location
+sudo mkdir -p /cache/bamboo
 
-# Compare the two paths on the host
-echo "=== /cache/bamboo/ on host ==="
-ls -la /cache/bamboo/ 2>&1 | head -10
+# Move each agent home (preserves all caches, .m2, agent state, configs)
+for n in 1 2 3 4 5 6; do
+  sudo mv /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n} /cache/bamboo/
+done
 
-echo "=== /app/cache/bamboo/ on host ==="
-ls -la /app/cache/bamboo/ 2>&1 | head -10
+# Optional: remove the leftover stub directories Docker auto-created
+sudo rm -rf /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-*/xml-data 2>/dev/null
+# Wait — DON'T do this — you just MOVED the real ones there.
+# Instead, check that the moved data is intact:
+sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/
+# Should show 16 entries with 2005:2005 ownership, atlassian-bamboo-agent.log, etc.
 
-# After a build runs, check both:
-echo "=== /app path (what bind mount actually uses) ==="
-sudo ls -la /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data/ 2>&1
 
-echo "=== /cache path (what fabric8 tells Docker daemon) ==="
-sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-DOMB-JOB1/integration/target/cnxs-pg-data/ 2>&1
+# Confirm /cache/bamboo/ stubs are empty/safe to delete
+sudo find /cache/bamboo/ -maxdepth 5 -type f | head -20    # should mostly be empty/old residue
+sudo du -sh /cache/bamboo/*
+
+# If safe (no real data), remove the stubs first
+sudo rm -rf /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-*
+
+# Then do the migration
+sudo mv /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-* /cache/bamboo/
+
+# Verify
+sudo ls -la /cache/bamboo/
+sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/   # should show full agent home
+
+
+
+# Confirm bind mount source/destination are now identical paths
+docker inspect ip-10-56-112-35.ec2.internal-ba-1 --format '{{json .Mounts}}' | jq
+
+# Should show:
+# Source:      /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
+# Destination: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
