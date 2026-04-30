@@ -1,10 +1,13 @@
-# On the agent host (or exec into the agent container)
-docker exec ip-10-56-112-35.ec2.internal-ba-6 bash -c '
-  cd /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/BT-DOMB-JOB1
-  echo "=== cnxs-pg-data contents ==="
-  ls -la integration/target/cnxs-pg-data/
-  echo "=== umask in this shell ==="
-  umask
-  echo "=== Maven process umask (from build) ==="
-  cat /proc/$(pgrep -f "mvn.*verify" | head -1)/status 2>/dev/null | grep -i umask || echo "Maven not currently running"
-'
+echo "Current umask before change:"
+umask
+
+umask 0002
+
+echo "Current umask after change:"
+umask
+
+
+
+echo "=== pg datafile permissions ==="
+find integration/target/cnxs-pg-data -maxdepth 2 -ls || true
+stat -c '%A %a %U:%G %n' integration integration/target integration/target/cnxs-pg-data || true
