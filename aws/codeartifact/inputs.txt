@@ -1,118 +1,67 @@
-# As root on the host
-docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "{{.Names}}" | xargs -r docker stop
+# Top-level breakdown of /app
+sudo du -sh /app/* 2>/dev/null | sort -hr
 
+# If /app/docker is huge (likely), break it down further
+sudo du -sh /app/docker/* 2>/dev/null | sort -hr
 
-# Move the real bamboo homes to the new location
-sudo mkdir -p /cache/bamboo
+# How big are container logs?
+sudo du -sh /app/docker/containers/*/*.log 2>/dev/null | sort -hr | head -20
 
-# Move each agent home (preserves all caches, .m2, agent state, configs)
-for n in 1 2 3 4 5 6; do
-  sudo mv /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n} /cache/bamboo/
-done
-
-# Optional: remove the leftover stub directories Docker auto-created
-sudo rm -rf /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-*/xml-data 2>/dev/null
-# Wait — DON'T do this — you just MOVED the real ones there.
-# Instead, check that the moved data is intact:
-sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/
-# Should show 16 entries with 2005:2005 ownership, atlassian-bamboo-agent.log, etc.
-
-
-# Confirm /cache/bamboo/ stubs are empty/safe to delete
-sudo find /cache/bamboo/ -maxdepth 5 -type f | head -20    # should mostly be empty/old residue
-sudo du -sh /cache/bamboo/*
-
-# If safe (no real data), remove the stubs first
-sudo rm -rf /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-*
-
-# Then do the migration
-sudo mv /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-* /cache/bamboo/
-
-# Verify
-sudo ls -la /cache/bamboo/
-sudo ls -la /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/   # should show full agent home
+# Docker disk usage by category
+docker system df -v 2>&1 | head -50
 
 
 
-# Confirm bind mount source/destination are now identical paths
-docker inspect ip-10-56-112-35.ec2.internal-ba-1 --format '{{json .Mounts}}' | jq
 
-# Should show:
-# Source:      /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
-# Destination: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
+# Remove the exited 8.19.9 Bitbucket preupgrade container (it's been gone 7 weeks)
+docker rm cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
+
+# Remove the failed prod-bamboo container (data is safe on the bambooVolume)
+docker rm prod-bamboo
+
+# Remove the old Bitbucket 8.19.9 image if no container references it
+docker image rm atlassian/bitbucket:8.19.9 2>/dev/null || echo "still in use"
+
+# Prune dangling images, networks, build cache (safe — only removes unreferenced)
+docker image prune -f
+docker network prune -f
+docker builder prune -f
 
 
 
 
 
--------------------------------------------------
-# Verify what we're about to remove
-for n in 1 2 4 5 6; do
-  echo "=== /cache/bamboo/.../ba-${n} ==="
-  sudo du -sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/ 2>/dev/null
-done
+# Identify the offenders
+sudo du -sh /app/docker/containers/*/*.log 2>/dev/null | sort -hr | head -10
 
-# If sizes match what we saw above (0, 0, 104M, 0, 0), proceed:
-for n in 1 2 4 5 6; do
-  sudo rm -rf /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/
-done
-
-# Confirm
-sudo ls -la /cache/bamboo/
-
-
-
-# Move ba-1 (~10GB)
-sudo rsync -a --info=progress2 \
-  /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/ \
-  /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/
-
-# Verify it copied
-sudo du -sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/
-sudo ls /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bamboo-agent.cfg.xml
-
-# Only after verifying, remove from /app/
-sudo rm -rf /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/
+# For each container with huge logs, truncate (use the path from above):
+sudo truncate -s 0 /app/docker/containers/<CONTAINER_ID>/<CONTAINER_ID>-json.log
 
 
 
 
-for n in 3; do
-  echo "=== Copying ba-${n} ==="
-  sudo rsync -a --info=progress2 \
-    /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/ \
-    /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/
-  
-  echo "=== Verifying ba-${n} ==="
-  sudo du -sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/
-  sudo ls /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml
-done
+
+# Already removed the stopped container in Step 2. Re-create with the CORRECT version:
+docker run -d \
+  --name prod-bamboo \
+  --network vpcaas-net \
+  --network-alias bamboo \
+  --hostname bamboo \
+  -e ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e ATL_TOMCAT_SCHEME=https \
+  -p 8085:8085 -p 8443:8443 \
+  --mount source=bambooVolume,target=/var/atlassian/application-data/bamboo \
+  --restart unless-stopped \
+  atlassian/bamboo:10.2.11
 
 
-# Sanity check first — make sure all agent homes are now in /cache/
-for n in 1 2 3 4 5 6; do
-  if [ -f "/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/bamboo-agent.cfg.xml" ]; then
-    SIZE=$(sudo du -sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/ | awk '{print $1}')
-    echo "ba-${n}: OK in /cache/  (${SIZE})"
-  else
-    echo "ba-${n}: NOT READY — bamboo-agent.cfg.xml missing"
-  fi
-done
+# Watch the startup logs
+docker logs -f prod-bamboo 2>&1 | head -200
 
-
-# Now safe to remove the originals
-for n in 1 2 4 5 6; do
-  sudo rm -rf /app/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${n}/
-done
-
-# Final check
-sudo ls /app/cache/bamboo/
-# Should show only test-agent and test-ba (which we're not migrating)
+# Should see "Setting Bamboo Home to..." then Tomcat startup, then "Server startup in N ms"
+# If you see exceptions, paste them and we'll work through it
 
 
 
-
-docker inspect ip-10-56-112-35.ec2.internal-ba-1 --format '{{json .Mounts}}' | jq
-
-# Source and Destination should both be:
-# /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1
+watch -n 5 'df -h /app'
