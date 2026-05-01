@@ -1,42 +1,38 @@
-docker run -d \
-  --name prod-bamboo \
-  --network prod-net \
-  --network-alias bamboo \
-  --hostname bamboo \
-  -e ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
-  -e ATL_PROXY_PORT=443 \
-  -e ATL_TOMCAT_SCHEME=https \
-  -p 8085:8085 -p 8443:8443 \
-  --mount source=bambooVolume,target=/var/atlassian/application-data/bamboo \
-  --restart unless-stopped \
-  atlassian/bamboo:10.2.11
+# Check which container it belongs to first
+docker ps --format "{{.Names}}\t{{.ID}}" 
+
+# Match against dc00bfc2 (first 12 chars of the long ID)
+# If that's the artifactory container, truncate:
+sudo truncate -s 0 /var/lib/docker/containers/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953-json.log
 
 
+sudo ls -alh /app/jfrog/migration/ | head -30
 
 
+sudo lsof +D /app/jfrog/migration 2>/dev/null | head -20
 
 
-# On ip-10-56-112-243 (Artifactory host)
+# Save evidence for later review
+sudo ls -alh /app/jfrog/migration/ > /tmp/migration-listing-$(date +%Y%m%d).txt
+sudo lsof +D /app/jfrog/migration 2>/dev/null > /tmp/migration-lsof-$(date +%Y%m%d).txt
 
-# 1. Where did the 672GB go? Top-level breakdown
-sudo du -sh /app/jfrog/* 2>/dev/null | sort -hr | head -10
-
-# 2. Is it Docker logs again?
-sudo du -sh /var/lib/docker/containers/*/*.log 2>/dev/null | sort -hr | head -5
-
-# 3. What containers are running here?
-docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-
-# 4. Docker disk usage breakdown
-docker system df
+# Quick visual check
+cat /tmp/migration-listing-$(date +%Y%m%d).txt | head -30
+cat /tmp/migration-lsof-$(date +%Y%m%d).txt | head -10
 
 
+# Compare across days — should still be empty
+sudo lsof +D /app/jfrog/migration 2>/dev/null
 
+grep -Ri migration /app/jfrog/artifactory/var/etc/
+----------------
+# Archive first as insurance (optional — if you have space and want a paranoid backup)
+# Skip this if you trust your S3 migration completion confirmation
+# sudo tar -czf /some/safe/location/jfrog-migration-archive-$(date +%Y%m%d).tar.gz /app/jfrog/migration/
 
-# On the Bamboo host (ip-10-56-112-34):
-docker info | grep -i "Docker Root Dir"
-# Expected output: Docker Root Dir: /app/docker
+# Or just rename it first instead of deleting outright
+sudo mv /app/jfrog/migration /app/jfrog/migration.PENDING_DELETE_$(date +%Y%m%d)
 
-# On the Artifactory host (ip-10-56-112-243):
-docker info | grep -i "Docker Root Dir"
-# Expected output: Docker Root Dir: /var/lib/docker (probably)
+# Wait 24-48 hours. Verify Artifactory still works fine.
+# Run a real Maven build through Bamboo. If everything is green:
+sudo rm -rf /app/jfrog/migration.PENDING_DELETE_*
