@@ -1,20 +1,70 @@
-[ec2-user@ip-10-56-112-34 ~]$ sudo su
-[root@ip-10-56-112-34 ec2-user]# ls -la /app/bamboobackup/ | head -20
-total 5983604
-drwxr-x---.  3 root root        174 Apr 21 21:58 .
-dr-xr-xr-x. 22 root root       4096 Nov 26 22:59 ..
-drwxr-x---.  5 root root         44 Jan  6 02:00 atlassian-backups
--rw-r-----.  1 root root 4039376024 Apr 21 21:56 bamboo-data-backup-2026-04-21_214925.tar.gz
--rw-r-----.  1 root root          0 Apr 21 21:58 bamboo-db-backup-2026-04-21_215810.sql
--rw-r-----.  1 root root 2087826012 Apr 21 21:59 bamboo-db-backup-2026-04-21_215856.sql
-[root@ip-10-56-112-34 ec2-user]# sudo find /app/bamboobackup -type f -mtime +90 -size +100M | head -20
-[root@ip-10-56-112-34 ec2-user]# sudo vim /etc/docker/daemon.json
-[root@ip-10-56-112-34 ec2-user]# sudo cat /etc/docker/daemon.json
+[root@ip-10-56-112-34 ec2-user]# sudo cat /etc/docker/daemon.json | python3 -m json.tool
 {
-  "data-root": "/app/docker"
+    "data-root": "/app/docker",
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "100m",
+        "max-file": "5"
+    }
+}
+[root@ip-10-56-112-34 ec2-user]# sudo cat /etc/docker/daemon.json | jq .
+{
+  "data-root": "/app/docker",
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "100m",
     "max-file": "5"
   }
 }
+
+
+[root@ip-10-56-112-243 ec2-user]# sudo cat /etc/docker/daemon.json | python3 -m json.tool
+{
+    "data-root": "/app/docker",
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "100m",
+        "max-file": "5"
+    }
+}
+[root@ip-10-56-112-243 ec2-user]# sudo cat /etc/docker/daemon.json | jq .
+{
+  "data-root": "/app/docker",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "5"
+  }
+}
+
+[root@ip-10-56-112-243 ec2-user]# df -h
+Filesystem        Size  Used Avail Use% Mounted on
+devtmpfs          4.0M     0  4.0M   0% /dev
+tmpfs             7.7G     0  7.7G   0% /dev/shm
+tmpfs             3.1G  752K  3.1G   1% /run
+/dev/nvme0n1p1    150G   15G  136G  10% /
+tmpfs             7.7G     0  7.7G   0% /tmp
+/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
+/dev/nvme1n1      800G  672G  128G  84% /app/jfrog
+/dev/nvme2n1      200G  6.9G  194G   4% /app/postgres
+overlay           150G   15G  136G  10% /var/lib/docker/overlay2/58dd16c23aa43909368722e285c7be2fae3ea7f993fe630bb2fdf1d21a6b29df/merged
+overlay           150G   15G  136G  10% /var/lib/docker/overlay2/37976cbd42301cd320d1a6deca1d3438c348247fe2d4d5ef463a1b23dad12c2d/merged
+overlay           150G   15G  136G  10% /var/lib/docker/overlay2/c3d925b76ae70290d883ee1b18f32c87995dcc027fb969e120a6f9724c0fe8c7/merged
+tmpfs             1.6G     0  1.6G   0% /run/user/1000
+
+
+[root@ip-10-56-112-34 ec2-user]# df -h
+Filesystem        Size  Used Avail Use% Mounted on
+devtmpfs          4.0M     0  4.0M   0% /dev
+tmpfs              16G     0   16G   0% /dev/shm
+tmpfs             6.3G  8.9M  6.2G   1% /run
+/dev/nvme0n1p1    150G   55G   96G  37% /
+tmpfs              16G   12K   16G   1% /tmp
+/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
+/dev/nvme2n1      148G   67G   74G  48% /mnt/temp
+/dev/nvme1n1p1    150G  126G   25G  84% /app
+overlay           150G  126G   25G  84% /app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/merged
+overlay           150G  126G   25G  84% /app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged
+overlay           150G  126G   25G  84% /app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/merged
+overlay           150G  126G   25G  84% /app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5/merged
+tmpfs             3.2G     0  3.2G   0% /run/user/1000
