@@ -1,93 +1,653 @@
-[root@ip-10-56-112-34 ec2-user]# df -h
-Filesystem        Size  Used Avail Use% Mounted on
-devtmpfs          4.0M     0  4.0M   0% /dev
-tmpfs              16G     0   16G   0% /dev/shm
-tmpfs             6.3G  8.8M  6.2G   1% /run
-/dev/nvme0n1p1    150G   55G   96G  37% /
-tmpfs              16G   28K   16G   1% /tmp
-/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
-/dev/nvme2n1      148G   67G   74G  48% /mnt/temp
-/dev/nvme1n1p1    150G  150G   35M 100% /app
-overlay           150G  150G   35M 100% /app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/merged
-overlay           150G  150G   35M 100% /app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged
-overlay           150G  150G   35M 100% /app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/merged
-tmpfs             3.2G     0  3.2G   0% /run/user/1000
-[root@ip-10-56-112-34 ec2-user]# sudo du -sh /app/* 2>/dev/null | sort -hr
-81G     /app/docker
-39G     /app/var
-15G     /app/bamboobackup
-11G     /app/home
-2.9G    /app/opt
-2.1G    /app/usr
-1.3G    /app/build-artifacts
-1.2G    /app/root
-76M     /app/boot
-46M     /app/etc
-0       /app/tmp
-0       /app/sys
-0       /app/srv
-0       /app/sbin
-0       /app/run
-0       /app/proc
-0       /app/mnt
-0       /app/media
-0       /app/local
-0       /app/lib64
-0       /app/lib
-0       /app/dev
-0       /app/bin
-0       /app/app
-[root@ip-10-56-112-34 ec2-user]# sudo du -sh /app/docker/* 2>/dev/null | sort -hr
-51G     /app/docker/volumes
-17G     /app/docker/containers
-14G     /app/docker/overlay2
-8.3M    /app/docker/image
-112K    /app/docker/buildkit
-68K     /app/docker/network
-4.0K    /app/docker/engine-id
-0       /app/docker/tmp
-0       /app/docker/swarm
-0       /app/docker/runtimes
-0       /app/docker/plugins
-[root@ip-10-56-112-34 ec2-user]# sudo du -sh /app/docker/containers/*/*.log 2>/dev/null | sort -hr | head -20
-9.8G    /app/docker/containers/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893-json.log
-4.3G    /app/docker/containers/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787-json.log
-2.2G    /app/docker/containers/45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987/45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987-json.log
-22M     /app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e-json.log
-572K    /app/docker/containers/cb50d1defa0e72df1181d003bcf440bf9659fa38e56a1666fadda4c80b7542db/cb50d1defa0e72df1181d003bcf440bf9659fa38e56a1666fadda4c80b7542db-json.log
-[root@ip-10-56-112-34 ec2-user]# docker system df -v 2>&1 | head -50
-Images space usage:
+[root@ip-10-56-112-34 ec2-user]# sudo truncate -s 0 /app/docker/containers/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893-json.log
+[root@ip-10-56-112-34 ec2-user]# sudo truncate -s 0 /app/docker/containers/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787-json.log
+[root@ip-10-56-112-34 ec2-user]# df -h /app
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme1n1p1  150G  136G   15G  91% /app
+[root@ip-10-56-112-34 ec2-user]# docker rm cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
+cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
+[root@ip-10-56-112-34 ec2-user]# df -h /app
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme1n1p1  150G  134G   17G  90% /app
+[root@ip-10-56-112-34 ec2-user]# docker rm prod-bamboo
+prod-bamboo
+[root@ip-10-56-112-34 ec2-user]# docker volume inspect bambooVolume --format '{{.Mountpoint}}'
+/app/docker/volumes/bambooVolume/_data
+[root@ip-10-56-112-34 ec2-user]# sudo ls $(docker volume inspect bambooVolume --format '{{.Mountpoint}}') | head -10
+__pycache__
+analytics-logs
+avatars
+bamboo.cfg.xml
+bamboo.cfg.xml.2025-12-13_013046.bak
+bamboo.cfg.xml.bak.2025-12-16_0100
+bamboo.lock
+caches
+cluster-node.properties
+docker-app.pid
+[root@ip-10-56-112-34 ec2-user]# docker images
+REPOSITORY            TAG           IMAGE ID       CREATED         SIZE
+atlassian/bamboo      10.2.1        23629841cdcc   12 days ago     1.23GB
+atlassian/bamboo      10.2.11       23ed3051e3e7   12 days ago     1.24GB
+atlassian/bitbucket   9.4.17        fc66f747474d   7 weeks ago     1.4GB
+atlassian/bamboo      9.6.6         27ad78e12bb2   5 months ago    1.18GB
+nginx                 1.29.3        60adc2e137e7   5 months ago    152MB
+atlassian/bitbucket   8.19.9        5b11aaa18086   6 months ago    1.34GB
+postgres              16.5          30a563de922f   17 months ago   432MB
+postgres              16.5-alpine   9ff53a21c37a   17 months ago   251MB
+[root@ip-10-56-112-34 ec2-user]# docker container inspect postgres
+[]
+Error response from daemon: No such container: postgres
+[root@ip-10-56-112-34 ec2-user]# docker container ls
+CONTAINER ID   IMAGE                        COMMAND                  CREATED        STATUS        PORTS                                            NAMES
+3d7c479b3814   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   7 weeks ago    Up 11 hours   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp   cnxs-mgmt-bitbucket
+704e46755f36   postgres:16.5                "docker-entrypoint.s…"   4 months ago   Up 5 weeks    0.0.0.0:32768->5432/tcp                          prod-postgres
+5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   5 months ago   Up 5 weeks    0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp         nginx
+[root@ip-10-56-112-34 ec2-user]# docker container inspect prod-postgres
+[
+    {
+        "Id": "704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e",
+        "Created": "2025-12-02T16:37:02.900727797Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "postgres"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 23181,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-03-25T16:24:39.29316966Z",
+            "FinishedAt": "2026-03-25T11:46:59.5067162Z"
+        },
+        "Image": "sha256:30a563de922f6676f6178d45389579f3b395dbf1a8b0c2e473a5b94b5b13aa27",
+        "ResolvConfPath": "/app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/resolv.conf",
+        "HostnamePath": "/app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/hostname",
+        "HostsPath": "/app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/hosts",
+        "LogPath": "/app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e-json.log",
+        "Name": "/prod-postgres",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "pgdataVolume16:/var/lib/postgresql/data"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "prod-net",
+            "PortBindings": {
+                "5432/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": ""
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                49,
+                185
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [
+                {
+                    "Name": "nofile",
+                    "Hard": 65536,
+                    "Soft": 32768
+                }
+            ],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/asound",
+                "/proc/acpi",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/sys/firmware",
+                "/sys/devices/virtual/powercap"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b-init/diff:/app/docker/overlay2/2ec68b1f2e8992dac1e070fe706546b462a39b02f9bfbc868bac534ec874c23d/diff:/app/docker/overlay2/f4cf052c81133b743457bba0b00fb6ae0d3b4c974cb7de3a07f0ea7511a628fc/diff:/app/docker/overlay2/e2e99f0dd1c157d0a70e5f2e43606e4301e573f6f6cd8e28cfe7484211344c00/diff:/app/docker/overlay2/8ac7984a7ab62682fa5408f85c08932977534342f25f462fc9c1146150d74f5b/diff:/app/docker/overlay2/cf1f6ee0662b64bd27e1405ecc5029e792563b8168ed5af4840936679cf8c16c/diff:/app/docker/overlay2/cd2b5a27228a39f4b66a33d4284dcf753279f8fcfb77564cf386994120c3fff2/diff:/app/docker/overlay2/b6f81cc39390852eb087b5450fde6c27517d30f212a562beb22a9ad738b6e156/diff:/app/docker/overlay2/1d84d8a05a554d5342a5bc3964ffee1a8f9923dbbfd9d2ccfddd226b1ef8a16f/diff:/app/docker/overlay2/1833449b8120a5495dad0642e67da27eb4643c566b25c20f7b12d265a3fd79bb/diff:/app/docker/overlay2/74e37470c696472359b848510b26628fe00c93535382727c64678c88c555e8b9/diff:/app/docker/overlay2/5f3e7c25c450ee4406b5632b57893f0ae4465f59d82fe113198c9c21f3e96f6f/diff:/app/docker/overlay2/4aa56b1e1f6f8ffdd6897eb19d96d080a26d81771de86cfc26fb6ef819f5d2e1/diff:/app/docker/overlay2/a1b39ba344fa10168c06a3b852f2c08ff59eb290c05ee4e5091df9caaf560da0/diff:/app/docker/overlay2/fd38a3eda10450a5c60515ec0565e9370e7f63f8e7170f4c4bc1d7c5e3f00249/diff",
+                "MergedDir": "/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged",
+                "UpperDir": "/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/diff",
+                "WorkDir": "/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "volume",
+                "Name": "pgdataVolume16",
+                "Source": "/app/docker/volumes/pgdataVolume16/_data",
+                "Destination": "/var/lib/postgresql/data",
+                "Driver": "local",
+                "Mode": "z",
+                "RW": true,
+                "Propagation": ""
+            }
+        ],
+        "Config": {
+            "Hostname": "704e46755f36",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "5432/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "POSTGRES_PASSWORD=KIgregyfibUH",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/16/bin",
+                "GOSU_VERSION=1.17",
+                "LANG=en_US.utf8",
+                "PG_MAJOR=16",
+                "PG_VERSION=16.5-1.pgdg120+1",
+                "PGDATA=/var/lib/postgresql/data"
+            ],
+            "Cmd": [
+                "postgres"
+            ],
+            "Image": "postgres:16.5",
+            "Volumes": {
+                "/var/lib/postgresql/data": {}
+            },
+            "WorkingDir": "/",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "OnBuild": null,
+            "Labels": {},
+            "StopSignal": "SIGINT"
+        },
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "75b231d7c6c89043af4bd856934e9040724e0f72ac78b0add492aa57fb2fcbd3",
+            "SandboxKey": "/var/run/docker/netns/75b231d7c6c8",
+            "Ports": {
+                "5432/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "32768"
+                    }
+                ]
+            },
+            "HairpinMode": false,
+            "LinkLocalIPv6Address": "",
+            "LinkLocalIPv6PrefixLen": 0,
+            "SecondaryIPAddresses": null,
+            "SecondaryIPv6Addresses": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "MacAddress": "",
+            "Networks": {
+                "prod-net": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "704e46755f36"
+                    ],
+                    "MacAddress": "02:42:ac:12:00:05",
+                    "NetworkID": "d81e4102f500b69cf6f85ba6886e02fa6dbd2e5db304c2488d4ad4a0d9dc30b8",
+                    "EndpointID": "ec903fe7d26f6ad44a77a92fc46768e4b61dc87fa6f30e5c8339eda1dfa30ed6",
+                    "Gateway": "172.18.0.1",
+                    "IPAddress": "172.18.0.5",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DriverOpts": null,
+                    "DNSNames": [
+                        "prod-postgres",
+                        "704e46755f36"
+                    ]
+                }
+            }
+        }
+    }
+]
+[root@ip-10-56-112-34 ec2-user]# docker image rm atlassian/bamboo:10.2.1
+docker image rm atlassian/bamboo:9.6.6
+docker image rm atlassian/bitbucket:8.19.9
+docker image rm postgres:16.5-alpine
+Untagged: atlassian/bamboo:10.2.1
+Untagged: atlassian/bamboo@sha256:e04ef31d0da2527baf3c5a851365a0d4d9cf19d2a8584cca0d1beadf0a5c2fda
+Deleted: sha256:23629841cdcc4b61b75845e711780aa4478de772a30fb4ddb47303ebb08a24f3
+Deleted: sha256:9fbd3c9ead7bc9aa2868f3f9c8f90a5d1ebadb6c8e95af57e346203bcdc746b3
+Deleted: sha256:0f15c7122e0d6bd53803280b823020ae1ab99ee168ffdfd43f7c77166c2d881b
+Untagged: atlassian/bamboo:9.6.6
+Untagged: atlassian/bamboo@sha256:3bc55b765a7bb42fe23e7d262c3475b945011239dca0d62745f0126d4d756c9c
+Deleted: sha256:27ad78e12bb2524c4fdc28b36b04fde2d186b5766096dbbcf951a9d663249fa0
+Deleted: sha256:0509a11b7e4fa260ceb96dfb643a93196980b2e726270d39e09fdc804c03c910
+Deleted: sha256:42d03eb4bf71160e8e429db6df412a0f29d2c827ed6dcaa57edd648a17505fbe
+Deleted: sha256:4350d32bb6d544f6bc07d796921ebd86c6b405e35052ebe0da37fc03620cdc08
+Deleted: sha256:88a0e61d4512331c191818b1a99591fc67e24778cd5de12818435c9a1a5f73ea
+Deleted: sha256:fbc078d0ce6a6a925174f1b9d02857b3b2dd93a0f3f749cec10cf7aec3b86532
+Deleted: sha256:12ba5553b9d53575283d6d10708416ca42a3dd5afc170a86bf119de6f8265eac
+Deleted: sha256:e91e632e000fcda20ed3428065be70d973537bdd47ea7c917ed920fe31910619
+Deleted: sha256:49633a035c6f734fd1d41091d57e6f33fbfeb6d33254ad71349ddcb23132481b
+Deleted: sha256:aef91190dbd7e324213bd3a8cac9dfea8b01d0771d90ef0e918f9ecca620fd73
+Deleted: sha256:171d4791694289be4c880528024c8b34ae813dfef9845a6c797bb92c1ef9fab9
+Deleted: sha256:3c286d146431c858a794a14a214ccff0529993adba68f479135ed45f04248d50
+Deleted: sha256:79c3a55b8f3f6bb94954b387277ec8381aebd5999a2ec2f9f88001fd8b0abe9a
+Deleted: sha256:11618235cc24f79a6fc4811e672e563976307c131252a003edfabceaf29c721c
+Deleted: sha256:6e2f6e2bf94e3b971fde01d06f653a8239b079ec51d8e49a80f69373c2816b4f
+Deleted: sha256:31da53c370b48f333d99d7a9b370dff2b0c343ab15566bb5df03236c218b6e1a
+Deleted: sha256:e8bce0aabd687e9ee90e0bada33884f40b277196f72aac9934357472863a80ae
+Untagged: atlassian/bitbucket:8.19.9
+Untagged: atlassian/bitbucket@sha256:65cde5fe2a9aa74d1b2b931f4d9f54d425a64af0ee070c4965b7e4db5d0b0842
+Deleted: sha256:5b11aaa18086aa020e51ca04ad279c73555a2dcb57f23d9aa63caf88f36b7168
+Deleted: sha256:fca1854c774e4045b95f7a2b12ea1160bd9c630e53ef8221d7b709d637b7430a
+Deleted: sha256:60705257a02c6a5151778b719e1da16f698ebff33ebde05df1ccd96c52b98272
+Deleted: sha256:f19b2834037006afc7afbad4c9c43d55baea33e6b181c80ca6bd06d31322c177
+Deleted: sha256:ba0d681eae7e13037fd02c8351bb62384d5a1cde3f7128cf5c7b4138c7d03aa2
+Deleted: sha256:1a821bc893e2d4fdab27b57024367abdce0dcd2994c64519e06e42720097d11d
+Deleted: sha256:74c387d4573a28f5d434b819b719811cc54b2ff73b5f190527ef52bb72bd821e
+Deleted: sha256:d599db115ce73c08c36657b7934b750dc1ebaa8a13b04152cea450d636f62fe2
+Deleted: sha256:6fe8e5e92fce237e3d283d51a7c9256e47ac4af1cd187657c50099509b78768a
+Deleted: sha256:d031fb6aa8ce44510d07f5063dc3c1e4b584f765797e8c4e12381af4274e11b3
+Deleted: sha256:88d689dd3dbedcb44f1b5f49d16597b06050326713fc3af58c1298255ddff0f9
+Deleted: sha256:420ef292dde85821697b35d63e4ae910f6eb1d1c0eb823c97c0687e46e05286a
+Deleted: sha256:98105e4467df08e47cce09a4c3702917182a1a53c78c000570248ec668b421ed
+Deleted: sha256:073ec47a8c22dcaa4d6e5758799ccefe2f9bde943685830b1bf6fd2395f5eabc
+Untagged: postgres:16.5-alpine
+Untagged: postgres@sha256:0366402213df5db03c47ff80bcc697e92c8be0c213d03c941df1fc42d1ba9560
+Deleted: sha256:9ff53a21c37a50638fe97aab6a4d3691524a7cd5b5ea5133fd52300f5877680e
+Deleted: sha256:78593e1e01f510a9a126165ace3ead337bb3c168c146a1597bde616cabf561e2
+Deleted: sha256:4960af70b1c88542392d7e7782248bee0ecab359bc0d399c7b982011ab2e6631
+Deleted: sha256:e954ece36e3260f2e48a9f23d2e02fd0402b339966ee6b0d6ac09aa3474a6732
+Deleted: sha256:664b05607a567c9d204745cb71d75ba3309c8e19c0867d5cb48b0dc9ab3c905d
+Deleted: sha256:a7eec8c5450520a5161e93873bd2f422b46416e3f542822edc9bd5e8f0e3b780
+Deleted: sha256:34025624bf5ac4e5379a867de49a734d954194fe8c0461622fef3fec52d9a46f
+Deleted: sha256:5e7738eaeff54be4206d33ee6c941e846249c7bcef133918978c824035e2d5b8
+Deleted: sha256:972807fafa2259f798c882339e1b984846196edef66f52f37ebd799828cebe5f
+Deleted: sha256:89c52da60cd0a63b4fb0e98d46a4ac528f43bc64d2e0ca8e80c810f16681c199
+Deleted: sha256:d2a21151013baffa9d839c3929a8fbe46c77d8417f56c5e0b7b61c6e4d860b73
+Deleted: sha256:75654b8eeebd3beae97271a102f57cdeb794cc91e442648544963a7e951e9558
+[root@ip-10-56-112-34 ec2-user]# docker image prune -f
+Total reclaimed space: 0B
+[root@ip-10-56-112-34 ec2-user]# docker network prune -f
+[root@ip-10-56-112-34 ec2-user]# docker network ls
+NETWORK ID     NAME       DRIVER    SCOPE
+b0cd1d4e6287   bridge     bridge    local
+bd31485df9fd   host       host      local
+64c3c89ffaae   none       null      local
+d81e4102f500   prod-net   bridge    local
+[root@ip-10-56-112-34 ec2-user]# docker builder prune -f
+Total:  0B
+[root@ip-10-56-112-34 ec2-user]# df -h /app
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme1n1p1  150G  126G   25G  84% /app
 
-REPOSITORY            TAG           IMAGE ID       CREATED         SIZE      SHARED SIZE   UNIQUE SIZE   CONTAINERS
-atlassian/bamboo      10.2.1        23629841cdcc   12 days ago     1.23GB    728.8MB       501.7MB       0
-atlassian/bamboo      10.2.11       23ed3051e3e7   12 days ago     1.24GB    728.8MB       515MB         1
-atlassian/bitbucket   9.4.17        fc66f747474d   7 weeks ago     1.4GB     0B            1.403GB       1
-atlassian/bamboo      9.6.6         27ad78e12bb2   5 months ago    1.18GB    0B            1.181GB       0
-nginx                 1.29.3        60adc2e137e7   5 months ago    152MB     0B            151.9MB       1
-atlassian/bitbucket   8.19.9        5b11aaa18086   6 months ago    1.34GB    0B            1.34GB        1
-postgres              16.5          30a563de922f   17 months ago   432MB     0B            432.3MB       1
-postgres              16.5-alpine   9ff53a21c37a   17 months ago   251MB     0B            250.7MB       0
-
-Containers space usage:
-
-CONTAINER ID   IMAGE                        COMMAND                  LOCAL VOLUMES   SIZE      CREATED        STATUS                     NAMES
-cb50d1defa0e   atlassian/bamboo:10.2.11     "/usr/bin/tini -- /e…"   2               121MB     9 days ago     Exited (1) 11 hours ago    prod-bamboo
-3d7c479b3814   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   2               98.3kB    7 weeks ago    Up 11 hours                cnxs-mgmt-bitbucket
-45bc929b6696   atlassian/bitbucket:8.19.9   "/usr/bin/tini -- /e…"   2               98.3kB    4 months ago   Exited (143) 7 weeks ago   cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
-704e46755f36   postgres:16.5                "docker-entrypoint.s…"   1               8.96MB    4 months ago   Up 5 weeks                 prod-postgres
-5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   1               6.44kB    5 months ago   Up 5 weeks                 nginx
-
-Local Volumes space usage:
-
-VOLUME NAME            LINKS     SIZE
-bambooVolume           1         22.59GB
-bitbucketVolume        2         12.64GB
-nginxVolume            1         33.09kB
-optbambooVolume        1         9.303GB
-optbitbucketVolume     1         659MB
-optbitbucketVolume94   1         714.2MB
-pgdataVolume16         1         7.622GB
-
-Build cache usage: 0B
-
-CACHE ID   CACHE TYPE   SIZE      CREATED   LAST USED   USAGE     SHARED
+[root@ip-10-56-112-34 ec2-user]# docker run -d \
+  --name prod-bamboo \
+  --network vpcaas-net \
+  --network-alias bamboo \
+  --hostname bamboo \
+  -e ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e ATL_TOMCAT_SCHEME=https \
+  -p 8085:8085 -p 8443:8443 \
+  --mount source=bambooVolume,target=/var/atlassian/application-data/bamboo \
+  --restart unless-stopped \
+  atlassian/bamboo:10.2.11
+833a3f015d6911f0b09d48e1449958a3946ae4bfb60646edf1b113bd986e96fc
+docker: Error response from daemon: network vpcaas-net not found.
+[root@ip-10-56-112-34 ec2-user]# docker container inspect nginx
+[
+    {
+        "Id": "5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893",
+        "Created": "2025-12-01T23:55:11.023215649Z",
+        "Path": "/docker-entrypoint.sh",
+        "Args": [
+            "nginx",
+            "-g",
+            "daemon off;"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 22978,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-03-25T16:24:38.709318214Z",
+            "FinishedAt": "2026-03-25T11:46:59.593772263Z"
+        },
+        "Image": "sha256:60adc2e137e757418d4d771822fa3b3f5d3b4ad58ef2385d200c9ee78375b6d5",
+        "ResolvConfPath": "/app/docker/containers/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893/resolv.conf",
+        "HostnamePath": "/app/docker/containers/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893/hostname",
+        "HostsPath": "/app/docker/containers/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893/hosts",
+        "LogPath": "/app/docker/containers/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893-json.log",
+        "Name": "/nginx",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "nginxVolume:/etc/nginx"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "prod-net",
+            "PortBindings": {
+                "443/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "443"
+                    }
+                ],
+                "80/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "80"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                44,
+                194
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [
+                {
+                    "Name": "nofile",
+                    "Hard": 65536,
+                    "Soft": 32768
+                }
+            ],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/asound",
+                "/proc/acpi",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/sys/firmware",
+                "/sys/devices/virtual/powercap"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6-init/diff:/app/docker/overlay2/f8ecb8b766cd02e0bdff34650d7898d0dfcf53453195b482e1b305030655712c/diff:/app/docker/overlay2/b5ed908bb467f3eeea676606ce87a626d7c0d89d0285dcf1b7409d168b37fd3b/diff:/app/docker/overlay2/b6d0903bdd84a736575af6151d9cc0ff37ca03cd60fef9b7d0910d0e22ada6c0/diff:/app/docker/overlay2/b964c61db9777a0544852ea0a64564ca638f59c721085dc20819ae27ed473492/diff:/app/docker/overlay2/bde338b49d9fe7f653fbfede2a1df9dffabb6949f87fdca5c00dbd7ad203135e/diff:/app/docker/overlay2/89e996f8a0a79c0a04faf8ec23696ad81214ee16ff98654920f000ac2a31fa64/diff:/app/docker/overlay2/ad8ba754889d0f3b5e7d1854aa1a25db3ec13d069bea1a0c67b08a1afa6a3c5a/diff",
+                "MergedDir": "/app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/merged",
+                "UpperDir": "/app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/diff",
+                "WorkDir": "/app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "volume",
+                "Name": "nginxVolume",
+                "Source": "/app/docker/volumes/nginxVolume/_data",
+                "Destination": "/etc/nginx",
+                "Driver": "local",
+                "Mode": "z",
+                "RW": true,
+                "Propagation": ""
+            }
+        ],
+        "Config": {
+            "Hostname": "nginx",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "443/tcp": {},
+                "80/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NGINX_VERSION=1.29.3",
+                "NJS_VERSION=0.9.4",
+                "NJS_RELEASE=1~trixie",
+                "PKG_RELEASE=1~trixie",
+                "DYNPKG_RELEASE=1~trixie"
+            ],
+            "Cmd": [
+                "nginx",
+                "-g",
+                "daemon off;"
+            ],
+            "Image": "nginx:1.29.3",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": [
+                "/docker-entrypoint.sh"
+            ],
+            "OnBuild": null,
+            "Labels": {
+                "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+            },
+            "StopSignal": "SIGQUIT"
+        },
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "7431cfcdf758ae91ae112fb555042d4daefe0983a0e78a3c273087e00c60ddf4",
+            "SandboxKey": "/var/run/docker/netns/7431cfcdf758",
+            "Ports": {
+                "443/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "443"
+                    }
+                ],
+                "80/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "80"
+                    }
+                ]
+            },
+            "HairpinMode": false,
+            "LinkLocalIPv6Address": "",
+            "LinkLocalIPv6PrefixLen": 0,
+            "SecondaryIPAddresses": null,
+            "SecondaryIPv6Addresses": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "MacAddress": "",
+            "Networks": {
+                "prod-net": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "nginx",
+                        "bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov",
+                        "bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov",
+                        "5ae53572e094"
+                    ],
+                    "MacAddress": "02:42:ac:12:00:04",
+                    "NetworkID": "d81e4102f500b69cf6f85ba6886e02fa6dbd2e5db304c2488d4ad4a0d9dc30b8",
+                    "EndpointID": "7caff08d2d528a5eac6b11d1f9a578f4c6efd033593eff9602760f176358d8ec",
+                    "Gateway": "172.18.0.1",
+                    "IPAddress": "172.18.0.4",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DriverOpts": null,
+                    "DNSNames": [
+                        "nginx",
+                        "bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov",
+                        "bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov",
+                        "5ae53572e094"
+                    ]
+                }
+            }
+        }
+    }
+]
