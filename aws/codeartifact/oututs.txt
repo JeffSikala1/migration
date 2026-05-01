@@ -1,36 +1,93 @@
-[root@ip-10-56-112-243 ec2-user]# sudo du -sh /app/jfrog/* 2>/dev/null | sort -hr | head -10
-403G    /app/jfrog/artifactory
-264G    /app/jfrog/migration
-8.0K    /app/jfrog/certs
-4.0K    /app/jfrog/nginx
-[root@ip-10-56-112-243 ec2-user]# sudo du -sh /var/lib/docker/containers/*/*.log 2>/dev/null | sort -hr | head -5
-1.7G    /var/lib/docker/containers/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953-json.log
-11M     /var/lib/docker/containers/6b40766d0dc5722ae455872493ed0c8fc6eef4899f6ebf860bc596e7cc4049b4/6b40766d0dc5722ae455872493ed0c8fc6eef4899f6ebf860bc596e7cc4049b4-json.log
-12K     /var/lib/docker/containers/7c25ec7ae10e81bcc16e880985c337a4a1c168452301bbb28f8260ee0a2218e2/7c25ec7ae10e81bcc16e880985c337a4a1c168452301bbb28f8260ee0a2218e2-json.log
-[root@ip-10-56-112-243 ec2-user]# docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-NAMES                  IMAGE                                                         STATUS
-artifactory-nginx      releases-docker.jfrog.io/jfrog/nginx-artifactory-pro:7.68.7   Up 5 weeks
-artifactory            releases-docker.jfrog.io/jfrog/artifactory-pro:7.104.14       Up 5 weeks
-artifactory-postgres   postgres:15-alpine                                            Up 5 weeks
-[root@ip-10-56-112-243 ec2-user]# docker system df
-TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
-Images          7         3         10.27GB   6.56GB (63%)
-Containers      3         3         180.7kB   0B (0%)
-Local Volumes   0         0         0B        0B
-Build Cache     0         0         0B        0B
-
-[root@ip-10-56-112-243 ec2-user]# docker info | grep -i "Docker Root Dir"
- Docker Root Dir: /var/lib/docker
-
- [root@ip-10-56-112-34 ec2-user]# docker info | grep -i "Docker Root Dir"
- Docker Root Dir: /app/docker
-
-[root@ip-10-56-112-243 ec2-user]# sudo cat /etc/docker/daemon.json | jq .
-{
-  "data-root": "/var/lib/docker",
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m",
-    "max-file": "5"
-  }
-}
+[ec2-user@ip-10-56-112-243 ~]$ sudo su
+[root@ip-10-56-112-243 ec2-user]# docker ps --format "{{.Names}}\t{{.ID}}" 
+artifactory-nginx       7c25ec7ae10e
+artifactory     dc00bfc2ebf3
+artifactory-postgres    6b40766d0dc5
+[root@ip-10-56-112-243 ec2-user]# sudo truncate -s 0 /var/lib/docker/containers/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953-json.log
+[root@ip-10-56-112-243 ec2-user]# sudo ls -alh /app/jfrog/migration/ | head -30
+total 264G
+drwxr-xr-x. 2 ec2-user ec2-user  183 Feb  4 16:01 .
+drwxr-xr-x. 6     1030     1030   68 Feb  3 14:31 ..
+-rw-r--r--. 1 ec2-user ec2-user  184 Feb  3 13:11 CHECKSUMS.sha256
+-rw-r--r--. 1 ec2-user ec2-user  17M Feb  2 17:55 artifactory_nginx_data.tgz
+-rw-r--r--. 1 ec2-user ec2-user 162K Feb  2 17:55 artifactory_security.tgz
+-rw-r--r--. 1 root     root     264G Feb  3 21:53 artifactory_var.tar
+-rw-r--r--. 1 root     root       86 Feb  4 16:01 artifactory_var.tar.sha256
+-rw-r--r--. 1 ec2-user ec2-user 453M Feb  2 17:55 pgdataVolume15.tgz
+[root@ip-10-56-112-243 ec2-user]# sudo lsof +D /app/jfrog/migration 2>/dev/null | head -20
+[root@ip-10-56-112-243 ec2-user]# sudo ls -alh /app/jfrog/migration/ > /tmp/migration-listing-$(date +%Y%m%d).txt
+[root@ip-10-56-112-243 ec2-user]# sudo lsof +D /app/jfrog/migration 2>/dev/null > /tmp/migration-lsof-$(date +%Y%m%d).txt
+[root@ip-10-56-112-243 ec2-user]# cat /tmp/migration-listing-$(date +%Y%m%d).txt | head -30
+total 264G
+drwxr-xr-x. 2 ec2-user ec2-user  183 Feb  4 16:01 .
+drwxr-xr-x. 6     1030     1030   68 Feb  3 14:31 ..
+-rw-r--r--. 1 ec2-user ec2-user  184 Feb  3 13:11 CHECKSUMS.sha256
+-rw-r--r--. 1 ec2-user ec2-user  17M Feb  2 17:55 artifactory_nginx_data.tgz
+-rw-r--r--. 1 ec2-user ec2-user 162K Feb  2 17:55 artifactory_security.tgz
+-rw-r--r--. 1 root     root     264G Feb  3 21:53 artifactory_var.tar
+-rw-r--r--. 1 root     root       86 Feb  4 16:01 artifactory_var.tar.sha256
+-rw-r--r--. 1 ec2-user ec2-user 453M Feb  2 17:55 pgdataVolume15.tgz
+[root@ip-10-56-112-243 ec2-user]# cat /tmp/migration-lsof-$(date +%Y%m%d).txt | head -10
+[root@ip-10-56-112-243 ec2-user]# sudo lsof +D /app/jfrog/migration 2>/dev/null
+[root@ip-10-56-112-243 ec2-user]# grep -Ri migration /app/jfrog/artifactory/var/etc/
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:    <appender name="SHA256_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:        <File>${log.dir}/artifactory-sha256-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:            <FileNamePattern>${log.dir.archived}/artifactory-sha256-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:    <logger name="org.artifactory.storage.jobs.migration.sha256.Sha256MigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:        <appender-ref ref="SHA256_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:    <appender name="PATH_CHECKSUM_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:        <File>${log.dir}/artifactory-path-checksum-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:            <FileNamePattern>${log.dir.archived}/artifactory-path-checksum-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:    <logger name="org.artifactory.storage.jobs.migration.pathchecksum.RepoPathChecksumMigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:        <appender-ref ref="PATH_CHECKSUM_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:    <appender name="BUILD_INFO_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:        <File>${log.dir}/artifactory-build-info-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:            <FileNamePattern>${log.dir.archived}/build-info-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:    <logger name="org.artifactory.storage.jobs.migration.buildinfo.BuildInfoMigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:        <appender-ref ref="BUILD_INFO_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:    <appender name="CONAN_V2_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:        <File>${log.dir}/artifactory-conan-v2-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:            <FileNamePattern>${log.dir.archived}/artifactory-conan-v2-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:    <logger name="org.artifactory.addon.conan.migration.ConanV2MigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml:        <appender-ref ref="CONAN_V2_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:    <appender name="SHA256_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:        <File>${log.dir}/artifactory-sha256-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:            <FileNamePattern>${log.dir.archived}/artifactory-sha256-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:    <logger name="org.artifactory.storage.jobs.migration.sha256.Sha256MigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:        <appender-ref ref="SHA256_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:    <appender name="PATH_CHECKSUM_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:        <File>${log.dir}/artifactory-path-checksum-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:            <FileNamePattern>${log.dir.archived}/artifactory-path-checksum-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:    <logger name="org.artifactory.storage.jobs.migration.pathchecksum.RepoPathChecksumMigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:        <appender-ref ref="PATH_CHECKSUM_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:    <appender name="BUILD_INFO_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:        <File>${log.dir}/artifactory-build-info-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:            <FileNamePattern>${log.dir.archived}/build-info-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:    <logger name="org.artifactory.storage.jobs.migration.buildinfo.BuildInfoMigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:        <appender-ref ref="BUILD_INFO_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:    <appender name="CONAN_V2_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:        <File>${log.dir}/artifactory-conan-v2-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:            <FileNamePattern>${log.dir.archived}/artifactory-conan-v2-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:    <logger name="org.artifactory.addon.conan.migration.ConanV2MigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.original.xml:        <appender-ref ref="CONAN_V2_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:    <appender name="SHA256_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:        <File>${log.dir}/artifactory-sha256-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:            <FileNamePattern>${log.dir.archived}/artifactory-sha256-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:    <logger name="org.artifactory.storage.jobs.migration.sha256.Sha256MigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:        <appender-ref ref="SHA256_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:    <appender name="PATH_CHECKSUM_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:        <File>${log.dir}/artifactory-path-checksum-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:            <FileNamePattern>${log.dir.archived}/artifactory-path-checksum-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:    <logger name="org.artifactory.storage.jobs.migration.pathchecksum.RepoPathChecksumMigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:        <appender-ref ref="PATH_CHECKSUM_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:    <appender name="BUILD_INFO_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:        <File>${log.dir}/artifactory-build-info-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:            <FileNamePattern>${log.dir.archived}/build-info-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:    <logger name="org.artifactory.storage.jobs.migration.buildinfo.BuildInfoMigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:        <appender-ref ref="BUILD_INFO_MIGRATION" />
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:    <appender name="CONAN_V2_MIGRATION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:        <File>${log.dir}/artifactory-conan-v2-migration.log</File>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:            <FileNamePattern>${log.dir.archived}/artifactory-conan-v2-migration.%i.log.gz</FileNamePattern>
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:    <logger name="org.artifactory.addon.conan.migration.ConanV2MigrationJob" level="info" additivity="false">
+/app/jfrog/artifactory/var/etc/artifactory/logback.xml.back:        <appender-ref ref="CONAN_V2_MIGRATION" />
+/app/jfrog/artifactory/var/etc/access/access.config.template.yml:schema-version: 2         # Mark the configuration schema version. If it's not the latest version, a migration operation will be performed.
