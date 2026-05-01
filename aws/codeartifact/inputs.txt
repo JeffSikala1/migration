@@ -1,5 +1,42 @@
-# Validate syntax — should print the parsed JSON with no errors
-sudo cat /etc/docker/daemon.json | python3 -m json.tool
+docker run -d \
+  --name prod-bamboo \
+  --network prod-net \
+  --network-alias bamboo \
+  --hostname bamboo \
+  -e ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e ATL_TOMCAT_SCHEME=https \
+  -p 8085:8085 -p 8443:8443 \
+  --mount source=bambooVolume,target=/var/atlassian/application-data/bamboo \
+  --restart unless-stopped \
+  atlassian/bamboo:10.2.11
 
-# OR if jq is available:
-sudo cat /etc/docker/daemon.json | jq .
+
+
+
+
+
+# On ip-10-56-112-243 (Artifactory host)
+
+# 1. Where did the 672GB go? Top-level breakdown
+sudo du -sh /app/jfrog/* 2>/dev/null | sort -hr | head -10
+
+# 2. Is it Docker logs again?
+sudo du -sh /var/lib/docker/containers/*/*.log 2>/dev/null | sort -hr | head -5
+
+# 3. What containers are running here?
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+
+# 4. Docker disk usage breakdown
+docker system df
+
+
+
+
+# On the Bamboo host (ip-10-56-112-34):
+docker info | grep -i "Docker Root Dir"
+# Expected output: Docker Root Dir: /app/docker
+
+# On the Artifactory host (ip-10-56-112-243):
+docker info | grep -i "Docker Root Dir"
+# Expected output: Docker Root Dir: /var/lib/docker (probably)
