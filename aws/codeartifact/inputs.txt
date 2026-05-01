@@ -65,3 +65,85 @@ docker logs -f prod-bamboo 2>&1 | head -200
 
 
 watch -n 5 'df -h /app'
+
+
+
+
+------------
+sudo truncate -s 0 /app/docker/containers/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893-json.log
+
+# Verify
+df -h /app
+
+sudo truncate -s 0 /app/docker/containers/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787-json.log
+
+df -h /app
+
+
+
+docker rm cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
+
+# This also drops its log file. Verify:
+df -h /app
+
+
+
+docker rm prod-bamboo
+
+# Verify the volume is still there:
+docker volume inspect bambooVolume --format '{{.Mountpoint}}'
+sudo ls $(docker volume inspect bambooVolume --format '{{.Mountpoint}}') | head -10
+
+
+# Remove unused images
+docker image rm atlassian/bamboo:10.2.1
+docker image rm atlassian/bamboo:9.6.6
+docker image rm atlassian/bitbucket:8.19.9
+docker image rm postgres:16.5-alpine
+
+# Optional: prune any other unreferenced images, networks, build cache
+docker image prune -f
+docker network prune -f
+docker builder prune -f
+
+df -h /app
+
+docker run -d \
+  --name prod-bamboo \
+  --network vpcaas-net \
+  --network-alias bamboo \
+  --hostname bamboo \
+  -e ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e ATL_TOMCAT_SCHEME=https \
+  -p 8085:8085 -p 8443:8443 \
+  --mount source=bambooVolume,target=/var/atlassian/application-data/bamboo \
+  --restart unless-stopped \
+  atlassian/bamboo:10.2.11
+
+
+docker logs -f prod-bamboo 2>&1 | head -200
+
+
+
+# Local check
+curl -k https://localhost:8443/ 2>&1 | head -5
+
+# Or wait a few minutes and try the actual URL
+curl -k https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/ 2>&1 | head -5
+
+
+
+
+
+# Create or edit Docker daemon config
+sudo nano /etc/docker/daemon.json
+
+
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "5"
+  }
+}
