@@ -1,33 +1,14 @@
-[ec2-user@ip-10-56-112-34 ~]$ sudo su
-[root@ip-10-56-112-34 ec2-user]# docker ps
-CONTAINER ID   IMAGE                        COMMAND                  CREATED        STATUS        PORTS                                            NAMES
-3d7c479b3814   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   7 weeks ago    Up 10 hours   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp   cnxs-mgmt-bitbucket
-704e46755f36   postgres:16.5                "docker-entrypoint.s…"   4 months ago   Up 5 weeks    0.0.0.0:32768->5432/tcp                          prod-postgres
-5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   5 months ago   Up 5 weeks    0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp         nginx
-[root@ip-10-56-112-34 ec2-user]# docker run -d \
-  --name prod-bamboo \
-  --network vpcaas-net \
-  --network-alias bamboo \
-  --hostname bamboo \
-  -e ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
-  -e ATL_PROXY_PORT=443 \
-  -e ATL_TOMCAT_SCHEME=https \
-  -p 8085:8085 -p 8443:8443 \
-  --mount source=bambooVolume,target=/var/atlassian/application-data/bamboo \
-  --restart unless-stopped \
-  atlassian/bamboo:9.6.6
-docker: Error response from daemon: Conflict. The container name "/prod-bamboo" is already in use by container "cb50d1defa0e72df1181d003bcf440bf9659fa38e56a1666fadda4c80b7542db". You have to remove (or rename) that container to be able to reuse that name.
-See 'docker run --help'.
-[root@ip-10-56-112-34 ec2-user]# docker container ls
-CONTAINER ID   IMAGE                        COMMAND                  CREATED        STATUS        PORTS                                            NAMES
-3d7c479b3814   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   7 weeks ago    Up 10 hours   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp   cnxs-mgmt-bitbucket
-704e46755f36   postgres:16.5                "docker-entrypoint.s…"   4 months ago   Up 5 weeks    0.0.0.0:32768->5432/tcp                          prod-postgres
-5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   5 months ago   Up 5 weeks    0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp         nginx
-
-[root@ip-10-56-112-34 ec2-user]# docker container ls -a
-CONTAINER ID   IMAGE                        COMMAND                  CREATED        STATUS                     PORTS                                            NAMES
-cb50d1defa0e   atlassian/bamboo:10.2.11     "/usr/bin/tini -- /e…"   9 days ago     Exited (1) 11 hours ago                                                     prod-bamboo
-3d7c479b3814   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   7 weeks ago    Up 10 hours                0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp   cnxs-mgmt-bitbucket
-45bc929b6696   atlassian/bitbucket:8.19.9   "/usr/bin/tini -- /e…"   4 months ago   Exited (143) 7 weeks ago                                                    cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
-704e46755f36   postgres:16.5                "docker-entrypoint.s…"   4 months ago   Up 5 weeks                 0.0.0.0:32768->5432/tcp                          prod-postgres
-5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   5 months ago   Up 5 weeks                 0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp         nginx
+[root@ip-10-56-112-34 ec2-user]# df -h
+Filesystem        Size  Used Avail Use% Mounted on
+devtmpfs          4.0M     0  4.0M   0% /dev
+tmpfs              16G     0   16G   0% /dev/shm
+tmpfs             6.3G  8.8M  6.2G   1% /run
+/dev/nvme0n1p1    150G   55G   96G  37% /
+tmpfs              16G   28K   16G   1% /tmp
+/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
+/dev/nvme2n1      148G   67G   74G  48% /mnt/temp
+/dev/nvme1n1p1    150G  150G   35M 100% /app
+overlay           150G  150G   35M 100% /app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/merged
+overlay           150G  150G   35M 100% /app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged
+overlay           150G  150G   35M 100% /app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/merged
+tmpfs             3.2G     0  3.2G   0% /run/user/1000
