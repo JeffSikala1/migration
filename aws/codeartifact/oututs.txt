@@ -12,3 +12,82 @@ overlay           150G  150G   35M 100% /app/docker/overlay2/19b812a9af4922f7415
 overlay           150G  150G   35M 100% /app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged
 overlay           150G  150G   35M 100% /app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/merged
 tmpfs             3.2G     0  3.2G   0% /run/user/1000
+[root@ip-10-56-112-34 ec2-user]# sudo du -sh /app/* 2>/dev/null | sort -hr
+81G     /app/docker
+39G     /app/var
+15G     /app/bamboobackup
+11G     /app/home
+2.9G    /app/opt
+2.1G    /app/usr
+1.3G    /app/build-artifacts
+1.2G    /app/root
+76M     /app/boot
+46M     /app/etc
+0       /app/tmp
+0       /app/sys
+0       /app/srv
+0       /app/sbin
+0       /app/run
+0       /app/proc
+0       /app/mnt
+0       /app/media
+0       /app/local
+0       /app/lib64
+0       /app/lib
+0       /app/dev
+0       /app/bin
+0       /app/app
+[root@ip-10-56-112-34 ec2-user]# sudo du -sh /app/docker/* 2>/dev/null | sort -hr
+51G     /app/docker/volumes
+17G     /app/docker/containers
+14G     /app/docker/overlay2
+8.3M    /app/docker/image
+112K    /app/docker/buildkit
+68K     /app/docker/network
+4.0K    /app/docker/engine-id
+0       /app/docker/tmp
+0       /app/docker/swarm
+0       /app/docker/runtimes
+0       /app/docker/plugins
+[root@ip-10-56-112-34 ec2-user]# sudo du -sh /app/docker/containers/*/*.log 2>/dev/null | sort -hr | head -20
+9.8G    /app/docker/containers/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893/5ae53572e0947169bb885318427cbe554cfe6fdc2dda4f4126419e74e3ad7893-json.log
+4.3G    /app/docker/containers/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787-json.log
+2.2G    /app/docker/containers/45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987/45bc929b66969d3f1907f2adc26ff8b2f669b5650c5f94897247252fde439987-json.log
+22M     /app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e-json.log
+572K    /app/docker/containers/cb50d1defa0e72df1181d003bcf440bf9659fa38e56a1666fadda4c80b7542db/cb50d1defa0e72df1181d003bcf440bf9659fa38e56a1666fadda4c80b7542db-json.log
+[root@ip-10-56-112-34 ec2-user]# docker system df -v 2>&1 | head -50
+Images space usage:
+
+REPOSITORY            TAG           IMAGE ID       CREATED         SIZE      SHARED SIZE   UNIQUE SIZE   CONTAINERS
+atlassian/bamboo      10.2.1        23629841cdcc   12 days ago     1.23GB    728.8MB       501.7MB       0
+atlassian/bamboo      10.2.11       23ed3051e3e7   12 days ago     1.24GB    728.8MB       515MB         1
+atlassian/bitbucket   9.4.17        fc66f747474d   7 weeks ago     1.4GB     0B            1.403GB       1
+atlassian/bamboo      9.6.6         27ad78e12bb2   5 months ago    1.18GB    0B            1.181GB       0
+nginx                 1.29.3        60adc2e137e7   5 months ago    152MB     0B            151.9MB       1
+atlassian/bitbucket   8.19.9        5b11aaa18086   6 months ago    1.34GB    0B            1.34GB        1
+postgres              16.5          30a563de922f   17 months ago   432MB     0B            432.3MB       1
+postgres              16.5-alpine   9ff53a21c37a   17 months ago   251MB     0B            250.7MB       0
+
+Containers space usage:
+
+CONTAINER ID   IMAGE                        COMMAND                  LOCAL VOLUMES   SIZE      CREATED        STATUS                     NAMES
+cb50d1defa0e   atlassian/bamboo:10.2.11     "/usr/bin/tini -- /e…"   2               121MB     9 days ago     Exited (1) 11 hours ago    prod-bamboo
+3d7c479b3814   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   2               98.3kB    7 weeks ago    Up 11 hours                cnxs-mgmt-bitbucket
+45bc929b6696   atlassian/bitbucket:8.19.9   "/usr/bin/tini -- /e…"   2               98.3kB    4 months ago   Exited (143) 7 weeks ago   cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
+704e46755f36   postgres:16.5                "docker-entrypoint.s…"   1               8.96MB    4 months ago   Up 5 weeks                 prod-postgres
+5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   1               6.44kB    5 months ago   Up 5 weeks                 nginx
+
+Local Volumes space usage:
+
+VOLUME NAME            LINKS     SIZE
+bambooVolume           1         22.59GB
+bitbucketVolume        2         12.64GB
+nginxVolume            1         33.09kB
+optbambooVolume        1         9.303GB
+optbitbucketVolume     1         659MB
+optbitbucketVolume94   1         714.2MB
+pgdataVolume16         1         7.622GB
+
+Build cache usage: 0B
+
+CACHE ID   CACHE TYPE   SIZE      CREATED   LAST USED   USAGE     SHARED
