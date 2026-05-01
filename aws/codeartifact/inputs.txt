@@ -1,50 +1,9 @@
-# Top-level breakdown of /app
-sudo du -sh /app/* 2>/dev/null | sort -hr
-
-# If /app/docker is huge (likely), break it down further
-sudo du -sh /app/docker/* 2>/dev/null | sort -hr
-
-# How big are container logs?
-sudo du -sh /app/docker/containers/*/*.log 2>/dev/null | sort -hr | head -20
-
-# Docker disk usage by category
-docker system df -v 2>&1 | head -50
+docker container ls -a --filter "name=prod-bamboo"
 
 
-
-
-# Remove the exited 8.19.9 Bitbucket preupgrade container (it's been gone 7 weeks)
-docker rm cnxs-mgmt-bitbucket_8_19_9_preupgrade_20260311_201200
-
-# Remove the failed prod-bamboo container (data is safe on the bambooVolume)
-docker rm prod-bamboo
-
-# Remove the old Bitbucket 8.19.9 image if no container references it
-docker image rm atlassian/bitbucket:8.19.9 2>/dev/null || echo "still in use"
-
-# Prune dangling images, networks, build cache (safe — only removes unreferenced)
-docker image prune -f
-docker network prune -f
-docker builder prune -f
-
-
-
-
-
-# Identify the offenders
-sudo du -sh /app/docker/containers/*/*.log 2>/dev/null | sort -hr | head -10
-
-# For each container with huge logs, truncate (use the path from above):
-sudo truncate -s 0 /app/docker/containers/<CONTAINER_ID>/<CONTAINER_ID>-json.log
-
-
-
-
-
-# Already removed the stopped container in Step 2. Re-create with the CORRECT version:
 docker run -d \
   --name prod-bamboo \
-  --network vpcaas-net \
+  --network prod-net \
   --network-alias bamboo \
   --hostname bamboo \
   -e ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
@@ -56,16 +15,18 @@ docker run -d \
   atlassian/bamboo:10.2.11
 
 
-# Watch the startup logs
-docker logs -f prod-bamboo 2>&1 | head -200
+# 1. Confirm prod-net exists (you already showed this — yes)
+docker network ls
 
-# Should see "Setting Bamboo Home to..." then Tomcat startup, then "Server startup in N ms"
-# If you see exceptions, paste them and we'll work through it
+# 2. Confirm bambooVolume exists and has data
+docker volume inspect bambooVolume | grep Mountpoint
+sudo ls $(docker volume inspect bambooVolume --format '{{.Mountpoint}}') | head -5
 
+# 3. Confirm 10.2.11 image is still local (you removed 10.2.1 and 9.6.6 — verify 10.2.11 is intact)
+docker images | grep "atlassian/bamboo"
 
-
-watch -n 5 'df -h /app'
-
+# 4. Confirm no leftover prod-bamboo container
+docker container ls -a | grep prod-bamboo
 
 
 
@@ -145,5 +106,6 @@ sudo nano /etc/docker/daemon.json
   "log-opts": {
     "max-size": "100m",
     "max-file": "5"
+ 
   }
 }
