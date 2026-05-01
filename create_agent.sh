@@ -13,7 +13,7 @@ NETWORK_SUBNET="172.25.0.0/24"
 RESTART_POLICY="on-failure:3"
 SYSCTL_FORWARD="net.ipv4.ip_forward=1"
 
-HOST_CACHE_BASE="/app/cache/bamboo"                     # host path bound to each agent's home
+HOST_CACHE_BASE="${HOST_CACHE_BASE:-/cache/bamboo}"     # host path bound to each agent's home
 DOCKER_SOCK="/var/run/docker.sock"
 
 # Angular / Node requirements
