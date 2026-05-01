@@ -1,22 +1,21 @@
-# On the host
-docker exec ip-10-56-112-35.ec2.internal-ba-5 bash -c '
-  echo "=== global ~/.npmrc ==="
-  cat ~/.npmrc 2>/dev/null || echo "no ~/.npmrc"
-  echo ""
-  echo "=== /etc/npmrc ==="
-  cat /etc/npmrc 2>/dev/null || echo "no /etc/npmrc"
-  echo ""
-  echo "=== npm config ==="
-  npm config list 2>&1
-'
+#!/usr/bin/env bash
+set -euo pipefail
+source ~/.bashrc
 
+export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
 
-# In the UI repo
-cat .npmrc 2>/dev/null || echo "no project .npmrc"
+# Install/Update Google Chrome for Headless testing
+curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
+yum install -y google-chrome-stable
 
+# Configure npm to use Artifactory with auth
+cat > ~/.npmrc <<EOF
+registry=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/
+//artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/:_authToken=${bamboo.artifactory_access_token_secret}
+always-auth=true
+EOF
 
-# Inside the failing build's working directory
-grep -r "registry" .npmrc */.npmrc package.json 2>/dev/null
+npm install
+npm test
 
-
-
+ng build --configuration production --output-hashing=all --optimization --source-map=true
