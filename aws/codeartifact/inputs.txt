@@ -1,38 +1,12 @@
-# Check which container it belongs to first
-docker ps --format "{{.Names}}\t{{.ID}}" 
+# Sanity check one more time — confirm what you're about to delete
+sudo ls -la /app/jfrog/migration/
+sudo du -sh /app/jfrog/migration/
 
-# Match against dc00bfc2 (first 12 chars of the long ID)
-# If that's the artifactory container, truncate:
-sudo truncate -s 0 /var/lib/docker/containers/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953-json.log
+# Confirm Artifactory is healthy right now
+docker ps --filter "name=artifactory" --format "table {{.Names}}\t{{.Status}}"
 
+# Then delete
+sudo rm -rf /app/jfrog/migration/
 
-sudo ls -alh /app/jfrog/migration/ | head -30
-
-
-sudo lsof +D /app/jfrog/migration 2>/dev/null | head -20
-
-
-# Save evidence for later review
-sudo ls -alh /app/jfrog/migration/ > /tmp/migration-listing-$(date +%Y%m%d).txt
-sudo lsof +D /app/jfrog/migration 2>/dev/null > /tmp/migration-lsof-$(date +%Y%m%d).txt
-
-# Quick visual check
-cat /tmp/migration-listing-$(date +%Y%m%d).txt | head -30
-cat /tmp/migration-lsof-$(date +%Y%m%d).txt | head -10
-
-
-# Compare across days — should still be empty
-sudo lsof +D /app/jfrog/migration 2>/dev/null
-
-grep -Ri migration /app/jfrog/artifactory/var/etc/
-----------------
-# Archive first as insurance (optional — if you have space and want a paranoid backup)
-# Skip this if you trust your S3 migration completion confirmation
-# sudo tar -czf /some/safe/location/jfrog-migration-archive-$(date +%Y%m%d).tar.gz /app/jfrog/migration/
-
-# Or just rename it first instead of deleting outright
-sudo mv /app/jfrog/migration /app/jfrog/migration.PENDING_DELETE_$(date +%Y%m%d)
-
-# Wait 24-48 hours. Verify Artifactory still works fine.
-# Run a real Maven build through Bamboo. If everything is green:
-sudo rm -rf /app/jfrog/migration.PENDING_DELETE_*
+# Verify the space was reclaimed
+df -h /app/jfrog
