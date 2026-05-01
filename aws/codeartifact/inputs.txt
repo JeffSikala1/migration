@@ -1,12 +1,9 @@
-# Sanity check one more time — confirm what you're about to delete
-sudo ls -la /app/jfrog/migration/
-sudo du -sh /app/jfrog/migration/
-
-# Confirm Artifactory is healthy right now
+# Container still up
 docker ps --filter "name=artifactory" --format "table {{.Names}}\t{{.Status}}"
 
-# Then delete
-sudo rm -rf /app/jfrog/migration/
+# Recent logs look clean (no panic messages)
+docker logs --tail 30 artifactory 2>&1 | tail -15
 
-# Verify the space was reclaimed
-df -h /app/jfrog
+# A real test: try resolving an artifact
+curl -k -s -o /dev/null -w "%{http_code}\n" https://localhost/artifactory/api/system/ping
+# Expect: 200
