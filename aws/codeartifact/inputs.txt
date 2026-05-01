@@ -1,3 +1,15 @@
-Bamboo went down last night because /app filled up to 100%. After digging in, it was around 16GB of Docker container logs, mostly nginx and Bitbucket logs that had been building up over time, and log rotation was not configured on the host.
+ls -la /app/bamboobackup/ | head -20
+sudo find /app/bamboobackup -type f -mtime +90 -size +100M | head -20
 
-Bamboo is back up now and there was no data loss. Since integration testing is working now and will probably create more log activity, I think we should add Docker log rotation during the next maintenance window and also get /app disk usage into Datadog so we get alerted around 75% instead of finding out when it hits 100%.
+
+# Edit Docker daemon config
+sudo nano /etc/docker/daemon.json
+
+
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "5"
+  }
+}
