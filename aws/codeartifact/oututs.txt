@@ -1,70 +1,36 @@
-[root@ip-10-56-112-34 ec2-user]# sudo cat /etc/docker/daemon.json | python3 -m json.tool
-{
-    "data-root": "/app/docker",
-    "log-driver": "json-file",
-    "log-opts": {
-        "max-size": "100m",
-        "max-file": "5"
-    }
-}
-[root@ip-10-56-112-34 ec2-user]# sudo cat /etc/docker/daemon.json | jq .
-{
-  "data-root": "/app/docker",
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m",
-    "max-file": "5"
-  }
-}
+[root@ip-10-56-112-243 ec2-user]# sudo du -sh /app/jfrog/* 2>/dev/null | sort -hr | head -10
+403G    /app/jfrog/artifactory
+264G    /app/jfrog/migration
+8.0K    /app/jfrog/certs
+4.0K    /app/jfrog/nginx
+[root@ip-10-56-112-243 ec2-user]# sudo du -sh /var/lib/docker/containers/*/*.log 2>/dev/null | sort -hr | head -5
+1.7G    /var/lib/docker/containers/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953/dc00bfc2ebf3e7aac789bfb7769e05392ebefb42e8d5385318ce7e4dc2510953-json.log
+11M     /var/lib/docker/containers/6b40766d0dc5722ae455872493ed0c8fc6eef4899f6ebf860bc596e7cc4049b4/6b40766d0dc5722ae455872493ed0c8fc6eef4899f6ebf860bc596e7cc4049b4-json.log
+12K     /var/lib/docker/containers/7c25ec7ae10e81bcc16e880985c337a4a1c168452301bbb28f8260ee0a2218e2/7c25ec7ae10e81bcc16e880985c337a4a1c168452301bbb28f8260ee0a2218e2-json.log
+[root@ip-10-56-112-243 ec2-user]# docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+NAMES                  IMAGE                                                         STATUS
+artifactory-nginx      releases-docker.jfrog.io/jfrog/nginx-artifactory-pro:7.68.7   Up 5 weeks
+artifactory            releases-docker.jfrog.io/jfrog/artifactory-pro:7.104.14       Up 5 weeks
+artifactory-postgres   postgres:15-alpine                                            Up 5 weeks
+[root@ip-10-56-112-243 ec2-user]# docker system df
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          7         3         10.27GB   6.56GB (63%)
+Containers      3         3         180.7kB   0B (0%)
+Local Volumes   0         0         0B        0B
+Build Cache     0         0         0B        0B
 
+[root@ip-10-56-112-243 ec2-user]# docker info | grep -i "Docker Root Dir"
+ Docker Root Dir: /var/lib/docker
 
-[root@ip-10-56-112-243 ec2-user]# sudo cat /etc/docker/daemon.json | python3 -m json.tool
-{
-    "data-root": "/app/docker",
-    "log-driver": "json-file",
-    "log-opts": {
-        "max-size": "100m",
-        "max-file": "5"
-    }
-}
+ [root@ip-10-56-112-34 ec2-user]# docker info | grep -i "Docker Root Dir"
+ Docker Root Dir: /app/docker
+
 [root@ip-10-56-112-243 ec2-user]# sudo cat /etc/docker/daemon.json | jq .
 {
-  "data-root": "/app/docker",
+  "data-root": "/var/lib/docker",
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "100m",
     "max-file": "5"
   }
 }
-
-[root@ip-10-56-112-243 ec2-user]# df -h
-Filesystem        Size  Used Avail Use% Mounted on
-devtmpfs          4.0M     0  4.0M   0% /dev
-tmpfs             7.7G     0  7.7G   0% /dev/shm
-tmpfs             3.1G  752K  3.1G   1% /run
-/dev/nvme0n1p1    150G   15G  136G  10% /
-tmpfs             7.7G     0  7.7G   0% /tmp
-/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
-/dev/nvme1n1      800G  672G  128G  84% /app/jfrog
-/dev/nvme2n1      200G  6.9G  194G   4% /app/postgres
-overlay           150G   15G  136G  10% /var/lib/docker/overlay2/58dd16c23aa43909368722e285c7be2fae3ea7f993fe630bb2fdf1d21a6b29df/merged
-overlay           150G   15G  136G  10% /var/lib/docker/overlay2/37976cbd42301cd320d1a6deca1d3438c348247fe2d4d5ef463a1b23dad12c2d/merged
-overlay           150G   15G  136G  10% /var/lib/docker/overlay2/c3d925b76ae70290d883ee1b18f32c87995dcc027fb969e120a6f9724c0fe8c7/merged
-tmpfs             1.6G     0  1.6G   0% /run/user/1000
-
-
-[root@ip-10-56-112-34 ec2-user]# df -h
-Filesystem        Size  Used Avail Use% Mounted on
-devtmpfs          4.0M     0  4.0M   0% /dev
-tmpfs              16G     0   16G   0% /dev/shm
-tmpfs             6.3G  8.9M  6.2G   1% /run
-/dev/nvme0n1p1    150G   55G   96G  37% /
-tmpfs              16G   12K   16G   1% /tmp
-/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
-/dev/nvme2n1      148G   67G   74G  48% /mnt/temp
-/dev/nvme1n1p1    150G  126G   25G  84% /app
-overlay           150G  126G   25G  84% /app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/merged
-overlay           150G  126G   25G  84% /app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged
-overlay           150G  126G   25G  84% /app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/merged
-overlay           150G  126G   25G  84% /app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5/merged
-tmpfs             3.2G     0  3.2G   0% /run/user/1000
