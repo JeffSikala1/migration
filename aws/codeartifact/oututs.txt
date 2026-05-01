@@ -43,3 +43,82 @@ NOTE: Picked up JDK_JAVA_OPTIONS:  --add-opens=java.base/java.lang=ALL-UNNAMED -
  WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impact performance.
 01-May-2026 13:14:33.103 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-8085"]
 01-May-2026 13:14:33.220 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in [85789] milliseconds
+
+
+[ec2-user@ip-10-56-112-34 ~]$ sudo su
+[root@ip-10-56-112-34 ec2-user]# curl -k https://localhost:8443/ 2>&1 | head -5
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+curl: (1) Received HTTP/0.9 when not allowed
+[root@ip-10-56-112-34 ec2-user]# curl -k https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/ 2>&1 | head -5
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0    ^C0 --:--:--  0:02:34 --:--:--     0
+[root@ip-10-56-112-34 ec2-user]# docker network ls
+NETWORK ID     NAME       DRIVER    SCOPE
+b0cd1d4e6287   bridge     bridge    local
+bd31485df9fd   host       host      local
+64c3c89ffaae   none       null      local
+d81e4102f500   prod-net   bridge    local
+[root@ip-10-56-112-34 ec2-user]# docker volume inspect bambooVolume | grep Mountpoint
+        "Mountpoint": "/app/docker/volumes/bambooVolume/_data",
+[root@ip-10-56-112-34 ec2-user]# sudo ls $(docker volume inspect bambooVolume --format '{{.Mountpoint}}') | head -5
+__pycache__
+analytics-logs
+avatars
+bamboo.cfg.xml
+bamboo.cfg.xml.2025-12-13_013046.bak
+[root@ip-10-56-112-34 ec2-user]# docker images | grep "atlassian/bamboo"
+atlassian/bamboo      10.2.11   23ed3051e3e7   12 days ago     1.24GB
+[root@ip-10-56-112-34 ec2-user]# docker container ls -a | grep prod-bamboo
+f989498245ad   atlassian/bamboo:10.2.11     "/usr/bin/tini -- /e…"   6 minutes ago   Up 6 minutes   0.0.0.0:8085->8085/tcp, 0.0.0.0:8443->8443/tcp, 54663/tcp   prod-bamboo
+
+[root@ip-10-56-112-34 ec2-user]# docker rm prod-bamboo
+prod-bamboo
+[root@ip-10-56-112-34 ec2-user]# docker run -d \
+  --name prod-bamboo \
+  --network prod-net \
+  --network-alias bamboo \
+  --hostname bamboo \
+  -e ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e ATL_TOMCAT_SCHEME=https \
+  -p 8085:8085 -p 8443:8443 \
+  --mount source=bambooVolume,target=/var/atlassian/application-data/bamboo \
+  --restart unless-stopped \
+  atlassian/bamboo:10.2.11
+f989498245ad56e9fe18494a5e328306570068cf1e5b06de1575b92d953b4d7e
+[root@ip-10-56-112-34 ec2-user]# docker logs -f prod-bamboo 2>&1 | head -200
+INFO:root:Generating /opt/atlassian/bamboo/conf/server.xml from template server.xml.j2
+INFO:root:Generating /opt/atlassian/bamboo/atlassian-bamboo/WEB-INF/classes/seraph-config.xml from template seraph-config.xml.j2
+INFO:root:Generating /opt/atlassian/bamboo/atlassian-bamboo/WEB-INF/classes/bamboo-init.properties from template bamboo-init.properties.j2
+INFO:root:/var/atlassian/application-data/bamboo/bamboo.cfg.xml exists; skipping.
+INFO:root:User is currently root. Will downgrade run user to bamboo
+INFO:root:Running Bamboo with command '/opt/atlassian/bamboo/bin/start-bamboo.sh', arguments ['/opt/atlassian/bamboo/bin/start-bamboo.sh', '-fg']
+
+Server startup logs are located in /opt/atlassian/bamboo/logs/catalina.out
+
+Bamboo Data Center
+   Version : 10.2.11
+                  
+
+If you encounter issues starting or stopping Bamboo Server, please see the Troubleshooting guide at https://confluence.atlassian.com/display/BAMBOO/Installing+and+upgrading+Bamboo
+
+Using BAMBOO_HOME:       /var/atlassian/application-data/bamboo
+NOTE: Picked up JDK_JAVA_OPTIONS:  --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+01-May-2026 13:13:06.578 WARNING [main] org.apache.tomcat.util.digester.SetPropertiesRule.begin Match [Server] failed to set property [port] to []
+01-May-2026 13:13:06.950 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent Loaded Apache Tomcat Native library [1.3.7] using APR version [1.7.2].
+01-May-2026 13:13:06.950 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR capabilities: IPv6 [true], sendfile [true], accept filters [false], random [true], UDS [true].
+01-May-2026 13:13:06.951 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR/OpenSSL configuration: useAprConnector [false], useOpenSSL [true]
+01-May-2026 13:13:06.958 INFO [main] org.apache.catalina.core.AprLifecycleListener.initializeSSL OpenSSL successfully initialized [OpenSSL 3.0.13 30 Jan 2024]
+01-May-2026 13:13:07.408 INFO [main] org.apache.coyote.http11.AbstractHttp11Protocol.configureUpgradeProtocol The ["http-nio-8085"] connector has been configured to support HTTP upgrade to [h2c]
+01-May-2026 13:13:07.408 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["http-nio-8085"]
+01-May-2026 13:13:07.429 INFO [main] org.apache.catalina.startup.Catalina.load Server initialization in [1024] milliseconds
+01-May-2026 13:13:07.472 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service [Catalina]
+01-May-2026 13:13:07.472 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet engine: [Apache Tomcat/9.0.111]
+01-May-2026 13:13:23.388 INFO [main] org.apache.jasper.servlet.TldScanner.scanJars At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+ WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impact performance.
+01-May-2026 13:14:33.103 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-8085"]
+01-May-2026 13:14:33.220 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in [85789] milliseconds
+01-May-2026 13:16:57.687 WARNING [http-nio-8085-exec-16 url: /rest/troubleshooting/1.0/check/jeff.sikala; user: jeff.sikala] org.glassfish.jersey.server.ResourceModelConfigurator.bindProvidersAndResources Component of class class com.atlassian.troubleshooting.healthcheck.rest.AbstractLicenseUserLimitResource cannot be instantiated and will be ignored.
