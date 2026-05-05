@@ -1,15 +1,77 @@
-TOKEN=${bamboo.artifactory_access_token_secret_or_personal_token}
+TOKEN=<your-artifactory-token>
 HOST=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
 
-# Find the artifact paths first (don't delete yet)
-curl -u sa_bamboo:$TOKEN \
-  "$HOST/artifactory/api/search/gavc?g=gov.gsa.cnxs.schema&v=01.00.000.259*&repos=conexus-snapshot-local"
+cat > /tmp/aql-schema-release.txt <<'EOF'
+items.find({
+  "repo": "conexus-release-local",
+  "path": {"$match": "gov/gsa/cnxs/schema*"},
+  "$or": [
+    {"path": {"$match": "*01.00.000.259*"}},
+    {"path": {"$match": "*01.00.000.260*"}}
+  ]
+}).include("repo", "path", "name", "size", "created", "type")
+EOF
 
-# Look at the response, confirm what you want to delete
+curl -s -u sa_bamboo:$TOKEN \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-schema-release.txt \
+  "$HOST/artifactory/api/search/aql" | jq
 
-# Then delete a specific path
-curl -u sa_bamboo:$TOKEN -X DELETE \
-  "$HOST/artifactory/<repo-name>/<group-path>/<artifact>/<version>/"
+
+cat > /tmp/aql-schema-rc.txt <<'EOF'
+items.find({
+  "repo": "conexus-rc-local",
+  "path": {"$match": "gov/gsa/cnxs/schema*"},
+  "$or": [
+    {"path": {"$match": "*01.00.000.259*"}},
+    {"path": {"$match": "*01.00.000.260*"}}
+  ]
+}).include("repo", "path", "name", "size", "created", "type")
+EOF
+
+curl -s -u sa_bamboo:$TOKEN \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-schema-rc.txt \
+  "$HOST/artifactory/api/search/aql" | jq
+
+
+cat > /tmp/aql-ws-client.txt <<'EOF'
+items.find({
+  "$or": [
+    {"repo": "conexus-release-local"},
+    {"repo": "conexus-rc-local"}
+  ],
+  "path": {"$match": "gov/gsa/cnxs/ws-client*"},
+  "path": {"$match": "*01.00.000.147*"}
+}).include("repo", "path", "name", "size", "created", "type")
+EOF
+
+curl -s -u sa_bamboo:$TOKEN \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-ws-client.txt \
+  "$HOST/artifactory/api/search/aql" | jq
+
+
+
+cat > /tmp/aql-ws.txt <<'EOF'
+items.find({
+  "$or": [
+    {"repo": "conexus-release-local"},
+    {"repo": "conexus-rc-local"}
+  ],
+  "path": {"$match": "gov/gsa/cnxs/ws*"},
+  "path": {"$match": "*01.00.000.155*"}
+}).include("repo", "path", "name", "size", "created", "type")
+EOF
+
+curl -s -u sa_bamboo:$TOKEN \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-ws.txt \
+  "$HOST/artifactory/api/search/aql" | jq
 
 
 
