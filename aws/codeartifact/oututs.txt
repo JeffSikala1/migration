@@ -1,17 +1,73 @@
-# Homes
-aws s3 cp /app/atlassian_sync/homes/bambooVolume_20260501_0618.tar.gz     s3://cnxs-atlassian-backups/legacy/2026-05-01/homes/
-aws s3 cp /app/atlassian_sync/homes/bitbucketVolume_20260501_0516.tar.gz  s3://cnxs-atlassian-backups/legacy/2026-05-01/homes/
-aws s3 cp /app/atlassian_sync/homes/confluenceVolume_20260501_0345.tar.gz s3://cnxs-atlassian-backups/legacy/2026-05-01/homes/
-aws s3 cp /app/atlassian_sync/homes/jiraVolume_20260501_0308.tar.gz       s3://cnxs-atlassian-backups/legacy/2026-05-01/homes/
-aws s3 cp /app/atlassian_sync/homes/crowdVolume_20260501_0653.tar.gz      s3://cnxs-atlassian-backups/legacy/2026-05-01/homes/
-
-# DB dumps
-aws s3 cp /app/atlassian_sync/dbdumps/bamboo_db_20260501_0259.gz      s3://cnxs-atlassian-backups/legacy/2026-05-01/dbdumps/
-aws s3 cp /app/atlassian_sync/dbdumps/bitbucket_db_20260501_0253.gz   s3://cnxs-atlassian-backups/legacy/2026-05-01/dbdumps/
-aws s3 cp /app/atlassian_sync/dbdumps/confluencedb_db_20260501_0243.gz s3://cnxs-atlassian-backups/legacy/2026-05-01/dbdumps/
-aws s3 cp /app/atlassian_sync/dbdumps/jiradb_db_20260501_0215.gz      s3://cnxs-atlassian-backups/legacy/2026-05-01/dbdumps/
-aws s3 cp /app/atlassian_sync/dbdumps/crowd_db_20260501_0259.gz       s3://cnxs-atlassian-backups/legacy/2026-05-01/dbdumps/
-
-
-
-aws s3 ls s3://cnxs-atlassian-backups/legacy/2026-05-01/ --recursive | wc -l
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ source ~/.bashrc
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../schema/
+[sikaj01@ip-10-56-112-33 schema]$ git pull
+Already up to date.
+[sikaj01@ip-10-56-112-33 schema]$ git remote -v
+origin  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/schema.git (fetch)
+origin  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/schema.git (push)
+[sikaj01@ip-10-56-112-33 schema]$ REPO="ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/schema.git"
+[sikaj01@ip-10-56-112-33 schema]$ git ls-remote --heads "${REPO}" 'refs/heads/release/*'
+cd33aae24c6d042843657abd14b1f99b03731e0b        refs/heads/release/01.00.000.258
+79bd408f380f9aec555309d6e1ff6d696801f33e        refs/heads/release/01.00.000.259
+[sikaj01@ip-10-56-112-33 schema]$ git fetch "${REPO}" refs/heads/develop
+git show FETCH_HEAD:pom.xml | grep '<version>' | head -3
+From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/schema
+ * branch            develop    -> FETCH_HEAD
+    <version>01.00.000.259-SNAPSHOT</version>
+                <version>${version.maven-assembly-plugin}</version>
+               <version>${version.jgitflow-maven-plugin}</version>
+[sikaj01@ip-10-56-112-33 schema]$ for branch in release/01.00.000.158; do
+  echo "Deleting ${branch}..."
+  git push "${REPO}" --delete "${branch}"
+done
+Deleting release/01.00.000.158...
+error: unable to delete 'release/01.00.000.158': remote ref does not exist
+error: failed to push some refs to 'ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/schema.git'
+[sikaj01@ip-10-56-112-33 schema]$ for branch in release/01.00.000.258; do
+  echo "Deleting ${branch}..."
+  git push "${REPO}" --delete "${branch}"
+done
+Deleting release/01.00.000.258...
+remote:                             *%%%%%.                            
+remote:                         %%%         %%%                        
+remote:                      ,%#               %%                      
+remote:                     %%                   %%                    
+remote:                    %#                     %%                   
+remote:                   %%                       %                   
+remote:                   %(                       %%                  
+remote:                   %%%%%%%%%%%%%%%%%%%%%%%%%%%                  
+remote:                 %#%*%#///////%# %%///////%%%%%%                
+remote:                ,% %*%%******%#   %%******%(%%,%                
+remote:                  %%/ %%/**%%/%%%%%%%(**#%( %%#                 
+remote:                   %%          %%%          %(                  
+remote:                    %                      .%                   
+remote:                    *%        %%%%%       .%                    
+remote:                      %#                 %%                     
+remote:                       .%%            .%%                       
+remote:                       .%%.%%,     %%%.%%/                      
+remote:                 %%%%%%##%.  #%%%%%.  .%((%%%%%%                
+remote:             %%#(((((((((%%,         #%%(((((((((#%%.           
+remote:       %%%((((((((((((((((((%%%, .%%%((((((((((((((((((#%%*     
+remote:     %%(((((((((((((((((((((((((%(((((((((((((((((((((((((#%.   
+remote:   ,%(((((((((((((((((((((((((((((((((((((((((((((((((((((((%#  
+remote:   %#((((((((((((((((((((((((((((((((((((((((((((((((((((((((%  
+remote:   %%%%%%%%%%%%%(((((((((((((((((((((((((((((((((%%%%%%%%%%%%%  
+remote:  %%            %####((((((###%%%%%%%%#(((((((((%            ,% 
+remote: ,%             %%%%%%#.               %%%((((((%*            %%
+remote: #%                                       %%%#                %%
+remote: .%                             .%%%%%%%%%                    %#
+remote:  %                         #%%%                              % 
+remote:  %                     %%%%                                  %*
+remote: /%************/#%%%%%%######%%*                        ..,*/(%%
+remote:               %%######(((((((##################%%              
+remote:               %%######(((((((((((((((((((((((((%%              
+remote: //////////////%%%%%%%%#########################%%/////////  ///
+remote: ----------------------------------------------------
+remote: 'release/01.00.000.258' is protected by branch permissions.
+remote: Check your branch permissions configuration with the project administrator.
+remote: ----------------------------------------------------
+remote: 
+remote: 
+To ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/schema.git
+ ! [remote rejected] release/01.00.000.258 (pre-receive hook declined)
+error: failed to push some refs to 'ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/schema.git'
