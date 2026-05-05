@@ -1,88 +1,4 @@
-for path in \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-aggregator/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-api/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-common/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-core/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-integration/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-integration-api/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-integration-core/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-integration-test/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-services-aggregator/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-services-ear/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-services-order-services/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-test-support/02.00.000.155-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws/ws-version-war/02.00.000.155-RC"; do
-  echo "Deleting: $path"
-  curl -s -u sa_bamboo:$TOKEN -X DELETE \
-    -w "  HTTP: %{http_code}\n" \
-    "$HOST/artifactory/$path"
-done
-
-
-cat > /tmp/aql-final-verify.txt <<'EOF'
-items.find({
-  "$or": [
-    {"$and": [
-      {"path": {"$match": "*db/schema*"}},
-      {"$or": [
-        {"path": {"$match": "*01.00.000.259*"}},
-        {"path": {"$match": "*01.00.000.260*"}}
-      ]}
-    ]},
-    {"$and": [
-      {"path": {"$match": "*ws-client*"}},
-      {"path": {"$match": "*02.00.000.147*"}}
-    ]},
-    {"$and": [
-      {"path": {"$match": "gov/gsa/cnxs/ws/*"}},
-      {"path": {"$match": "*02.00.000.155*"}}
-    ]}
-  ]
-}).include("repo", "path", "name").limit(50)
-EOF
-
-curl -s -u sa_bamboo:$TOKEN \
-  -X POST \
-  -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-final-verify.txt \
-  "$HOST/artifactory/api/search/aql" | jq '{ total: .range.total, results: .results }'
-
-
-
-# Phase 1: Schema (3 folders)
-for path in \
-  "conexus-release-local/gov/gsa/cnxs/db/schema/01.00.000.259" \
-  "conexus-rc-local/gov/gsa/cnxs/db/schema/01.00.000.259-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/db/schema/01.00.000.260-RC"; do
-  echo "Deleting: $path"
-  curl -s -u sa_bamboo:$TOKEN -X DELETE \
-    -w "  HTTP: %{http_code}\n" \
-    "$HOST/artifactory/$path"
-done
-
-# Phase 2: ws-client 147-RC (4 folders)
-for path in \
-  "conexus-rc-local/gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.147-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.147-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.147-RC" \
-  "conexus-rc-local/gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.147-RC"; do
-  echo "Deleting: $path"
-  curl -s -u sa_bamboo:$TOKEN -X DELETE \
-    -w "  HTTP: %{http_code}\n" \
-    "$HOST/artifactory/$path"
-done
-
-# Phase 3: ws 155-RC (16 folders) — see big loop above
-
-# Phase 4: Verification (1 query) — see above
-
-
-
-
-cat > /tmp/aql-cleanup-verify-fixed.txt <<'EOF'
+cat > /tmp/aql-comprehensive-verify.txt <<'EOF'
 items.find({
   "$or": [
     {
@@ -94,13 +10,10 @@ items.find({
     {
       "$and": [
         {"repo": "conexus-rc-local"},
-        {"path": {"$match": "gov/gsa/cnxs/db/schema/01.00.000.259-RC*"}}
-      ]
-    },
-    {
-      "$and": [
-        {"repo": "conexus-rc-local"},
-        {"path": {"$match": "gov/gsa/cnxs/db/schema/01.00.000.260-RC*"}}
+        {"$or": [
+          {"path": {"$match": "gov/gsa/cnxs/db/schema/01.00.000.259-RC*"}},
+          {"path": {"$match": "gov/gsa/cnxs/db/schema/01.00.000.260-RC*"}}
+        ]}
       ]
     },
     {
@@ -108,22 +21,19 @@ items.find({
         {"repo": "conexus-rc-local"},
         {"path": {"$match": "gov/gsa/cnxs/ws-client/*/02.00.000.147-RC*"}}
       ]
+    },
+    {
+      "$and": [
+        {"repo": "conexus-rc-local"},
+        {"path": {"$match": "gov/gsa/cnxs/ws/*/02.00.000.155-RC*"}}
+      ]
     }
   ]
-}).include("repo", "path", "name", "created").limit(200)
+}).include("repo", "path", "name").limit(200)
 EOF
 
 curl -s -u sa_bamboo:$TOKEN \
   -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-cleanup-verify-fixed.txt \
+  --data-binary @/tmp/aql-comprehensive-verify.txt \
   "$HOST/artifactory/api/search/aql" | jq '{ total: .range.total, results: .results }'
-
-
-
-I was checking to make sure the RC branches and artifacts have been cleaned up.  These are the ones that still need cleaned up.
-
-schema has a 259 release branch and 259, 260 artifacts in artifactory
-ws-client has a 147 release branch and 147 artifacts in artifactory
-ws has 155 artifacts in artifactory
-We will need these cleaned up before doing the test RC this afternoon
