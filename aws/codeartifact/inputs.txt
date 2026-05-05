@@ -1,86 +1,125 @@
-# Option 1: Generate a personal access token in the Artifactory UI for yourself,
-# then paste it directly:
-TOKEN=<paste-actual-token>
+TOKEN=<your-token>
+HOST=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
 
-# Option 2: Use admin/api-key if you have it:
-TOKEN=<your-admin-api-key>
+# Delete schema 259 from release-local
+curl -s -u sa_bamboo:$TOKEN -X DELETE \
+  "$HOST/artifactory/conexus-release-local/gov/gsa/cnxs/db/schema/01.00.000.259"
 
-# Option 3: Test with a no-auth check first to see what happens:
-curl -s "$HOST/artifactory/api/system/ping"
-# Should return "OK" if Artifactory is reachable
+# Delete schema 259-RC from rc-local
+curl -s -u sa_bamboo:$TOKEN -X DELETE \
+  "$HOST/artifactory/conexus-rc-local/gov/gsa/cnxs/db/schema/01.00.000.259-RC"
 
-
-# Test auth with a simple known query
-curl -s -u sa_bamboo:$TOKEN \
-  "$HOST/artifactory/api/repositories" \
-  | jq 'length'
-# Should return a number like 25 (count of repos), not 0 or an error
+# Delete schema 260-RC from rc-local
+curl -s -u sa_bamboo:$TOKEN -X DELETE \
+  "$HOST/artifactory/conexus-rc-local/gov/gsa/cnxs/db/schema/01.00.000.260-RC"
 
 
 
-
-
-cat > /tmp/aql-all-schema.txt <<'EOF'
+cat > /tmp/aql-schema-verify.txt <<'EOF'
 items.find({
   "$or": [
     {"repo": "conexus-release-local"},
     {"repo": "conexus-rc-local"}
   ],
-  "path": {"$match": "gov/gsa/cnxs/db/schema*"}
-}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
+  "path": {"$match": "gov/gsa/cnxs/db/schema*"},
+  "$or": [
+    {"path": {"$match": "*01.00.000.259*"}},
+    {"path": {"$match": "*01.00.000.260*"}}
+  ]
+}).include("repo", "path", "name").limit(50)
 EOF
 
 curl -s -u sa_bamboo:$TOKEN \
   -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-all-schema.txt \
+  --data-binary @/tmp/aql-schema-verify.txt \
   "$HOST/artifactory/api/search/aql" | jq
 
 
-
-
-cat > /tmp/aql-all-ws-client.txt <<'EOF'
+cat > /tmp/aql-ws-154-full.txt <<'EOF'
 items.find({
   "$or": [
     {"repo": "conexus-release-local"},
     {"repo": "conexus-rc-local"}
   ],
-  "path": {"$match": "gov/gsa/cnxs/ws-client*"}
-}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
+  "path": {"$match": "gov/gsa/cnxs/ws/*02.00.000.154*"}
+}).include("repo", "path", "name", "created").sort({"$asc": ["path"]}).limit(500)
 EOF
 
 curl -s -u sa_bamboo:$TOKEN \
   -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-all-ws-client.txt \
-  "$HOST/artifactory/api/search/aql" | jq
+  --data-binary @/tmp/aql-ws-154-full.txt \
+  "$HOST/artifactory/api/search/aql" | jq '{ total: .range.total, results: .results }'
 
 
 
 
-cat > /tmp/aql-all-ws.txt <<'EOF'
+cat > /tmp/aql-ws-154-full.txt <<'EOF'
 items.find({
   "$or": [
     {"repo": "conexus-release-local"},
     {"repo": "conexus-rc-local"}
   ],
-  "path": {"$match": "gov/gsa/cnxs/ws/*"}
-}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
+  "path": {"$match": "gov/gsa/cnxs/ws/*02.00.000.154*"}
+}).include("repo", "path", "name", "created").sort({"$asc": ["path"]}).limit(500)
 EOF
 
 curl -s -u sa_bamboo:$TOKEN \
   -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-all-ws.txt \
-  "$HOST/artifactory/api/search/aql" | jq
+  --data-binary @/tmp/aql-ws-154-full.txt \
+  "$HOST/artifactory/api/search/aql" | jq '{ total: .range.total, results: .results }'
 
+
+
+
+
+cat > /tmp/aql-ws-154-full.txt <<'EOF'
+items.find({
+  "$or": [
+    {"repo": "conexus-release-local"},
+    {"repo": "conexus-rc-local"}
+  ],
+  "path": {"$match": "gov/gsa/cnxs/ws/*02.00.000.154*"}
+}).include("repo", "path", "name", "created").sort({"$asc": ["path"]}).limit(500)
+EOF
 
 curl -s -u sa_bamboo:$TOKEN \
-  "$HOST/artifactory/api/repositories" | jq 'length'
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-ws-154-full.txt \
+  "$HOST/artifactory/api/search/aql" | jq '{ total: .range.total, results: .results }'
 
+
+
+
+for path in \
+  "conexus-release-local/gov/gsa/cnxs/db/schema/01.00.000.259" \
+  "conexus-rc-local/gov/gsa/cnxs/db/schema/01.00.000.259-RC" \
+  "conexus-rc-local/gov/gsa/cnxs/db/schema/01.00.000.260-RC"; do
+  echo "Deleting: $path"
+  curl -s -u sa_bamboo:$TOKEN -X DELETE \
+    -w "  HTTP: %{http_code}\n" \
+    "$HOST/artifactory/$path"
+done
+
+
+cat > /tmp/aql-cleanup-verify.txt <<'EOF'
+items.find({
+  "$or": [
+    {"path": {"$match": "*01.00.000.259*"}, "repo": {"$match": "conexus-*-local"}},
+    {"path": {"$match": "*01.00.000.260*"}, "repo": {"$match": "conexus-*-local"}},
+    {"path": {"$match": "*02.00.000.147*"}, "repo": {"$match": "conexus-*-local"}}
+  ]
+}).include("repo", "path", "name").limit(50)
+EOF
 
 curl -s -u sa_bamboo:$TOKEN \
-  "$HOST/artifactory/api/repositories" | jq 'length'
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-cleanup-verify.txt \
+  "$HOST/artifactory/api/search/aql" | jq '{ total: .range.total, results: .results }'
 
 
 
