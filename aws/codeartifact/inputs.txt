@@ -122,6 +122,26 @@ curl -s -u sa_bamboo:$TOKEN \
   "$HOST/artifactory/api/search/aql" | jq '{ total: .range.total, results: .results }'
 
 
+cat > /tmp/aql-ws-155-full.txt <<'EOF'
+items.find({
+  "$or": [
+    {"repo": "conexus-release-local"},
+    {"repo": "conexus-rc-local"}
+  ],
+  "$or": [
+    {"path": {"$match": "gov/gsa/cnxs/ws/*02.00.000.155*"}},
+    {"name": {"$match": "*02.00.000.155*"}}
+  ]
+}).include("repo", "path", "name", "size", "created", "type").sort({"$asc": ["repo", "path"]}).limit(500)
+EOF
+
+curl -s -u sa_bamboo:$TOKEN \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-ws-155-full.txt \
+  "$HOST/artifactory/api/search/aql" | jq '{ total: .range.total, results: .results }'
+
+
 
 I was checking to make sure the RC branches and artifacts have been cleaned up.  These are the ones that still need cleaned up.
 
