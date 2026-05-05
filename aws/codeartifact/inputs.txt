@@ -1,77 +1,86 @@
-TOKEN=${bamboo_artifactory_access_token_secret}
-HOST=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
+# Option 1: Generate a personal access token in the Artifactory UI for yourself,
+# then paste it directly:
+TOKEN=<paste-actual-token>
 
-cat > /tmp/aql-schema-release.txt <<'EOF'
-items.find({
-  "repo": "conexus-release-local",
-  "path": {"$match": "gov/gsa/cnxs/schema*"},
-  "$or": [
-    {"path": {"$match": "*01.00.000.259*"}},
-    {"path": {"$match": "*01.00.000.260*"}}
-  ]
-}).include("repo", "path", "name", "size", "created", "type")
-EOF
+# Option 2: Use admin/api-key if you have it:
+TOKEN=<your-admin-api-key>
 
+# Option 3: Test with a no-auth check first to see what happens:
+curl -s "$HOST/artifactory/api/system/ping"
+# Should return "OK" if Artifactory is reachable
+
+
+# Test auth with a simple known query
 curl -s -u sa_bamboo:$TOKEN \
-  -X POST \
-  -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-schema-release.txt \
-  "$HOST/artifactory/api/search/aql" | jq
+  "$HOST/artifactory/api/repositories" \
+  | jq 'length'
+# Should return a number like 25 (count of repos), not 0 or an error
 
 
-cat > /tmp/aql-schema-rc.txt <<'EOF'
-items.find({
-  "repo": "conexus-rc-local",
-  "path": {"$match": "gov/gsa/cnxs/schema*"},
-  "$or": [
-    {"path": {"$match": "*01.00.000.259*"}},
-    {"path": {"$match": "*01.00.000.260*"}}
-  ]
-}).include("repo", "path", "name", "size", "created", "type")
-EOF
-
-curl -s -u sa_bamboo:$TOKEN \
-  -X POST \
-  -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-schema-rc.txt \
-  "$HOST/artifactory/api/search/aql" | jq
 
 
-cat > /tmp/aql-ws-client.txt <<'EOF'
+
+cat > /tmp/aql-all-schema.txt <<'EOF'
 items.find({
   "$or": [
     {"repo": "conexus-release-local"},
     {"repo": "conexus-rc-local"}
   ],
-  "path": {"$match": "gov/gsa/cnxs/ws-client*"},
-  "path": {"$match": "*01.00.000.147*"}
-}).include("repo", "path", "name", "size", "created", "type")
+  "path": {"$match": "gov/gsa/cnxs/schema*"}
+}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
 EOF
 
 curl -s -u sa_bamboo:$TOKEN \
   -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-ws-client.txt \
+  --data-binary @/tmp/aql-all-schema.txt \
   "$HOST/artifactory/api/search/aql" | jq
 
 
 
-cat > /tmp/aql-ws.txt <<'EOF'
+
+cat > /tmp/aql-all-ws-client.txt <<'EOF'
 items.find({
   "$or": [
     {"repo": "conexus-release-local"},
     {"repo": "conexus-rc-local"}
   ],
-  "path": {"$match": "gov/gsa/cnxs/ws*"},
-  "path": {"$match": "*01.00.000.155*"}
-}).include("repo", "path", "name", "size", "created", "type")
+  "path": {"$match": "gov/gsa/cnxs/ws-client*"}
+}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
 EOF
 
 curl -s -u sa_bamboo:$TOKEN \
   -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-ws.txt \
+  --data-binary @/tmp/aql-all-ws-client.txt \
   "$HOST/artifactory/api/search/aql" | jq
+
+
+
+
+cat > /tmp/aql-all-ws.txt <<'EOF'
+items.find({
+  "$or": [
+    {"repo": "conexus-release-local"},
+    {"repo": "conexus-rc-local"}
+  ],
+  "path": {"$match": "gov/gsa/cnxs/ws/*"}
+}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
+EOF
+
+curl -s -u sa_bamboo:$TOKEN \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-all-ws.txt \
+  "$HOST/artifactory/api/search/aql" | jq
+
+
+curl -s -u sa_bamboo:$TOKEN \
+  "$HOST/artifactory/api/repositories" | jq 'length'
+
+
+curl -s -u sa_bamboo:$TOKEN \
+  "$HOST/artifactory/api/repositories" | jq 'length'
 
 
 
