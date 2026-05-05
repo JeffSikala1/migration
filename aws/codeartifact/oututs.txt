@@ -1,99 +1,1032 @@
-[sikaj01@ip-10-56-112-33 schema]$ TOKEN=${bamboo_artifactory_access_token_secret}
-HOST=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
-
-cat > /tmp/aql-schema-release.txt <<'EOF'
-items.find({
-  "repo": "conexus-release-local",
-  "path": {"$match": "gov/gsa/cnxs/schema*"},
-  "$or": [
-    {"path": {"$match": "*01.00.000.259*"}},
-    {"path": {"$match": "*01.00.000.260*"}}
-  ]
-}).include("repo", "path", "name", "size", "created", "type")
-EOF
-
-curl -s -u sa_bamboo:$TOKEN \
-  -X POST \
-  -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-schema-release.txt \
-  "$HOST/artifactory/api/search/aql" | jq
-{
-  "results": [],
-  "range": {
-    "start_pos": 0,
-    "end_pos": 0,
-    "total": 0
-  }
-}
-[sikaj01@ip-10-56-112-33 schema]$ cat > /tmp/aql-schema-rc.txt <<'EOF'
-items.find({
-  "repo": "conexus-rc-local",
-  "path": {"$match": "gov/gsa/cnxs/schema*"},
-  "$or": [
-    {"path": {"$match": "*01.00.000.259*"}},
-    {"path": {"$match": "*01.00.000.260*"}}
-  ]
-}).include("repo", "path", "name", "size", "created", "type")
-EOF
-
-curl -s -u sa_bamboo:$TOKEN \
-  -X POST \
-  -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-schema-rc.txt \
-  "$HOST/artifactory/api/search/aql" | jq
-{
-  "results": [],
-  "range": {
-    "start_pos": 0,
-    "end_pos": 0,
-    "total": 0
-  }
-}
-[sikaj01@ip-10-56-112-33 schema]$ cat > /tmp/aql-ws-client.txt <<'EOF'
+[sikaj01@ip-10-56-112-33 schema]$ cat > /tmp/aql-all-schema.txt <<'EOF'
 items.find({
   "$or": [
     {"repo": "conexus-release-local"},
     {"repo": "conexus-rc-local"}
   ],
-  "path": {"$match": "gov/gsa/cnxs/ws-client*"},
-  "path": {"$match": "*01.00.000.147*"}
-}).include("repo", "path", "name", "size", "created", "type")
+  "path": {"$match": "gov/gsa/cnxs/schema*"}
+}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
 EOF
 
 curl -s -u sa_bamboo:$TOKEN \
   -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-ws-client.txt \
+  --data-binary @/tmp/aql-all-schema.txt \
   "$HOST/artifactory/api/search/aql" | jq
 {
   "results": [],
   "range": {
     "start_pos": 0,
     "end_pos": 0,
-    "total": 0
+    "total": 0,
+    "limit": 50
   }
 }
-[sikaj01@ip-10-56-112-33 schema]$ cat > /tmp/aql-ws.txt <<'EOF'
+[sikaj01@ip-10-56-112-33 schema]$ cat > /tmp/aql-all-ws-client.txt <<'EOF'
 items.find({
   "$or": [
     {"repo": "conexus-release-local"},
     {"repo": "conexus-rc-local"}
   ],
-  "path": {"$match": "gov/gsa/cnxs/ws*"},
-  "path": {"$match": "*01.00.000.155*"}
-}).include("repo", "path", "name", "size", "created", "type")
+  "path": {"$match": "gov/gsa/cnxs/ws-client*"}
+}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
 EOF
 
 curl -s -u sa_bamboo:$TOKEN \
   -X POST \
   -H "Content-Type: text/plain" \
-  --data-binary @/tmp/aql-ws.txt \
+  --data-binary @/tmp/aql-all-ws-client.txt \
+  "$HOST/artifactory/api/search/aql" | jq
+{
+  "results": [
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.147-RC",
+      "name": "ws-health-check-02.00.000.147-RC.jar",
+      "created": "2026-04-14T19:12:30.050Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.147-RC",
+      "name": "ws-health-check-02.00.000.147-RC-tests.jar",
+      "created": "2026-04-14T19:12:30.050Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.147-RC",
+      "name": "ws-health-check-02.00.000.147-RC.pom",
+      "created": "2026-04-14T19:12:29.886Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.147-RC",
+      "name": "ws-client-order-services-02.00.000.147-RC.jar",
+      "created": "2026-04-14T19:12:27.626Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.147-RC",
+      "name": "ws-client-order-services-02.00.000.147-RC-tests.jar",
+      "created": "2026-04-14T19:12:27.617Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.147-RC",
+      "name": "ws-client-order-services-02.00.000.147-RC.pom",
+      "created": "2026-04-14T19:12:27.375Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.147-RC",
+      "name": "ws-client-common-02.00.000.147-RC-tests.jar",
+      "created": "2026-04-14T19:12:23.656Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.147-RC",
+      "name": "ws-client-common-02.00.000.147-RC.jar",
+      "created": "2026-04-14T19:12:23.616Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.147-RC",
+      "name": "ws-client-common-02.00.000.147-RC.pom",
+      "created": "2026-04-14T19:12:23.448Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.147-RC",
+      "name": "ws-client-aggregator-02.00.000.147-RC.pom",
+      "created": "2026-04-14T19:12:17.697Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145",
+      "name": "ws-client-common-02.00.000.145-tests.jar",
+      "created": "2026-04-04T17:53:37.571Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145",
+      "name": "ws-client-common-02.00.000.145.pom",
+      "created": "2026-04-04T17:53:37.555Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145",
+      "name": "ws-client-common-02.00.000.145.jar",
+      "created": "2026-04-04T17:53:37.398Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145",
+      "name": "ws-client-aggregator-02.00.000.145.pom",
+      "created": "2026-04-04T17:53:35.051Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.145-RC",
+      "name": "ws-health-check-02.00.000.145-RC-tests.jar",
+      "created": "2026-03-19T19:21:45.865Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.145-RC",
+      "name": "ws-health-check-02.00.000.145-RC.jar",
+      "created": "2026-03-19T19:21:45.865Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.145-RC",
+      "name": "ws-health-check-02.00.000.145-RC.pom",
+      "created": "2026-03-19T19:21:45.668Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.145-RC",
+      "name": "ws-client-order-services-02.00.000.145-RC.jar",
+      "created": "2026-03-19T19:21:43.797Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.145-RC",
+      "name": "ws-client-order-services-02.00.000.145-RC-tests.jar",
+      "created": "2026-03-19T19:21:43.796Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.145-RC",
+      "name": "ws-client-order-services-02.00.000.145-RC.pom",
+      "created": "2026-03-19T19:21:43.645Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145-RC",
+      "name": "ws-client-common-02.00.000.145-RC-tests.jar",
+      "created": "2026-03-19T19:21:39.976Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145-RC",
+      "name": "ws-client-common-02.00.000.145-RC.jar",
+      "created": "2026-03-19T19:21:39.959Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145-RC",
+      "name": "ws-client-common-02.00.000.145-RC.pom",
+      "created": "2026-03-19T19:21:39.744Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145-RC",
+      "name": "ws-client-aggregator-02.00.000.145-RC.pom",
+      "created": "2026-03-19T19:21:33.536Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/01.00.000.142",
+      "name": "ws-client-01.00.000.142.jar",
+      "created": "2025-11-25T23:10:25.765Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/01.00.000.142",
+      "name": "ws-client-01.00.000.142-tests.jar",
+      "created": "2025-11-25T23:10:23.834Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142",
+      "name": "ws-health-check-01.00.000.142.pom",
+      "created": "2025-11-25T23:10:21.864Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142",
+      "name": "ws-health-check-01.00.000.142.jar",
+      "created": "2025-11-25T23:10:21.820Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142",
+      "name": "ws-client-order-services-01.00.000.142.pom",
+      "created": "2025-11-25T23:10:19.821Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142",
+      "name": "ws-client-order-services-01.00.000.142.jar",
+      "created": "2025-11-25T23:10:19.774Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142",
+      "name": "ws-client-common-01.00.000.142.pom",
+      "created": "2025-11-25T23:10:17.602Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142",
+      "name": "ws-client-common-01.00.000.142.jar",
+      "created": "2025-11-25T23:10:17.562Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/01.00.000.142",
+      "name": "ws-client-aggregator-01.00.000.142.pom",
+      "created": "2025-11-25T23:10:15.016Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142-RC",
+      "name": "ws-health-check-01.00.000.142-RC-tests.jar",
+      "created": "2025-11-13T19:59:18.307Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142-RC",
+      "name": "ws-health-check-01.00.000.142-RC.jar",
+      "created": "2025-11-13T19:59:18.304Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142-RC",
+      "name": "ws-health-check-01.00.000.142-RC.pom",
+      "created": "2025-11-13T19:59:18.191Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142-RC",
+      "name": "ws-client-order-services-01.00.000.142-RC.jar",
+      "created": "2025-11-13T19:59:15.896Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142-RC",
+      "name": "ws-client-order-services-01.00.000.142-RC-tests.jar",
+      "created": "2025-11-13T19:59:15.888Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142-RC",
+      "name": "ws-client-order-services-01.00.000.142-RC.pom",
+      "created": "2025-11-13T19:59:15.855Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142-RC",
+      "name": "ws-client-common-01.00.000.142-RC-tests.jar",
+      "created": "2025-11-13T19:59:10.825Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142-RC",
+      "name": "ws-client-common-01.00.000.142-RC.jar",
+      "created": "2025-11-13T19:59:10.802Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142-RC",
+      "name": "ws-client-common-01.00.000.142-RC.pom",
+      "created": "2025-11-13T19:59:10.759Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/01.00.000.142-RC",
+      "name": "ws-client-aggregator-01.00.000.142-RC.pom",
+      "created": "2025-11-13T19:59:02.158Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/01.00.000.141",
+      "name": "ws-client-01.00.000.141.jar",
+      "created": "2025-10-28T20:30:34.843Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/01.00.000.141",
+      "name": "ws-client-01.00.000.141-tests.jar",
+      "created": "2025-10-28T20:30:32.477Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.141",
+      "name": "ws-health-check-01.00.000.141.pom",
+      "created": "2025-10-28T20:30:30.062Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.141",
+      "name": "ws-health-check-01.00.000.141.jar",
+      "created": "2025-10-28T20:30:30.021Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.141",
+      "name": "ws-client-order-services-01.00.000.141.pom",
+      "created": "2025-10-28T20:30:27.749Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.141",
+      "name": "ws-client-order-services-01.00.000.141.jar",
+      "created": "2025-10-28T20:30:27.709Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.141",
+      "name": "ws-client-common-01.00.000.141.pom",
+      "created": "2025-10-28T20:30:25.777Z"
+    }
+  ],
+  "range": {
+    "start_pos": 0,
+    "end_pos": 50,
+    "total": 50,
+    "limit": 50
+  }
+}
+
+[sikaj01@ip-10-56-112-33 schema]$ cat > /tmp/aql-all-schema.txt <<'EOF'
+items.find({
+  "$or": [
+    {"repo": "conexus-release-local"},
+    {"repo": "conexus-rc-local"}
+  ],
+  "path": {"$match": "gov/gsa/cnxs/schema*"}
+}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
+EOF
+
+curl -s -u sa_bamboo:$TOKEN \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-all-schema.txt \
   "$HOST/artifactory/api/search/aql" | jq
 {
   "results": [],
   "range": {
     "start_pos": 0,
     "end_pos": 0,
-    "total": 0
+    "total": 0,
+    "limit": 50
   }
 }
+[sikaj01@ip-10-56-112-33 schema]$ cat > /tmp/aql-all-ws-client.txt <<'EOF'
+items.find({
+  "$or": [
+    {"repo": "conexus-release-local"},
+    {"repo": "conexus-rc-local"}
+  ],
+  "path": {"$match": "gov/gsa/cnxs/ws-client*"}
+}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
+EOF
+
+curl -s -u sa_bamboo:$TOKEN \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-all-ws-client.txt \
+  "$HOST/artifactory/api/search/aql" | jq
+{
+  "results": [
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.147-RC",
+      "name": "ws-health-check-02.00.000.147-RC.jar",
+      "created": "2026-04-14T19:12:30.050Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.147-RC",
+      "name": "ws-health-check-02.00.000.147-RC-tests.jar",
+      "created": "2026-04-14T19:12:30.050Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.147-RC",
+      "name": "ws-health-check-02.00.000.147-RC.pom",
+      "created": "2026-04-14T19:12:29.886Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.147-RC",
+      "name": "ws-client-order-services-02.00.000.147-RC.jar",
+      "created": "2026-04-14T19:12:27.626Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.147-RC",
+      "name": "ws-client-order-services-02.00.000.147-RC-tests.jar",
+      "created": "2026-04-14T19:12:27.617Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.147-RC",
+      "name": "ws-client-order-services-02.00.000.147-RC.pom",
+      "created": "2026-04-14T19:12:27.375Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.147-RC",
+      "name": "ws-client-common-02.00.000.147-RC-tests.jar",
+      "created": "2026-04-14T19:12:23.656Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.147-RC",
+      "name": "ws-client-common-02.00.000.147-RC.jar",
+      "created": "2026-04-14T19:12:23.616Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.147-RC",
+      "name": "ws-client-common-02.00.000.147-RC.pom",
+      "created": "2026-04-14T19:12:23.448Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.147-RC",
+      "name": "ws-client-aggregator-02.00.000.147-RC.pom",
+      "created": "2026-04-14T19:12:17.697Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145",
+      "name": "ws-client-common-02.00.000.145-tests.jar",
+      "created": "2026-04-04T17:53:37.571Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145",
+      "name": "ws-client-common-02.00.000.145.pom",
+      "created": "2026-04-04T17:53:37.555Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145",
+      "name": "ws-client-common-02.00.000.145.jar",
+      "created": "2026-04-04T17:53:37.398Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145",
+      "name": "ws-client-aggregator-02.00.000.145.pom",
+      "created": "2026-04-04T17:53:35.051Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.145-RC",
+      "name": "ws-health-check-02.00.000.145-RC-tests.jar",
+      "created": "2026-03-19T19:21:45.865Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.145-RC",
+      "name": "ws-health-check-02.00.000.145-RC.jar",
+      "created": "2026-03-19T19:21:45.865Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/02.00.000.145-RC",
+      "name": "ws-health-check-02.00.000.145-RC.pom",
+      "created": "2026-03-19T19:21:45.668Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.145-RC",
+      "name": "ws-client-order-services-02.00.000.145-RC.jar",
+      "created": "2026-03-19T19:21:43.797Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.145-RC",
+      "name": "ws-client-order-services-02.00.000.145-RC-tests.jar",
+      "created": "2026-03-19T19:21:43.796Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/02.00.000.145-RC",
+      "name": "ws-client-order-services-02.00.000.145-RC.pom",
+      "created": "2026-03-19T19:21:43.645Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145-RC",
+      "name": "ws-client-common-02.00.000.145-RC-tests.jar",
+      "created": "2026-03-19T19:21:39.976Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145-RC",
+      "name": "ws-client-common-02.00.000.145-RC.jar",
+      "created": "2026-03-19T19:21:39.959Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/02.00.000.145-RC",
+      "name": "ws-client-common-02.00.000.145-RC.pom",
+      "created": "2026-03-19T19:21:39.744Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/02.00.000.145-RC",
+      "name": "ws-client-aggregator-02.00.000.145-RC.pom",
+      "created": "2026-03-19T19:21:33.536Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/01.00.000.142",
+      "name": "ws-client-01.00.000.142.jar",
+      "created": "2025-11-25T23:10:25.765Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/01.00.000.142",
+      "name": "ws-client-01.00.000.142-tests.jar",
+      "created": "2025-11-25T23:10:23.834Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142",
+      "name": "ws-health-check-01.00.000.142.pom",
+      "created": "2025-11-25T23:10:21.864Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142",
+      "name": "ws-health-check-01.00.000.142.jar",
+      "created": "2025-11-25T23:10:21.820Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142",
+      "name": "ws-client-order-services-01.00.000.142.pom",
+      "created": "2025-11-25T23:10:19.821Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142",
+      "name": "ws-client-order-services-01.00.000.142.jar",
+      "created": "2025-11-25T23:10:19.774Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142",
+      "name": "ws-client-common-01.00.000.142.pom",
+      "created": "2025-11-25T23:10:17.602Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142",
+      "name": "ws-client-common-01.00.000.142.jar",
+      "created": "2025-11-25T23:10:17.562Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/01.00.000.142",
+      "name": "ws-client-aggregator-01.00.000.142.pom",
+      "created": "2025-11-25T23:10:15.016Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142-RC",
+      "name": "ws-health-check-01.00.000.142-RC-tests.jar",
+      "created": "2025-11-13T19:59:18.307Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142-RC",
+      "name": "ws-health-check-01.00.000.142-RC.jar",
+      "created": "2025-11-13T19:59:18.304Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.142-RC",
+      "name": "ws-health-check-01.00.000.142-RC.pom",
+      "created": "2025-11-13T19:59:18.191Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142-RC",
+      "name": "ws-client-order-services-01.00.000.142-RC.jar",
+      "created": "2025-11-13T19:59:15.896Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142-RC",
+      "name": "ws-client-order-services-01.00.000.142-RC-tests.jar",
+      "created": "2025-11-13T19:59:15.888Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.142-RC",
+      "name": "ws-client-order-services-01.00.000.142-RC.pom",
+      "created": "2025-11-13T19:59:15.855Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142-RC",
+      "name": "ws-client-common-01.00.000.142-RC-tests.jar",
+      "created": "2025-11-13T19:59:10.825Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142-RC",
+      "name": "ws-client-common-01.00.000.142-RC.jar",
+      "created": "2025-11-13T19:59:10.802Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.142-RC",
+      "name": "ws-client-common-01.00.000.142-RC.pom",
+      "created": "2025-11-13T19:59:10.759Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-aggregator/01.00.000.142-RC",
+      "name": "ws-client-aggregator-01.00.000.142-RC.pom",
+      "created": "2025-11-13T19:59:02.158Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/01.00.000.141",
+      "name": "ws-client-01.00.000.141.jar",
+      "created": "2025-10-28T20:30:34.843Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/01.00.000.141",
+      "name": "ws-client-01.00.000.141-tests.jar",
+      "created": "2025-10-28T20:30:32.477Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.141",
+      "name": "ws-health-check-01.00.000.141.pom",
+      "created": "2025-10-28T20:30:30.062Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-health-check/01.00.000.141",
+      "name": "ws-health-check-01.00.000.141.jar",
+      "created": "2025-10-28T20:30:30.021Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.141",
+      "name": "ws-client-order-services-01.00.000.141.pom",
+      "created": "2025-10-28T20:30:27.749Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-order-services/01.00.000.141",
+      "name": "ws-client-order-services-01.00.000.141.jar",
+      "created": "2025-10-28T20:30:27.709Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws-client/ws-client-common/01.00.000.141",
+      "name": "ws-client-common-01.00.000.141.pom",
+      "created": "2025-10-28T20:30:25.777Z"
+    }
+  ],
+  "range": {
+    "start_pos": 0,
+    "end_pos": 50,
+    "total": 50,
+    "limit": 50
+  }
+}
+[sikaj01@ip-10-56-112-33 schema]$ cat > /tmp/aql-all-ws.txt <<'EOF'
+items.find({
+  "$or": [
+    {"repo": "conexus-release-local"},
+    {"repo": "conexus-rc-local"}
+  ],
+  "path": {"$match": "gov/gsa/cnxs/ws/*"}
+}).include("repo", "path", "name", "created").sort({"$desc": ["created"]}).limit(50)
+EOF
+
+curl -s -u sa_bamboo:$TOKEN \
+  -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary @/tmp/aql-all-ws.txt \
+  "$HOST/artifactory/api/search/aql" | jq
+{
+  "results": [
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.154",
+      "name": "ws-integration-test-02.00.000.154-tests.jar",
+      "created": "2026-04-15T14:33:57.667Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.154",
+      "name": "ws-integration-test-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:57.648Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.154",
+      "name": "ws-integration-test-02.00.000.154.jar",
+      "created": "2026-04-15T14:33:57.267Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.154",
+      "name": "ws-integration-ear-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:54.478Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.154",
+      "name": "ws-integration-ear-02.00.000.154.ear",
+      "created": "2026-04-15T14:33:54.235Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.154",
+      "name": "ws-integration-core-02.00.000.154-tests.jar",
+      "created": "2026-04-15T14:33:50.889Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.154",
+      "name": "ws-integration-core-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:50.873Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.154",
+      "name": "ws-integration-core-02.00.000.154.jar",
+      "created": "2026-04-15T14:33:50.589Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.154",
+      "name": "ws-integration-api-02.00.000.154-tests.jar",
+      "created": "2026-04-15T14:33:47.665Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.154",
+      "name": "ws-integration-api-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:47.652Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.154",
+      "name": "ws-integration-api-02.00.000.154.jar",
+      "created": "2026-04-15T14:33:47.222Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration/02.00.000.154",
+      "name": "ws-integration-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:44.646Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-ear/02.00.000.154",
+      "name": "ws-services-ear-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:42.112Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-ear/02.00.000.154",
+      "name": "ws-services-ear-02.00.000.154.ear",
+      "created": "2026-04-15T14:33:41.899Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-version-war/02.00.000.154",
+      "name": "ws-version-war-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:38.808Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-version-war/02.00.000.154",
+      "name": "ws-version-war-02.00.000.154.war",
+      "created": "2026-04-15T14:33:38.655Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.154",
+      "name": "ws-services-health-check-02.00.000.154-tests.jar",
+      "created": "2026-04-15T14:33:35.432Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.154",
+      "name": "ws-services-health-check-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:35.422Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-health-check/02.00.000.154",
+      "name": "ws-services-health-check-02.00.000.154.jar",
+      "created": "2026-04-15T14:33:35.248Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.154",
+      "name": "ws-services-order-services-impl-02.00.000.154-tests.jar",
+      "created": "2026-04-15T14:33:31.873Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.154",
+      "name": "ws-services-order-services-impl-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:31.849Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-order-services-impl/02.00.000.154",
+      "name": "ws-services-order-services-impl-02.00.000.154.jar",
+      "created": "2026-04-15T14:33:31.539Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-order-services/02.00.000.154",
+      "name": "ws-services-order-services-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:28.716Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-aggregator/02.00.000.154",
+      "name": "ws-services-aggregator-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:26.029Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-core/02.00.000.154",
+      "name": "ws-core-02.00.000.154-tests.jar",
+      "created": "2026-04-15T14:33:22.968Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-core/02.00.000.154",
+      "name": "ws-core-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:22.936Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-core/02.00.000.154",
+      "name": "ws-core-02.00.000.154.jar",
+      "created": "2026-04-15T14:33:22.572Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-test-support/02.00.000.154",
+      "name": "ws-test-support-02.00.000.154-tests.jar",
+      "created": "2026-04-15T14:33:18.795Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-test-support/02.00.000.154",
+      "name": "ws-test-support-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:18.779Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-test-support/02.00.000.154",
+      "name": "ws-test-support-02.00.000.154.jar",
+      "created": "2026-04-15T14:33:18.543Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-api/02.00.000.154",
+      "name": "ws-api-02.00.000.154-tests.jar",
+      "created": "2026-04-15T14:33:15.176Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-api/02.00.000.154",
+      "name": "ws-api-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:15.155Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-api/02.00.000.154",
+      "name": "ws-api-02.00.000.154.jar",
+      "created": "2026-04-15T14:33:14.933Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-common/02.00.000.154",
+      "name": "ws-common-02.00.000.154-tests.jar",
+      "created": "2026-04-15T14:33:11.763Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-common/02.00.000.154",
+      "name": "ws-common-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:11.749Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-common/02.00.000.154",
+      "name": "ws-common-02.00.000.154.jar",
+      "created": "2026-04-15T14:33:11.575Z"
+    },
+    {
+      "repo": "conexus-release-local",
+      "path": "gov/gsa/cnxs/ws/ws-aggregator/02.00.000.154",
+      "name": "ws-aggregator-02.00.000.154.pom",
+      "created": "2026-04-15T14:33:08.345Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.154-RC",
+      "name": "ws-integration-test-02.00.000.154-RC-tests.jar",
+      "created": "2026-04-14T23:19:12.445Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.154-RC",
+      "name": "ws-integration-test-02.00.000.154-RC.jar",
+      "created": "2026-04-14T23:19:12.438Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-test/02.00.000.154-RC",
+      "name": "ws-integration-test-02.00.000.154-RC.pom",
+      "created": "2026-04-14T23:19:12.291Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.154-RC",
+      "name": "ws-integration-ear-02.00.000.154-RC.ear",
+      "created": "2026-04-14T23:19:09.449Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-ear/02.00.000.154-RC",
+      "name": "ws-integration-ear-02.00.000.154-RC.pom",
+      "created": "2026-04-14T23:19:09.153Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.154-RC",
+      "name": "ws-integration-core-02.00.000.154-RC-tests.jar",
+      "created": "2026-04-14T23:19:08.463Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.154-RC",
+      "name": "ws-integration-core-02.00.000.154-RC.jar",
+      "created": "2026-04-14T23:19:08.462Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-core/02.00.000.154-RC",
+      "name": "ws-integration-core-02.00.000.154-RC.pom",
+      "created": "2026-04-14T23:19:08.303Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.154-RC",
+      "name": "ws-integration-api-02.00.000.154-RC-tests.jar",
+      "created": "2026-04-14T23:19:07.818Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.154-RC",
+      "name": "ws-integration-api-02.00.000.154-RC.jar",
+      "created": "2026-04-14T23:19:07.815Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration-api/02.00.000.154-RC",
+      "name": "ws-integration-api-02.00.000.154-RC.pom",
+      "created": "2026-04-14T23:19:07.669Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-integration/02.00.000.154-RC",
+      "name": "ws-integration-02.00.000.154-RC.pom",
+      "created": "2026-04-14T23:19:07.259Z"
+    },
+    {
+      "repo": "conexus-rc-local",
+      "path": "gov/gsa/cnxs/ws/ws-services-ear/02.00.000.154-RC",
+      "name": "ws-services-ear-02.00.000.154-RC.ear",
+      "created": "2026-04-14T23:19:06.200Z"
+    }
+  ],
+  "range": {
+    "start_pos": 0,
+    "end_pos": 50,
+    "total": 50,
+    "limit": 50
+  }
+}
+
+[sikaj01@ip-10-56-112-33 schema]$ curl -s -u sa_bamboo:$TOKEN \
+  "$HOST/artifactory/api/repositories" | jq 'length'
+54
+[sikaj01@ip-10-56-112-33 schema]$ curl -s -u sa_bamboo:$TOKEN \
+  "$HOST/artifactory/api/repositories" | jq 'length'
+54
+[sikaj
