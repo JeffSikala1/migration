@@ -65,7 +65,7 @@ elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
 
     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-snapshot-local/"
+    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
     echo "BranchName=${BranchName}" >> file.properties
     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
