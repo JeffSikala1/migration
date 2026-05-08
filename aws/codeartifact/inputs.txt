@@ -1,5 +1,5 @@
 # clean up old files from working directory
-*/15 * * * * /bin/find /cache/bamboo/*/xml-data/build-dir/ -depth -not -path *repositories-cache* -not -path *repositoryData* -mtime +2 -delete >/dev/null 2>&1
+*/15 * * * * /bin/find /cache/bamboo/*/xml-data/build-dir/ -depth -not -path '*repositories-cache*' -not -path '*repositoryData*' -mtime +2 -delete >/dev/null 2>&1
 
 # Hourly Docker cleanup (stopped containers + unused images)
 20 */1 * * * /bin/bash /app/eiger_scripts/docker-cleanup.sh >/dev/null 2>&1
@@ -12,25 +12,11 @@
 
 
 
+sudo mkdir -p /app/eiger_scripts
+sudo chown root:root /app/eiger_scripts
+sudo chmod 755 /app/eiger_scripts
 
-# Confirm Docker data root on the build agent host
-docker info | grep "Docker Root Dir"
-# Likely: /app/docker (matches the daemon.json setup from last week)
 
-# Confirm Bamboo agent build dirs exist where expected
-ls /cache/bamboo/
-# Should show: ip-10-56-112-35.ec2.internal-ba-1, ..., ba-6
-
-# Verify atime is enabled (or scripts will need adjustment)
-mount | grep cache
-# Look for "atime" or absence of "noatime"
-
-# Confirm log directory exists for scripts
-ls -ld /var/log/
-# Standard, should exist
-
-# Confirm /opt/scripts/ exists or create it
-mkdir -p /opt/scripts
 
 
 
@@ -64,8 +50,7 @@ sudo crontab -e
 
 # Test orphan cleanup — CRITICAL: review what would be killed before continuing
 # First, observe what containers WOULD be flagged as orphans:
-docker ps --filter "name=jboss-cnx-it" --filter "name=postgres-cnx-it" --format "table {{.Names}}\t{{.Status}}\t{{.RunningFor}}"
-
+docker ps --filter "name=^jboss-cnx-it-" --filter "name=^postgres-cnx-it-" --format "{{.ID}}"
 
 # Test docker-cleanup (safe — only removes stopped/unused)
 sudo /app/eiger_scripts/docker-cleanup.sh
@@ -93,3 +78,8 @@ free -h
 sudo grep -i CRON /var/log/cron | tail -20
 sudo cat /var/log/orphaned-test-container-cleanup.log
 sudo cat /var/log/docker-cleanup.log
+
+
+
+sudo du -sh /var/lib/docker
+sudo find /var/lib/docker -type d | wc -l
