@@ -1,2 +1,67 @@
-I traced the DISC behavior and found that the deploy script there pointed at the conexus-plugin-repository virtual repo, which let Artifactory's routing handle where artifacts actually landed. Sometime during migration, the script was changed to point directly at conexus-snapshot-local, which broke release branch builds because they publish -RC artifacts that can't go in a snapshot-only repo.
-I updated the shared deploy script in bamboo-deployment to point back at conexus-plugin-repository to match DISC and let the virtual repo do the routing. Tested on Billing SFTP develop build ran clean, artifacts deployed correctly, and latestVersion populated for downstream Deploy plans. Since this is a shared script change, the same fix applies to all 8 affected plans, so release branch publishing should be working across the board now.
+# /var/spool/cron/root or /etc/cron.d/build-host-hygiene
+
+# 1. Clean up stale Bamboo build directories (every 15 min)
+#    Removes files unaccessed for 2+ days. Preserves repo caches.
+*/15 * * * * /bin/find /cache/bamboo/*/xml-data/build-dir/ -depth -not -path '*repositories-cache*' -not -path '*repositoryData*' -atime +2 -delete >/dev/null 2>&1
+
+# 2. Docker cleanup (hourly at :20) - prunes stopped containers and unused images older than 1 hour
+20 */1 * * * /bin/bash /opt/scripts/docker-cleanup.sh >/dev/null 2>&1
+
+# 3. NEW: Stop and remove orphaned test containers (every 30 min)
+#    Catches running-but-leaked jboss/postgres test containers older than 6 hours
+*/30 * * * * /bin/bash /opt/scripts/orphaned-test-container-cleanup.sh >/dev/null 2>&1
+
+# 4. Apache Commons Text vulnerability cleanup (every 15 min)
+*/15 * * * * /bin/bash /opt/scripts/find_old_apache_commons.sh >/dev/null 2>&1
+
+
+
+
+
+# Confirm Docker data root on the build agent host
+docker info | grep "Docker Root Dir"
+# Likely: /app/docker (matches the daemon.json setup from last week)
+
+# Confirm Bamboo agent build dirs exist where expected
+ls /cache/bamboo/
+# Should show: ip-10-56-112-35.ec2.internal-ba-1, ..., ba-6
+
+# Verify atime is enabled (or scripts will need adjustment)
+mount | grep cache
+# Look for "atime" or absence of "noatime"
+
+# Confirm log directory exists for scripts
+ls -ld /var/log/
+# Standard, should exist
+
+# Confirm /opt/scripts/ exists or create it
+mkdir -p /opt/scripts
+
+
+
+docker info | grep "Docker Root Dir"
+ls /cache/bamboo/
+mount | grep cache
+sudo mkdir -p /opt/scripts
+sudo chown root:root /opt/scripts
+
+sudo vim /opt/scripts/docker-cleanup.sh
+# (paste content)
+sudo vim /opt/scripts/orphaned-test-container-cleanup.sh
+# (paste content)
+sudo vim /opt/scripts/find_old_apache_commons.sh
+# (paste content)
+
+sudo chmod +x /opt/scripts/*.sh
+
+
+# Test orphan cleanup with --dry-run pattern (modify script to add a DRY_RUN env var if you want)
+# Or just observe one run:
+sudo /opt/scripts/orphaned-test-container-cleanup.sh
+sudo cat /var/log/orphaned-test-container-cleanup.log
+
+
+
+sudo crontab -e
+
+# Add the entries from above
