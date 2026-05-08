@@ -1,85 +1,14 @@
-# clean up old files from working directory
-*/15 * * * * /bin/find /cache/bamboo/*/xml-data/build-dir/ -depth -not -path '*repositories-cache*' -not -path '*repositoryData*' -mtime +2 -delete >/dev/null 2>&1
-
-# Hourly Docker cleanup (stopped containers + unused images)
-20 */1 * * * /bin/bash /app/eiger_scripts/docker-cleanup.sh >/dev/null 2>&1
-
-# Stop and remove orphaned integration test containers (running > 6 hours)
-*/30 * * * * /bin/bash /app/eiger_scripts/orphaned-test-container-cleanup.sh >/dev/null 2>&1
-
-# Automatically delete old apache commons jars - CNXS-59386
-*/15 * * * * /bin/bash /app/eiger_scripts/find_old_apache_commons.sh >/dev/null 2>&1
-
-
-
-sudo mkdir -p /app/eiger_scripts
-sudo chown root:root /app/eiger_scripts
-sudo chmod 755 /app/eiger_scripts
-
-
-
-
-
-docker info | grep "Docker Root Dir"
-ls /cache/bamboo/
-mount | grep cache
-sudo mkdir -p /opt/scripts
-sudo chown root:root /opt/scripts
-
-sudo vim /opt/scripts/docker-cleanup.sh
-# (paste content)
-sudo vim /opt/scripts/orphaned-test-container-cleanup.sh
-# (paste content)
-sudo vim /opt/scripts/find_old_apache_commons.sh
-# (paste content)
-
-sudo chmod +x /opt/scripts/*.sh
-
-
-# Test orphan cleanup with --dry-run pattern (modify script to add a DRY_RUN env var if you want)
-# Or just observe one run:
-sudo /opt/scripts/orphaned-test-container-cleanup.sh
-sudo cat /var/log/orphaned-test-container-cleanup.log
-
-
-
-sudo crontab -e
-
-# Add the entries from above
-
-
-# Test orphan cleanup — CRITICAL: review what would be killed before continuing
-# First, observe what containers WOULD be flagged as orphans:
-docker ps --filter "name=^jboss-cnx-it-" --filter "name=^postgres-cnx-it-" --format "{{.name}}"
-
-# Test docker-cleanup (safe — only removes stopped/unused)
-sudo /app/eiger_scripts/docker-cleanup.sh
-sudo cat /var/log/docker-cleanup.log
-
-# Test apache commons cleanup (safe — only finds matching jars)
-sudo /app/eiger_scripts/find_old_apache_commons.sh
-sudo cat /var/log/apache_commons_pre_1_10_removed.log
-
-sudo crontab -e
-
-# Trigger one immediate run
-sudo /app/eiger_scripts/orphaned-test-container-cleanup.sh
-
-# Verify it caught the multi-day-old containers from Image 6:
-docker ps --filter "name=jboss-cnx-it" --filter "name=postgres-cnx-it" --format "table {{.Names}}\t{{.Status}}"
-
-# Confirm memory recovered:
+# Memory state
 free -h
 
+# Disk state
+df -h | grep -E "/$|docker"
 
+# Active containers (should be 9: 6 ba + 3 da + nothing else)
+docker ps --format "table {{.Names}}\t{{.Status}}"
 
+# No orphan jboss/postgres test containers
+docker ps --filter "name=jboss-cnx-it" --filter "name=postgres-cnx-it" --format "table {{.Names}}\t{{.Status}}"
 
-# After 30 minutes, check that cron has executed something
-sudo grep -i CRON /var/log/cron | tail -20
-sudo cat /var/log/orphaned-test-container-cleanup.log
-sudo cat /var/log/docker-cleanup.log
-
-
-
-sudo du -sh /var/lib/docker
-sudo find /var/lib/docker -type d | wc -l
+# Cron is correct
+sudo crontab -l
