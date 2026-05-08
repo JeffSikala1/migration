@@ -1,13 +1,54 @@
- Hello team, Bitbucket was down because of the below executions.  We have to be cautious and think through, the below is not the right way when a db container is active.   988  sudo dockerd --validate --config-file=/etc/docker/daemon.json
-  989  systemctl restart docker
-  990  systemctl status docker --no-pager
-  991  systemctl status docker
-  992  docker info
-  993  docker ps
-  994  docker container ls -a
-  995  docker start prod-postgres
-  996  docker ps
-  997  docker logs prod-postgre --tail 30
-  998  docker logs prod-postgres --tail 30
-  999  ext
- 1000  exit
+root@gsansfs0066 /home/psikaj01] 08:58 AM 1 # crontab -l
+# clean up old files from working directory
+*/15 * * * * /bin/find /cache/bamboo/*/xml-data/build-dir/ -depth -not -path *repositories-cache* -not -path *repositoryData* -atime +2 -delete >/dev/null 2>&1
+20 */1 * * * /bin/bash /app/eiger_scripts/docker-cleanup.sh >/dev/null 2>&1
+30 5 * * * rm -rf /app/docker/overlay2/*/merged/root/.m2/repository/CNXS* >/dev/null 2>&1
+# Automatically delete old apache commons jars - CNXS-59386
+*/15 * * * * /bin/bash /app/eiger_scripts/find_old_apache_commons.sh >/dev/null 2>&1
+#Clean up for old unused spring-core files CNXS-65520
+#*/15 * * * * /bin/bash /app/eiger_scripts/old_spring_core_file_removal.sh >/dev/null 2>&1
+
+
+[root@gsansfs0066 /home/psikaj01] 09:30 AM 7 # crontab -l
+# clean up old files from working directory
+*/15 * * * * /bin/find /cache/bamboo/*/xml-data/build-dir/ -depth -not -path *repositories-cache* -not -path *repositoryData* -atime +2 -delete >/dev/null 2>&1
+20 */1 * * * /bin/bash /app/eiger_scripts/docker-cleanup.sh >/dev/null 2>&1
+30 5 * * * rm -rf /app/docker/overlay2/*/merged/root/.m2/repository/CNXS* >/dev/null 2>&1
+# Automatically delete old apache commons jars - CNXS-59386
+*/15 * * * * /bin/bash /app/eiger_scripts/find_old_apache_commons.sh >/dev/null 2>&1
+#Clean up for old unused spring-core files CNXS-65520
+#*/15 * * * * /bin/bash /app/eiger_scripts/old_spring_core_file_removal.sh >/dev/null 2>&1
+[root@gsansfs0066 /home/psikaj01] 09:30 AM 8 # cat /app/eiger_scripts/docker-cleanup.sh 
+#!/bin/bash
+docker image prune -a -f --filter "until=1h"
+docker container prune -f --filter "until=1h"
+[root@gsansfs0066 /home/psikaj01] 09:30 AM 9 # cat /app/eiger_scripts/find_old_apache_commons.sh
+dockerhits=$(find /app/docker -name "*commons-text-1.[0-9].jar")
+currentdate=$(date '+%Y-%m-%d')
+for i in $dockerhits
+  do
+    echo $currentdate - "removed docker hits: $i" >> /app/eiger_scripts/apache_commons_pre_1_10_removed.txt
+    rm -f $i
+  done
+[root@gsansfs0066 /home/psikaj01] 09:30 AM 10 # cat /app/eiger_scripts/old_spring_core_file_removal.sh 
+dockerhits=$(find /app/docker -name "*spring-core-5.3.25.jar*")
+currentdate=$(date '+%Y-%m-%d')
+OIFS="$IFS"
+IFS=$'\n'
+for i in $dockerhits
+  do
+    rm -f "$i" && echo $currentdate - "removed spring-core hits: $i" >> /app/eiger_scripts/spring-core-5.3.25.txt
+  done
+IFS="$OIFS"
+
+
+2026-05-05 - removed docker hits: /app/docker/overlay2/f53fdcd8e7a679ee499da66750cc174160a225f86290b915e8ab9153a87ec8d9/diff/root/.m2/repository/org/apache/commons/commons-text/1.9/commons-text-1.9.jar
+2026-05-05 - removed docker hits: /app/docker/overlay2/f53fdcd8e7a679ee499da66750cc174160a225f86290b915e8ab9153a87ec8d9/merged/root/.m2/repository/org/apache/commons/commons-text/1.9/commons-text-1.9.jar
+2026-05-06 - removed docker hits: /app/docker/overlay2/a3dd4d523ba6dca28ffbcc3bb65b439c2995f18fcad95d1f5ca381e953cde769/diff/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
+2026-05-06 - removed docker hits: /app/docker/overlay2/a3dd4d523ba6dca28ffbcc3bb65b439c2995f18fcad95d1f5ca381e953cde769/merged/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
+2026-05-07 - removed docker hits: /app/docker/overlay2/f53fdcd8e7a679ee499da66750cc174160a225f86290b915e8ab9153a87ec8d9/diff/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
+2026-05-07 - removed docker hits: /app/docker/overlay2/f53fdcd8e7a679ee499da66750cc174160a225f86290b915e8ab9153a87ec8d9/merged/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
+2026-05-08 - removed docker hits: /app/docker/overlay2/917b4b653f8da7f680c14ecb74b954f1d309d1a6f99603fbc9ff7bf2535ad59e/diff/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
+2026-05-08 - removed docker hits: /app/docker/overlay2/917b4b653f8da7f680c14ecb74b954f1d309d1a6f99603fbc9ff7bf2535ad59e/merged/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
+2026-05-08 - removed docker hits: /app/docker/overlay2/a72eb93e2db56c36b962d4918b4d33f3ee170cb2dbd6bfd70270db49a1a8bb35/diff/root/.m2/repository/org/apache/commons/commons-text/1.9/commons-text-1.9.jar
+2026-05-08 - removed docker hits: /app/docker/overlay2/a72eb93e2db56c36b962d4918b4d33f3ee170cb2dbd6bfd70270db49a1a8bb35/merged/root/.m2/repository/org/apache/commons/commons-text/1.9/commons-text-1.9.jar
