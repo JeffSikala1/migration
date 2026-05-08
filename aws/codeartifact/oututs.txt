@@ -1,54 +1,103 @@
-root@gsansfs0066 /home/psikaj01] 08:58 AM 1 # crontab -l
-# clean up old files from working directory
-*/15 * * * * /bin/find /cache/bamboo/*/xml-data/build-dir/ -depth -not -path *repositories-cache* -not -path *repositoryData* -atime +2 -delete >/dev/null 2>&1
-20 */1 * * * /bin/bash /app/eiger_scripts/docker-cleanup.sh >/dev/null 2>&1
-30 5 * * * rm -rf /app/docker/overlay2/*/merged/root/.m2/repository/CNXS* >/dev/null 2>&1
-# Automatically delete old apache commons jars - CNXS-59386
-*/15 * * * * /bin/bash /app/eiger_scripts/find_old_apache_commons.sh >/dev/null 2>&1
-#Clean up for old unused spring-core files CNXS-65520
-#*/15 * * * * /bin/bash /app/eiger_scripts/old_spring_core_file_removal.sh >/dev/null 2>&1
+[root@ip-10-56-112-35 ~]# docker info | grep "Docker Root Dir"
+ Docker Root Dir: /var/lib/docker
+[root@ip-10-56-112-35 ~]# ls /cache/bamboo/
+ip-10-56-112-35.ec2.internal-ba-1  ip-10-56-112-35.ec2.internal-ba-4  ip-10-56-112-35.ec2.internal-da-1
+ip-10-56-112-35.ec2.internal-ba-2  ip-10-56-112-35.ec2.internal-ba-5  ip-10-56-112-35.ec2.internal-da-2
+ip-10-56-112-35.ec2.internal-ba-3  ip-10-56-112-35.ec2.internal-ba-6  ip-10-56-112-35.ec2.internal-da-3
+[root@ip-10-56-112-35 ~]# mount | grep cache
+[root@ip-10-56-112-35 ~]# mount
 
 
-[root@gsansfs0066 /home/psikaj01] 09:30 AM 7 # crontab -l
-# clean up old files from working directory
-*/15 * * * * /bin/find /cache/bamboo/*/xml-data/build-dir/ -depth -not -path *repositories-cache* -not -path *repositoryData* -atime +2 -delete >/dev/null 2>&1
-20 */1 * * * /bin/bash /app/eiger_scripts/docker-cleanup.sh >/dev/null 2>&1
-30 5 * * * rm -rf /app/docker/overlay2/*/merged/root/.m2/repository/CNXS* >/dev/null 2>&1
-# Automatically delete old apache commons jars - CNXS-59386
-*/15 * * * * /bin/bash /app/eiger_scripts/find_old_apache_commons.sh >/dev/null 2>&1
-#Clean up for old unused spring-core files CNXS-65520
-#*/15 * * * * /bin/bash /app/eiger_scripts/old_spring_core_file_removal.sh >/dev/null 2>&1
-[root@gsansfs0066 /home/psikaj01] 09:30 AM 8 # cat /app/eiger_scripts/docker-cleanup.sh 
-#!/bin/bash
-docker image prune -a -f --filter "until=1h"
-docker container prune -f --filter "until=1h"
-[root@gsansfs0066 /home/psikaj01] 09:30 AM 9 # cat /app/eiger_scripts/find_old_apache_commons.sh
-dockerhits=$(find /app/docker -name "*commons-text-1.[0-9].jar")
-currentdate=$(date '+%Y-%m-%d')
-for i in $dockerhits
-  do
-    echo $currentdate - "removed docker hits: $i" >> /app/eiger_scripts/apache_commons_pre_1_10_removed.txt
-    rm -f $i
-  done
-[root@gsansfs0066 /home/psikaj01] 09:30 AM 10 # cat /app/eiger_scripts/old_spring_core_file_removal.sh 
-dockerhits=$(find /app/docker -name "*spring-core-5.3.25.jar*")
-currentdate=$(date '+%Y-%m-%d')
-OIFS="$IFS"
-IFS=$'\n'
-for i in $dockerhits
-  do
-    rm -f "$i" && echo $currentdate - "removed spring-core hits: $i" >> /app/eiger_scripts/spring-core-5.3.25.txt
-  done
-IFS="$OIFS"
+[root@ip-10-56-112-35 ~]# ls -ld /var/log/
+drwxr-xr-x. 10 root root 4096 May  8 00:00 /var/log/
+[root@ip-10-56-112-35 ~]# ls -lahd /var/log/
+drwxr-xr-x. 10 root root 4.0K May  8 00:00 /var/log/
+[root@ip-10-56-112-35 ~]# ls -lah /var/log/
+total 509M
+drwxr-xr-x. 10 root     root             4.0K May  8 00:00 .
+drwxr-xr-x. 19 root     root              266 Sep 20  2025 ..
+lrwxrwxrwx.  1 root     root               39 Sep 10  2025 README -> ../../usr/share/doc/systemd/README.logs
+drwxr-xr-x.  3 root     root               48 Mar 24 20:55 amazon
+drwx------.  2 root     root             4.0K Apr 25 12:30 audit
+-rw-rw----.  1 root     utmp                0 May  1 00:00 btmp
+-rw-rw----.  1 root     utmp             2.7K Apr  3 20:06 btmp-20260501
+drwxr-x---.  2 chrony   chrony           4.0K May  8 00:00 chrony
+-rw-r-----.  1 root     adm               41K Mar 25 12:54 cloud-init-output.log
+-rw-r-----.  1 root     adm              2.0M Mar 25 12:54 cloud-init.log
+-rw-r-----.  1 root     root             1.6K Mar 17 17:40 create_agents.log
+-rw-------.  1 root     root              13K May  8 15:01 cron
+-rw-------.  1 root     root              19K May  4 23:01 cron-20260505
+-rw-------.  1 root     root              19K May  5 23:01 cron-20260506
+-rw-------.  1 root     root              19K May  6 23:01 cron-20260507
+-rw-------.  1 root     root              19K May  7 23:01 cron-20260508
+drwxr-x---.  2 dd-agent dd-agent          135 May  8 14:35 datadog
+-rw-r-----.  1 root     root             494K May  8 00:54 dnf.librepo.log
+-rw-r-----.  1 root     root             1.0M Feb  2 09:56 dnf.librepo.log.1
+-rw-r-----.  1 root     root             1.7M Sep 10  2025 dnf.librepo.log.2
+-rw-r-----.  1 root     root             549K May  8 00:54 dnf.log
+-rw-r-----.  1 root     root            1023K Mar 15 00:16 dnf.log.1
+-rw-r-----.  1 root     root             1.0M Nov 22 21:18 dnf.log.2
+-rw-r-----.  1 root     root             153K May  8 00:54 dnf.rpm.log
+-rw-------.  1 root     root             3.1K Oct  1  2025 falconctl.log
+-rw-r-----.  1 root     root              540 May  8 00:54 hawkey.log
+-rw-r-----.  1 root     root              480 Apr 11 22:30 hawkey.log-20260412
+-rw-r-----.  1 root     root              420 Apr 18 16:54 hawkey.log-20260419
+-rw-r-----.  1 root     root              420 Apr 25 11:18 hawkey.log-20260426
+-rw-r-----.  1 root     root              420 May  2 05:42 hawkey.log-20260503
+drwxr-sr-x+  3 root     systemd-journal    46 Mar 25 12:54 journal
+-rw-rw-r--.  1 root     utmp             286K May  8 15:22 lastlog
+-rw-r-----.  1 root     root                0 May  8 00:00 maillog
+-rw-r-----.  1 root     root                0 May  4 00:00 maillog-20260505
+-rw-r-----.  1 root     root                0 May  5 00:00 maillog-20260506
+-rw-r-----.  1 root     root                0 May  6 00:00 maillog-20260507
+-rw-r-----.  1 root     root                0 May  7 00:00 maillog-20260508
+-rw-r-----.  1 root     root              81M May  8 15:24 messages
+-rw-r-----.  1 root     root              66M May  4 23:59 messages-20260505
+-rw-r-----.  1 root     root              68M May  6 00:00 messages-20260506
+-rw-r-----.  1 root     root              99M May  7 00:00 messages-20260507
+-rw-r-----.  1 root     root             120M May  8 00:00 messages-20260508
+drwx------.  2 root     root                6 Sep 10  2025 private
+-rw-r--r--.  1 root     root             2.0K Mar 25 12:54 resize-rootfs-once.log
+drwxr-xr-x.  2 root     root             4.0K May  7 00:07 sa
+-rw-r-----.  1 root     root             349K May  8 15:24 secure
+-rw-r-----.  1 root     root             696K May  4 23:58 secure-20260505
+-rw-r-----.  1 root     root             671K May  6 00:00 secure-20260506
+-rw-r-----.  1 root     root             874K May  7 00:00 secure-20260507
+-rw-r-----.  1 root     root             695K May  8 00:00 secure-20260508
+-rw-r-----.  1 root     root                0 May  8 00:00 spooler
+-rw-r-----.  1 root     root                0 May  4 00:00 spooler-20260505
+-rw-r-----.  1 root     root                0 May  5 00:00 spooler-20260506
+-rw-r-----.  1 root     root                0 May  6 00:00 spooler-20260507
+-rw-r-----.  1 root     root                0 May  7 00:00 spooler-20260508
+drwxr-x---.  2 root     root               55 Oct 17  2025 sssd
+-rw-r-----.  1 root     root             187K May  8 15:22 sudo.log
+-rw-------.  1 root     root                0 Sep 10  2025 tallylog
+-rw-r--r--.  1 root     root             1.5K Mar 25 12:54 user-data-boothook.log
+-rw-r--r--.  1 root     root             9.3K Sep 26  2025 user-data-splunk.log
+-rw-------.  1 root     root              51M May  8 00:00 warn
+-rw-rw-r--.  1 root     utmp             541K May  8 15:22 wtmp
 
-
-2026-05-05 - removed docker hits: /app/docker/overlay2/f53fdcd8e7a679ee499da66750cc174160a225f86290b915e8ab9153a87ec8d9/diff/root/.m2/repository/org/apache/commons/commons-text/1.9/commons-text-1.9.jar
-2026-05-05 - removed docker hits: /app/docker/overlay2/f53fdcd8e7a679ee499da66750cc174160a225f86290b915e8ab9153a87ec8d9/merged/root/.m2/repository/org/apache/commons/commons-text/1.9/commons-text-1.9.jar
-2026-05-06 - removed docker hits: /app/docker/overlay2/a3dd4d523ba6dca28ffbcc3bb65b439c2995f18fcad95d1f5ca381e953cde769/diff/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
-2026-05-06 - removed docker hits: /app/docker/overlay2/a3dd4d523ba6dca28ffbcc3bb65b439c2995f18fcad95d1f5ca381e953cde769/merged/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
-2026-05-07 - removed docker hits: /app/docker/overlay2/f53fdcd8e7a679ee499da66750cc174160a225f86290b915e8ab9153a87ec8d9/diff/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
-2026-05-07 - removed docker hits: /app/docker/overlay2/f53fdcd8e7a679ee499da66750cc174160a225f86290b915e8ab9153a87ec8d9/merged/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
-2026-05-08 - removed docker hits: /app/docker/overlay2/917b4b653f8da7f680c14ecb74b954f1d309d1a6f99603fbc9ff7bf2535ad59e/diff/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
-2026-05-08 - removed docker hits: /app/docker/overlay2/917b4b653f8da7f680c14ecb74b954f1d309d1a6f99603fbc9ff7bf2535ad59e/merged/root/.m2/repository/org/apache/commons/commons-text/1.1/commons-text-1.1.jar
-2026-05-08 - removed docker hits: /app/docker/overlay2/a72eb93e2db56c36b962d4918b4d33f3ee170cb2dbd6bfd70270db49a1a8bb35/diff/root/.m2/repository/org/apache/commons/commons-text/1.9/commons-text-1.9.jar
-2026-05-08 - removed docker hits: /app/docker/overlay2/a72eb93e2db56c36b962d4918b4d33f3ee170cb2dbd6bfd70270db49a1a8bb35/merged/root/.m2/repository/org/apache/commons/commons-text/1.9/commons-text-1.9.jar
+[root@ip-10-56-112-35 ~]# mkdir -p /opt/scripts
+[root@ip-10-56-112-35 ~]# ll /app/
+total 32
+drwxr-xr-x. 3 root root    20 Sep 26  2025 cache
+drwx------. 2 2005 2005    79 Nov  7 21:34 ci-ssh
+-rwxr-xr-x. 1 root root  3152 May  1 00:30 create_agents.sh
+-rwxr-x---. 1 root root  3152 May  6 16:09 create_agents.sh.20260506
+-rwxr-xr-x. 1 root root 16009 Dec 14 00:27 create_agents.sh.bak
+-rwxr-x---. 1 root root  3165 May  6 16:24 create_deploy_agents.sh
+-rwxr-x---. 1 root root  3162 May  6 16:15 create_deploy_agents.sh~
+drwxr-x---. 3 root root    37 Oct  2  2025 images
+[root@ip-10-56-112-35 ~]# ll /opt/scripts/
+total 0
+[root@ip-10-56-112-35 ~]# ll /opt/
+total 32
+drwxr-xr-x. 4 root     root        30 Sep 26  2025 BESClient
+drwxr-x---. 3 root     root     16384 Mar 25 12:54 CrowdStrike
+drwxr-xr-x. 5 root     root        64 Sep 20  2025 aws
+drwxr-xr-x. 2 root     root       104 Mar 17 16:57 bamboo-keys
+drwx--x--x. 4 root     root        28 Sep 26  2025 containerd
+drwxr-xr-x. 9 dd-agent dd-agent 16384 Mar 24 20:55 datadog-agent
+drwxr-xr-x. 5 root     root        68 Mar 23 23:42 datadog-packages
+drwxrwxr-x. 8 root     root        73 Sep 20  2025 nessus_agent
+drwxr-x---. 2 root     root         6 May  8 15:25 scripts
