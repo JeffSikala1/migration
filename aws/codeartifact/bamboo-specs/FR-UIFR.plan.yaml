@@ -236,6 +236,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -281,7 +282,7 @@ Promote Job:
             [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
             RELEASE_VERSION="${RELEASE_BRANCH#release/}"
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
               exit 1
             fi
@@ -291,6 +292,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -412,6 +414,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -806,6 +809,7 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -939,6 +943,7 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -946,7 +951,7 @@ Finalize Job:
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -uo pipefail
+            set -euo pipefail
 
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
@@ -1074,7 +1079,7 @@ variables:
   module_name: ui
   maven.artifactId: ui-aggregator
   maven.groupId: gov.gsa.cnxs.ui
-  integration.branch: main
+  integration.branch: develop
 
 repositories:
   - UI:

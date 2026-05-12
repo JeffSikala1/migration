@@ -125,7 +125,7 @@ Promote Job:
               | sed 's|release/||' \
               | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
               | tail -1 \
-              | xargs -I{} echo "release/{}")
+              | sed 's|^|release/|')
 
             if [ -z "${RELEASE_BRANCH}" ]; then
               echo "INFO: no release branch found on remote"
@@ -235,6 +235,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -258,12 +259,12 @@ Promote Job:
         scripts:
           - |
             set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
             fi
 
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune >/dev/null 2>&1 || true
 
@@ -275,13 +276,13 @@ Promote Job:
               | sed 's|release/||' \
               | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
               | tail -1 \
-              | xargs -I{} echo "release/{}")
+              | sed 's|^|release/|')
 
             [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
 
             RELEASE_VERSION="${RELEASE_BRANCH#release/}"
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
               exit 1
             fi
@@ -291,6 +292,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -319,7 +321,7 @@ Promote Job:
               | sed 's|release/||' \
               | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
               | tail -1 \
-              | xargs -I{} echo "release/{}")
+              | sed 's|^|release/|')
 
             [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
 
@@ -408,6 +410,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -436,7 +439,7 @@ Promote Job:
               | sed 's|release/||' \
               | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
               | tail -1 \
-              | xargs -I{} echo "release/{}")
+              | sed 's|^|release/|')
 
             [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
 
@@ -564,7 +567,7 @@ Finalize Job:
               | sed 's|release/||' \
               | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
               | tail -1 \
-              | xargs -I{} echo "release/{}")
+              | sed 's|^|release/|')
 
             TAG_EXISTS=false
             INTEGRATION_HAS_TAG=false
@@ -729,6 +732,7 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -815,6 +819,7 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -822,7 +827,7 @@ Finalize Job:
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -uo pipefail
+            set -euo pipefail
 
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
@@ -950,7 +955,7 @@ variables:
   module_name: ws
   maven.artifactId: ws-aggregator
   maven.groupId: gov.gsa.cnxs.ws
-  integration.branch: main
+  integration.branch: develop
 
 repositories:
   - WS:

@@ -156,6 +156,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -179,6 +180,7 @@ Promote Job:
         scripts:
           - |
             set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
@@ -201,7 +203,7 @@ Promote Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
               exit 1
             fi
@@ -299,6 +301,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -457,6 +460,7 @@ Finalize Job:
         scripts:
           - |
             set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
@@ -476,7 +480,7 @@ Finalize Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
             TAG_EXISTS=false
-            MAIN_HAS_TAG=false
+            INTEGRATION_HAS_TAG=false
             BRANCH_EXISTS=false
 
             if git ls-remote --tags origin "refs/tags/${RELEASE_VERSION}" | grep -q "refs/tags/${RELEASE_VERSION}$"; then
@@ -489,32 +493,32 @@ Finalize Job:
 
             if [ "${TAG_EXISTS}" = "true" ]; then
               git fetch origin \
-                "+refs/heads/main:refs/remotes/origin/__validate_main" \
+                "+refs/heads/${bamboo.integration.branch}:refs/remotes/origin/__validate_integration" \
                 "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
                 >/dev/null 2>&1 || true
 
               TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}" 2>/dev/null || true)"
-              MAIN_COMMIT="$(git rev-parse refs/remotes/origin/__validate_main 2>/dev/null || true)"
+              INTEGRATION_COMMIT="$(git rev-parse refs/remotes/origin/__validate_integration 2>/dev/null || true)"
 
-              echo "INFO: tag_commit=${TAG_COMMIT:-missing} validate_main=${MAIN_COMMIT:-missing}"
+              echo "INFO: tag_commit=${TAG_COMMIT:-missing} validate_integration=${INTEGRATION_COMMIT:-missing}"
 
-              if [ -n "${TAG_COMMIT}" ] && [ -n "${MAIN_COMMIT}" ]; then
-                if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/origin/__validate_main"; then
-                  MAIN_HAS_TAG=true
+              if [ -n "${TAG_COMMIT}" ] && [ -n "${INTEGRATION_COMMIT}" ]; then
+                if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/origin/__validate_integration"; then
+                  INTEGRATION_HAS_TAG=true
                 fi
               fi
             fi
 
-            echo "INFO: tag_exists=${TAG_EXISTS}, main_has_tag=${MAIN_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
+            echo "INFO: tag_exists=${TAG_EXISTS}, integration_has_tag=${INTEGRATION_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
 
-            if [ "${TAG_EXISTS}" = "true" ] && [ "${MAIN_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${INTEGRATION_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
               echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
 
             if [ "${BRANCH_EXISTS}" != "true" ]; then
-              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist and release is not proven finalized on main."
+              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist and release is not proven finalized on ${bamboo.integration.branch}."
               exit 1
             fi
 
@@ -523,10 +527,11 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
-        description: Merge release branch to main, set release versions, tag, and push
+        description: Merge release branch to integration branch, set release versions, tag, and push
         working-dir: ${bamboo.module_name}
         scripts:
           - |
@@ -565,7 +570,7 @@ Finalize Job:
             fi
 
             TAG_EXISTS=false
-            TAG_ON_MAIN=false
+            TAG_ON_INTEGRATION=false
             TAG_COMMIT=""
             if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
               TAG_EXISTS=true
@@ -574,26 +579,26 @@ Finalize Job:
             fi
 
             git fetch origin \
-              "+refs/heads/main:refs/remotes/origin/main" \
+              "+refs/heads/${bamboo.integration.branch}:refs/remotes/origin/${bamboo.integration.branch}" \
               "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}" \
               --prune >/dev/null 2>&1
 
-            if ! git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1; then
-              echo "ERROR: origin/main not found after explicit fetch"
+            if ! git rev-parse --verify "refs/remotes/origin/${bamboo.integration.branch}" >/dev/null 2>&1; then
+              echo "ERROR: origin/${bamboo.integration.branch} not found after explicit fetch"
               exit 1
             fi
 
             if [ "${TAG_EXISTS}" = "true" ]; then
-              if git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/main; then
-                TAG_ON_MAIN=true
+              if git merge-base --is-ancestor "${TAG_COMMIT}" "refs/remotes/origin/${bamboo.integration.branch}"; then
+                TAG_ON_INTEGRATION=true
               fi
             fi
 
             git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
-            git checkout -B main origin/main >/dev/null 2>&1
+            git checkout -B "${bamboo.integration.branch}" "origin/${bamboo.integration.branch}" >/dev/null 2>&1
 
-            if [ "${TAG_EXISTS}" = "true" ] && [ "${TAG_ON_MAIN}" != "true" ]; then
-              echo "ERROR: release tag ${RELEASE_TAG} already exists but is not contained in origin/main."
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${TAG_ON_INTEGRATION}" != "true" ]; then
+              echo "ERROR: release tag ${RELEASE_TAG} already exists but is not contained in origin/${bamboo.integration.branch}."
               echo "ERROR: refusing to continue because reusing the stale tag would corrupt release finalization."
               exit 1
             fi
@@ -614,7 +619,7 @@ Finalize Job:
               echo "INFO: tag ${RELEASE_TAG} already exists; not recreating."
             fi
 
-            git push origin main
+            git push origin "${bamboo.integration.branch}"
 
             if [ "${TAG_EXISTS}" = "false" ]; then
               git push origin "refs/tags/${RELEASE_TAG}"
@@ -623,6 +628,7 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -631,15 +637,13 @@ Finalize Job:
         scripts:
           - |
             set -euo pipefail
-
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
             fi
-
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+
             # Discover the highest release branch on remote — never derive from develop
             RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
               | awk '{print $2}' \
@@ -654,37 +658,14 @@ Finalize Job:
             RELEASE_VERSION="${RELEASE_BRANCH#release/}"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-
-            git fetch origin \
-              "+refs/heads/main:refs/remotes/origin/__validate_main" \
-              "+refs/tags/*:refs/tags/*" \
-              >/dev/null 2>&1 || true
+            git fetch origin --prune --tags --quiet
 
             if ! git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
-              echo "ERROR: release tag ${RELEASE_VERSION} does not exist in remote; refusing to delete release branch."
+              echo "ERROR: release tag ${RELEASE_VERSION} does not exist; refusing to delete release branch."
               exit 1
             fi
 
-            TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_VERSION}")"
-            if [ -z "${TAG_COMMIT}" ]; then
-              echo "ERROR: could not resolve tag commit for ${RELEASE_VERSION}"
-              exit 1
-            fi
-
-            MAIN_COMMIT="$(git rev-parse refs/remotes/origin/__validate_main 2>/dev/null || true)"
-            if [ -z "${MAIN_COMMIT}" ]; then
-              echo "ERROR: could not resolve refs/remotes/origin/__validate_main after explicit fetch"
-              exit 1
-            fi
-
-            echo "INFO: tag=${RELEASE_VERSION} tag_commit=${TAG_COMMIT} validate_main=${MAIN_COMMIT}"
-
-            if ! git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/__validate_main; then
-              echo "ERROR: tag commit ${TAG_COMMIT} is not contained in refs/remotes/origin/__validate_main; refusing to delete release branch."
-              exit 1
-            fi
-
-            if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
+            if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "Deleting remote release branch ${RELEASE_BRANCH}"
               git push origin --delete "${RELEASE_BRANCH}"
             else
@@ -697,7 +678,7 @@ variables:
   module_name: ws-client
   maven.artifactId: ws-client-aggregator
   maven.groupId: gov.gsa.cnxs.ws-client
-  integration.branch: main
+  integration.branch: develop
 
 repositories:
   - WS-Client:

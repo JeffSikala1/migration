@@ -223,6 +223,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -246,6 +247,7 @@ Promote Job:
         scripts:
           - |
             set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
@@ -268,7 +270,7 @@ Promote Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1 || true
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
               exit 1
             fi
@@ -374,6 +376,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -503,6 +506,7 @@ Finalize Job:
         scripts:
           - |
             set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
@@ -655,6 +659,7 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -741,6 +746,7 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -748,14 +754,13 @@ Finalize Job:
         working-dir: ${bamboo.module_name}
         scripts:
           - |
-            set -uo pipefail
+            set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
             fi
-
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
             RELEASE_VERSION="${bamboo_inject_bamboo_release_version:-}"
             RELEASE_BRANCH="${bamboo_inject_bamboo_release_branch:-}"
@@ -863,7 +868,7 @@ variables:
   module_name: webservices
   maven.artifactId: webservices-aggregator
   maven.groupId: gov.gsa.cnxs.webservices
-  integration.branch: main
+  integration.branch: develop
 
 repositories:
   - Webservices:

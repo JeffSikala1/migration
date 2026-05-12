@@ -160,6 +160,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -183,6 +184,7 @@ Promote Job:
         scripts:
           - |
             set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
               exit 0
@@ -205,7 +207,7 @@ Promote Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags >/dev/null 2>&1
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
               exit 1
             fi
@@ -219,6 +221,7 @@ Promote Job:
         scripts:
           - |
             set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release already finalized; skipping."
@@ -331,6 +334,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -339,6 +343,7 @@ Promote Job:
         scripts:
           - |
             set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
             if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
               echo "INFO: release artifacts already exist; skipping promotion."
@@ -509,6 +514,7 @@ Finalize Job:
         scripts:
           - |
             set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
             echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
 
@@ -541,7 +547,7 @@ Finalize Job:
 
             if [ "${TAG_EXISTS}" = "true" ]; then
               git fetch origin \
-                "+refs/heads/main:refs/remotes/origin/__validate_main" \
+                "+refs/heads/${bamboo.integration.branch}:refs/remotes/origin/__validate_main" \
                 "+refs/tags/${RELEASE_VERSION}:refs/tags/${RELEASE_VERSION}" \
                 >/dev/null 2>&1 || true
 
@@ -575,10 +581,11 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
-        description: Merge release branch to main, set release versions, tag, and push
+        description: Merge release branch to integration branch, set release versions, tag, and push
         working-dir: ${bamboo.module_name}
         scripts:
           - |
@@ -623,17 +630,17 @@ Finalize Job:
             fi
 
             git fetch origin \
-              "+refs/heads/main:refs/remotes/origin/main" \
+              "+refs/heads/${bamboo.integration.branch}:refs/remotes/origin/${bamboo.integration.branch}" \
               "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}" \
               --prune >/dev/null 2>&1
 
-            if ! git rev-parse --verify refs/remotes/origin/main >/dev/null 2>&1; then
-              echo "ERROR: origin/main not found after explicit fetch"
+            if ! git rev-parse --verify "refs/remotes/origin/${bamboo.integration.branch}" >/dev/null 2>&1; then
+              echo "ERROR: origin/${bamboo.integration.branch} not found after explicit fetch"
               exit 1
             fi
 
             git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
-            git checkout -B main origin/main >/dev/null 2>&1
+            git checkout -B "${bamboo.integration.branch}" "origin/${bamboo.integration.branch}" >/dev/null 2>&1
 
             git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
 
@@ -651,7 +658,7 @@ Finalize Job:
               echo "INFO: tag ${RELEASE_TAG} already exists; not recreating."
             fi
 
-            git push origin main
+            git push origin "${bamboo.integration.branch}"
 
             if [ "${TAG_EXISTS}" = "false" ]; then
               git push origin "refs/tags/${RELEASE_TAG}"
@@ -660,6 +667,7 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -692,9 +700,9 @@ Finalize Job:
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
-            # Explicitly fetch the refs we care about instead of assuming origin/main exists locally
+            # Explicitly fetch the refs we care about instead of assuming origin/${bamboo.integration.branch} exists locally
             git fetch origin \
-              "+refs/heads/main:refs/remotes/origin/__validate_main" \
+              "+refs/heads/${bamboo.integration.branch}:refs/remotes/origin/__validate_main" \
               "+refs/tags/*:refs/tags/*" \
               >/dev/null 2>&1 || true
 
@@ -735,7 +743,7 @@ variables:
   module_name: domain
   maven.artifactId: domain-aggregator
   maven.groupId: gov.gsa.cnxs.domain
-  integration.branch: main
+  integration.branch: develop
 
 repositories:
   - Domain:
