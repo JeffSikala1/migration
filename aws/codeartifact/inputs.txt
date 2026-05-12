@@ -1,22 +1,46 @@
-# Memory state
-free -h
+# jasperreports-pdf 6.20.6
+curl -s -u sa_bamboo:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/gavc?g=net.sf.jasperreports&a=jasperreports-pdf&v=6.20.6&c=&repos=conexus-plugin-repository" \
+  | python3 -m json.tool
 
-# Disk state
-df -h | grep -E "/$|docker"
-
-# Active containers (should be 9: 6 ba + 3 da + nothing else)
-docker ps --format "table {{.Names}}\t{{.Status}}"
-
-# No orphan jboss/postgres test containers
-docker ps --filter "name=jboss-cnx-it" --filter "name=postgres-cnx-it" --format "table {{.Names}}\t{{.Status}}"
-
-# Cron is correct
-sudo crontab -l
+# jasperreports-jdt 6.20.6
+curl -s -u sa_bamboo:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/gavc?g=net.sf.jasperreports&a=jasperreports-jdt&v=6.20.6&c=&repos=conexus-plugin-repository" \
+  | python3 -m json.tool
 
 
 
-# On the Bamboo host (ip-10-56-112-34)
-docker logs bamboo 2>&1 | grep -iE "trigger|domain|webhook" | tail -50
 
 
-docker exec bamboo tail -100 /opt/atlassian/bamboo/logs/atlassian-bamboo.log
+
+curl -s -u sa_bamboo:${ARTIFACTORY_TOKEN} \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -H "Content-Type: text/plain" \
+  -d '
+items.find({
+  "name": {"$match": "jasperreports-pdf-6.20.6*"}
+}).include("repo", "path", "name", "size", "created")
+' | python3 -m json.tool
+
+curl -s -u sa_bamboo:${ARTIFACTORY_TOKEN} \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -H "Content-Type: text/plain" \
+  -d '
+items.find({
+  "name": {"$match": "jasperreports-jdt-6.20.6*"}
+}).include("repo", "path", "name", "size", "created")
+' | python3 -m json.tool
+
+
+
+
+
+
+curl -s -u sa_bamboo:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-plugin-repository" \
+  | python3 -m json.tool
+
+
+
