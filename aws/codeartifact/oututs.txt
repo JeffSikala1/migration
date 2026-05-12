@@ -1,176 +1,83 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?><specs><spec projectKey="FR" buildKey="ENVFR"><code>---
-version: 2
-plan:
-  project-key: FR
-  key: ENVFR
-  name: Env - Finish Release
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
-  key: JOB1
-  tasks:
-  - checkout:
-      path: ${bamboo.module_name}
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: release-scripts
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 400 ~/.ssh/id_rsa
-
-        # Configure git to use this key
-        echo "Host *" &gt; ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
-      description: Install SSH key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
-
-        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
-        release_branch=${release_branches[0]}
-
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
-
-
-        find . -type f -name *.xml -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
-        git commit -a -m "Updated versions from release-candidate to release"
-        git push --set-upstream origin "${release_branch}"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      working-dir: ${bamboo.module_name}
-      description: Release script
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: maven.version
-        removeSnapshot: 'true'
-        variableScope: JOB
-        pomFile: ${bamboo.module_name}/pom.xml
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        curl -k "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        update-ca-trust
-      description: Install USDA root certificate in system wide trusted certificate location
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        mkdir working
-        #python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs ${bamboo.module_name} ${bamboo.maven.version} --username "${bamboo.artifactory_admin_username}" --password "${bamboo.artifactory_admin_password}" --override
-
-        # Since env has two sub directories, I am running this twice with manual entries for artifactID
-        python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs bom ${bamboo.maven.version} --username "${bamboo.artifactory_admin_username}" --password "${bamboo.artifactory_admin_password}"
-      working-dir: ${bamboo.module_name}
-      description: Promote Artifacts
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
-
-        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
-        release_branch=${release_branches[0]}
-
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
-
-        git checkout main
-        git merge -s recursive -X theirs -m "Merge Release Branch" ${release_branch}
-        git tag ${bamboo.maven.version}
-        find . -type f -name *.xml -exec sed -i 's/-SNAPSHOT//g' {} +
-        git commit -a -m "Release Versions"
-        git push --set-upstream origin main
-        git push --set-upstream origin main --tags
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      working-dir: ${bamboo.module_name}
-      description: Merge Release branch
-  artifact-subscriptions: []
-variables:
-  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
-  maven.artifactId: env-base
-  maven.groupId: gov.gsa.cnxs.bom
-  module_name: env
-repositories:
-- Env:
-      scope: global
-- bamboo-deployment:
-      scope: global
-triggers: []
-branches:
-  create: manually
-  delete: never
-  link-to-jira: true
-notifications: []
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: []
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
----
-version: 2
-plan:
-  key: FR-ENVFR
-plan-permissions:
-- users:
-  - jeff.sikala
-  groups:
-  - bamboo-admin
-  permissions:
-  - view
-  - edit
-  - build
-  - clone
-  - admin
-  - view-configuration
-  - create-plan-branch
-
-</code></spec></specs>
+simple	12-May-2026 13:00:24	Build Finish Release - Env - Finish Release - Promote Job #97 (FR-ENVFR-JOB1-97) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-6 (2), bamboo version: 10.2.11
+simple	12-May-2026 13:00:24	Remote agent on host ip-10-56-112-35.ec2.internal-ba-6
+simple	12-May-2026 13:00:24	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1
+simple	12-May-2026 13:00:25	Executing build Finish Release - Env - Finish Release - Promote Job #97 (FR-ENVFR-JOB1-97)
+simple	12-May-2026 13:00:25	Starting task 'Clean working directory task' of type 'com.atlassian.bamboo.plugins.bamboo-artifact-downloader-plugin:cleanWorkingDirectoryTask'
+simple	12-May-2026 13:00:25	Cleaning working directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1'
+simple	12-May-2026 13:00:25	Finished task 'Clean working directory task' with result: Success
+command	12-May-2026 13:00:25	Substituting variable: ${bamboo.module_name} with env
+simple	12-May-2026 13:00:25	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	12-May-2026 13:00:25	Build always requires a clean checkout
+simple	12-May-2026 13:00:25	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1/env'
+simple	12-May-2026 13:00:25	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1/env
+simple	12-May-2026 13:00:25	Updating source code to revision: 12528d910274d942e9bbcb919a104d0e327690a9
+simple	12-May-2026 13:00:25	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git'.
+simple	12-May-2026 13:00:25	Warning: Permanently added '[127.0.0.1]:45021' (RSA) to the list of known hosts.
+simple	12-May-2026 13:00:25	Checking out revision 12528d910274d942e9bbcb919a104d0e327690a9.
+simple	12-May-2026 13:00:25	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1/env/.git'.
+simple	12-May-2026 13:00:25	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1/env'...
+simple	12-May-2026 13:00:25	done.
+simple	12-May-2026 13:00:25	Switched to a new branch 'develop'
+simple	12-May-2026 13:00:25	branch 'develop' set up to track 'origin/develop'.
+simple	12-May-2026 13:00:25	Updated source code to revision: 12528d910274d942e9bbcb919a104d0e327690a9
+simple	12-May-2026 13:00:25	Finished task 'Checkout Default Repository' with result: Success
+simple	12-May-2026 13:00:25	Starting task 'Checkout release-scripts repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	12-May-2026 13:00:25	Build always requires a clean checkout
+simple	12-May-2026 13:00:25	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1/release-scripts'
+simple	12-May-2026 13:00:25	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1/release-scripts
+simple	12-May-2026 13:00:25	Updating source code to revision: 31005f9e6390d7a601a3fac2d62ccd8218370834
+simple	12-May-2026 13:00:25	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git'.
+simple	12-May-2026 13:00:25	Warning: Permanently added '[127.0.0.1]:45021' (RSA) to the list of known hosts.
+simple	12-May-2026 13:00:25	Checking out revision 31005f9e6390d7a601a3fac2d62ccd8218370834.
+simple	12-May-2026 13:00:25	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1/release-scripts/.git'.
+simple	12-May-2026 13:00:25	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1/release-scripts'...
+simple	12-May-2026 13:00:25	done.
+simple	12-May-2026 13:00:25	Switched to a new branch 'develop'
+simple	12-May-2026 13:00:25	branch 'develop' set up to track 'origin/develop'.
+simple	12-May-2026 13:00:25	Updated source code to revision: 31005f9e6390d7a601a3fac2d62ccd8218370834
+simple	12-May-2026 13:00:25	Finished task 'Checkout release-scripts repository' with result: Success
+simple	12-May-2026 13:00:25	Running pre-build action: Build Log Labeller Pre Build Action
+simple	12-May-2026 13:00:25	Running pre-build action: VCS Version Collector
+simple	12-May-2026 13:00:25	Build Finish Release - Env - Finish Release - Promote Job #97 (FR-ENVFR-JOB1-97) started building on agent 'ip-10-56-112-35.ec2.internal-ba-6 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-6)
+simple	12-May-2026 13:00:25	Starting task 'Validate SSH key mounts' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	12-May-2026 13:00:25	Beginning to execute external process for build 'Finish Release - Env - Finish Release - Promote Job #97 (FR-ENVFR-JOB1-97)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/temp/FR-ENVFR-JOB1-97-ScriptBuildTask-17151645312188093645.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1\n
+build	12-May-2026 13:00:25	-rw-------. 1 root root 3381 Mar 17 08:50 /opt/bamboo-keys/bitbucket_ci
+build	12-May-2026 13:00:25	-rw-r--r--. 1 root root  745 Mar 17 08:50 /opt/bamboo-keys/bitbucket_ci.pub
+build	12-May-2026 13:00:25	-rw-------. 1 root root 3247 Mar 17 12:11 /opt/bamboo-keys/bitbucket_ci_jgit
+build	12-May-2026 13:00:25	-rw-r--r--. 1 root root  759 Mar 17 12:11 /opt/bamboo-keys/bitbucket_ci_jgit.pub
+simple	12-May-2026 13:00:25	Finished task 'Validate SSH key mounts' with result: Success
+command	12-May-2026 13:00:25	Substituting variable: ${bamboo.buildResultKey} with FR-ENVFR-JOB1-97
+command	12-May-2026 13:00:25	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+simple	12-May-2026 13:00:25	Starting task 'Write Maven settings for current Artifactory' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	12-May-2026 13:00:25	Beginning to execute external process for build 'Finish Release - Env - Finish Release - Promote Job #97 (FR-ENVFR-JOB1-97)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/temp/FR-ENVFR-JOB1-97-ScriptBuildTask-13401895814563578686.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1\n
+simple	12-May-2026 13:00:25	Finished task 'Write Maven settings for current Artifactory' with result: Success
+command	12-May-2026 13:00:25	Substituting variable: ${bamboo.buildResultKey} with FR-ENVFR-JOB1-97
+command	12-May-2026 13:00:25	Substituting variable: ${bamboo.build.working.directory} with /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1
+command	12-May-2026 13:00:25	Substituting variable: ${bamboo.planRepository.repositoryUrl} with ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git
+command	12-May-2026 13:00:25	Substituting variable: ${bamboo.build.working.directory} with /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1
+command	12-May-2026 13:00:25	Substituting variable: ${bamboo.module_name} with env
+simple	12-May-2026 13:00:25	Starting task 'Validate exact release branch exists and convert RC back to SNAPSHOT' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	12-May-2026 13:00:25	Beginning to execute external process for build 'Finish Release - Env - Finish Release - Promote Job #97 (FR-ENVFR-JOB1-97)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/temp/FR-ENVFR-JOB1-97-ScriptBuildTask-11335453177042971568.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1/env\n
+build	12-May-2026 13:00:26	ERROR: expected release branch release/02.00.000.167 not found
+simple	12-May-2026 13:00:26	Failing task since return code of [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/temp/FR-ENVFR-JOB1-97-ScriptBuildTask-11335453177042971568.sh] was 1 while expected 0
+simple	12-May-2026 13:00:26	Finished task 'Validate exact release branch exists and convert RC back to SNAPSHOT' with result: Failed
+simple	12-May-2026 13:00:26	Running post build plugin 'Docker Container Cleanup'
+simple	12-May-2026 13:00:26	Running post build plugin 'NCover Results Collector'
+simple	12-May-2026 13:00:26	Running post build plugin 'Build Results Label Collector'
+simple	12-May-2026 13:00:26	Running post build plugin 'Clover Results Collector'
+simple	12-May-2026 13:00:26	Running post build plugin 'npm Cache Cleanup'
+simple	12-May-2026 13:00:26	Running post build plugin 'Artifact Copier'
+simple	12-May-2026 13:00:26	Successfully removed working directory at '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-6/xml-data/build-dir/FR-ENVFR-JOB1'
+simple	12-May-2026 13:00:26	Finalising the build...
+simple	12-May-2026 13:00:26	Stopping timer.
+simple	12-May-2026 13:00:26	Build FR-ENVFR-JOB1-97 completed.
+simple	12-May-2026 18:00:26	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	12-May-2026 18:00:26	Running on server: post build plugin 'NCover Results Collector'
+simple	12-May-2026 18:00:26	Running on server: post build plugin 'Build Labeller'
+simple	12-May-2026 18:00:26	Running on server: post build plugin 'Clover Delta Calculator'
+simple	12-May-2026 18:00:26	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	12-May-2026 18:00:26	All post build plugins have finished
+simple	12-May-2026 18:00:26	Generating build results summary...
+simple	12-May-2026 18:00:26	Saving build results to disk...
+simple	12-May-2026 18:00:26	Store variable context...
+simple	12-May-2026 18:00:26	Finished building FR-ENVFR-JOB1-97.
