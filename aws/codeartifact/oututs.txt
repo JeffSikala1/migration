@@ -1,663 +1,159 @@
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ cd ../bamboo-specs/
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ git branch
-* export-2025-08-13
-  main
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ git status
-On branch export-2025-08-13
-Your branch is up to date with 'origin/export-2025-08-13'.
-
-nothing to commit, working tree clean
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cat bamboo-specs/FR-BSFR.plan.yaml
----
-version: 2
-plan:
-  project-key: FR
-  key: BSFR
-  name: Billing SFTP - Finish Release
-
-stages:
-  - Promote Release Artifacts:
-      manual: false
-      final: false
-      jobs:
-        - Promote Job
-  - Finalize Git Release:
-      manual: false
-      final: false
-      jobs:
-        - Finalize Job
-
-Promote Job:
-  key: JOB1
-  other:
-    clean-working-dir: true
-
-  tasks:
-    - clean
-
-    - checkout:
-        path: billing
-        force-clean-build: true
-        description: Checkout Default Repository
-
-    - checkout:
-        repository: bamboo-deployment
-        path: release-scripts
-        force-clean-build: true
-        description: Checkout release-scripts repository
-
-    - script:
-        interpreter: SHELL
-        description: Validate SSH key mounts
-        scripts:
-          - |
-            set -euo pipefail
-            test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-
-    - script:
-        interpreter: SHELL
-        description: Write Maven settings for current Artifactory
-        scripts:
-          - |
-            set -euo pipefail
-            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
-
-            cat > "${SETTINGS_FILE}" <<XML
-            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
-              <mirrors>
-                <mirror>
-                  <id>artifactory</id>
-                  <mirrorOf>*</mirrorOf>
-                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-                </mirror>
-              </mirrors>
-              <profiles>
-                <profile>
-                  <id>use-artifactory</id>
-                  <repositories>
-                    <repository>
-                      <id>artifactory</id>
-                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-                      <releases><enabled>true</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </repository>
-                  </repositories>
-                  <pluginRepositories>
-                    <pluginRepository>
-                      <id>artifactory</id>
-                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-                      <releases><enabled>true</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </pluginRepository>
-                  </pluginRepositories>
-                </profile>
-              </profiles>
-              <activeProfiles>
-                <activeProfile>use-artifactory</activeProfile>
-              </activeProfiles>
-              <servers>
-                <server>
-                  <id>central</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-                <server>
-                  <id>artifactory</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-              </servers>
-            </settings>
-            XML
-
-    - script:
-        interpreter: SHELL
-        description: Validate exact release branch exists and convert RC back to SNAPSHOT
-        working-dir: billing
-        scripts:
-          - |
-            set -euo pipefail
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
-
-            # Discover the highest release branch on remote — never derive from develop
-            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
-              | awk '{print $2}' \
-              | sed 's|refs/heads/||' \
-              | grep '^release/' \
-              | sed 's|release/||' \
-              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-              | tail -1 \
-              | sed 's|^|release/|')
-
-            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
-            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
-
-            git config user.name "bamboo"
-            git config user.email "bamboo@local"
-
-            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
-
-            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
-              if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
-                echo "INFO: release ${RELEASE_VERSION} already finalized; skipping."
-                echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
-                exit 0
-              fi
-              echo "ERROR: expected release branch ${RELEASE_BRANCH} not found"
-              exit 1
-            fi
-
-            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
-
-            find . -type f \( -name "pom.xml" -o -name "*.xml" \) -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
-
-            if ! git diff --quiet; then
-              git commit -am "Updated versions from release-candidate to snapshot"
-              git push origin HEAD:"${RELEASE_BRANCH}"
-            else
-              echo "No RC versions found to convert back to SNAPSHOT"
-            fi
-
-    - inject-variables:
-        file: skip.properties
-        scope: LOCAL
-        namespace: inject
-
-    - script:
-        interpreter: SHELL
-        description: Install USDA root certificate in system wide trusted certificate location
-        scripts:
-          - |
-            set -euo pipefail
-            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
-              echo "INFO: release already finalized; skipping."
-              exit 0
-            fi
-            curl -ks "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" \
-              -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-            update-ca-trust
-
-    - script:
-        interpreter: SHELL
-        description: Validate release state before promotion
-        working-dir: billing
-        scripts:
-          - |
-            set -euo pipefail
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
-              echo "INFO: release already finalized; skipping."
-              exit 0
-            fi
-
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            # Discover the highest release branch on remote — never derive from develop
-            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
-              | awk '{print $2}' \
-              | sed 's|refs/heads/||' \
-              | grep '^release/' \
-              | sed 's|release/||' \
-              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-              | tail -1 \
-              | sed 's|^|release/|')
-
-            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
-            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
-
-            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
-
-            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
-              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
-              exit 1
-            fi
-
-            echo "Release state validation passed."
-
-    - script:
-        interpreter: SHELL
-        description: Pre-check release artifacts in Artifactory
-        working-dir: billing
-        scripts:
-          - |
-            set -euo pipefail
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
-              echo "INFO: release already finalized; skipping."
-              exit 0
-            fi
-
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
-
-            # Discover the highest release branch on remote — never derive from develop
-            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
-              | awk '{print $2}' \
-              | sed 's|refs/heads/||' \
-              | grep '^release/' \
-              | sed 's|release/||' \
-              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-              | tail -1 \
-              | sed 's|^|release/|')
-
-            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
-            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
-            GROUP_ID="${bamboo.maven.groupId}"
-            ARTIFACT_ID="${bamboo.maven.artifactId}"
-            GROUP_PATH="${GROUP_ID//./\/}"
-            EXPECTED_SUFFIXES="${bamboo.release_expected_suffixes}"
-
-            [ -n "${EXPECTED_SUFFIXES}" ] || { echo "ERROR: bamboo.release_expected_suffixes is empty"; exit 1; }
-
-            AQL=$(cat <<EOF
-            items.find({
-              "repo":{"\$eq":"conexus-release-local"},
-              "path":{"\$eq":"${GROUP_PATH}/${ARTIFACT_ID}/${RELEASE_VERSION}"},
-              "name":{"\$match":"${ARTIFACT_ID}-${RELEASE_VERSION}*"}
-            }).include("name","repo","path")
-            EOF
-            )
-
-            RESULT=$(curl -sku "sa_bamboo:${bamboo.artifactory_access_token_secret}" \
-              -H "Content-Type: text/plain" \
-              -X POST \
-              "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-              --data "${AQL}")
-
-            echo "${RESULT}" > "${bamboo.build.working.directory}/release-check.json"
-
-            FOUND_TOTAL=0
-            EXPECTED_TOTAL=0
-            FOUND_SUMMARY=""
-
-            for suffix in ${EXPECTED_SUFFIXES}; do
-              EXPECTED_TOTAL=$((EXPECTED_TOTAL + 1))
-              expected_name="${ARTIFACT_ID}-${RELEASE_VERSION}.${suffix}"
-              found_count=$(echo "${RESULT}" | grep -F -c "\"name\" : \"${expected_name}\"" || true)
-              FOUND_TOTAL=$((FOUND_TOTAL + found_count))
-              FOUND_SUMMARY="${FOUND_SUMMARY}${suffix}=${found_count} "
-            done
-
-            if [ "${FOUND_TOTAL}" -eq 0 ]; then
-              echo "INFO: no release artifacts found for ${RELEASE_VERSION}; promotion may proceed."
-              exit 0
-            fi
-
-            if [ "${FOUND_TOTAL}" -eq "${EXPECTED_TOTAL}" ]; then
-              all_expected_found=true
-              for suffix in ${EXPECTED_SUFFIXES}; do
-                expected_name="${ARTIFACT_ID}-${RELEASE_VERSION}.${suffix}"
-                found_count=$(echo "${RESULT}" | grep -F -c "\"name\" : \"${expected_name}\"" || true)
-                if [ "${found_count}" -ne 1 ]; then
-                  all_expected_found=false
-                  break
-                fi
-              done
-
-              if [ "${all_expected_found}" = "true" ]; then
-                echo "INFO: release artifacts already exist for ${RELEASE_VERSION}; skipping promotion."
-                echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
-                exit 0
-              fi
-            fi
-
-            echo "ERROR: partial release artifacts already exist for ${RELEASE_VERSION}."
-            echo "Expected release suffixes: ${EXPECTED_SUFFIXES}"
-            echo "Found counts: ${FOUND_SUMMARY% }"
-            exit 1
-
-    - inject-variables:
-        file: skip.properties
-        scope: LOCAL
-        namespace: inject
-
-    - script:
-        interpreter: SHELL
-        description: Promote artifacts from RC repo
-        working-dir: billing
-        scripts:
-          - |
-            set -euo pipefail
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
-              echo "INFO: release artifacts already exist; skipping promotion."
-              exit 0
-            fi
-
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            # Discover the highest release branch on remote — never derive from develop
-            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
-              | awk '{print $2}' \
-              | sed 's|refs/heads/||' \
-              | grep '^release/' \
-              | sed 's|release/||' \
-              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-              | tail -1 \
-              | sed 's|^|release/|')
-
-            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
-            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
-
-            mkdir -p working
-
-            python3 ../release-scripts/promote.py \
-              conexus-rc-local \
-              gov.gsa.cnxs.billingsftp \
-              billing-sftp \
-              "${RELEASE_VERSION}" \
-              --username "sa_bamboo" \
-              --password "${bamboo.artifactory_access_token_secret}" \
-              --settings-xml "${SETTINGS_FILE}" \
-              --override
-
-  artifact-subscriptions: []
-
-Finalize Job:
-  key: JOB2
-  other:
-    clean-working-dir: true
-
-  tasks:
-    - clean
-
-    - checkout:
-        path: billing
-        force-clean-build: true
-        description: Checkout Default Repository
-
-    - script:
-        interpreter: SHELL
-        description: Validate SSH key mounts
-        scripts:
-          - |
-            set -euo pipefail
-            test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-
-    - script:
-        interpreter: SHELL
-        description: Write Maven settings for current Artifactory
-        scripts:
-          - |
-            set -euo pipefail
-            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
-
-            cat > "${SETTINGS_FILE}" <<XML
-            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
-              <mirrors>
-                <mirror>
-                  <id>artifactory</id>
-                  <mirrorOf>*</mirrorOf>
-                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-                </mirror>
-              </mirrors>
-              <profiles>
-                <profile>
-                  <id>use-artifactory</id>
-                  <repositories>
-                    <repository>
-                      <id>artifactory</id>
-                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-                      <releases><enabled>true</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </repository>
-                  </repositories>
-                  <pluginRepositories>
-                    <pluginRepository>
-                      <id>artifactory</id>
-                      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-                      <releases><enabled>true</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </pluginRepository>
-                  </pluginRepositories>
-                </profile>
-              </profiles>
-              <activeProfiles>
-                <activeProfile>use-artifactory</activeProfile>
-              </activeProfiles>
-              <servers>
-                <server>
-                  <id>central</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-                <server>
-                  <id>artifactory</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-              </servers>
-            </settings>
-            XML
-
-    - script:
-        interpreter: SHELL
-        description: Validate release state before finalize
-        working-dir: billing
-        scripts:
-          - |
-            set -euo pipefail
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            echo "bamboo_skip_release=false" > "${bamboo.build.working.directory}/skip.properties"
-
-            # Discover the highest release branch on remote — never derive from develop
-            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
-              | awk '{print $2}' \
-              | sed 's|refs/heads/||' \
-              | grep '^release/' \
-              | sed 's|release/||' \
-              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-              | tail -1 \
-              | sed 's|^|release/|')
-
-            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
-            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
-
-            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
-
-            if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
-              echo "INFO: release ${RELEASE_VERSION} already finalized; skipping."
-              echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
-              exit 0
-            fi
-
-            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
-              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finalize cannot continue."
-              exit 1
-            fi
-
-            echo "Finalize state validation passed."
-
-    - inject-variables:
-        file: skip.properties
-        scope: LOCAL
-        namespace: inject
-
-    - script:
-        interpreter: SHELL
-        description: Merge release branch to integration branch, set release versions, tag, and push
-        working-dir: billing
-        scripts:
-          - |
-            set -euo pipefail
-            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
-              echo "INFO: release already finalized; skipping."
-              exit 0
-            fi
-
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-
-            # Discover the highest release branch on remote — never derive from develop
-            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
-              | awk '{print $2}' \
-              | sed 's|refs/heads/||' \
-              | grep '^release/' \
-              | sed 's|release/||' \
-              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-              | tail -1 \
-              | sed 's|^|release/|')
-
-            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
-            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
-            RELEASE_TAG="${RELEASE_VERSION}"
-
-            git config user.name "bamboo"
-            git config user.email "bamboo@local"
-
-            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
-
-            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
-              echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finish release cannot continue."
-              exit 1
-            fi
-
-            if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_TAG}$"; then
-              echo "ERROR: release tag ${RELEASE_TAG} already exists. This release may already have been finished."
-              exit 1
-            fi
-
-            if ! git ls-remote --heads origin "refs/heads/${bamboo.integration.branch}" | grep -q .; then
-              echo "ERROR: origin/${bamboo.integration.branch} not found"
-              git ls-remote --heads origin
-              exit 1
-            fi
-
-            git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}" >/dev/null 2>&1
-            git checkout -B "${bamboo.integration.branch}" "origin/${bamboo.integration.branch}" >/dev/null 2>&1
-
-            git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
-
-            find . -type f \( -name "pom.xml" -o -name "*.xml" \) -exec sed -i 's/-SNAPSHOT//g' {} +
-
-            if ! git diff --quiet; then
-              git commit -am "Release Versions"
-            else
-              echo "No SNAPSHOT versions found to remove before tagging"
-            fi
-
-            git tag "${RELEASE_TAG}"
-
-            git push origin "${bamboo.integration.branch}"
-            git push origin "refs/tags/${RELEASE_TAG}"
-
-    - script:
-        interpreter: SHELL
-        description: Delete release branch after successful finish
-        working-dir: billing
-        scripts:
-          - |
-            set -euo pipefail
-            # Testing
-            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
-              echo "INFO: release already finalized; skipping."
-              exit 0
-            fi
-
-            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-
-            # Discover the highest release branch on remote — never derive from develop
-            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
-              | awk '{print $2}' \
-              | sed 's|refs/heads/||' \
-              | grep '^release/' \
-              | sed 's|release/||' \
-              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
-              | tail -1 \
-              | sed 's|^|release/|')
-
-            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
-            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
-
-            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin --prune --tags >/dev/null 2>&1
-
-            if ! git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
-              echo "ERROR: release tag ${RELEASE_VERSION} does not exist; refusing to delete release branch."
-              exit 1
-            fi
-
-            if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
-              echo "Deleting remote release branch ${RELEASE_BRANCH}"
-              git push origin --delete "${RELEASE_BRANCH}"
-            else
-              echo "Release branch ${RELEASE_BRANCH} already absent"
-            fi
-
-  artifact-subscriptions: []
-
-variables:
-  maven.artifactId: billing-sftp
-  maven.groupId: gov.gsa.cnxs.billingsftp
-  release_expected_suffixes: pom tar zip
-  integration.branch: develop
-
-repositories:
-  - billingsftp:
-      scope: global
-  - bamboo-deployment:
-      scope: global
-
-triggers: []
-
-branches:
-  create: manually
-  delete: never
-  link-to-jira: true
-
-notifications: []
-
-labels: []
-
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: [][sikaj01@ip-10-56-112-33 bamboo-specs]$ 
-
-
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ head -30 ./bamboo-specs/FR-BSFR.plan.yaml
----
-version: 2
-plan:
-  project-key: FR
-  key: BSFR
-  name: Billing SFTP - Finish Release
-
-stages:
-  - Promote Release Artifacts:
-      manual: false
-      final: false
-      jobs:
-        - Promote Job
-  - Finalize Git Release:
-      manual: false
-      final: false
-      jobs:
-        - Finalize Job
-
-Promote Job:
-  key: JOB1
-  other:
-    clean-working-dir: true
-
-  tasks:
-    - clean
-
-    - checkout:
-        path: billing
-        force-clean-build: true
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ git ls-remote --heads \
-  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git \
-  refs/heads/export-2025-08-13
-341a73f4c1b04b9cbbe1a9db5d426d4b05a159d9        refs/heads/export-2025-08-13
+Hi, me again, env, artifact conflict, what should I do?
+
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-deploy-plugin:3.1.3:deploy (default-deploy) on project env-base: Failed to deploy artifacts: Could not transfer artifact gov.gsa.cnxs.bom:env-base:pom:02.00.000.169 from/to artifactory (https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/): status code: 409, reason phrase: Conflict (409) -> [Help 1]
+
+
+
+simple	12-May-2026 08:49:00	Build Build and Test - Reporting - Build - feature-CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper - Default Job #4 (BT-REP3-JOB1-4) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-2 (2), bamboo version: 10.2.11
+simple	12-May-2026 08:49:00	Remote agent on host ip-10-56-112-35.ec2.internal-ba-2
+simple	12-May-2026 08:49:00	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1
+simple	12-May-2026 08:49:00	Executing build Build and Test - Reporting - Build - feature-CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper - Default Job #4 (BT-REP3-JOB1-4)
+simple	12-May-2026 08:49:00	Starting task 'Clean working directory task' of type 'com.atlassian.bamboo.plugins.bamboo-artifact-downloader-plugin:cleanWorkingDirectoryTask'
+simple	12-May-2026 08:49:00	Cleaning working directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1'
+simple	12-May-2026 08:49:00	Finished task 'Clean working directory task' with result: Success
+simple	12-May-2026 08:49:00	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	12-May-2026 08:49:00	Build always requires a clean checkout
+simple	12-May-2026 08:49:00	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1'
+simple	12-May-2026 08:49:00	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1
+simple	12-May-2026 08:49:00	Updating source code to revision: 4e97c7a888e411f6f40c8ba5394c8c4a27b5408d
+simple	12-May-2026 08:49:01	Fetching 'refs/heads/feature/CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git'.
+simple	12-May-2026 08:49:01	Warning: Permanently added '[127.0.0.1]:35797' (RSA) to the list of known hosts.
+simple	12-May-2026 08:49:01	Checking out revision 4e97c7a888e411f6f40c8ba5394c8c4a27b5408d.
+simple	12-May-2026 08:49:01	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1/.git'.
+simple	12-May-2026 08:49:01	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1'...
+simple	12-May-2026 08:49:01	done.
+simple	12-May-2026 08:49:01	Switched to a new branch 'feature/CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper'
+simple	12-May-2026 08:49:01	branch 'feature/CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper' set up to track 'origin/feature/CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper'.
+simple	12-May-2026 08:49:01	Updated source code to revision: 4e97c7a888e411f6f40c8ba5394c8c4a27b5408d
+simple	12-May-2026 08:49:01	Finished task 'Checkout Default Repository' with result: Success
+simple	12-May-2026 08:49:01	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	12-May-2026 08:49:01	Build always requires a clean checkout
+simple	12-May-2026 08:49:01	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1/bamboo-deployment'
+simple	12-May-2026 08:49:01	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1/bamboo-deployment
+simple	12-May-2026 08:49:01	Updating source code to revision: 31005f9e6390d7a601a3fac2d62ccd8218370834
+simple	12-May-2026 08:49:01	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git'.
+simple	12-May-2026 08:49:01	Warning: Permanently added '[127.0.0.1]:35797' (RSA) to the list of known hosts.
+simple	12-May-2026 08:49:01	Checking out revision 31005f9e6390d7a601a3fac2d62ccd8218370834.
+simple	12-May-2026 08:49:01	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1/bamboo-deployment/.git'.
+simple	12-May-2026 08:49:01	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1/bamboo-deployment'...
+simple	12-May-2026 08:49:01	done.
+simple	12-May-2026 08:49:01	Switched to a new branch 'develop'
+simple	12-May-2026 08:49:01	branch 'develop' set up to track 'origin/develop'.
+simple	12-May-2026 08:49:01	Updated source code to revision: 31005f9e6390d7a601a3fac2d62ccd8218370834
+simple	12-May-2026 08:49:01	Finished task 'Checkout Default Repository' with result: Success
+simple	12-May-2026 08:49:01	Running pre-build action: Build Log Labeller Pre Build Action
+simple	12-May-2026 08:49:01	Running pre-build action: VCS Version Collector
+simple	12-May-2026 08:49:01	Build Build and Test - Reporting - Build - feature-CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper - Default Job #4 (BT-REP3-JOB1-4) started building on agent 'ip-10-56-112-35.ec2.internal-ba-2 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-2)
+simple	12-May-2026 08:49:01	Starting task 'Remove existing cnxs maven repo directory' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	12-May-2026 08:49:01	Beginning to execute external process for build 'Build and Test - Reporting - Build - feature-CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper - Default Job #4 (BT-REP3-JOB1-4)'\n ... running command line: \n/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/temp/BT-REP3-JOB1-4-ScriptBuildTask-16304428905014603133.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1\n
+build	12-May-2026 08:49:01	Removing snapshot folders from /root/.m2/repository/gov/gsa/cnxs/
+simple	12-May-2026 08:49:01	Finished task 'Remove existing cnxs maven repo directory' with result: Success
+simple	12-May-2026 08:49:01	Starting task 'Determine parent branch and pass correct variables' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	12-May-2026 08:49:01	Beginning to execute external process for build 'Build and Test - Reporting - Build - feature-CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper - Default Job #4 (BT-REP3-JOB1-4)'\n ... running command line: \nbamboo-deployment/build-determination-migration.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1\n
+build	12-May-2026 08:49:01	Not a long lived branch
+simple	12-May-2026 08:49:01	Finished task 'Determine parent branch and pass correct variables' with result: Success
+simple	12-May-2026 08:49:01	Starting task 'Inject values' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:inject'
+simple	12-May-2026 08:49:01	Injected variable bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ in LOCAL scope
+simple	12-May-2026 08:49:01	Injected variable bamboo.inject.BranchName=CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper in LOCAL scope
+simple	12-May-2026 08:49:01	Injected variable bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ in LOCAL scope
+simple	12-May-2026 08:49:01	Finished task 'Inject values' with result: Success
+command	12-May-2026 08:49:01	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	12-May-2026 08:49:01	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	12-May-2026 08:49:01	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	12-May-2026 08:49:01	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+command	12-May-2026 08:49:01	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	12-May-2026 08:49:01	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	12-May-2026 08:49:01	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	12-May-2026 08:49:01	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	12-May-2026 08:49:01	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+command	12-May-2026 08:49:01	Substituting password variable: ${bamboo.artifactory_access_token_secret}
+simple	12-May-2026 08:49:01	Starting task 'Write Artifactory Maven settings' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	12-May-2026 08:49:01	Beginning to execute external process for build 'Build and Test - Reporting - Build - feature-CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper - Default Job #4 (BT-REP3-JOB1-4)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/temp/BT-REP3-JOB1-4-ScriptBuildTask-9690202864385803341.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1\n
+simple	12-May-2026 08:49:01	Finished task 'Write Artifactory Maven settings' with result: Success
+command	12-May-2026 08:49:01	Substituting variable: ${bamboo.inject.BranchName} with CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper
+command	12-May-2026 08:49:01	Substituting variable: ${bamboo.inject.mavenFeatureRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
+command	12-May-2026 08:49:01	Substituting variable: ${bamboo.inject.pluginRepositoryUrl} with https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
+simple	12-May-2026 08:49:01	Starting task 'Build and Verify' of type 'com.atlassian.bamboo.plugins.maven:task.builder.mvn3'
+command	12-May-2026 08:49:01	Beginning to execute external process for build 'Build and Test - Reporting - Build - feature-CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper - Default Job #4 (BT-REP3-JOB1-4)'\n ... running command line: \n/usr/share/maven/bin/mvn -Djava.io.tmpdir=/tmp/BT-REP3-JOB1 clean verify -B -U -P integration-test -s settings-artifactory.xml -Dbamboo.inject.BranchName=CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1\n
+build	12-May-2026 08:49:02	[INFO] Scanning for projects...
+build	12-May-2026 08:49:03	[INFO] ------------------------------------------------------------------------
+build	12-May-2026 08:49:03	[INFO] Reactor Build Order:
+build	12-May-2026 08:49:03	[INFO] 
+build	12-May-2026 08:49:03	[INFO] Conexus Reporting Aggregator                                       [pom]
+build	12-May-2026 08:49:03	[INFO] Reporting Core                                                     [jar]
+build	12-May-2026 08:49:03	[INFO] Reporting war                                                      [war]
+build	12-May-2026 08:49:03	[INFO] Conexus Integration System Test                                    [jar]
+build	12-May-2026 08:49:03	[INFO] 
+build	12-May-2026 08:49:03	[INFO] ------------< gov.gsa.cnxs.reporting:reporting-aggregator >-------------
+build	12-May-2026 08:49:03	[INFO] Building Conexus Reporting Aggregator 02.00.000.116-SNAPSHOT       [1/4]
+build	12-May-2026 08:49:03	[INFO]   from pom.xml
+build	12-May-2026 08:49:03	[INFO] --------------------------------[ pom ]---------------------------------
+build	12-May-2026 08:49:03	[INFO] 
+build	12-May-2026 08:49:03	[INFO] --- clean:3.2.0:clean (default-clean) @ reporting-aggregator ---
+build	12-May-2026 08:49:03	[INFO] 
+build	12-May-2026 08:49:03	[INFO] ---------------< gov.gsa.cnxs.reporting:reporting-core >----------------
+build	12-May-2026 08:49:03	[INFO] Building Reporting Core 02.00.000.116-SNAPSHOT                     [2/4]
+build	12-May-2026 08:49:03	[INFO]   from core/pom.xml
+build	12-May-2026 08:49:03	[INFO] --------------------------------[ jar ]---------------------------------
+build	12-May-2026 08:49:03	[WARNING] The POM for net.sf.jasperreports:jasperreports-pdf:jar:6.20.6 is missing, no dependency information available
+build	12-May-2026 08:49:04	[WARNING] The POM for net.sf.jasperreports:jasperreports-jdt:jar:6.20.6 is missing, no dependency information available
+build	12-May-2026 08:49:04	[INFO] ------------------------------------------------------------------------
+build	12-May-2026 08:49:04	[INFO] Reactor Summary for Conexus Reporting Aggregator 02.00.000.116-SNAPSHOT:
+build	12-May-2026 08:49:04	[INFO] 
+build	12-May-2026 08:49:04	[INFO] Conexus Reporting Aggregator ....................... SUCCESS [  0.100 s]
+build	12-May-2026 08:49:04	[INFO] Reporting Core ..................................... FAILURE [  1.220 s]
+build	12-May-2026 08:49:04	[INFO] Reporting war ...................................... SKIPPED
+build	12-May-2026 08:49:04	[INFO] Conexus Integration System Test .................... SKIPPED
+build	12-May-2026 08:49:04	[INFO] ------------------------------------------------------------------------
+build	12-May-2026 08:49:04	[INFO] BUILD FAILURE
+build	12-May-2026 08:49:04	[INFO] ------------------------------------------------------------------------
+build	12-May-2026 08:49:04	[INFO] Total time:  1.921 s
+build	12-May-2026 08:49:04	[INFO] Finished at: 2026-05-12T08:49:04-05:00
+build	12-May-2026 08:49:04	[INFO] ------------------------------------------------------------------------
+build	12-May-2026 08:49:04	[ERROR] Failed to execute goal on project reporting-core: Could not resolve dependencies for project gov.gsa.cnxs.reporting:reporting-core:jar:02.00.000.116-SNAPSHOT
+build	12-May-2026 08:49:04	[ERROR] dependency: net.sf.jasperreports:jasperreports-pdf:jar:6.20.6 (compile)
+build	12-May-2026 08:49:04	[ERROR] 	Could not find artifact net.sf.jasperreports:jasperreports-pdf:jar:6.20.6 in ArtifactoryPluginRepos (https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/)
+build	12-May-2026 08:49:04	[ERROR] dependency: net.sf.jasperreports:jasperreports-jdt:jar:6.20.6 (compile)
+build	12-May-2026 08:49:04	[ERROR] 	Could not find artifact net.sf.jasperreports:jasperreports-jdt:jar:6.20.6 in ArtifactoryPluginRepos (https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/)
+build	12-May-2026 08:49:04	[ERROR] -> [Help 1]
+build	12-May-2026 08:49:04	[ERROR] 
+build	12-May-2026 08:49:04	[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+build	12-May-2026 08:49:04	[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+build	12-May-2026 08:49:04	[ERROR] 
+build	12-May-2026 08:49:04	[ERROR] For more information about the errors and possible solutions, please read the following articles:
+build	12-May-2026 08:49:04	[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException
+build	12-May-2026 08:49:04	[ERROR] 
+build	12-May-2026 08:49:04	[ERROR] After correcting the problems, you can resume the build with the command
+build	12-May-2026 08:49:04	[ERROR]   mvn <args> -rf :reporting-core
+simple	12-May-2026 08:49:04	Failing task since return code of [/usr/share/maven/bin/mvn -Djava.io.tmpdir=/tmp/BT-REP3-JOB1 clean verify -B -U -P integration-test -s settings-artifactory.xml -Dbamboo.inject.BranchName=CNXS-77267-address-critical-and-high-snyk-reported-vulnerabilities-for-jasper -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn] was 1 while expected 0
+simple	12-May-2026 08:49:04	Parsing test results under /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1...
+simple	12-May-2026 08:49:04	Finished task 'Build and Verify' with result: Failed
+simple	12-May-2026 08:49:04	Running post build plugin 'Docker Container Cleanup'
+simple	12-May-2026 08:49:04	Running post build plugin 'NCover Results Collector'
+simple	12-May-2026 08:49:04	Running post build plugin 'Build Results Label Collector'
+simple	12-May-2026 08:49:04	Running post build plugin 'Clover Results Collector'
+simple	12-May-2026 08:49:04	Running post build plugin 'npm Cache Cleanup'
+simple	12-May-2026 08:49:04	Running post build plugin 'Artifact Copier'
+simple	12-May-2026 08:49:04	Publishing an artifact: Jboss Log
+error	12-May-2026 08:49:04	Unable to publish artifact [Jboss Log]: the source directory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1/integration/target does not exist.
+simple	12-May-2026 08:49:04	The artifact hasn't been successfully published after 185.1 μs
+simple	12-May-2026 08:49:04	Publishing an artifact: Oracle Log
+error	12-May-2026 08:49:04	Unable to publish artifact [Oracle Log]: the source directory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1/integration/target does not exist.
+simple	12-May-2026 08:49:04	The artifact hasn't been successfully published after 127.5 μs
+simple	12-May-2026 08:49:04	Publishing an artifact: Postgres Log
+error	12-May-2026 08:49:04	Unable to publish artifact [Postgres Log]: the source directory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1/integration/target does not exist.
+simple	12-May-2026 08:49:04	The artifact hasn't been successfully published after 107.9 μs
+simple	12-May-2026 08:49:04	Successfully removed working directory at '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-2/xml-data/build-dir/BT-REP3-JOB1'
+simple	12-May-2026 08:49:04	Finalising the build...
+simple	12-May-2026 08:49:04	Stopping timer.
+simple	12-May-2026 08:49:04	Build BT-REP3-JOB1-4 completed.
+simple	12-May-2026 13:49:04	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	12-May-2026 13:49:04	Running on server: post build plugin 'NCover Results Collector'
+simple	12-May-2026 13:49:04	Running on server: post build plugin 'Build Labeller'
+simple	12-May-2026 13:49:04	Running on server: post build plugin 'Clover Delta Calculator'
+simple	12-May-2026 13:49:04	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	12-May-2026 13:49:04	All post build plugins have finished
+simple	12-May-2026 13:49:04	Generating build results summary...
+simple	12-May-2026 13:49:04	Saving build results to disk...
+simple	12-May-2026 13:49:04	Store variable context...
+simple	12-May-2026 13:49:04	Finished building BT-REP3-JOB1-4.
