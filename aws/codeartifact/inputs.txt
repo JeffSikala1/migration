@@ -6,3 +6,17 @@ curl -s -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
 curl -s -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
   "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-snapshot-local" \
   | python3 -m json.tool
+
+
+
+
+curl -s -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  -X POST \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -H "Content-Type: text/plain" \
+  -d '
+items.find({
+  "repo": "conexus-snapshot-local",
+  "path": {"$match": "gov/gsa/cnxs/bom/env-base/*"}
+}).include("repo", "path", "name", "size", "created", "modified")
+' | python3 -m json.tool
