@@ -128,7 +128,7 @@ Promote Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags --quiet
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               if git ls-remote --tags origin | grep -q "refs/tags/${RELEASE_VERSION}$"; then
                 echo "INFO: release ${RELEASE_VERSION} already finalized; skipping."
                 echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
@@ -152,6 +152,7 @@ Promote Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
@@ -195,7 +196,7 @@ Promote Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags --quiet
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist."
               exit 1
             fi
@@ -357,7 +358,7 @@ Finalize Job:
               exit 0
             fi
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finalize cannot continue."
               exit 1
             fi
@@ -367,10 +368,11 @@ Finalize Job:
     - inject-variables:
         file: skip.properties
         scope: LOCAL
+        namespace: inject
 
     - script:
         interpreter: SHELL
-        description: Merge release branch to main, set release versions, tag, and push
+        description: Merge release branch to integration branch, set release versions, tag, and push
         working-dir: ${bamboo.module_name}
         scripts:
           - |
@@ -402,7 +404,7 @@ Finalize Job:
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch origin --prune --tags --quiet
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if ! git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "ERROR: release branch ${RELEASE_BRANCH} does not exist. Finish release cannot continue."
               exit 1
             fi
@@ -412,14 +414,14 @@ Finalize Job:
               exit 1
             fi
 
-            if ! git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/main$"; then
-              echo "ERROR: origin/main not found"
-              git branch -r
+            if ! git ls-remote --heads origin "refs/heads/${bamboo.integration.branch}" | grep -q .; then
+              echo "ERROR: origin/${bamboo.integration.branch} not found"
+              git ls-remote --heads origin
               exit 1
             fi
 
             git checkout -B "${RELEASE_BRANCH}" "origin/${RELEASE_BRANCH}"
-            git checkout -B main origin/main
+            git checkout -B "${bamboo.integration.branch}" "origin/${bamboo.integration.branch}"
 
             git merge -s recursive -X theirs -m "Merge release branch ${RELEASE_BRANCH}" "${RELEASE_BRANCH}"
 
@@ -433,7 +435,7 @@ Finalize Job:
 
             git tag "${RELEASE_TAG}"
 
-            git push origin main
+            git push origin "${bamboo.integration.branch}"
             git push origin "refs/tags/${RELEASE_TAG}"
 
     - script:
@@ -471,7 +473,7 @@ Finalize Job:
               exit 1
             fi
 
-            if git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
+            if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q .; then
               echo "Deleting remote release branch ${RELEASE_BRANCH}"
               git push origin --delete "${RELEASE_BRANCH}"
             else
@@ -484,7 +486,7 @@ variables:
   maven.artifactId: env-base
   maven.groupId: gov.gsa.cnxs.bom
   module_name: env
-  integration.branch: main
+  integration.branch: develop
 
 repositories:
   - Env:
