@@ -676,6 +676,54 @@ Finalize Job:
 
     - script:
         interpreter: SHELL
+        description: Bump develop to next SNAPSHOT version after release
+        working-dir: ${bamboo.module_name}
+        scripts:
+          - |
+            set -euo pipefail
+            export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
+            if [ "${bamboo_inject_bamboo_skip_release:-false}" = "true" ]; then
+              echo "INFO: release already finalized; skipping."
+              exit 0
+            fi
+
+            # Discover the highest release branch on remote
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
+
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
+
+            # Increment the last version segment by 1
+            NEXT_VERSION=$(echo "${RELEASE_VERSION}" | awk -F. '{OFS="."; $NF=$NF+1; print}')
+            NEXT_SNAPSHOT="${NEXT_VERSION}-SNAPSHOT"
+
+            echo "INFO: Bumping ${bamboo.integration.branch} from ${RELEASE_VERSION} to ${NEXT_SNAPSHOT}"
+
+            git config user.name "bamboo"
+            git config user.email "bamboo@local"
+
+            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+            git fetch origin --prune --tags --quiet
+            git checkout -B "${bamboo.integration.branch}" "origin/${bamboo.integration.branch}"
+
+            find . -type f -name "pom.xml" -exec sed -i "s|<version>${RELEASE_VERSION}</version>|<version>${NEXT_SNAPSHOT}</version>|g" {} +
+
+            if ! git diff --quiet; then
+              git commit -am "Bump to next development version ${NEXT_SNAPSHOT}"
+              git push origin "${bamboo.integration.branch}"
+            else
+              echo "WARNING: No version strings matched ${RELEASE_VERSION} in pom.xml files — verify manually"
+            fi
+
+    - script:
+        interpreter: SHELL
         description: Delete release branch after successful finish
         working-dir: ${bamboo.module_name}
         scripts:
