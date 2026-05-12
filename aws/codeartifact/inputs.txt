@@ -1,11 +1,13 @@
-curl -s -o /dev/null -w "%{http_code}\n" \
-  "https://repo1.maven.org/maven2/net/sf/jasperreports/jasperreports-pdf/6.20.6/jasperreports-pdf-6.20.6.jar"
+quick update on the Reporting build failure for that branch.
 
-curl -s -o /dev/null -w "%{http_code}\n" \
-  "https://repo1.maven.org/maven2/net/sf/jasperreports/jasperreports-jdt/6.20.6/jasperreports-jdt-6.20.6.jar"
+The build is currently failing because Maven can’t resolve these two JasperReports artifacts:
+
+net.sf.jasperreports:jasperreports-pdf:6.20.6
+net.sf.jasperreports:jasperreports-jdt:6.20.6
+
+From what I found, JasperReports started splitting some functionality into separate modules around the 6.20.x range. The issue is that these specific 6.20.6 split module artifacts don’t appear to be available in Maven Central, and we also don’t have them cached in our Artifactory.
+
+I also checked the Jaspersoft remote repos we have configured, but those aren’t resolving the artifacts either.
 
 
-curl -s "https://search.maven.org/solrsearch/select?q=g:net.sf.jasperreports+AND+a:jasperreports-pdf&rows=10&wt=json" \
-  | python3 -m json.tool
-
-
+    we may need to update those dependencies to a version that is available from Maven Central, likely in the 7.x range, so the build is self-sustaining going forward.
