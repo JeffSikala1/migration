@@ -5,17 +5,12 @@ plan:
   key: REPFR
   name: Reporting - Finish Release
 stages:
-- Promote Release Artifacts:
+- Finish Release:
     manual: false
     final: false
     jobs:
-    - Promote Job
-- Finalize Git Release:
-    manual: false
-    final: false
-    jobs:
-    - Finalize Job
-Promote Job:
+    - Default Job
+Default Job:
   key: JOB1
   other:
     clean-working-dir: true
@@ -44,11 +39,11 @@ Promote Job:
       - |
         set -euo pipefail
         SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
- 
+
         cat > "${SETTINGS_FILE}" <<XML
         <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+                  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/maven-settings-1.0.0.xsd">
           <mirrors>
             <mirror>
               <id>artifactory</id>
@@ -102,10 +97,10 @@ Promote Job:
         set -euo pipefail
         export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
         REPO_URL="${bamboo.repo_url}"
- 
+
         git config user.name "bamboo"
         git config user.email "bamboo@local"
- 
+
         # Discover the highest release branch on remote
         RELEASE_BRANCH=$(git ls-remote --heads "${REPO_URL}" 'refs/heads/release/*' \
           | awk '{print $2}' \
@@ -115,19 +110,19 @@ Promote Job:
           | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
           | tail -1 \
           | sed 's|^|release/|')
- 
+
         [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
         RELEASE_VERSION="${RELEASE_BRANCH#release/}"
         echo "INFO: release branch=${RELEASE_BRANCH} version=${RELEASE_VERSION}"
- 
+
         git fetch "${REPO_URL}" \
           "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}" \
           --prune >/dev/null 2>&1
- 
+
         git checkout -B "${RELEASE_BRANCH}" "refs/remotes/origin/${RELEASE_BRANCH}"
- 
+
         find . -type f -name "*.xml" -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
- 
+
         if ! git diff --quiet; then
           git commit -am "Updated versions from release-candidate to snapshot"
           git push "${REPO_URL}" HEAD:"${RELEASE_BRANCH}"
@@ -153,7 +148,7 @@ Promote Job:
         export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
         REPO_URL="${bamboo.repo_url}"
         SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
- 
+
         # Discover the highest release branch on remote
         RELEASE_BRANCH=$(git ls-remote --heads "${REPO_URL}" 'refs/heads/release/*' \
           | awk '{print $2}' \
@@ -163,12 +158,12 @@ Promote Job:
           | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
           | tail -1 \
           | sed 's|^|release/|')
- 
+
         [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
         RELEASE_VERSION="${RELEASE_BRANCH#release/}"
- 
+
         mkdir -p working
- 
+
         python3 ../release-scripts/promote.py \
           conexus-rc-local \
           gov.gsa.cnxs.reporting \
@@ -178,7 +173,7 @@ Promote Job:
           --password "${bamboo.artifactory_access_token_secret}" \
           --settings-xml "${SETTINGS_FILE}" \
           --override
- 
+
         python3 ../release-scripts/promote.py \
           conexus-rc-local \
           gov.gsa.cnxs.reporting \
@@ -188,7 +183,7 @@ Promote Job:
           --password "${bamboo.artifactory_access_token_secret}" \
           --settings-xml "${SETTINGS_FILE}" \
           --override
- 
+
         python3 ../release-scripts/promote.py \
           conexus-rc-local \
           gov.gsa.cnxs.reporting \
@@ -198,7 +193,7 @@ Promote Job:
           --password "${bamboo.artifactory_access_token_secret}" \
           --settings-xml "${SETTINGS_FILE}" \
           --override
- 
+
         python3 ../release-scripts/promote.py \
           conexus-rc-local \
           gov.gsa.cnxs.reporting.test \
@@ -210,82 +205,6 @@ Promote Job:
           --override
       working-dir: reporting
       description: Promote Reporting artifacts from RC repo
-  artifact-subscriptions: []
-Finalize Job:
-  key: JOB2
-  other:
-    clean-working-dir: true
-  tasks:
-  - clean
-  - checkout:
-      repository: Reporting
-      path: reporting
-      force-clean-build: true
-      description: Checkout Reporting repository
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |
-        set -euo pipefail
-        test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-      description: Validate SSH key mounts
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |
-        set -euo pipefail
-        SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
- 
-        cat > "${SETTINGS_FILE}" <<XML
-        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
-          <mirrors>
-            <mirror>
-              <id>artifactory</id>
-              <mirrorOf>*</mirrorOf>
-              <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-            </mirror>
-          </mirrors>
-          <profiles>
-            <profile>
-              <id>use-artifactory</id>
-              <repositories>
-                <repository>
-                  <id>artifactory</id>
-                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-                  <releases><enabled>true</enabled></releases>
-                  <snapshots><enabled>true</enabled></snapshots>
-                </repository>
-              </repositories>
-              <pluginRepositories>
-                <pluginRepository>
-                  <id>artifactory</id>
-                  <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-                  <releases><enabled>true</enabled></releases>
-                  <snapshots><enabled>true</enabled></snapshots>
-                </pluginRepository>
-              </pluginRepositories>
-            </profile>
-          </profiles>
-          <activeProfiles>
-            <activeProfile>use-artifactory</activeProfile>
-          </activeProfiles>
-          <servers>
-            <server>
-              <id>central</id>
-              <username>sa_bamboo</username>
-              <password>${bamboo.artifactory_access_token_secret}</password>
-            </server>
-            <server>
-              <id>artifactory</id>
-              <username>sa_bamboo</username>
-              <password>${bamboo.artifactory_access_token_secret}</password>
-            </server>
-          </servers>
-        </settings>
-        XML
-      description: Write Maven settings for current Artifactory
   - script:
       interpreter: SHELL
       scripts:
@@ -293,10 +212,10 @@ Finalize Job:
         set -euo pipefail
         export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
         REPO_URL="${bamboo.repo_url}"
- 
+
         git config user.name "bamboo"
         git config user.email "bamboo@local"
- 
+
         # Discover the highest release branch on remote
         RELEASE_BRANCH=$(git ls-remote --heads "${REPO_URL}" 'refs/heads/release/*' \
           | awk '{print $2}' \
@@ -306,34 +225,33 @@ Finalize Job:
           | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
           | tail -1 \
           | sed 's|^|release/|')
- 
+
         [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
         RELEASE_VERSION="${RELEASE_BRANCH#release/}"
-        echo "INFO: release branch=${RELEASE_BRANCH} version=${RELEASE_VERSION}"
- 
-        # Fetch both main and release branch
+        echo "INFO: merging ${RELEASE_BRANCH} into main and tagging ${RELEASE_VERSION}"
+
         git fetch "${REPO_URL}" \
           "+refs/heads/main:refs/remotes/origin/main" \
           "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}" \
           --prune >/dev/null 2>&1
- 
+
         git checkout -B "${RELEASE_BRANCH}" "refs/remotes/origin/${RELEASE_BRANCH}"
         git checkout -B main "refs/remotes/origin/main"
- 
+
         git merge -s recursive -X theirs \
           -m "Merge Release Branch" \
           "${RELEASE_BRANCH}"
- 
+
         git tag "${RELEASE_VERSION}"
- 
+
         find . -type f -name "*.xml" -exec sed -i 's/-SNAPSHOT//g' {} +
- 
+
         if ! git diff --quiet; then
           git commit -am "Release Versions"
         else
           echo "No SNAPSHOT versions found to strip"
         fi
- 
+
         git push "${REPO_URL}" main
         git push "${REPO_URL}" "refs/tags/${RELEASE_VERSION}"
       working-dir: reporting
