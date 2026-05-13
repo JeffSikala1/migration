@@ -830,12 +830,18 @@ Finalize Job:
 
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
-            RELEASE_VERSION="${bamboo_inject_bamboo_release_version:-}"
-            RELEASE_BRANCH="${bamboo_inject_bamboo_release_branch:-}"
-            INTEGRATION_BRANCH="${bamboo_inject_bamboo_integration_branch:-${bamboo.integration.branch}}"
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
 
-            [ -n "${RELEASE_VERSION}" ] || { echo "ERROR: bamboo_release_version not set"; exit 1; }
-            [ -n "${RELEASE_BRANCH}" ]  || { echo "ERROR: bamboo_release_branch not set"; exit 1; }
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
+            INTEGRATION_BRANCH="${bamboo_inject_bamboo_integration_branch:-${bamboo.integration.branch}}"
 
             RELEASE_TAG="${RELEASE_VERSION}"
 
@@ -1008,14 +1014,19 @@ Finalize Job:
 
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
-            RELEASE_VERSION="${bamboo_inject_bamboo_release_version:-}"
-            RELEASE_BRANCH="${bamboo_inject_bamboo_release_branch:-}"
+            RELEASE_BRANCH=$(git ls-remote --heads origin 'refs/heads/release/*' \
+              | awk '{print $2}' \
+              | sed 's|refs/heads/||' \
+              | grep '^release/' \
+              | sed 's|release/||' \
+              | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n \
+              | tail -1 \
+              | sed 's|^|release/|')
+
+            [ -n "${RELEASE_BRANCH}" ] || { echo "ERROR: no release branch found on remote"; exit 1; }
+            RELEASE_VERSION="${RELEASE_BRANCH#release/}"
             GROUP_PATH="$(echo "${bamboo.maven.groupId}" | tr '.' '/')"
 
-            if [ -z "${RELEASE_VERSION}" ] || [ -z "${RELEASE_BRANCH}" ]; then
-              echo "WARNING: cleanup metadata missing from injected variables; skipping destructive cleanup."
-              exit 0
-            fi
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
 
