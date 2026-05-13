@@ -6,4 +6,47 @@ f989498245ad   atlassian/bamboo:10.2.11     "/usr/bin/tini -- /e…"   11 days a
 704e46755f36   postgres:16.5                "docker-entrypoint.s…"   5 months ago   Up 4 days   0.0.0.0:32768->5432/tcp                                     prod-postgres
 5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   5 months ago   Up 5 days   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp                    nginx
 [root@ip-10-56-112-34 sikaj01]# docker exec -it prod-postgres bash
-root@704e46755f36:/# 
+root@704e46755f36:/# psql -U bamboo -d bamboo
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "bamboo" does not exist
+root@704e46755f36:/# psql -U postgres
+psql (16.5 (Debian 16.5-1.pgdg120+1))
+Type "help" for help.
+
+postgres=# \l
+postgres=# psql -U bamboouser -d bamboo
+postgres-# exit
+Use \q to quit.
+postgres-# \q
+root@704e46755f36:/# psql -U bamboouser -d bamboo
+psql (16.5 (Debian 16.5-1.pgdg120+1))
+Type "help" for help.
+
+bamboo=> SELECT pb.build_key, pb.full_name, pb.vcs_specs_source_id
+FROM plan pb
+WHERE pb.build_key LIKE 'BT-%'
+   OR pb.build_key LIKE 'FR-%'
+   OR pb.build_key LIKE 'SR-%'
+ORDER BY pb.build_key;
+ERROR:  relation "plan" does not exist
+LINE 2: FROM plan pb
+             ^
+bamboo=> SELECT pb.build_key, pb.full_name, pb.vcs_specs_source_id
+FROM bamboo pb
+WHERE pb.build_key LIKE 'BT-%'
+   OR pb.build_key LIKE 'FR-%'
+   OR pb.build_key LIKE 'SR-%'
+ORDER BY pb.build_key;
+ERROR:  relation "bamboo" does not exist
+LINE 2: FROM bamboo pb
+             ^
+bamboo=> \dt *plan*
+                    List of relations
+ Schema |            Name            | Type  |   Owner    
+--------+----------------------------+-------+------------
+ public | dep_version_planresultkeys | table | bamboouser
+ public | plan_branch_pull_request   | table | bamboouser
+ public | plan_dependencies          | table | bamboouser
+ public | plan_vcs_history           | table | bamboouser
+ public | plan_vcs_location          | table | bamboouser
+ public | plan_vcs_specs_source      | table | bamboouser
+(6 rows)
