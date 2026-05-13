@@ -1,8 +1,9 @@
-psql -U bamboouser -d bamboo
+SELECT b.build_id, b.full_key, b.title, b.build_type
+FROM build b
+WHERE (b.full_key LIKE 'BT-%' OR b.full_key LIKE 'SR-%' OR b.full_key LIKE 'FR-%')
+  AND b.build_type = 'CHAIN'
+  AND b.marked_for_deletion = false
+  AND b.build_id NOT IN (SELECT plan_id FROM plan_vcs_specs_source)
+ORDER BY b.full_key;
 
-SELECT pb.build_key, pb.full_name, pb.vcs_specs_source_id
-FROM bamboo pb
-WHERE pb.build_key LIKE 'BT-%'
-   OR pb.build_key LIKE 'FR-%'
-   OR pb.build_key LIKE 'SR-%'
-ORDER BY pb.build_key;
+
