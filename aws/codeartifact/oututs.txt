@@ -1,167 +1,150 @@
-[sikaj01@ip-10-56-112-33 contract-mod-check.git]$ cd /tmp
+---
+version: 2
+plan:
+  project-key: FR
+  key: REPFR
+  name: Reporting - Finish Release
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - checkout:
+      path: ${bamboo.module_name}
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: release-scripts
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
 
-for repo in common-rest pricing task billing-sftp rest; do
-  git clone --bare \
-    ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/${repo}.git \
-    ${repo}-check.git 2>/dev/null || echo "NOTE: ${repo}-check.git already exists, skipping clone"
-done
+        # Copy in the SSH Key
+        echo "Writing private key"
+        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 400 ~/.ssh/id_rsa
 
-for repo in common-rest pricing task billing-sftp rest; do
-  echo "=== ${repo} ==="
-  cd /tmp/${repo}-check.git
-  echo "-- develop --"
-  git log --oneline -5 develop 2>/dev/null || echo "no develop branch"
-  echo "-- main --"
-  git log --oneline -5 main 2>/dev/null || echo "no main branch"
-  cd /tmp
-done
-NOTE: billing-sftp-check.git already exists, skipping clone
-=== common-rest ===
--- develop --
-decc508 (HEAD -> develop, tag: 02.00.000.134) Release Versions
-6e5f81c Merge release branch release/02.00.000.134
-3332740 Updated versions from release-candidate to snapshot
-a1df193 updated-parent-and-properties
-34025a5 Update SNAPSHOT to RC
--- main --
-64160c2 (main) Release Versions
-ed4f877 (tag: S169, tag: 01.00.000.129) Merge Release Branch
-5a8e921 Updated versions from release-candidate to release
-896ad7b Updated versions from SNAPSHOT to RC
-d18f499 Release Versions
-=== pricing ===
--- develop --
-3ebce963 (HEAD -> develop, tag: 02.00.000.148) Merge release branch release/02.00.000.148
-2e102f6f updated-parent-and-properties
-9e59044d Update SNAPSHOT to RC
-3a25de3d updating poms for 02.00.000.149-SNAPSHOT development
-098dc635 Pull request #1: Make jboss and postgres Docker containers send their logs to postgres.log and jboss.log instead of putting those logs in the build log
--- main --
-ec66fa29 (main) Release Versions
-38ff3d78 (tag: S169, tag: 01.00.000.143) Merge Release Branch
-b51908d6 Updated versions from release-candidate to release
-fd6b3b8e Updated versions from SNAPSHOT to RC
-bb51f643 Release Versions
-=== task ===
--- develop --
-6038f644 (HEAD -> develop) updated-parent-and-properties
-b7f68690 updating poms for 02.00.000.218-SNAPSHOT development
-759cd204 Pull request #1: Move from generating an oracle.log file to a postgres.log file for the Postgres Docker container logs
-217f2779 Move from generating an oracle.log file to a postgres.log file for the Postgres Docker container logs
-4ded52f7 updated-parent-and-properties
--- main --
-c0c19641 (main) Release Versions
-047e7498 (tag: S169, tag: 01.00.000.212) Merge Release Branch
-8501dfc9 Updated versions from release-candidate to release
-7d21dcc7 Updated versions from SNAPSHOT to RC
-a2e08d2a Release Versions
-=== billing-sftp ===
-bash: cd: /tmp/billing-sftp-check.git: No such file or directory
--- develop --
-no develop branch
--- main --
-no main branch
-=== rest ===
--- develop --
-4ce01da399 (HEAD -> develop) Pull request #5: Bugfix/CXI-18 clear cart performance fix
-1ed22e54ea CXI-18 - Add a log message
-c488c370a2 CXI-18 - Narrow InventoryItemIT problem 2
-aeb0944cc1 CXI-18 - Narrow InventoryItemIT problem
-8f8880d618 Pull request #4: Bugfix/CXI-18 clear cart performance fix
--- main --
-4166150b96 (main) Release Versions
-53c275a359 (tag: S169, tag: 01.00.000.172) Merge Release Branch
-1365e7612a Updated versions from release-candidate to release
-39fa6a3df6 Updated versions from SNAPSHOT to RC
-623e873159 Pull request #913: fix a slow test
-[sikaj01@ip-10-56-112-33 tmp]$ cd /tmp
-git clone --bare \
-  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/billing-sftp.git \
-  billing-sftp-check.git
+        # Configure git to use this key
+        echo "Host *" &gt; ~/.ssh/config
+        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
+      description: Install SSH key
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
 
-cd billing-sftp-check.git
-git log --oneline -5 develop 2>/dev/null || echo "no develop"
-git log --oneline -5 main 2>/dev/null || echo "no main"
-Cloning into bare repository 'billing-sftp-check.git'...
-Repository not found
-The requested repository does not exist, or you do not have permission to access it.
-fatal: Could not read from remote repository.
+        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+        git pull
 
-Please make sure you have the correct access rights
-and the repository exists.
-bash: cd: billing-sftp-check.git: No such file or directory
-no develop
-no main
-[sikaj01@ip-10-56-112-33 tmp]$ ll ~/
-total 2481608
-drwxr-x---.  2 sikaj01 users        6144 Oct  8  2025 '  02.00.000.35'
-drwxr-x---.  2 sikaj01 users        6144 Mar  2 18:28  02.00.000.44
--rw-r-----.  1 sikaj01 users    19716964 Mar  2 18:14  02.00.000.44-20260302T172232Z-1-001.zip
-drwxr-x---.  2 sikaj01 users        6144 Oct 30  2025  DISC
-drwxr-x---.  2 sikaj01 users        6144 Nov 24 19:19 'From Oct 15-25 - latest'
--rw-r-----.  1 sikaj01 users       95069 Nov 24 19:19 'From Oct 15-25 - latest-20251124T173813Z-1-001.zip'
-drwxr-x---.  6 sikaj01 users        6144 Nov 18 15:01  argocd
-drwxr-x---.  3 sikaj01 users        6144 Mar  6 20:07  bamboo-deployment
-drwxr-x---.  4 sikaj01 users       14336 Feb 24 15:24  bamboo-specs
-drwxr-x---.  6 sikaj01 users        6144 Apr 20 18:50  billingsftp
-drwxr-x---.  7 sikaj01 users        6144 Mar 19 14:30  common
-drwxr-x---.  6 sikaj01 users        6144 Apr  7 03:35  common-rest
--rw-rw-rw-.  1 sikaj01 users      545435 Oct  7  2025  commons-io-2.19.0.redhat-00001.jar
--rw-r-----.  1 sikaj01 users       20260 Oct  7  2025  commons-io-2.19.0.redhat-00001.pom
--rw-r-----.  1 sikaj01 users  1547098624 Dec 18 20:54  conexus-postgres-17-7.tar
-drwxr-x---. 12 sikaj01 users        6144 Apr  5 02:45  contract-mod
-dr-xr-xr-x.  2 sikaj01 users        6144 Sep 29  2025  data-schema-transfer
--rwxr-x---.  1 sikaj01 users        1044 Sep 23  2025  deploy_from_repo_poms.sh
--rwxr-x---.  1 sikaj01 users        1551 Sep 23  2025  deploy_maven_folder.sh
-drwxr-x---.  7 sikaj01 users        6144 Apr  7 13:31  docker-jboss-local
-drwxr-x---.  7 sikaj01 users        6144 Apr 30 20:14  domain
-drwxr-x---.  7 sikaj01 users        6144 Apr  5 04:19  dpa
-drwxr-x---. 14 sikaj01 docker       6144 Oct  2  2025  ecr-stage-20251002-204928
-drwxr-x---. 11 sikaj01 docker       6144 Oct  2  2025  ecr-stage-20251002-205741
-drwxr-x---.  7 sikaj01 users        6144 May 12 22:33  env
--rw-r-----.  1 sikaj01 users           0 Mar 27 13:51  error.yaml
-drwxr-x---.  2 sikaj01 users        6144 Sep 11  2025  letsencrypt
--rw-r-----.  1 sikaj01 users        1523 Sep 15  2025  log-paths-20250915-1838.csv
--rwxr-x---.  1 sikaj01 users        2422 Sep  6  2025  log_pods.sh
--rwxr-x---.  1 sikaj01 users        1731 Nov 24 14:53  lookforcars.sh
--rw-r-----.  1 sikaj01 users    19705513 Dec 18 20:44  pg-datafile-02.00.000.40-postgres-data.tar.gz
-drwxr-x---.  2 sikaj01 users        6144 Dec 22 22:04  pg-datafile-package
-drwxr-x---.  6 sikaj01 users        6144 Mar 10 20:10  pricing
--rwxr-x---.  1 sikaj01 users       15369 Dec 26 22:23  publish_repo_zip_to_codeartifact.sh
-drwxr-x---. 10 sikaj01 users        6144 Apr  6 02:49  reconciliation
-drwxr-x---.  6 sikaj01 users        6144 Apr  7 03:36  reporting
--rw-r-----.  1 sikaj01 users   427975700 Dec 22 22:32  repository.zip
-drwxr-x---.  8 sikaj01 users        6144 Apr  5 11:21  rest
-drwxr-x---.  3 sikaj01 users        6144 Oct  7  2025  rhdm
-drwxr-x---.  5 sikaj01 users        6144 Apr 29 18:01  schema
-drwxr-x---.  9 sikaj01 users        6144 Oct 17  2025  scripts
--rw-r-----.  1 sikaj01 users   525791968 Nov  4  2025  scripts.tar.gz
--rw-r-----.  1 sikaj01 users        1544 Apr  7 01:45  settings-artifactory.xml
-drwxr-x---. 13 sikaj01 users        6144 Dec 22 22:52  staging
-drwxr-x---.  8 sikaj01 users        6144 Apr  5 00:59  task
-drwxr-x---.  3 sikaj01 users        6144 Oct  7  2025  tmp
-drwxr-x---.  4 sikaj01 users        6144 Apr 15 15:01  ui
-drwxr-x---.  8 sikaj01 users        6144 Apr  5 22:12  vendoremulator
-drwxr-x---. 10 sikaj01 users        6144 Apr  5 22:49  webservices
-drwxr-x---. 11 sikaj01 users        6144 Apr 24 11:08  ws
-drwxr-x---.  6 sikaj01 users        6144 Apr 14 18:00  ws-client
-drwxr-x---.  2 sikaj01 users        6144 Nov 24 21:43  wso2-car-upload
-[sikaj01@ip-10-56-112-33 tmp]$ cd /tmp
-git clone --bare \
-  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/billingsftp.git \
-  billing-sftp-check.git
+        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
+        release_branch=${release_branches[0]}
 
-cd billingsftp-check.git
-git log --oneline -5 develop 2>/dev/null || echo "no develop"
-git log --oneline -5 main 2>/dev/null || echo "no main"
-Cloning into bare repository 'billing-sftp-check.git'...
-remote: Enumerating objects: 4586, done.
-remote: Counting objects: 100% (4586/4586), done.
-remote: Compressing objects: 100% (1869/1869), done.
-remote: Total 4586 (delta 2528), reused 4523 (delta 2506), pack-reused 0 (from 0)
-Receiving objects: 100% (4586/4586), 14.11 MiB | 22.83 MiB/s, done.
-Resolving deltas: 100% (2528/2528), done.
-bash: cd: billingsftp-check.git: No such file or directory
-no develop
-no main
-[sikaj01@ip-
+        if [ -z "${release_branch}" ]; then
+            echo "Failed to match release branch from the following: "
+            git branch -r
+            exit 1
+        else
+            echo "Checking out ${release_branch}"
+            git checkout "${release_branch}"
+        fi
+
+
+        find . -type f -name *.xml -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
+        git commit -a -m "Updated versions from release-candidate to release"
+        git push --set-upstream origin "${release_branch}"
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      working-dir: ${bamboo.module_name}
+      description: Release script
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
+      configuration:
+        variable: maven.version
+        removeSnapshot: 'true'
+        variableScope: JOB
+        pomFile: ${bamboo.module_name}/pom.xml
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        curl -k "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
+        update-ca-trust
+      description: Install USDA root certificate in system wide trusted certificate location
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        mkdir working
+        python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs ${bamboo.module_name} ${bamboo.maven.version} --username "${bamboo.artifactory_admin_username}" --password "${bamboo.artifactory_admin_password}" --override
+      working-dir: ${bamboo.module_name}
+      description: Promote Artifacts
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+        git pull
+
+        release_branches=($(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*'|sort -k4 -t. -nr))
+        release_branch=${release_branches[0]}
+
+        if [ -z "${release_branch}" ]; then
+            echo "Failed to match release branch from the following: "
+            git branch -r
+            exit 1
+        else
+            echo "Checking out ${release_branch}"
+            git checkout "${release_branch}"
+        fi
+
+        git checkout main
+        git merge -s recursive -X theirs -m "Merge Release Branch" ${release_branch}
+        git tag ${bamboo.maven.version}
+        find . -type f -name *.xml -exec sed -i 's/-SNAPSHOT//g' {} +
+        git commit -a -m "Release Versions"
+        git push --set-upstream origin main
+        git push --set-upstream origin main --tags
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      working-dir: ${bamboo.module_name}
+      description: Merge Release branch
+  artifact-subscriptions: []
+variables:
+  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
+  maven.artifactId: reporting-aggregator
+  maven.groupId: gov.gsa.cnxs.reporting
+  module_name: reporting
+repositories:
+- Reporting:
+    scope: global
+- bamboo-deployment:
+    scope: global
+triggers: []
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+notifications: []
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
