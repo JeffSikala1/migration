@@ -1,66 +1,13 @@
-Table "public.build"
-         Column          |            Type             | Collation | Nullable | Default 
--------------------------+-----------------------------+-----------+----------+---------
- build_id                | bigint                      |           | not null | 
- build_type              | character varying(255)      |           | not null | 
- created_date            | timestamp without time zone |           |          | 
- updated_date            | timestamp without time zone |           |          | 
- full_key                | character varying(255)      |           |          | 
- buildkey                | character varying(255)      |           |          | 
- title                   | character varying(255)      |           |          | 
- description             | character varying(255)      |           |          | 
- suspended_from_building | boolean                     |           |          | 
- marked_for_deletion     | boolean                     |           |          | 
- oid                     | bigint                      |           |          | 
- version                 | bigint                      |           | not null | 0
- project_id              | bigint                      |           | not null | 
- master_id               | bigint                      |           |          | 
- notification_set        | bigint                      |           |          | 
- storage_tag             | character varying(255)      |           |          | 
- linked_jira_issue       | character varying(255)      |           |          | 
- rem_jira_link_required  | boolean                     |           |          | 
- divergent_branch        | boolean                     |           | not null | false
- requirement_set         | bigint                      |           |          | 
- stage_id                | bigint                      |           |          | 
-Indexes:
-    "build_pkey" PRIMARY KEY, btree (build_id)
-    "fkix_7cw15vww807nvgj3fig64by9r" btree (requirement_set)
-    "fkix_92f5wxmklkcj445db4jmpqp94" btree (notification_set)
-    "fkix_fh6upg03tuksbmm60mgvsvm7k" btree (stage_id)
-    "fkix_jdvuiqpnjmsvf3llia8jvvg03" btree (master_id)
-    "fkix_jkh3kx5ffgm6nai4v4ru4rqm9" btree (project_id)
-    "plan_deletion_idx" btree (marked_for_deletion)
-    "uk_n3cbpttuc3dd9kx0cao3xobgj" UNIQUE CONSTRAINT, btree (full_key)
-Foreign-key constraints:
-    "fk_7cw15vww807nvgj3fig64by9r" FOREIGN KEY (requirement_set) REFERENCES requirement_set(requirement_set_id)
-    "fk_92f5wxmklkcj445db4jmpqp94" FOREIGN KEY (notification_set) REFERENCES notification_sets(notification_set_id)
-    "fk_fh6upg03tuksbmm60mgvsvm7k" FOREIGN KEY (stage_id) REFERENCES chain_stage(stage_id)
-    "fk_jdvuiqpnjmsvf3llia8jvvg03" FOREIGN KEY (master_id) REFERENCES build(build_id)
-    "fk_jkh3kx5ffgm6nai4v4ru4rqm9" FOREIGN KEY (project_id) REFERENCES project(project_id)
-Referenced by:
-    TABLE "plan_branch_pull_request" CONSTRAINT "fk_1agrw43yocsqt1n4p8u7i0xl1" FOREIGN KEY (chain_branch_id) REFERENCES build(build_id)
-    TABLE "branch_metadata" CONSTRAINT "fk_23n3opb7a2n8ksr2r9uwqwkbn" FOREIGN KEY (plan_id) REFERENCES build(build_id) ON DELETE CASCADE
-    TABLE "variable_definition" CONSTRAINT "fk_2831bcr38j6y2a1f0gr898y86" FOREIGN KEY (plan_id) REFERENCES build(build_id)
-    TABLE "build_definition" CONSTRAINT "fk_3my79d2knlrehoklnnljwr0pn" FOREIGN KEY (build_id) REFERENCES build(build_id)
-    TABLE "chain_stage" CONSTRAINT "fk_44s794oofw2e2jjb69vvsqq5b" FOREIGN KEY (build_id) REFERENCES build(build_id)
-    TABLE "plan_vcs_location" CONSTRAINT "fk_6kuy829k0q2wb34whk0gbhrs9" FOREIGN KEY (plan_id) REFERENCES build(build_id)
-    TABLE "build" CONSTRAINT "fk_jdvuiqpnjmsvf3llia8jvvg03" FOREIGN KEY (master_id) REFERENCES build(build_id)
-    TABLE "plan_dependencies" CONSTRAINT "fk_k9jgx1isf58v27toyq8cf4x35" FOREIGN KEY (child_plan_id) REFERENCES build(build_id)
-    TABLE "plan_dependencies" CONSTRAINT "fk_n6osnnx7kmoyocsp13w4k5h17" FOREIGN KEY (parent_plan_id) REFERENCES bui
-ld(build_id)
-    TABLE "plan_branch_pull_request" CONSTRAINT "fk_1agrw43yocsqt1n4p8u7i0xl1" FOREIGN KEY (chain_branch_id) REFERENCES build(build_id)
-    TABLE "branch_metadata" CONSTRAINT "fk_23n3opb7a2n8ksr2r9uwqwkbn" FOREIGN KEY (plan_id) REFERENCES build(build_id) ON DELETE CASCADE
-    TABLE "variable_definition" CONSTRAINT "fk_2831bcr38j6y2a1f0gr898y86" FOREIGN KEY (plan_id) REFERENCES build(build_id)
-    TABLE "build_definition" CONSTRAINT "fk_3my79d2knlrehoklnnljwr0pn" FOREIGN KEY (build_id) REFERENCES build(build_id)
-    TABLE "chain_stage" CONSTRAINT "fk_44s794oofw2e2jjb69vvsqq5b" FOREIGN KEY (build_id) REFERENCES build(build_id)
-    TABLE "plan_vcs_location" CONSTRAINT "fk_6kuy829k0q2wb34whk0gbhrs9" FOREIGN KEY (plan_id) REFERENCES build(build_id)
-    TABLE "build" CONSTRAINT "fk_jdvuiqpnjmsvf3llia8jvvg03" FOREIGN KEY (master_id) REFERENCES build(build_id)
-    TABLE "plan_dependencies" CONSTRAINT "fk_k9jgx1isf58v27toyq8cf4x35" FOREIGN KEY (child_plan_id) REFERENCES build(build_id)
-    TABLE "plan_dependencies" CONSTRAINT "fk_n6osnnx7kmoyocsp13w4k5h17" FOREIGN KEY (parent_plan_id) REFERENCES bui
-ld(build_id)
-    TABLE "vcs_branch" CONSTRAINT "fk_n7owu8ehnkgf04m3nl7a62bcp" FOREIGN KEY (chain_id) REFERENCES build(build_id)
-    TABLE "artifact_definition" CONSTRAINT "fk_neh0vgh021t8s2epr4yek11jh" FOREIGN KEY (producer_job_id) REFERENCES build(build_id)
-    TABLE "test_class" CONSTRAINT "fk_po3k8ns6fi8r5oe5f2p6o7pnh" FOREIGN KEY (plan_id) REFERENCES build(build_id) ON DELETE CASCADE
-    TABLE "buildresultsummary_label" CONSTRAINT "fk_r5un7grsmypaas30s9mha4f2f" FOREIGN KEY (build_id) REFERENCES build(build_id)
-    TABLE "plan_vcs_specs_source" CONSTRAINT "fk_rduk72rnr6liysdn7xb26epki" FOREIGN KEY (plan_id) REFERENCES build(build_id) ON DELETE CASCADE
-    TABLE "artifact_subscription" CONSTRAINT "fk_slp0qrrvq7bn2kbq6x3599dcj" FOREIGN KEY (consumer_job_id) REFERENCES build(build_id)
+bamboo=> SELECT b.build_id, b.full_key, b.title, b.build_type
+FROM build b
+WHERE (b.full_key LIKE 'BT-%' OR b.full_key LIKE 'SR-%' OR b.full_key LIKE 'FR-%')
+  AND b.build_type = 'CHAIN'
+  AND b.marked_for_deletion = false
+  AND b.build_id NOT IN (SELECT plan_id FROM plan_vcs_specs_source)
+ORDER BY b.full_key;
+ build_id | full_key |           title            | build_type 
+----------+----------+----------------------------+------------
+  4849722 | BT-BRMS  | Brms                       | CHAIN
+  1736926 | FR-IFR   | Iconectiv - Finish Release | CHAIN
+  1736826 | SR-ISR   | Iconnectiv - Start Release | CHAIN
+(3 rows)
