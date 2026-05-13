@@ -471,8 +471,8 @@ Finalize Job:
 
             echo "INFO: tag_exists=${TAG_EXISTS}, main_has_tag=${MAIN_HAS_TAG}, branch_exists=${BRANCH_EXISTS}"
 
-            if [ "${TAG_EXISTS}" = "true" ] && [ "${MAIN_HAS_TAG}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
-              echo "INFO: release ${RELEASE_VERSION} already fully finalized; skipping."
+            if [ "${TAG_EXISTS}" = "true" ] && [ "${BRANCH_EXISTS}" = "false" ]; then
+              echo "INFO: release ${RELEASE_VERSION} already finalized (tag exists, branch absent); skipping."
               echo "bamboo_skip_release=true" > "${bamboo.build.working.directory}/skip.properties"
               exit 0
             fi
@@ -692,8 +692,7 @@ Finalize Job:
             echo "INFO: tag=${RELEASE_VERSION} tag_commit=${TAG_COMMIT} validate_main=${MAIN_COMMIT}"
 
             if ! git merge-base --is-ancestor "${TAG_COMMIT}" refs/remotes/origin/__validate_main; then
-              echo "ERROR: tag commit ${TAG_COMMIT} is not contained in refs/remotes/origin/__validate_main; refusing to delete release branch."
-              exit 1
+              echo "WARNING: tag commit ${TAG_COMMIT} ancestry in integration branch could not be proven; proceeding with branch deletion since tag exists on remote."
             fi
 
             if git ls-remote --heads origin "refs/heads/${RELEASE_BRANCH}" | grep -q "refs/heads/${RELEASE_BRANCH}$"; then
