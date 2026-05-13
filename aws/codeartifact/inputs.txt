@@ -1,23 +1,17 @@
 cd /tmp
 
-git clone --bare \
-  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/domain.git \
-  domain-check.git
-cd domain-check.git
-git log --oneline -5 develop
-git log --oneline -5 main
-cd /tmp
+for repo in common-rest pricing task billing-sftp rest; do
+  git clone --bare \
+    ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/${repo}.git \
+    ${repo}-check.git 2>/dev/null || echo "NOTE: ${repo}-check.git already exists, skipping clone"
+done
 
-git clone --bare \
-  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws-client.git \
-  ws-client-check.git
-cd ws-client-check.git
-git log --oneline -5 develop
-git log --oneline -5 main
-cd /tmp
-
-git clone --bare \
-  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/contract-mod.git \
-  contract-mod-check.git
-cd contract-mod-check.git
-git log --oneline -5 develop
+for repo in common-rest pricing task billing-sftp rest; do
+  echo "=== ${repo} ==="
+  cd /tmp/${repo}-check.git
+  echo "-- develop --"
+  git log --oneline -5 develop 2>/dev/null || echo "no develop branch"
+  echo "-- main --"
+  git log --oneline -5 main 2>/dev/null || echo "no main branch"
+  cd /tmp
+done
