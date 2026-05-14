@@ -45,14 +45,11 @@ Gitflow release start:
 
     - script:
         interpreter: SHELL
-        description: Validate SSH key mounts
+        description: Validate SSH key mount
         scripts:
           - |
             set -eu
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-            test -s /opt/bamboo-keys/bitbucket_ci_jgit || { echo "ERROR: JGit SSH key missing"; exit 1; }
-            ls -l /opt/bamboo-keys/bitbucket_ci*
-
     - script:
         interpreter: SHELL
         description: Write Maven settings for current Artifactory
@@ -105,7 +102,6 @@ Gitflow release start:
               </servers>
             </settings>
             XML
-
     - script:
         interpreter: SHELL
         description: Determine Maven version
@@ -113,15 +109,11 @@ Gitflow release start:
           - |
             set -eu
             SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
+            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
             [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-
-            RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
-
+            RELEASE_VERSION="${CURRENT_VERSION%-SNAPSHOT}"
             echo "Detected version: ${CURRENT_VERSION}"
-            echo "Target release branch: ${RELEASE_BRANCH}"
-
+            echo "Target release branch: release/${RELEASE_VERSION}"
     - script:
         interpreter: SHELL
         description: Cleanup existing tag
@@ -133,14 +125,15 @@ Gitflow release start:
 
             VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
             [ -n "$VERSION" ] || { echo "ERROR: currentVersion is empty"; exit 1; }
+            RELEASE_VERSION="${VERSION%-SNAPSHOT}"
 
             git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
             git fetch --tags origin
 
-            if git tag -l "${VERSION}" | grep -q .; then
-              echo "Deleting tag ${VERSION}"
-              git tag -d "${VERSION}" || true
-              git push origin ":refs/tags/${VERSION}"
+            if git tag -l "${RELEASE_VERSION}" | grep -q .; then
+              echo "Deleting tag ${RELEASE_VERSION}"
+              git tag -d "${RELEASE_VERSION}" || true
+              git push origin ":refs/tags/${RELEASE_VERSION}"
             else
               echo "No existing tag"
             fi
@@ -191,13 +184,10 @@ Gitflow release start:
           - |
             set -eu
             export HOME="${HOME:-/root}"
-
             mkdir -p "${HOME}/.ssh"
             chmod 700 "${HOME}/.ssh"
-
             cp /opt/bamboo-keys/bitbucket_ci_jgit "${HOME}/.ssh/id_rsa"
             chmod 600 "${HOME}/.ssh/id_rsa"
-
             cat > "${HOME}/.ssh/config" <<EOF
             Host bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
               HostName bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
@@ -208,14 +198,9 @@ Gitflow release start:
               StrictHostKeyChecking accept-new
             EOF
             chmod 600 "${HOME}/.ssh/config"
-
             ssh-keyscan -p 7999 bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
             chmod 644 "${HOME}/.ssh/known_hosts"
-
             echo "SSH files prepared for JGit"
-            head -n 1 "${HOME}/.ssh/id_rsa"
-            ls -la "${HOME}/.ssh"
-
     - script:
         interpreter: SHELL
         description: Validate SSH auth to Bitbucket
@@ -322,7 +307,6 @@ Deploy RC:
           - |
             set -eu
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-
     - script:
         interpreter: SHELL
         description: Write Maven settings for current Artifactory
@@ -375,7 +359,6 @@ Deploy RC:
               </servers>
             </settings>
             XML
-
     - script:
         interpreter: SHELL
         description: Checkout release branch
@@ -406,7 +389,7 @@ Deploy RC:
         jdk: JDK 17
         goal: >-
           -U clean deploy
-          -DaltDeploymentRepository=central::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local
+          -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local
           -s /tmp/settings-artifactory-${bamboo.buildResultKey}.xml
         description: Deploy RC to RC repo
 
@@ -432,7 +415,6 @@ Snapshot Maven Deploy:
           - |
             set -eu
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-
     - script:
         interpreter: SHELL
         description: Write Maven settings for current Artifactory
@@ -485,7 +467,6 @@ Snapshot Maven Deploy:
               </servers>
             </settings>
             XML
-
     - script:
         interpreter: SHELL
         description: Sync develop branch
@@ -504,7 +485,7 @@ Snapshot Maven Deploy:
         jdk: JDK 17
         goal: >-
           -U clean deploy
-          -DaltDeploymentRepository=central::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
+          -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
           -s /tmp/settings-artifactory-${bamboo.buildResultKey}.xml
         description: Maven Deploy to Artifactory
 
@@ -530,7 +511,6 @@ Delete release branch if failed:
           - |
             set -eu
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-
     - script:
         interpreter: SHELL
         description: Write Maven settings for current Artifactory
@@ -583,41 +563,24 @@ Delete release branch if failed:
               </servers>
             </settings>
             XML
-
     - script:
         interpreter: SHELL
         description: Cleanup on failure
         scripts:
           - |
+            #!/usr/bin/env bash
             set -eu
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
 
-            if [ "${bamboo.buildFailed}" = "true" ]; then
-              CURRENT_VERSION=$(/usr/share/maven/bin/mvn -B -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1)
-              [ -n "$CURRENT_VERSION" ] || { echo "ERROR: could not determine Maven version"; exit 1; }
-
-              RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
-              [ -n "$RELEASE_BRANCH" ] || { echo "ERROR: release branch is empty"; exit 1; }
-
-              echo "Recomputed release branch: ${RELEASE_BRANCH}"
-
+            if [ "${bamboo.buildFailed}" == "true" ]; then
+              echo "Build failed"
               git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-              git fetch origin --prune
-
-              if git branch -r | sed 's/^[[:space:]]*//' | grep -q "^origin/${RELEASE_BRANCH}$"; then
-                echo "Deleting ${RELEASE_BRANCH}"
-                git push origin --delete "${RELEASE_BRANCH}" || true
-              else
-                echo "No matching release branch found to delete"
-              fi
-
-              exit 0
-            else
-              echo "Build did not fail, nothing to clean up"
-              exit 0
+              git fetch origin
+              release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
+              echo "Deleting $release_branch"
+              git push origin --delete $release_branch
+              exit 1
             fi
-
   artifact-subscriptions: []
 
 

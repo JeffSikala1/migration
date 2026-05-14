@@ -37,20 +37,18 @@ Gitflow release start:
 
     - script:
         interpreter: SHELL
-        description: Validate SSH key mounts
+        description: Validate SSH key mount
         scripts:
           - |
             set -eu
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-            test -s /opt/bamboo-keys/bitbucket_ci_jgit || { echo "ERROR: JGit SSH key missing"; exit 1; }
-
     - script:
         interpreter: SHELL
         description: Write Maven settings for current Artifactory
         scripts:
           - |
             set -eu
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
 
             cat > "${SETTINGS_FILE}" <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -63,7 +61,6 @@ Gitflow release start:
                   <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
                 </mirror>
               </mirrors>
-
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
@@ -85,11 +82,9 @@ Gitflow release start:
                   </pluginRepositories>
                 </profile>
               </profiles>
-
               <activeProfiles>
                 <activeProfile>use-artifactory</activeProfile>
               </activeProfiles>
-
               <servers>
                 <server>
                   <id>artifactory</id>
@@ -99,7 +94,6 @@ Gitflow release start:
               </servers>
             </settings>
             XML
-
     - script:
         interpreter: SHELL
         description: Determine release metadata
@@ -166,13 +160,10 @@ Gitflow release start:
           - |
             set -eu
             export HOME="${HOME:-/root}"
-
             mkdir -p "${HOME}/.ssh"
             chmod 700 "${HOME}/.ssh"
-
             cp /opt/bamboo-keys/bitbucket_ci_jgit "${HOME}/.ssh/id_rsa"
             chmod 600 "${HOME}/.ssh/id_rsa"
-
             cat > "${HOME}/.ssh/config" <<EOF
             Host bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
               HostName bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
@@ -183,10 +174,9 @@ Gitflow release start:
               StrictHostKeyChecking accept-new
             EOF
             chmod 600 "${HOME}/.ssh/config"
-
             ssh-keyscan -p 7999 bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
             chmod 644 "${HOME}/.ssh/known_hosts"
-
+            echo "SSH files prepared for JGit"
     - script:
         interpreter: SHELL
         description: Force clean git working tree before jgitflow
@@ -319,14 +309,13 @@ Deploy RC:
           - |
             set -eu
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-
     - script:
         interpreter: SHELL
         description: Write Maven settings for current Artifactory
         scripts:
           - |
             set -eu
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
 
             cat > "${SETTINGS_FILE}" <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -339,7 +328,6 @@ Deploy RC:
                   <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
                 </mirror>
               </mirrors>
-
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
@@ -361,26 +349,18 @@ Deploy RC:
                   </pluginRepositories>
                 </profile>
               </profiles>
-
               <activeProfiles>
                 <activeProfile>use-artifactory</activeProfile>
               </activeProfiles>
-
               <servers>
                 <server>
                   <id>artifactory</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-                <server>
-                  <id>central</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
               </servers>
             </settings>
             XML
-
     - script:
         interpreter: SHELL
         description: Checkout release branch
@@ -450,14 +430,13 @@ Update dependencies to latest snapshot versions:
           - |
             set -eu
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-
     - script:
         interpreter: SHELL
         description: Write Maven settings for current Artifactory
         scripts:
           - |
             set -eu
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
 
             cat > "${SETTINGS_FILE}" <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -470,7 +449,6 @@ Update dependencies to latest snapshot versions:
                   <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
                 </mirror>
               </mirrors>
-
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
@@ -492,26 +470,18 @@ Update dependencies to latest snapshot versions:
                   </pluginRepositories>
                 </profile>
               </profiles>
-
               <activeProfiles>
                 <activeProfile>use-artifactory</activeProfile>
               </activeProfiles>
-
               <servers>
                 <server>
                   <id>artifactory</id>
                   <username>sa_bamboo</username>
                   <password>${bamboo.artifactory_access_token_secret}</password>
                 </server>
-                <server>
-                  <id>central</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
               </servers>
             </settings>
             XML
-
     - script:
         interpreter: SHELL
         description: Sync develop branch
@@ -586,14 +556,13 @@ Delete release branch if failed:
           - |
             set -eu
             test -s /opt/bamboo-keys/bitbucket_ci || { echo "ERROR: SSH key missing"; exit 1; }
-
     - script:
         interpreter: SHELL
         description: Write Maven settings for current Artifactory
         scripts:
           - |
             set -eu
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
+            SETTINGS_FILE=/tmp/settings-artifactory-${bamboo.buildResultKey}.xml
 
             cat > "${SETTINGS_FILE}" <<XML
             <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -606,7 +575,6 @@ Delete release branch if failed:
                   <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
                 </mirror>
               </mirrors>
-
               <profiles>
                 <profile>
                   <id>use-artifactory</id>
@@ -628,11 +596,9 @@ Delete release branch if failed:
                   </pluginRepositories>
                 </profile>
               </profiles>
-
               <activeProfiles>
                 <activeProfile>use-artifactory</activeProfile>
               </activeProfiles>
-
               <servers>
                 <server>
                   <id>artifactory</id>
@@ -642,43 +608,24 @@ Delete release branch if failed:
               </servers>
             </settings>
             XML
-
     - script:
         interpreter: SHELL
         description: Cleanup on failure
         scripts:
           - |
+            #!/usr/bin/env bash
             set -eu
             export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'
 
-            if [ "${bamboo.buildFailed}" != "true" ]; then
-              echo "Build did not fail, nothing to clean up"
-              exit 0
+            if [ "${bamboo.buildFailed}" == "true" ]; then
+              echo "Build failed"
+              git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
+              git fetch origin
+              release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
+              echo "Deleting $release_branch"
+              git push origin --delete $release_branch
+              exit 1
             fi
-
-            SETTINGS_FILE="/tmp/settings-artifactory-${bamboo.buildResultKey}.xml"
-            CURRENT_VERSION=$(/usr/share/maven/bin/mvn -q -DforceStdout -s "${SETTINGS_FILE}" help:evaluate -Dexpression=project.version 2>/dev/null | sed '/^\[/d' | grep -v '^$' | tail -1 || true)
-
-            if [ -z "${CURRENT_VERSION}" ]; then
-              echo "Could not determine Maven version during cleanup; skipping cleanup"
-              exit 0
-            fi
-
-            RELEASE_BRANCH="release/${CURRENT_VERSION%-SNAPSHOT}"
-            echo "Computed release branch: ${RELEASE_BRANCH}"
-
-            git remote set-url origin "${bamboo.planRepository.repositoryUrl}"
-            git fetch origin +refs/heads/*:refs/remotes/origin/* --prune --tags
-
-            if git branch -r | sed 's/^[[:space:]]*//' | grep -qx "origin/${RELEASE_BRANCH}"; then
-              echo "Deleting ${RELEASE_BRANCH}"
-              git push origin --delete "${RELEASE_BRANCH}" || true
-            else
-              echo "No matching release branch found to delete"
-            fi
-
-            exit 0
-
   artifact-subscriptions: []
 
 repositories:
