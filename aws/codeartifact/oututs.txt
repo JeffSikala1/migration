@@ -1,168 +1,181 @@
----
-version: 2
-plan:
-  project-key: FR
-  key: REPFR
-  name: Reporting - Finish Release
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
-  key: JOB1
-  tasks:
-  - checkout:
-      path: ${bamboo.module_name}
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: release-scripts
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+#!/usr/bin/env bash
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 400 ~/.ssh/id_rsa
+git_exec=/usr/bin/git
 
-        # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-      description: Install SSH key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+# Parse input
+parse_arguments() {
+ salt_api_password=""
+ salt_api_username="salt-api"
+ start_or_finish="start"
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+ while getopts ":u:p:m:" opt; do
+  case $opt in
+    u)
+      salt_api_username="${OPTARG}" >&2
+      ;;
+    p)
+      salt_api_password="${OPTARG}" >&2
+      ;;
+    m)
+      start_or_finish="${OPTARG}" >&2
+      ;;
+    l)
+      if [ "${OPTARG}" == "debug" ]; then
+       set -x
+      elif [ "${OPTARG}" == "verbose" ]; then
+       set -v
+      fi
+      ;;
+    \?)
+      echo "Invalid option: -${OPTARG}" >&2
+      exit 1
+      ;;
+    :)
+      echo "Option -${OPTARG} requires an argument." >&2
+      exit 1
+      ;;
+  esac
+ done
+}
 
-        release_branches=($(git branch -r | grep -oP '(?<=origin\/)release\/.*'|sort -k4 -t. -nr))
-        release_branch=${release_branches[0]}
+# Exit with a non zero status and an optional message
+# $1 - Error message
+exit_error()
+{
+ [ -n "${1}" ] && echo "ERROR: ${1}"
+ exit 1
+}
 
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
+# Ensure that we do not have a zero length value
+# $1 - Value to test
+# $2 - Error message if validation fails
+validate_not_empty()
+{
+ [ -z "${1}" ] && exit_error "${2}"
+}
 
+# Get the docker.oracle value off of develop
+# $1 - Release version
+develop_docker_oracle()
+{
+ _SUP_=$(${git_exec} checkout develop)
+ grep -oP '(?<=<docker.oracle>)[^<]*' pom.xml
+ _SUP=$(${git_exec} checkout release/${1})
+}
 
-        find . -type f -name *.xml -exec sed -i 's/-RC/-SNAPSHOT/g' {} +
-        git commit -a -m "Updated versions from release-candidate to release"
-        git push --set-upstream origin "${release_branch}"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      working-dir: ${bamboo.module_name}
-      description: Release script
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: maven.version
-        removeSnapshot: 'true'
-        variableScope: JOB
-        pomFile: ${bamboo.module_name}/pom.xml
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+# Login to the salt api and return the token
+# $1 - username
+# $2 - password
+get_salt_token()
+{
+ curl -k https://conexus-saltmaster.edc.ds1.usda.gov:8000/login \
+    -H 'Accept: application/json' \
+    -d username="${1}" \
+    -d password="${2}" \
+    -d eauth=pam \
+    2>/dev/null \
+    | grep -oP '"token": "\K[^\"]*'
+}
 
-        curl -k "https://conexus-artifactory.edc.ds1.usda.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        update-ca-trust
-      description: Install USDA root certificate in system wide trusted certificate location
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+# Tag a docker image on the remote build servers
+# $1 - Src image
+# $2 - Dst Image
+# $3 - Salt Api Token
+tag_docker_image()
+{
+ echo "Tagging ${1} as ${2}"
+ curl -k https://conexus-saltmaster.edc.ds1.usda.gov:8000/ \
+     -H "Accept: application/x-yaml" \
+     -H "X-Auth-Token: ${3}"\
+     -d client=local \
+     -d tgt="dots.prod.oireasd01[29,30]*" \
+     -d fun=dockerng.tag \
+     -d arg="${1}" \
+     -d arg="${2}" \
+ || exit_error "Failed to tag docker oracle image"
+}
 
-        mkdir working
-        python3 ../release-scripts/promote.py conexus-rc-local gov.gsa.cnxs ${bamboo.module_name} ${bamboo.maven.version} --username "${bamboo.artifactory_admin_username}" --password "${bamboo.artifactory_admin_password}" --override
-      working-dir: ${bamboo.module_name}
-      description: Promote Artifacts
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+# Update docker.oracle in the env pom
+# $1 - Value to find and replace
+# $2 - Value to replace found with
+update_docker_in_pom()
+{
+ echo "Updating docker.oracle in Env pom ..."
+ cp pom.xml{,.orig}
+ # Use parameter expansion to escape possible backslashes in $1 or $2
+ sed -i "s/${1//\//\\/}/${2//\//\\/}/" pom.xml
+ diff pom.xml.orig pom.xml
+ rm pom.xml.orig
+}
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+# Commit and push pom changes in env to release branch
+# $1 - Version
+commit_and_push()
+{
+ ${git_exec} commit pom.xml -m "Updated docker image to ${1}" \
+ || exit_error "Failed to commit updates to pom.xml"
+ ${git_exec} push \
+ || exit_error "Failed to push updated pom.xml to remote"
+}
 
-        release_branches=($(git branch -r | grep -oP '(?<=origin\/)release\/.*'|sort -k4 -t. -nr))
-        release_branch=${release_branches[0]}
+# Perform prerequsites here
+# $1 - "start" or "finish"
+pre()
+{
+ if [ "${1}" == "start" ]; then
+  release_branch_version=$(git branch | grep -oP '(?<=\* release/).*')
+  validate_not_empty "${salt_api_password}" "Salt API password not provided"
+  # Get the api token to be used when tagging
+  token=$(get_salt_token ${salt_api_username} ${salt_api_password})
+  validate_not_empty "${token}" "Failed to get salt-api token"
+ else
+  ${git_exec} remote set-url origin ssh://git@oireasd0120.edc.ds1.usda.gov:7999/cxn/env.git
+  ${git_exec} pull
+  release_branch_version=$(git branch -r | grep -oP '(?<=release/).*')
+  develop_oracle_image=$(develop_docker_oracle "${release_branch_version}")
+  validate_not_empty "${develop_oracle_image}" "Failed to get develop docker oracle image"
+ fi
+ # Get the value of the current docker.oracle on our branch
+ current_docker_oracle_image=$(grep -oP '(?<=<docker.oracle>)[^<]*' pom.xml)
 
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
+ # Perform a quick sanity check before moving on
+ validate_not_empty "${release_branch_version}" "Unable to set release branch version.  Bailing out"
+ validate_not_empty "${current_docker_oracle_image}" "Failed to find current oracle image"
 
-        git checkout main
-        git merge -s recursive -X theirs -m "Merge Release Branch" ${release_branch}
-        git tag ${bamboo.maven.version}
-        find . -type f -name *.xml -exec sed -i 's/-SNAPSHOT//g' {} +
-        git commit -a -m "Release Versions"
-        git push --set-upstream origin main
-        git push --set-upstream origin main --tags
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      working-dir: ${bamboo.module_name}
-      description: Merge Release branch
-  artifact-subscriptions: []
-variables:
-  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
-  maven.artifactId: reporting-aggregator
-  maven.groupId: gov.gsa.cnxs.reporting
-  module_name: reporting
-repositories:
-- Reporting:
-    scope: global
-- bamboo-deployment:
-    scope: global
-triggers: []
-branches:
-  create: manually
-  delete: never
-  link-to-jira: true
-notifications: []
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: []
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
+ [ "${1}" == "finish" ] && ( git checkout release/${release_branch_version} \
+ || exit_error "Failed to checkout release/${release_branch_version}" )
+}
 
+# Perform release start functions
+start_release()
+{
+ # Tag the oracle image for the release
+ tag_docker_image \
+  ${current_docker_oracle_image} \
+  conexus-artifactory.edc.ds1.usda.gov:5000/usda-oracle-12c:${release_branch_version} \
+  ${token}
+ # Update the env pom
+ update_docker_in_pom \
+  "\(<docker.oracle>conexus-artifactory.edc.ds1.usda.gov:5000/[^:]\+\)[^<]*\(.*\)" \
+  "\1:${release_branch_version}\2"
+ # Commit and push
+ commit_and_push "${release_branch_version}"
+}
 
-Same code like SSH and release branch is repeating in multiple steps.  All inline code should be in a script file.
-Release branch extraction can be more elegant.
-The code is not matching legacy
-The inline xml should be in a file in git
-For me, Alignment means just replace auth and artifactory url. that is all
-Code change can be a future development project as AWS CI 2.0
-Inline repeating code like release branch extraction will be a nightmare to support and troubleshoot
+# Perform release finish functions
+finish_release()
+{
+# Update the pom.xml back to the conexus-dl tag
+ update_docker_in_pom \
+  "${current_docker_oracle_image}" "${develop_oracle_image}"
+# Push change back to remote
+ commit_and_push "conexus-dl"
+}
 
-
-maven settings
-the ones I saw had it configured via pom. that is points to usda artifactory, that's why introduced it inline. It's not ideal but allowed me to progress while poms got updated
-I could not find reference to usda artifactory, but it present then it can be replaced.
+parse_arguments "$@"
+pre "${start_or_finish}"
+if [ "${start_or_finish}" == "start" ]; then
+ start_release
+else
+ finish_release
+fi
