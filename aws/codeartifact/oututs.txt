@@ -1,204 +1,82 @@
+bamboo=> \d plan_vcs_specs_source
+             Table "public.plan_vcs_specs_source"
+       Column        |  Type  | Collation | Nullable | Default 
+---------------------+--------+-----------+----------+---------
+ plan_id             | bigint |           | not null | 
+ vcs_specs_source_id | bigint |           |          | 
+Indexes:
+    "plan_vcs_specs_source_pkey" PRIMARY KEY, btree (plan_id)
+    "fkix_rthtpuvvmn8m3d2hue89buvby" btree (vcs_specs_source_id)
+Foreign-key constraints:
+    "fk_rduk72rnr6liysdn7xb26epki" FOREIGN KEY (plan_id) REFERENCES build(build_id) ON DELETE CASCADE
+    "fk_rthtpuvvmn8m3d2hue89buvby" FOREIGN KEY (vcs_specs_source_id) REFERENCES vcs_specs_source(vcs_specs_source_id) ON DELETE CASCADE
 
-bamboo=> SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
-  AND (table_name LIKE '%plan%' OR table_name LIKE '%spec%')
-ORDER BY table_name;
-         table_name         
-----------------------------
- dep_version_planresultkeys
- plan_branch_pull_request
- plan_dependencies
- plan_vcs_history
- plan_vcs_location
- plan_vcs_specs_source
- vcs_specs_source
- vcs_specs_state
-(8 rows)
+bamboo=> \d build
+                                  Table "public.build"
+         Column          |            Type             | Collation | Nullable | Default 
+-------------------------+-----------------------------+-----------+----------+---------
+ build_id                | bigint                      |           | not null | 
+ build_type              | character varying(255)      |           | not null | 
+ created_date            | timestamp without time zone |           |          | 
+ updated_date            | timestamp without time zone |           |          | 
+ full_key                | character varying(255)      |           |          | 
+ buildkey                | character varying(255)      |           |          | 
+ title                   | character varying(255)      |           |          | 
+ description             | character varying(255)      |           |          | 
+ suspended_from_building | boolean                     |           |          | 
+ marked_for_deletion     | boolean                     |           |          | 
+ oid                     | bigint                      |           |          | 
+ version                 | bigint                      |           | not null | 0
+ project_id              | bigint                      |           | not null | 
+ master_id               | bigint                      |           |          | 
+ notification_set        | bigint                      |           |          | 
+ storage_tag             | character varying(255)      |           |          | 
+ linked_jira_issue       | character varying(255)      |           |          | 
+ rem_jira_link_required  | boolean                     |           |          | 
+ divergent_branch        | boolean                     |           | not null | false
+ requirement_set         | bigint                      |           |          | 
+ stage_id                | bigint                      |           |          | 
+Indexes:
+    "build_pkey" PRIMARY KEY, btree (build_id)
+    "fkix_7cw15vww807nvgj3fig64by9r" btree (requirement_set)
+    "fkix_92f5wxmklkcj445db4jmpqp94" btree (notification_set)
+    "fkix_fh6upg03tuksbmm60mgvsvm7k" btree (stage_id)
+    "fkix_jdvuiqpnjmsvf3llia8jvvg03" btree (master_id)
+    "fkix_jkh3kx5ffgm6nai4v4ru4rqm9" btree (project_id)
+    "plan_deletion_idx" btree (marked_for_deletion)
+    "uk_n3cbpttuc3dd9kx0cao3xobgj" UNIQUE CONSTRAINT, btree (full_key)
+Foreign-key constraints:
+    "fk_7cw15vww807nvgj3fig64by9r" FOREIGN KEY (requirement_set) REFERENCES requirement_set(requirement_set_id)
+    "fk_92f5wxmklkcj445db4jmpqp94" FOREIGN KEY (notification_set) REFERENCES notification_sets(notification_set_id)
+    "fk_fh6upg03tuksbmm60mgvsvm7k" FOREIGN KEY (stage_id) REFERENCES chain_stage(stage_id)
+    "fk_jdvuiqpnjmsvf3llia8jvvg03" FOREIGN KEY (master_id) REFERENCES build(build_id)
+    "fk_jkh3kx5ffgm6nai4v4ru4rqm9" FOREIGN KEY (project_id) REFERENCES project(project_id)
+Referenced by:
+    TABLE "plan_branch_pull_request" CONSTRAINT "fk_1agrw43yocsqt1n4p8u7i0xl1" FOREIGN KEY (chain_branch_id) REFERENCES build(build_id)
+    TABLE "branch_metadata" CONSTRAINT "fk_23n3opb7a2n8ksr2r9uwqwkbn" FOREIGN KEY (plan_id) REFERENCES build(build_id) ON DELETE CASCADE
+    TABLE "variable_definition" CONSTRAINT "fk_2831bcr38j6y2a1f0gr898y86" FOREIGN KEY (plan_id) REFERENCES build(build_id)
+    TABLE "build_definition" CONSTRAINT "fk_3my79d2knlrehoklnnljwr0pn" FOREIGN KEY (build_id) REFERENCES build(build_id)
+    TABLE "chain_stage" CONSTRAINT "fk_44s794oofw2e2jjb69vvsqq5b" FOREIGN KEY (build_id) REFERENCES build(build_id)
+    TABLE "plan_vcs_location" CONSTRAINT "fk_6kuy829k0q2wb34whk0gbhrs9" FOREIGN KEY (plan_id) REFERENCES build(build_id)
+    TABLE "build" CONSTRAINT "fk_jdvuiqpnjmsvf3llia8jvvg03" FOREIGN KEY (master_id) REFERENCES build(build_id)
+    TABLE "plan_dependencies" CONSTRAINT "fk_k9jgx1isf58v27toyq8cf4x35" FOREIGN KEY (child_plan_id) REFERENCES build(build_id)
+    TABLE "plan_dependencies" CONSTRAINT "fk_n6osnnx7kmoyocsp13w4k5h17" FOREIGN KEY (parent_plan_id) REFERENCES build(build_id)
+    TABLE "vcs_branch" CONSTRAINT "fk_n7owu8ehnkgf04m3nl7a62bcp" FOREIGN KEY (chain_id) REFERENCES build(build_id)
+    TABLE "artifact_definition" CONSTRAINT "fk_neh0vgh021t8s2epr4yek11jh" FOREIGN KEY (producer_job_id) REFERENCES build(build_id)
+    TABLE "test_class" CONSTRAINT "fk_po3k8ns6fi8r5oe5f2p6o7pnh" FOREIGN KEY (plan_id) REFERENCES build(build_id) ON DELETE CASCADE
+    TABLE "buildresultsummary_label" CONSTRAINT "fk_r5un7grsmypaas30s9mha4f2f" FOREIGN KEY (build_id) REFERENCES build(build_id)
+    TABLE "plan_vcs_specs_source" CONSTRAINT "fk_rduk72rnr6liysdn7xb26epki" FOREIGN KEY (plan_id) REFERENCES build(build_id) ON DELETE CASCADE
+    TABLE "artifact_subscription" CONSTRAINT "fk_slp0qrrvq7bn2kbq6x3599dcj" FOREIGN KEY (consumer_job_id) REFERENCES build(build_id)
 
-                      List of relations
- Schema |              Name              | Type  |   Owner    
---------+--------------------------------+-------+------------
- public | AO_21D670_WHITELIST_RULES      | table | bamboouser
- public | AO_38321B_CUSTOM_CONTENT_LINK  | table | bamboouser
- public | AO_4789DD_DISABLED_CHECKS      | table | bamboouser
- public | AO_4789DD_HEALTH_CHECK_STATUS  | table | bamboouser
- public | AO_4789DD_HEALTH_CHECK_WATCHER | table | bamboouser
- public | AO_4789DD_PROPERTIES           | table | bamboouser
- public | AO_4789DD_READ_NOTIFICATIONS   | table | bamboouser
- public | AO_4789DD_SHORTENED_KEY        | table | bamboouser
- public | AO_4789DD_TASK_MONITOR         | table | bamboouser
- public | AO_723324_CLIENT_CONFIG        | table | bamboouser
- public | AO_723324_CLIENT_TOKEN         | table | bamboouser
- public | AO_7A45FB_AOTRACKING_ENTRY     | table | bamboouser
- public | AO_7A45FB_AOTRACKING_RESULT    | table | bamboouser
- public | AO_7A45FB_AOTRACKING_USER      | table | bamboouser
- public | AO_A0B856_DAILY_COUNTS         | table | bamboouser
- public | AO_A0B856_HIST_INVOCATION      | table | bamboouser
- public | AO_A0B856_WEBHOOK              | table | bamboouser
- public | AO_A0B856_WEBHOOK_CONFIG       | table | bamboouser
- public | AO_A0B856_WEBHOOK_EVENT        | table | bamboouser
- public | AO_A0B856_WEB_HOOK_LISTENER_AO | table | bamboouser
- public | AO_AC3877_RL_USER_COUNTER      | table | bamboouser
- public | AO_AC3877_SETTINGS_VERSION     | table | bamboouser
- public | AO_AC3877_SYSTEM_RL_SETTINGS   | table | bamboouser
- public | AO_AC3877_USER_RL_SETTINGS     | table | bamboouser
- public | AO_C77861_AUDIT_ACTION_CACHE   | table | bamboouser
- public | AO_C77861_AUDIT_CATEGORY_CACHE | table | bamboouser
- public | AO_C77861_AUDIT_DENY_LISTED    | table | bamboouser
- public | AO_C77861_AUDIT_ENTITY         | table | bamboouser
- public | AO_C7F71E_OAUTH_SVC_PROV_TKNS  | table | bamboouser
- public | AO_ED669C_IDP_CONFIG           | table | bamboouser
- public | AO_ED669C_SEALED_ENTITY        | table | bamboouser
- public | AO_ED669C_SEEN_ASSERTIONS      | table | bamboouser
- public | AO_ED669C_TOTP_CODES           | table | bamboouser
- public | AO_ED669C_TOTP_USER_ENROLLMENT | table | bamboouser
- public | AO_F1B80E_BRANCH_SELECTION     | table | bamboouser
- public | AO_FE1BC5_ACCESS_TOKEN         | table | bamboouser
- public | AO_FE1BC5_AUTHORIZATION        | table | bamboouser
- public | AO_FE1BC5_CLIENT               | table | bamboouser
- public | AO_FE1BC5_REDIRECT_URI         | table | bamboouser
- public | AO_FE1BC5_REFRESH_TOKEN        | table | bamboouser
- public | access_token                   | table | bamboouser
- public | acl_entry                      | table | bamboouser
- public | acl_object_identity            | table | bamboouser
- public | agent_assignment               | table | bamboouser
- public | agent_authentication           | table | bamboouser
- public | agent_cipher                   | table | bamboouser
- public | artifact                       | table | bamboouser
- public | artifact_copy_pattern          | table | bamboouser
- public | artifact_definition            | table | bamboouser
- public | artifact_exclusion_pattern     | table | bamboouser
- public | artifact_subscription          | table | bamboouser
- public | audit_log                      | table | bamboouser
- public | auth_attempt_info              | table | bamboouser
- public | author                         | table | bamboouser
- public | bandana                        | table | bamboouser
- public | branch_commit_info             | table | bamboouser
- public | branch_metadata                | table | bamboouser
- public | brs_artifact_link              | table | bamboouser
- public | brs_consumed_subscription      | table | bamboouser
- public | brs_linkedjiraissues           | table | bamboouser
- public | build                          | table | bamboouser
- public | build_definition               | table | bamboouser
- public | build_numbers                  | table | bamboouser
- public | buildresult_warning_summary    | table | bamboouser
- public | buildresultsummary             | table | bamboouser
- public | buildresultsummary_customdata  | table | bamboouser
- public | buildresultsummary_label       | table | bamboouser
- public | capability                     | table | bamboouser
- public | capability_set                 | table | bamboouser
- public | chain_stage                    | table | bamboouser
- public | chain_stage_result             | table | bamboouser
- public | cluster_lock                   | table | bamboouser
- public | cluster_node_heartbeat         | table | bamboouser
- public | commit_files                   | table | bamboouser
- public | credentials                    | table | bamboouser
- public | crowd_deleted_entity           | table | bamboouser
- public | cwd_app_dir_default_groups     | table | bamboouser
- public | cwd_app_dir_group_mapping      | table | bamboouser
- public | cwd_app_dir_mapping            | table | bamboouser
- public | cwd_app_dir_operation          | table | bamboouser
- public | cwd_app_licensed_user          | table | bamboouser
- public | cwd_app_licensing              | table | bamboouser
- public | cwd_app_licensing_dir_info     | table | bamboouser
- public | cwd_application                | table | bamboouser
- public | cwd_application_address        | table | bamboouser
- public | cwd_application_alias          | table | bamboouser
- public | cwd_application_attribute      | table | bamboouser
- public | cwd_directory                  | table | bamboouser
- public | cwd_directory_attribute        | table | bamboouser
- public | cwd_directory_operation        | table | bamboouser
- public | cwd_expirable_user_token       | table | bamboouser
- public | cwd_granted_perm               | table | bamboouser
- public | cwd_group                      | table | bamboouser
- public | cwd_group_admin_group          | table | bamboouser
- public | cwd_group_admin_user           | table | bamboouser
- public | cwd_group_attribute            | table | bamboouser
- public | cwd_membership                 | table | bamboouser
- public | cwd_property                   | table | bamboouser
- public | cwd_synchronisation_status     | table | bamboouser
- public | cwd_synchronisation_token      | table | bamboouser
- public | cwd_token                      | table | bamboouser
- public | cwd_tombstone                  | table | bamboouser
- public | cwd_user                       | table | bamboouser
- public | cwd_user_attribute             | table | bamboouser
- public | cwd_user_credential_record     | table | bamboouser
- public | cwd_webhook                    | table | bamboouser
- public | dep_version_planresultkeys     | table | bamboouser
- public | deployment_env_config          | table | bamboouser
- public | deployment_env_vcs_location    | table | bamboouser
- public | deployment_environment         | table | bamboouser
- public | deployment_project             | table | bamboouser
- public | deployment_project_artifact    | table | bamboouser
- public | deployment_result              | table | bamboouser
- public | deployment_result_customdata   | table | bamboouser
- public | deployment_version             | table | bamboouser
- public | deployment_version_artifact    | table | bamboouser
- public | deployment_version_changeset   | table | bamboouser
- public | deployment_version_commit      | table | bamboouser
- public | deployment_version_jira_issue  | table | bamboouser
- public | deployment_version_naming      | table | bamboouser
- public | deployment_version_status      | table | bamboouser
- public | ec2_image_script               | table | bamboouser
- public | elastic_image                  | table | bamboouser
- public | elastic_schedule               | table | bamboouser
- public | elastic_tunnel_definition      | table | bamboouser
- public | ephemeral_agent_template       | table | bamboouser
- public | hibernate_unique_key           | table | bamboouser
- public | id_generator                   | table | bamboouser
- public | imserver                       | table | bamboouser
- public | label                          | table | bamboouser
- public | merge_result                   | table | bamboouser
- public | notification_sets              | table | bamboouser
- public | notifications                  | table | bamboouser
- public | orphaned_tests_cleanup_job     | table | bamboouser
- public | os_propertyentry               | table | bamboouser
- public | password_reset_token           | table | bamboouser
- public | per_agent_token                | table | bamboouser
- public | plan_branch_pull_request       | table | bamboouser
- public | plan_dependencies              | table | bamboouser
- public | plan_vcs_history               | table | bamboouser
- public | plan_vcs_location              | table | bamboouser
- public | plan_vcs_specs_source          | table | bamboouser
- public | project                        | table | bamboouser
- public | queue                          | table | bamboouser
- public | quick_filter_rules             | table | bamboouser
- public | quick_filters                  | table | bamboouser
- public | quick_search                   | table | bamboouser
- public | relevant_changesets            | table | bamboouser
- public | rememberme_token               | table | bamboouser
- public | repository_changeset           | table | bamboouser
- public | requirement                    | table | bamboouser
- public | requirement_set                | table | bamboouser
- public | rss_permission_deployment_proj | table | bamboouser
- public | rss_permission_project         | table | bamboouser
- public | rss_permission_repository      | table | bamboouser
- public | script                         | table | bamboouser
- public | stage_variable_context         | table | bamboouser
- public | test_case                      | table | bamboouser
- public | test_case_result               | table | bamboouser
- public | test_class                     | table | bamboouser
- public | test_class_result              | table | bamboouser
- public | test_error                     | table | bamboouser
- public | trusted_apps                   | table | bamboouser
- public | trusted_apps_ips               | table | bamboouser
- public | trusted_apps_urls              | table | bamboouser
- public | trusted_key                    | table | bamboouser
- public | user_comment                   | table | bamboouser
- public | user_commit                    | table | bamboouser
- public | variable_baseline_item         | table | bamboouser
- public | variable_context               | table | bamboouser
- public | variable_context_baseline      | table | bamboouser
- public | variable_definition            | table | bamboouser
- public | variable_substitution          | table | bamboouser
- public | variablestoautoincrement       | table | bamboouser
- public | vcs_branch                     | table | bamboouser
- public | vcs_location                   | table | bamboouser
- public | vcs_pull_request               | table | bamboouser
- public | vcs_specs_source               | table | bamboouser
- public | vcs_specs_state                | table | bamboouser
- public | vcs_tag                        | table | bamboouser
- public | webhook_response               | table | bamboouser
- public | webhook_template               | table | bamboouser
-(182 rows)
+bamboo=> SELECT build_id, build_key, full_key, full_name, build_type 
+FROM build 
+WHERE full_key LIKE '%FR-REPFR%' OR build_key LIKE '%REPFR%';
+ERROR:  column "build_key" does not exist
+LINE 1: SELECT build_id, build_key, full_key, full_name, build_type 
+                         ^
+HINT:  Perhaps you meant to reference the column "build.buildkey".
+bamboo=> SELECT build_id, build.key, full_key, full_name, build_type 
+FROM build 
+WHERE full_key LIKE '%FR-REPFR%' OR build.key LIKE '%REPFR%';
+ERROR:  column build.key does not exist
+LINE 1: SELECT build_id, build.key, full_key, full_name, build_type 
