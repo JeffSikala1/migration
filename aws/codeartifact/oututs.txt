@@ -1,187 +1,401 @@
----
-version: 2
-plan:
-  project-key: BT
-  key: ENV
-  name: Env - Build
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Default Job
-Default Job:
-  key: JOB1
-  tasks:
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - checkout:
-      repository: bamboo-deployment
-      path: bamboo-deployment
-      force-clean-build: true
-      description: Checkout bamboo-deployment
-  - script:
-      interpreter: BINSH_OR_CMDEXE
-      scripts:
-      - |-
-        rm -rf ~/.m2/repository/gov/gsa/
-        yum install jq -y
-      description: Remove existing cnxs maven repo directory
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/build-determination-migration.sh
-      description: Determine parent branch and pass correct variables
-  - inject-variables:
-      file: file.properties
-      scope: LOCAL
-      namespace: inject
-      description: Inject values
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        cat > settings-artifactory.xml <<XML
-        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
-          <mirrors>
-            <mirror>
-              <id>ArtifactoryPluginRepos</id>
-              <mirrorOf>*,!conexus-snapshot-local</mirrorOf>
-              <url>${bamboo.inject.pluginRepositoryUrl}</url>
-            </mirror>
-          </mirrors>
+System Error Details
+Build Build and Test - Env - Build : Error encountered while triggering manual build: Could not generate next build number for 'BT-ENV'
+(java.lang.RuntimeException : Could not generate next build number for 'BT-ENV')
 
-          <profiles>
-            <profile>
-              <id>use-artifactory</id>
-              <repositories>
-                <repository>
-                  <id>conexus-plugin-repository</id>
-                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                  <releases><enabled>true</enabled></releases>
-                  <snapshots><enabled>true</enabled></snapshots>
-                </repository>
-                <repository>
-                  <id>conexus-snapshot-local</id>
-                  <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
-                  <releases><enabled>false</enabled></releases>
-                  <snapshots><enabled>true</enabled></snapshots>
-                </repository>
-              </repositories>
+Occurred: 13 May 2026, 1:25:49 AM
+java.lang.RuntimeException: Could not generate next build number for 'BT-ENV'
+	at com.atlassian.bamboo.build.BuildNumberGeneratorServiceImpl.generateBuildNumber(BuildNumberGeneratorServiceImpl.java:22)
+	at com.atlassian.bamboo.v2.trigger.ManualBuildDetectionAction.generateResultWithoutChanges(ManualBuildDetectionAction.java:100)
+	at com.atlassian.bamboo.chains.ChainExecutionManagerImpl.createNewChainState(ChainExecutionManagerImpl.java:546)
+	at com.atlassian.bamboo.chains.ChainExecutionManagerImpl.createChainStateNoDetection(ChainExecutionManagerImpl.java:508)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:344)
+	at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:234)
+	at jdk.proxy3/jdk.proxy3.$Proxy290.createChainStateNoDetection(Unknown Source)
+	at com.atlassian.bamboo.plan.PlanExecutionManagerImpl.lambda$startManualBuild$1(PlanExecutionManagerImpl.java:363)
+	at io.atlassian.util.concurrent.ManagedLocks$ManagedLockImpl.withLock(ManagedLocks.java:293)
+	at com.atlassian.bamboo.plan.PlanExecutionLockServiceImpl.inlineProcessLocks(PlanExecutionLockServiceImpl.java:83)
+	at com.atlassian.bamboo.plan.PlanExecutionManagerImpl.doWithInlineProcessLock(PlanExecutionManagerImpl.java:648)
+	at com.atlassian.bamboo.plan.PlanExecutionManagerImpl.startManualBuild(PlanExecutionManagerImpl.java:356)
+	at com.atlassian.bamboo.plan.PlanExecutionManagerImpl.start(PlanExecutionManagerImpl.java:501)
+	at com.atlassian.bamboo.plan.PlanExecutionManagerImpl.start(PlanExecutionManagerImpl.java:485)
+	at com.atlassian.bamboo.plan.PlanExecutionManagerImpl.lambda$startManualExecution$0(PlanExecutionManagerImpl.java:277)
+	at com.atlassian.bamboo.util.CacheAwareness.withValuesOlderThanTimestampReloaded(CacheAwareness.java:127)
+	at com.atlassian.bamboo.plan.PlanExecutionManagerImpl.startManualExecution(PlanExecutionManagerImpl.java:279)
+	at com.atlassian.bamboo.plan.PlanExecutionManagerImpl.startManualExecution(PlanExecutionManagerImpl.java:222)
+	at com.atlassian.bamboo.plan.DelegatingPlanExecutionManager.startManualExecution(DelegatingPlanExecutionManager.java:118)
+	at com.atlassian.bamboo.v2.ww2.build.TriggerManualBuild.execute(TriggerManualBuild.java:38)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at ognl.OgnlRuntime.invokeMethodInsideSandbox(OgnlRuntime.java:1266)
+	at ognl.OgnlRuntime.invokeMethod(OgnlRuntime.java:1251)
+	at ognl.OgnlRuntime.callAppropriateMethod(OgnlRuntime.java:1969)
+	at ognl.ObjectMethodAccessor.callMethod(ObjectMethodAccessor.java:68)
+	at com.opensymphony.xwork2.ognl.accessor.XWorkMethodAccessor.callMethodWithDebugInfo(XWorkMethodAccessor.java:98)
+	at com.opensymphony.xwork2.ognl.accessor.XWorkMethodAccessor.callMethod(XWorkMethodAccessor.java:90)
+	at ognl.OgnlRuntime.callMethod(OgnlRuntime.java:2045)
+	at ognl.ASTMethod.getValueBody(ASTMethod.java:97)
+	at ognl.SimpleNode.evaluateGetValueBody(SimpleNode.java:212)
+	at ognl.SimpleNode.getValue(SimpleNode.java:258)
+	at ognl.Ognl.getValue(Ognl.java:537)
+	at ognl.Ognl.getValue(Ognl.java:501)
+	at com.opensymphony.xwork2.ognl.OgnlUtil$3.execute(OgnlUtil.java:531)
+	at com.opensymphony.xwork2.ognl.OgnlUtil.compileAndExecuteMethod(OgnlUtil.java:583)
+	at com.opensymphony.xwork2.ognl.OgnlUtil.callMethod(OgnlUtil.java:529)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invokeAction(DefaultActionInvocation.java:438)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invokeActionOnly(DefaultActionInvocation.java:293)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:254)
+	at com.opensymphony.xwork2.interceptor.DefaultWorkflowInterceptor.doIntercept(DefaultWorkflowInterceptor.java:181)
+	at com.atlassian.bamboo.ww2.interceptors.BambooWorkflowInterceptor.validateWorkflow(BambooWorkflowInterceptor.java:36)
+	at com.atlassian.bamboo.ww2.interceptors.BambooWorkflowInterceptor.doIntercept(BambooWorkflowInterceptor.java:20)
+	at com.opensymphony.xwork2.interceptor.MethodFilterInterceptor.intercept(MethodFilterInterceptor.java:99)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.opensymphony.xwork2.validator.ValidationInterceptor.doIntercept(ValidationInterceptor.java:263)
+	at com.atlassian.bamboo.ww2.interceptors.BambooValidationInterceptor.validate(BambooValidationInterceptor.java:32)
+	at com.atlassian.bamboo.ww2.interceptors.BambooValidationInterceptor.doIntercept(BambooValidationInterceptor.java:16)
+	at com.opensymphony.xwork2.interceptor.MethodFilterInterceptor.intercept(MethodFilterInterceptor.java:99)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.FieldErrorUsageVerifier.intercept(FieldErrorUsageVerifier.java:43)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.JSONValidationInterceptor.doIntercept(JSONValidationInterceptor.java:60)
+	at com.atlassian.bamboo.ww2.interceptors.AbstractBambooInterceptor.intercept(AbstractBambooInterceptor.java:24)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.SimpleConversionErrorInterceptor.intercept(SimpleConversionErrorInterceptor.java:64)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.BambooXsrfTokenInterceptor.doIntercept(BambooXsrfTokenInterceptor.java:70)
+	at com.atlassian.bamboo.ww2.interceptors.AbstractBambooInterceptor.intercept(AbstractBambooInterceptor.java:24)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.opensymphony.xwork2.interceptor.ParametersInterceptor.doIntercept(ParametersInterceptor.java:140)
+	at com.opensymphony.xwork2.interceptor.MethodFilterInterceptor.intercept(MethodFilterInterceptor.java:99)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.opensymphony.xwork2.interceptor.ModelDrivenInterceptor.intercept(ModelDrivenInterceptor.java:101)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.opensymphony.xwork2.interceptor.ChainingInterceptor.intercept(ChainingInterceptor.java:160)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.opensymphony.xwork2.interceptor.PrepareInterceptor.doIntercept(PrepareInterceptor.java:175)
+	at com.opensymphony.xwork2.interceptor.MethodFilterInterceptor.intercept(MethodFilterInterceptor.java:99)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at org.apache.struts2.interceptor.I18nInterceptor.intercept(I18nInterceptor.java:121)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.security.acegi.intercept.web.WebworkSecurityInterceptor.intercept(WebworkSecurityInterceptor.java:47)
+	at com.atlassian.bamboo.security.acegi.intercept.web.WebworkSecurityInterceptorProxy.intercept(WebworkSecurityInterceptorProxy.java:46)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.opensymphony.xwork2.interceptor.ParametersInterceptor.doIntercept(ParametersInterceptor.java:140)
+	at com.opensymphony.xwork2.interceptor.MethodFilterInterceptor.intercept(MethodFilterInterceptor.java:99)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.PaginationAwareInterceptor.doIntercept(PaginationAwareInterceptor.java:82)
+	at com.atlassian.bamboo.ww2.interceptors.AbstractBambooInterceptor.intercept(AbstractBambooInterceptor.java:24)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.StatisticsAwareInterceptor.doIntercept(StatisticsAwareInterceptor.java:35)
+	at com.atlassian.bamboo.ww2.interceptors.AbstractBambooInterceptor.intercept(AbstractBambooInterceptor.java:24)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.ResultsListAwareInterceptor.doIntercept(ResultsListAwareInterceptor.java:38)
+	at com.atlassian.bamboo.ww2.interceptors.AbstractBambooInterceptor.intercept(AbstractBambooInterceptor.java:24)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.NavigationAwareInterceptor.doIntercept(NavigationAwareInterceptor.java:107)
+	at com.atlassian.bamboo.ww2.interceptors.AbstractBambooInterceptor.intercept(AbstractBambooInterceptor.java:24)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.BuildResultsSummaryAwareInteceptor.doIntercept(BuildResultsSummaryAwareInteceptor.java:62)
+	at com.atlassian.bamboo.ww2.interceptors.AbstractBambooInterceptor.intercept(AbstractBambooInterceptor.java:24)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.ResultsSummaryAwareInterceptor.doIntercept(ResultsSummaryAwareInterceptor.java:67)
+	at com.atlassian.bamboo.ww2.interceptors.AbstractBambooInterceptor.intercept(AbstractBambooInterceptor.java:24)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.ChainAwareInterceptor.doIntercept(ChainAwareInterceptor.java:93)
+	at com.atlassian.bamboo.ww2.interceptors.AbstractBambooInterceptor.intercept(AbstractBambooInterceptor.java:24)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.xwork.interceptors.AroundInterceptor.intercept(AroundInterceptor.java:25)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.bamboo.ww2.interceptors.ConditionalActionInterceptor.intercept(ConditionalActionInterceptor.java:87)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.opensymphony.xwork2.interceptor.StaticParametersInterceptor.intercept(StaticParametersInterceptor.java:201)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.atlassian.xwork.interceptors.AroundInterceptor.intercept(AroundInterceptor.java:25)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at org.apache.struts2.interceptor.ServletConfigInterceptor.intercept(ServletConfigInterceptor.java:167)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.opensymphony.xwork2.interceptor.AliasInterceptor.intercept(AliasInterceptor.java:228)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at com.opensymphony.xwork2.interceptor.ExceptionMappingInterceptor.intercept(ExceptionMappingInterceptor.java:196)
+	at com.opensymphony.xwork2.DefaultActionInvocation.invoke(DefaultActionInvocation.java:249)
+	at org.apache.struts2.factory.StrutsActionProxy.execute(StrutsActionProxy.java:48)
+	at org.apache.struts2.dispatcher.Dispatcher.serviceAction(Dispatcher.java:576)
+	at org.apache.struts2.dispatcher.ExecuteOperations.executeAction(ExecuteOperations.java:79)
+	at org.apache.struts2.dispatcher.filter.StrutsExecuteFilter.doFilter(StrutsExecuteFilter.java:77)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:39)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.applinks.core.rest.context.ContextFilter.doFilter(ContextFilter.java:28)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.applinks.core.rest.context.ContextFilter.doFilter(ContextFilter.java:28)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.applinks.core.rest.context.ContextFilter.doFilter(ContextFilter.java:28)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.applinks.core.rest.context.ContextFilter.doFilter(ContextFilter.java:28)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.applinks.core.rest.context.ContextFilter.doFilter(ContextFilter.java:28)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.analytics.client.filter.UniversalAnalyticsFilter.doFilter(UniversalAnalyticsFilter.java:80)
+	at com.atlassian.analytics.client.filter.AbstractHttpFilter.doFilter(AbstractHttpFilter.java:31)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.prettyurls.filter.PrettyUrlsSiteMeshFixupFilter.doFilter(PrettyUrlsSiteMeshFixupFilter.java:36)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.prettyurls.filter.PrettyUrlsDispatcherFilter.doFilter(PrettyUrlsDispatcherFilter.java:58)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.prettyurls.filter.PrettyUrlsSiteMeshFilter.doFilter(PrettyUrlsSiteMeshFilter.java:85)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.prettyurls.filter.PrettyUrlsMatcherFilter.doFilter(PrettyUrlsMatcherFilter.java:55)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:60)
+	at com.atlassian.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:46)
+	at com.atlassian.bamboo.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:56)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.opensymphony.sitemesh.webapp.SiteMeshFilter.obtainContent(SiteMeshFilter.java:182)
+	at com.opensymphony.sitemesh.webapp.SiteMeshFilter.doFilter(SiteMeshFilter.java:85)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.atlassian.bamboo.filter.NewRelicTransactionNamingFilter.doFilter(NewRelicTransactionNamingFilter.java:30)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.atlassian.bamboo.filter.BambooStrutsSecureAccessFilter.doFilter(BambooStrutsSecureAccessFilter.java:95)
+	at com.atlassian.core.filters.AbstractHttpFilter.doFilter(AbstractHttpFilter.java:32)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.atlassian.bamboo.ww2.StrutsPrepareFilter$1.doFilter(StrutsPrepareFilter.java:66)
+	at org.apache.struts2.dispatcher.filter.StrutsPrepareFilter.doFilter(StrutsPrepareFilter.java:96)
+	at com.atlassian.bamboo.ww2.StrutsPrepareFilter.handleRequest(StrutsPrepareFilter.java:40)
+	at com.atlassian.bamboo.ww2.StrutsPrepareFilter.doFilter(StrutsPrepareFilter.java:32)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.atlassian.bamboo.filter.BambooSecureServletAccessFilter.doFilter(BambooSecureServletAccessFilter.java:63)
+	at com.atlassian.core.filters.AbstractHttpFilter.doFilter(AbstractHttpFilter.java:32)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:39)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.bamboo.filter.SessionExpiryFilter.doFilter(SessionExpiryFilter.java:58)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.troubleshooting.thready.filter.AbstractThreadNamingFilter.doFilter(AbstractThreadNamingFilter.java:46)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.prettyurls.filter.PrettyUrlsCombinedMatchDispatcherFilter.doFilter(PrettyUrlsCombinedMatchDispatcherFilter.java:60)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:60)
+	at com.atlassian.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:46)
+	at com.atlassian.bamboo.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:56)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.atlassian.bamboo.filter.BambooProfilingFilter.doFilter(BambooProfilingFilter.java:75)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.atlassian.bamboo.filter.AccessLogFilter.doFilter(AccessLogFilter.java:95)
+	at com.atlassian.bamboo.filter.SecureAccessFilterChain.doFilter(SecureAccessFilterChain.java:39)
+	at com.atlassian.bamboo.filter.SecureAccessFilter.doFilter(SecureAccessFilter.java:103)
+	at javax.servlet.http.HttpFilter.doFilter(HttpFilter.java:53)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at org.acegisecurity.util.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:265)
+	at org.acegisecurity.providers.anonymous.AnonymousProcessingFilter.doFilter(AnonymousProcessingFilter.java:125)
+	at org.acegisecurity.util.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:275)
+	at com.atlassian.bamboo.filter.SeraphLoginFilter$1.run(SeraphLoginFilter.java:71)
+	at com.atlassian.bamboo.security.ImpersonationHelper.runWith(ImpersonationHelper.java:26)
+	at com.atlassian.bamboo.security.ImpersonationHelper.runAs(ImpersonationHelper.java:49)
+	at com.atlassian.bamboo.filter.SeraphLoginFilter.doFilter(SeraphLoginFilter.java:76)
+	at org.acegisecurity.util.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:275)
+	at org.acegisecurity.util.FilterChainProxy.doFilter(FilterChainProxy.java:149)
+	at org.acegisecurity.util.FilterToBeanProxy.doFilter(FilterToBeanProxy.java:98)
+	at com.atlassian.bamboo.filter.BambooAcegiProxyFilter.doFilter(BambooAcegiProxyFilter.java:19)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.johnson.filters.AbstractJohnsonFilter.doFilter(AbstractJohnsonFilter.java:59)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.seraph.filter.SecurityFilter.doFilter(SecurityFilter.java:242)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.seraph.filter.BaseLoginFilter.doFilter(BaseLoginFilter.java:148)
+	at com.atlassian.seraph.filter.BambooLoginFilter.doFilter(BambooLoginFilter.java:46)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:39)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.oauth.serviceprovider.internal.servlet.OAuthFilter.doFilter(OAuthFilter.java:69)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.security.auth.trustedapps.filter.TrustedApplicationsFilter.doFilter(TrustedApplicationsFilter.java:94)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.oauth2.provider.core.web.AccessTokenFilter.doFilter(AccessTokenFilter.java:97)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.prettyurls.filter.PrettyUrlsCombinedMatchDispatcherFilter.doFilter(PrettyUrlsCombinedMatchDispatcherFilter.java:60)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:60)
+	at com.atlassian.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:46)
+	at com.atlassian.bamboo.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:56)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at org.springframework.orm.hibernate5.support.OpenSessionInViewFilter.doFilterInternal(OpenSessionInViewFilter.java:156)
+	at com.atlassian.bamboo.persistence.BambooSessionInViewFilter.doFilterInternal(BambooSessionInViewFilter.java:24)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.github.ziplet.filter.compression.CompressingFilter.doFilter(CompressingFilter.java:263)
+	at com.atlassian.bamboo.filter.BambooCompressingFilter.doFilter(BambooCompressingFilter.java:37)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.bamboo.filter.RequestCacheThreadLocalFilter.doFilter(RequestCacheThreadLocalFilter.java:44)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.bamboo.filter.BambooHttpHeaderSecurityFilter.doFilter(BambooHttpHeaderSecurityFilter.java:175)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.bamboo.filter.CookieCacheControlFilter.doFilter(CookieCacheControlFilter.java:56)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.core.filters.HeaderSanitisingFilter.doFilter(HeaderSanitisingFilter.java:40)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:39)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.plugins.authentication.sso.web.filter.loginform.DisableNativeLoginAuthFilter.doFilterInternal(DisableNativeLoginAuthFilter.java:75)
+	at com.atlassian.plugins.authentication.sso.web.filter.AbstractJohnsonAwareFilter.doFilter(AbstractJohnsonAwareFilter.java:29)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.plugins.authentication.basicauth.filter.DisableBasicAuthFilter.doFilter(DisableBasicAuthFilter.java:79)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.jwt.internal.servlet.JwtAuthFilter.doFilter(JwtAuthFilter.java:39)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.analytics.client.filter.DefaultAnalyticsFilter.doFilter(DefaultAnalyticsFilter.java:30)
+	at com.atlassian.analytics.client.filter.AbstractHttpFilter.doFilter(AbstractHttpFilter.java:31)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.troubleshooting.thready.filter.AbstractThreadNamingFilter.doFilter(AbstractThreadNamingFilter.java:46)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.lambda$doFilter$0(DelegatingPluginFilter.java:59)
+	at com.atlassian.prettyurls.filter.PrettyUrlsCombinedMatchDispatcherFilter.doFilter(PrettyUrlsCombinedMatchDispatcherFilter.java:60)
+	at com.atlassian.plugin.servlet.filter.DelegatingPluginFilter.doFilter(DelegatingPluginFilter.java:64)
+	at com.atlassian.bamboo.plugin.servlet.filter.AccessCheckPluginDelegateFilter.doFilter(AccessCheckPluginDelegateFilter.java:37)
+	at com.atlassian.plugin.servlet.filter.IteratingFilterChain.doFilter(IteratingFilterChain.java:37)
+	at com.atlassian.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:60)
+	at com.atlassian.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:46)
+	at com.atlassian.bamboo.plugin.servlet.filter.ServletFilterModuleContainerFilter.doFilter(ServletFilterModuleContainerFilter.java:56)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at com.atlassian.bamboo.filter.TrafficThroughPrimaryNodeOnlyFilter.doFilter(TrafficThroughPrimaryNodeOnlyFilter.java:66)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:166)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:142)
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:166)
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:88)
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:481)
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:127)
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:83)
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:72)
+	at org.apache.catalina.valves.StuckThreadDetectionValve.invoke(StuckThreadDetectionValve.java:185)
+	at org.apache.catalina.valves.AbstractAccessLogValve.invoke(AbstractAccessLogValve.java:643)
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344)
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:398)
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63)
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:935)
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1831)
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52)
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:973)
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:491)
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Caused by: java.lang.IllegalStateException: XSRF: A mutative operation was attempted on PlanBuildNumbersImpl(id=4980761) within a non-mutative HTTP request: https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/build/admin/triggerManualBuild.action?buildKey=BT-ENV : [[4849703, 109]]->
+->[[4849703, 110]]
 
-              <pluginRepositories>
-                <pluginRepository>
-                  <id>conexus-plugin-repository</id>
-                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                  <releases><enabled>true</enabled></releases>
-                  <snapshots><enabled>true</enabled></snapshots>
-                </pluginRepository>
-              </pluginRepositories>
-            </profile>
-          </profiles>
-
-          <activeProfiles>
-            <activeProfile>use-artifactory</activeProfile>
-          </activeProfiles>
-
-          <servers>
-            <server>
-              <id>cnxs-artifactory</id>
-              <username>sa_bamboo</username>
-              <password>${bamboo.artifactory_access_token_secret}</password>
-            </server>
-            <server>
-              <id>artifactory</id>
-              <username>sa_bamboo</username>
-              <password>${bamboo.artifactory_access_token_secret}</password>
-            </server>
-            <server>
-              <id>conexus-plugin-repository</id>
-              <username>sa_bamboo</username>
-              <password>${bamboo.artifactory_access_token_secret}</password>
-            </server>
-            <server>
-              <id>conexus-snapshot-local</id>
-              <username>sa_bamboo</username>
-              <password>${bamboo.artifactory_access_token_secret}</password>
-            </server>
-            <server>
-              <id>ArtifactoryPluginRepos</id>
-              <username>sa_bamboo</username>
-              <password>${bamboo.artifactory_access_token_secret}</password>
-            </server>
-            <server>
-              <id>ArtifactoryMavenFeatureRepos</id>
-              <username>sa_bamboo</username>
-              <password>${bamboo.artifactory_access_token_secret}</password>
-            </server>
-          </servers>
-        </settings>
-        XML
-      description: Write Artifactory Maven settings
-  - script:
-      interpreter: SHELL
-      file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
-      description: Determine if deploy to Artifactory is needed
-  requirements:
-  - system.jdk.JDK 17
-  - system.builder.mvn3.Maven 3
-  artifact-subscriptions: []
-repositories:
-- Env:
-    scope: global
-- bamboo-deployment:
-    scope: global
-triggers:
-- bitbucket-server-trigger:
-    repositories:
-    - Env
-branches:
-  create: for-new-branch
-  delete:
-    after-deleted-days: 7
-    after-inactive-days: 200
-  link-to-jira: true
-notifications:
-- events:
-  - plan-completed
-  recipients:
-  - watchers
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-labels: []
-dependencies:
-  require-all-stages-passing: true
-  enabled-for-branches: true
-  block-strategy: block_if_parent_in_progress
-  plans:
-  - BT-COMB
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
-  force-stop-build: true
----
-version: 2
-plan:
-  key: BT-ENV
-plan-permissions:
-- users:
-  - jeff.sikala
-  groups:
-  - bamboo-admin
-  permissions:
-  - view
-  - edit
-  - build
-  - clone
-  - admin
-  - view-configuration
-  - create-plan-branch
-...
+	at com.atlassian.bamboo.utils.XsrfUtils.fail(XsrfUtils.java:27)
+	at com.atlassian.bamboo.hibernate.ReadOnlyGetMethodEnforcer.fail(ReadOnlyGetMethodEnforcer.java:133)
+	at com.atlassian.bamboo.hibernate.ReadOnlyGetMethodEnforcer.onFlushDirty(ReadOnlyGetMethodEnforcer.java:84)
+	at org.springframework.orm.hibernate.support.ChainedInterceptorSupport.onFlushDirty(ChainedInterceptorSupport.java:104)
+	at org.springframework.orm.hibernate.support.ChainedInterceptorSupport.onFlushDirty(ChainedInterceptorSupport.java:104)
+	at org.hibernate.event.internal.DefaultFlushEntityEventListener.invokeInterceptor(DefaultFlushEntityEventListener.java:376)
+	at org.hibernate.event.internal.DefaultFlushEntityEventListener.handleInterception(DefaultFlushEntityEventListener.java:353)
+	at org.hibernate.event.internal.DefaultFlushEntityEventListener.scheduleUpdate(DefaultFlushEntityEventListener.java:304)
+	at org.hibernate.event.internal.DefaultFlushEntityEventListener.onFlushEntity(DefaultFlushEntityEventListener.java:175)
+	at org.hibernate.event.service.internal.EventListenerGroupImpl.fireEventOnEachListener(EventListenerGroupImpl.java:107)
+	at org.hibernate.event.internal.AbstractFlushingEventListener.flushEntities(AbstractFlushingEventListener.java:229)
+	at org.hibernate.event.internal.AbstractFlushingEventListener.flushEverythingToExecutions(AbstractFlushingEventListener.java:93)
+	at org.hibernate.event.internal.DefaultFlushEventListener.onFlush(DefaultFlushEventListener.java:39)
+	at org.hibernate.event.service.internal.EventListenerGroupImpl.fireEventOnEachListener(EventListenerGroupImpl.java:107)
+	at org.hibernate.internal.SessionImpl.doFlush(SessionImpl.java:1407)
+	at org.hibernate.internal.SessionImpl.managedFlush(SessionImpl.java:489)
+	at org.hibernate.internal.SessionImpl.flushBeforeTransactionCompletion(SessionImpl.java:3303)
+	at org.hibernate.internal.SessionImpl.beforeTransactionCompletion(SessionImpl.java:2438)
+	at org.hibernate.engine.jdbc.internal.JdbcCoordinatorImpl.beforeTransactionCompletion(JdbcCoordinatorImpl.java:449)
+	at org.hibernate.resource.transaction.backend.jdbc.internal.JdbcResourceLocalTransactionCoordinatorImpl.beforeCompletionCallback(JdbcResourceLocalTransactionCoordinatorImpl.java:183)
+	at org.hibernate.resource.transaction.backend.jdbc.internal.JdbcResourceLocalTransactionCoordinatorImpl.access$300(JdbcResourceLocalTransactionCoordinatorImpl.java:40)
+	at org.hibernate.resource.transaction.backend.jdbc.internal.JdbcResourceLocalTransactionCoordinatorImpl$TransactionDriverControlImpl.commit(JdbcResourceLocalTransactionCoordinatorImpl.java:281)
+	at org.hibernate.engine.transaction.internal.TransactionImpl.commit(TransactionImpl.java:101)
+	at org.springframework.orm.hibernate5.HibernateTransactionManager.doCommit(HibernateTransactionManager.java:645)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.processCommit(AbstractPlatformTransactionManager.java:744)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.commit(AbstractPlatformTransactionManager.java:712)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:344)
+	at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:234)
+	at jdk.proxy3/jdk.proxy3.$Proxy153.commit(Unknown Source)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.commitTransactionAfterReturning(TransactionAspectSupport.java:654)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:407)
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186)
+	at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:241)
+	at jdk.proxy3/jdk.proxy3.$Proxy311.generateBuildNumberNewTx(Unknown Source)
+	at com.atlassian.bamboo.build.BuildNumberGeneratorServiceImpl.generateBuildNumber(BuildNumberGeneratorServiceImpl.java:20)
+	... 352 more
