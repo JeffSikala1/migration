@@ -1,11 +1,7 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ for perm in "conexus-read-only" "Any Remote" "Anything"; do
-  echo "=== ${perm} ==="
-  curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/$(echo "${perm}" | sed 's/ /%20/g')" \
-    | jq '{name, repo: .repo}'
-  echo
-done
-=== conexus-read-only ===
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/conexus-read-only" \
+  -o /tmp/conexus-read-only.json
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ cat /tmp/conexus-read-only.json | jq '.'
 {
   "name": "conexus-read-only",
   "repo": {
@@ -40,39 +36,20 @@ done
       "ll-*"
     ],
     "exclude-patterns": []
-  }
-}
-
-=== Any Remote ===
-{
-  "name": "Any Remote",
-  "repo": {
+  },
+  "build": {
     "actions": {
-      "users": {
-        "anonymous": [
-          "read",
-          "write"
+      "groups": {
+        "nsfs_developers": [
+          "read"
+        ],
+        "nsfs_users": [
+          "read"
         ]
       }
     },
     "repositories": [
-      "ANY REMOTE",
-      "yum-local"
-    ],
-    "include-patterns": [
-      "**"
-    ],
-    "exclude-patterns": []
-  }
-}
-
-=== Anything ===
-{
-  "name": "Anything",
-  "repo": {
-    "actions": {},
-    "repositories": [
-      "ANY"
+      "artifactory-build-info"
     ],
     "include-patterns": [
       "**"
