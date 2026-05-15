@@ -92,3 +92,147 @@ simple	15-May-2026 14:13:08	Generating build results summary...
 simple	15-May-2026 14:13:08	Saving build results to disk...
 simple	15-May-2026 14:13:08	Store variable context...
 simple	15-May-2026 14:13:08	Finished building POCHF-POCHF-JOB1-62.
+
+---
+version: 2
+plan:
+  project-key: POCHF
+  key: POCHF
+  name: POC Hotfix
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
+Default Job:
+  key: JOB1
+  tasks:
+  - clean
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        # Copy in the SSH Key
+        echo "Writing private key"
+        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 400 ~/.ssh/id_rsa
+      description: Obtain SSH Key
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+
+        echo "Reporsity url set to: ${bamboo.planRepository.repositoryUrl}"
+        git pull origin ${release_branch}
+        echo "git pull complete"
+
+        git fetch
+        echo "git fetch complete"
+
+        release_branch=$(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*' | tail -1)
+
+        echo "Release branch is set from grep above, release set to: $release_branch"
+
+        if [ -z "${release_branch}" ]; then
+            echo "Failed to match release branch from the following: "
+            git branch -r
+            exit 1
+        else
+            echo "Checking out ${release_branch}"
+            git checkout "${release_branch}"
+        fi
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      description: Checkout Release Branch
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        rm -Rf build
+        if [ ! -d "build" ]; then
+          mkdir build
+        else
+          cat build/docker.properties
+        fi
+        #hotfix_tag=$(git tag | grep -P '^[^.]+\..*\.' | grep -v '\.\.' | cut -d- -f2 | tail -1)
+        #if [ $hotfix_tag ]; then
+        #echo "Is there a hotfix tag? If so, you'll see the . version here:" $hotfix_tag
+        #echo "currentVersion=$hotfix_tag" &gt; build/docker.properties
+        #else
+        echo "currentVersion=$(grep -m 1 \&lt;version\&gt; pom.xml | sed -e 's/.*&lt;version&gt;\(.*\)-RC&lt;.*/\1/')" &gt; build/docker.properties
+        #fi
+      description: Extract version number
+  - inject-variables:
+      file: build/docker.properties
+      scope: LOCAL
+      namespace: inject
+      description: Set Current Version Variable
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/bin/bash
+        hotfix_version=$(git tag | grep -P '^[^.]+\..*\.' | grep -v '\.\.' | cut -d- -f2 | tail -1)
+        if [ ! $hotfix_version ]; then
+            i=1
+            find . -type f -name *.xml -exec sed -i "s/${bamboo_inject_currentVersion}/${bamboo_inject_currentVersion}.$i/g" {} +
+        else
+            # setting hotfix minor version
+            hotfix_minor_version=$(git tag | grep -P '^[^.]+\..*\.' | grep -v '\.\.' | tail -1 | cut -d. -f3)
+            i=$(( hotfix_minor_version + 1 ))
+            find . -type f -name *.xml -exec sed -i 's/$hotfix_version/${bamboo_inject_currentVersion}.$i/g' {} +
+        fi
+      description: Increment POM values
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: -U clean deploy -Dmaven.test.skip=true -DaltDeploymentRepository=central::default::https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-rc-local -Dbamboo.inject.mavenFeatureRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/ -Dbamboo.inject.pluginRepositoryUrl=https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      description: Maven Deploy
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        hotfix_version=$(git tag | grep -P '^[^.]+\..*\.' | grep -v '\.\.' | cut -d- -f2 | tail -1)
+        if [ ! $hotfix_version ]; then
+            i=1
+        else
+            hotfix_minor_version=$(git tag | grep -P '^[^.]+\..*\.' | grep -v '\.\.' | cut -d. -f3 | tail -1)
+            i=$(( hotfix_minor_version + 1 ))
+        fi
+        hotfix_tag=${bamboo_inject_currentVersion}.$i
+        git tag tag/release-${hotfix_tag}
+        git push origin tag/release-${hotfix_tag}
+      description: Tag hotfix version of release branch
+  artifact-subscriptions: []
+variables:
+  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
+repositories:
+- Temp-App-POC:
+    scope: global
+triggers:
+- bitbucket-server-trigger
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+notifications: []
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+  force-stop-build: true
