@@ -15,9 +15,7 @@ Default Job:
   other:
     clean-working-dir: true
     all-other-apps:
-      custom:
-        auto: {}
-        buildHangingConfig.enabled: 'false'
+      custom.buildHangingConfig.enabled: 'false'
   tasks:
   - checkout:
       force-clean-build: true
@@ -30,9 +28,7 @@ Default Job:
   - script:
       interpreter: BINSH_OR_CMDEXE
       scripts:
-      - "dirName=~/.m2/repository/gov/gsa/cnxs/\nif [ -d \"$dirName\" ]; then\n\techo
-        \"Removing snapshot folders from $dirName\"\n    find \"$dirName\" -type d
-        -name '*SNAPSHOT' -exec rm -rf {} +\nfi"
+      - "dirName=~/.m2/repository/gov/gsa/cnxs/\nif [ -d \"$dirName\" ]; then\n\techo \"Removing snapshot folders from $dirName\"\n    find \"$dirName\" -type d -name '*SNAPSHOT' -exec rm -rf {} +\nfi"
       description: Remove existing cnxs maven repo directory
   - script:
       interpreter: SHELL
@@ -132,13 +128,7 @@ Default Job:
   - maven:
       executable: Maven 3
       jdk: JDK 17
-      goal: >-
-        clean verify -B -U -P integration-test
-        -s settings-artifactory.xml
-        -Dbamboo.inject.BranchName=${bamboo.inject.BranchName}
-        -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl}
-        -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl}
-        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      goal: clean verify -B -U -P integration-test -s settings-artifactory.xml -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
       tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
       description: Domain Build and Verify
   - test-parser:
@@ -184,11 +174,6 @@ branches:
   link-to-jira: true
 notifications:
 - events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
-- events:
   - plan-completed
   recipients:
   - watchers
@@ -204,8 +189,8 @@ dependencies:
   block-strategy: block_if_parent_in_progress
   plans:
   - BT-COMRST
-  - BT-WEBSV
   - BT-CON
+  - BT-WEBSV
   - BT-VE
   - BT-TASK
   - BT-PRIC

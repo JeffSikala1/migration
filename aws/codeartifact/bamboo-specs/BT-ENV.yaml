@@ -4,185 +4,166 @@ plan:
   project-key: BT
   key: ENV
   name: Env - Build
-
 stages:
-  - Default Stage:
-      manual: false
-      final: false
-      jobs:
-        - Default Job
-
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Default Job
 Default Job:
   key: JOB1
-
   tasks:
-    - checkout:
-        force-clean-build: true
-        description: Checkout Default Repository
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - checkout:
+      repository: bamboo-deployment
+      path: bamboo-deployment
+      force-clean-build: true
+      description: Checkout bamboo-deployment
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - |-
+        rm -rf ~/.m2/repository/gov/gsa/
+        yum install jq -y
+      description: Remove existing cnxs maven repo directory
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/build-determination-migration.sh
+      description: Determine parent branch and pass correct variables
+  - inject-variables:
+      file: file.properties
+      scope: LOCAL
+      namespace: inject
+      description: Inject values
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        cat > settings-artifactory.xml <<XML
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+          <mirrors>
+            <mirror>
+              <id>ArtifactoryPluginRepos</id>
+              <mirrorOf>*,!conexus-snapshot-local</mirrorOf>
+              <url>${bamboo.inject.pluginRepositoryUrl}</url>
+            </mirror>
+          </mirrors>
 
-    - checkout:
-        repository: bamboo-deployment
-        path: bamboo-deployment
-        force-clean-build: true
-        description: Checkout bamboo-deployment
-
-    - script:
-        interpreter: BINSH_OR_CMDEXE
-        scripts:
-          - |-
-            rm -rf ~/.m2/repository/gov/gsa/
-            yum install jq -y
-        description: Remove existing cnxs maven repo directory
-
-    - script:
-        interpreter: SHELL
-        file: bamboo-deployment/build-determination-migration.sh
-        description: Determine parent branch and pass correct variables
-
-    - inject-variables:
-        file: file.properties
-        scope: LOCAL
-        namespace: inject
-        description: Inject values
-
-    - any-task:
-        plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-        configuration: {}
-
-    - script:
-        interpreter: SHELL
-        scripts:
-          - |-
-            cat > settings-artifactory.xml <<XML
-            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
-              <mirrors>
-                <mirror>
-                  <id>ArtifactoryPluginRepos</id>
-                  <mirrorOf>*,!conexus-snapshot-local</mirrorOf>
-                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                </mirror>
-              </mirrors>
-
-              <profiles>
-                <profile>
-                  <id>use-artifactory</id>
-                  <repositories>
-                    <repository>
-                      <id>conexus-plugin-repository</id>
-                      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                      <releases><enabled>true</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </repository>
-                    <repository>
-                      <id>conexus-snapshot-local</id>
-                      <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
-                      <releases><enabled>false</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </repository>
-                  </repositories>
-
-                  <pluginRepositories>
-                    <pluginRepository>
-                      <id>conexus-plugin-repository</id>
-                      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-                      <releases><enabled>true</enabled></releases>
-                      <snapshots><enabled>true</enabled></snapshots>
-                    </pluginRepository>
-                  </pluginRepositories>
-                </profile>
-              </profiles>
-
-              <activeProfiles>
-                <activeProfile>use-artifactory</activeProfile>
-              </activeProfiles>
-
-              <servers>
-                <server>
-                  <id>cnxs-artifactory</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-                <server>
-                  <id>artifactory</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-                <server>
+          <profiles>
+            <profile>
+              <id>use-artifactory</id>
+              <repositories>
+                <repository>
                   <id>conexus-plugin-repository</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-                <server>
+                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                  <releases><enabled>true</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </repository>
+                <repository>
                   <id>conexus-snapshot-local</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-                <server>
-                  <id>ArtifactoryPluginRepos</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-                <server>
-                  <id>ArtifactoryMavenFeatureRepos</id>
-                  <username>sa_bamboo</username>
-                  <password>${bamboo.artifactory_access_token_secret}</password>
-                </server>
-              </servers>
-            </settings>
-            XML
-        description: Write Artifactory Maven settings
+                  <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
+                  <releases><enabled>false</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </repository>
+              </repositories>
 
-    - script:
-        interpreter: SHELL
-        file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
-        description: Determine if deploy to Artifactory is needed
+              <pluginRepositories>
+                <pluginRepository>
+                  <id>conexus-plugin-repository</id>
+                  <url>${bamboo.inject.pluginRepositoryUrl}</url>
+                  <releases><enabled>true</enabled></releases>
+                  <snapshots><enabled>true</enabled></snapshots>
+                </pluginRepository>
+              </pluginRepositories>
+            </profile>
+          </profiles>
 
+          <activeProfiles>
+            <activeProfile>use-artifactory</activeProfile>
+          </activeProfiles>
+
+          <servers>
+            <server>
+              <id>cnxs-artifactory</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>artifactory</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>conexus-plugin-repository</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>conexus-snapshot-local</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>ArtifactoryPluginRepos</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+            <server>
+              <id>ArtifactoryMavenFeatureRepos</id>
+              <username>sa_bamboo</username>
+              <password>${bamboo.artifactory_access_token_secret}</password>
+            </server>
+          </servers>
+        </settings>
+        XML
+      description: Write Artifactory Maven settings
+  - script:
+      interpreter: SHELL
+      file: bamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh
+      description: Determine if deploy to Artifactory is needed
   requirements:
-    - system.jdk.JDK 17
-    - system.builder.mvn3.Maven 3
-
+  - system.jdk.JDK 17
+  - system.builder.mvn3.Maven 3
   artifact-subscriptions: []
-
 repositories:
-  - Env:
-      scope: global
-  - bamboo-deployment:
-      scope: global
-
+- Env:
+    scope: global
+- bamboo-deployment:
+    scope: global
 triggers:
-  - bitbucket-server-trigger:
-      repositories:
-        - Env
-
+- bitbucket-server-trigger:
+    repositories:
+    - Env
 branches:
   create: for-new-branch
   delete:
     after-deleted-days: 7
     after-inactive-days: 200
   link-to-jira: true
-
 notifications:
-  - events:
-      - plan-completed
-    recipients:
-      - watchers
-
-  - events:
-      - plan-failed
-    recipients:
-      - responsible
-      - committers
-
+- events:
+  - plan-completed
+  recipients:
+  - watchers
+- events:
+  - plan-failed
+  recipients:
+  - responsible
+  - committers
 labels: []
-
 dependencies:
   require-all-stages-passing: true
   enabled-for-branches: true
   block-strategy: block_if_parent_in_progress
   plans:
-    - BT-COMB
-
+  - BT-COMB
 other:
   concurrent-build-plugin:
     number-of-concurrent-builds: system-default
     execution-strategy: block-triggering
+  force-stop-build: true

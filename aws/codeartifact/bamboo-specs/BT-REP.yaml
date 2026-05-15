@@ -1,3 +1,4 @@
+---
 version: 2
 plan:
   project-key: BT
@@ -14,9 +15,7 @@ Default Job:
   other:
     clean-working-dir: true
     all-other-apps:
-      custom:
-        auto: {}
-        buildHangingConfig.enabled: 'false'
+      custom.buildHangingConfig.enabled: 'false'
   tasks:
   - clean
   - checkout:
@@ -130,7 +129,7 @@ Default Job:
   - maven:
       executable: Maven 3
       jdk: JDK 17
-      goal: clean verify -B -U -P integration-test -s settings-artifactory.xml -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      goal: clean verify -B -U -s settings-artifactory.xml -Dbamboo.inject.BranchName=${bamboo.inject.BranchName} -Dbamboo.inject.mavenFeatureRepositoryUrl=${bamboo.inject.mavenFeatureRepositoryUrl} -Dbamboo.inject.pluginRepositoryUrl=${bamboo.inject.pluginRepositoryUrl} -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
       tests: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
       description: Build and Verify
   - any-task:
@@ -147,18 +146,6 @@ Default Job:
       namespace: inject
       description: Inject the build information to be used in Bamboo Deploy
   artifact-subscriptions: []
-  artifacts:
-  - name: Jboss Log
-    location: integration/target/
-    pattern: jboss.log
-    shared: true
-    required: false
-  - name: Postgres Log
-    location: integration/target/
-    pattern: postgres.log
-    shared: true
-    required: false
-
 variables:
   buildVersionQueryArtifact: reporting-war
   buildVersionQueryGroup: gov.gsa.cnxs.reporting
@@ -183,12 +170,7 @@ notifications:
   - job-hung
   recipients:
   - groups:
-    - nsfs_devops
-- events:
-  - plan-failed
-  recipients:
-  - responsible
-  - committers
+    - bamboo-prod_nsfsdevops
 - events:
   - plan-completed
   recipients:
@@ -208,3 +190,4 @@ other:
   concurrent-build-plugin:
     number-of-concurrent-builds: system-default
     execution-strategy: block-triggering
+  force-stop-build: true
