@@ -1,16 +1,3 @@
-# On each agent host
-for container in $(docker ps --format "{{.Names}}" | grep -E '^ip-.*-ba-[0-9]+$'); do
-  docker exec "$container" sed -i \
-    's|</servers>|  <server>\n    <id>conexus-feature-repo</id>\n    <username>admin</username>\n    <password></password>\n  </server>\n</servers>|' \
-    /usr/share/maven/conf/settings.xml
-done
+ to unblock the feature/ll-modelchanges builds today, I patched the live build-agent containers by adding the needed <server> entries for conexus-feature-repo and ArtifactoryPluginRepos in /usr/share/maven/conf/settings.xml. That got CommonRest, Env, Domain, and the downstream BT plans passing, but the patch is temporary and will be wiped if the containers restart.
 
-for container in $(docker ps --format "{{.Names}}" | grep -E '^ip-.*-ba-[0-9]+$'); do
-  docker exec "$container" sed -i \
-    's|</servers>|  <server>\n    <id>ArtifactoryPluginRepos</id>\n    <username>admin</username>\n    <password>YOUR_ACTUAL_ADMIN_TOKEN_HERE</password>\n  </server>\n</servers>|' \
-    /usr/share/maven/conf/settings.xml
-done
-
-
-docker exec ip-10-56-112-35.ec2.internal-ba-4 \
-  grep -A1 '<password>' /usr/share/maven/conf/settings.xml
+I think the next step is to update the build-agent image source so those entries are baked in permanently, and while we’re there, clean up the remaining DISC Artifactory references in the agent build script. Can we sync briefly so I can walk you through what changed and get your guidance on whether we should cut a new image now or batch it with other agent updates?
