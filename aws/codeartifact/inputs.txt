@@ -1,32 +1,25 @@
-CommonRest on feature/ll-modelchanges is working now. Heads up though, the other downstream repos on that branch will likely hit the same Maven settings issue when they build, so I'll be rolling the same fix to the rest of the BT plans. Longer term we should drop the inline Maven settings from the BT plans entirely to match the way it was in DISC, but that requires updating each repo's Maven/settings.xml to point at the new Artifactory URL
+BEGIN;
 
-
-
-psql -U bamboouser -d bamboo
-
-SELECT b.build_id, b.full_key, b.title, b.build_type
+-- Count what we're about to delete
+SELECT COUNT(*) AS will_delete
 FROM plan_vcs_specs_source pvss
 JOIN build b ON b.build_id = pvss.plan_id
 WHERE b.build_type = 'CHAIN'
-  AND b.marked_for_deletion = false
-ORDER BY b.full_key;
+  AND b.marked_for_deletion = false;
 
-
-
-BEGIN;
-
--- Delete spec source links for all spec-managed plans
+-- Delete spec links for all CHAIN plans
 DELETE FROM plan_vcs_specs_source
 WHERE plan_id IN (
-  SELECT pvss.plan_id
-  FROM plan_vcs_specs_source pvss
-  JOIN build b ON b.build_id = pvss.plan_id
+  SELECT b.build_id
+  FROM build b
   WHERE b.build_type = 'CHAIN'
     AND b.marked_for_deletion = false
 );
 
--- Verify the row count matches what we expected
-SELECT COUNT(*) AS remaining_links FROM plan_vcs_specs_source;
+-- Confirm rows remaining (should be 0 if all CHAINs were detached;
+-- if there are still rows, they're for JOB-level builds, not CHAINs)
+SELECT COUNT(*) AS remaining_links
+FROM plan_vcs_specs_source;
 
--- If you're happy: COMMIT;
--- If anything looks wrong: ROLLBACK;
+-- If counts look right: COMMIT;
+-- If not:               ROLLBACK;
