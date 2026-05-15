@@ -1,1 +1,6 @@
-docker exec ip-10-56-112-35.ec2.internal-da-1 cat /usr/share/maven/conf/settings.xml 2>/dev/null | head -50
+# On each agent host
+for container in $(docker ps --format "{{.Names}}" | grep -E '^ip-.*-ba-[0-9]+$'); do
+  docker exec "$container" sed -i \
+    's|</servers>|  <server>\n    <id>conexus-feature-repo</id>\n    <username>admin</username>\n    <password>YOUR_ADMIN_TOKEN</password>\n  </server>\n</servers>|' \
+    /usr/share/maven/conf/settings.xml
+done
