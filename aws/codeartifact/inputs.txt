@@ -1,41 +1,18 @@
-# First, fetch the current permission target as-is
+# Check what conexus-plugin-repository (the working virtual) aggregates
 curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/conexus-read-only" \
-  -o /tmp/conexus-read-only.json
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-plugin-repository" \
+  | jq '.repositories'
 
-# Inspect it
-cat /tmp/conexus-read-only.json | jq '.'
-
-
-
-# Build the updated JSON keeping all existing actions, principals, etc.
-jq '.repo.repositories += [
-  "conexus-ll-plugin-repository",
-  "ll-2025-jboss-8",
-  "ll-CNXS-68737-newer-versions",
-  "ll-dev-cutover-test-01",
-  "ll-dev-cutover-test-02",
-  "ll-jboss8",
-  "ll-postgres",
-  "ll-tops-task-order-ahcs"
-]' /tmp/conexus-read-only.json > /tmp/conexus-read-only-updated.json
-
-# Verify the change before pushing
-diff <(jq '.repo.repositories' /tmp/conexus-read-only.json) \
-     <(jq '.repo.repositories' /tmp/conexus-read-only-updated.json)
-
-
-
-
+# Check all permissions sa_bamboo has access to
 curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  -X PUT \
-  -H "Content-Type: application/json" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/conexus-read-only" \
-  -d @/tmp/conexus-read-only-updated.json \
-  -w "\nHTTP %{http_code}\n"
-
-
-
-curl -sk -u sa_bamboo:${bamboo_artifactory_access_token_secret} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-jakarta-ee/2.1.0/shiro-jakarta-ee-2.1.0.pom" \
-  -o /tmp/test-shiro3.pom -w "HTTP %{http_code}\n"
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions" \
+  | jq '.[].name' \
+  | while read name; do
+      clean=$(echo "$name" | tr -d '"')
+      result=$(curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+        "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/$(echo "${clean}" | sed 's/ /%20/g')" \
+        | jq -r '.repo.actions.users.sa_bamboo // empty | join(",")')
+      if [ -n "$result" ]; then
+        echo "${clean}: ${result}"
+      fi
+    done
