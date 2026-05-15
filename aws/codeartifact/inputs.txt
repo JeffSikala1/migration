@@ -1,7 +1,41 @@
-for perm in "conexus-read-only" "Any Remote" "Anything"; do
-  echo "=== ${perm} ==="
-  curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/$(echo "${perm}" | sed 's/ /%20/g')" \
-    | jq '{name, repo: .repo}'
-  echo
-done
+# First, fetch the current permission target as-is
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/conexus-read-only" \
+  -o /tmp/conexus-read-only.json
+
+# Inspect it
+cat /tmp/conexus-read-only.json | jq '.'
+
+
+
+# Build the updated JSON keeping all existing actions, principals, etc.
+jq '.repo.repositories += [
+  "conexus-ll-plugin-repository",
+  "ll-2025-jboss-8",
+  "ll-CNXS-68737-newer-versions",
+  "ll-dev-cutover-test-01",
+  "ll-dev-cutover-test-02",
+  "ll-jboss8",
+  "ll-postgres",
+  "ll-tops-task-order-ahcs"
+]' /tmp/conexus-read-only.json > /tmp/conexus-read-only-updated.json
+
+# Verify the change before pushing
+diff <(jq '.repo.repositories' /tmp/conexus-read-only.json) \
+     <(jq '.repo.repositories' /tmp/conexus-read-only-updated.json)
+
+
+
+
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  -X PUT \
+  -H "Content-Type: application/json" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/conexus-read-only" \
+  -d @/tmp/conexus-read-only-updated.json \
+  -w "\nHTTP %{http_code}\n"
+
+
+
+curl -sk -u sa_bamboo:${bamboo_artifactory_access_token_secret} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-jakarta-ee/2.1.0/shiro-jakarta-ee-2.1.0.pom" \
+  -o /tmp/test-shiro3.pom -w "HTTP %{http_code}\n"
