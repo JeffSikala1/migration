@@ -4,3 +4,13 @@ for container in $(docker ps --format "{{.Names}}" | grep -E '^ip-.*-ba-[0-9]+$'
     's|</servers>|  <server>\n    <id>conexus-feature-repo</id>\n    <username>admin</username>\n    <password></password>\n  </server>\n</servers>|' \
     /usr/share/maven/conf/settings.xml
 done
+
+for container in $(docker ps --format "{{.Names}}" | grep -E '^ip-.*-ba-[0-9]+$'); do
+  docker exec "$container" sed -i \
+    's|</servers>|  <server>\n    <id>ArtifactoryPluginRepos</id>\n    <username>admin</username>\n    <password>YOUR_ACTUAL_ADMIN_TOKEN_HERE</password>\n  </server>\n</servers>|' \
+    /usr/share/maven/conf/settings.xml
+done
+
+
+docker exec ip-10-56-112-35.ec2.internal-ba-4 \
+  grep -A1 '<password>' /usr/share/maven/conf/settings.xml
