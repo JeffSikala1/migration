@@ -1,73 +1,102 @@
-[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ curl -sI https://registry.npmjs.org -o /dev/null -w "%{http_code}\n"
-200
-[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ ls -la build-agent/bamboo-agent.jar build-agent/google-chrome.repo build-agent/package.json build-agent/files/repos/jfrog-cli.repo
--rw-r-----. 1 sikaj01 users 11404171 May 16 18:57 build-agent/bamboo-agent.jar
--rw-r-----. 1 sikaj01 users      105 May 15 19:10 build-agent/files/repos/jfrog-cli.repo
--rw-r-----. 1 sikaj01 users      173 May 16 18:57 build-agent/google-chrome.repo
--rw-r-----. 1 sikaj01 users     2132 May 15 19:10 build-agent/package.json
-[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ ./build-bamboo-build-agent.sh -e aws -v test-$(date +%H%M)
-bash: ./build-bamboo-build-agent.sh: No such file or directory
-[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ ll
-total 16
--rw-r-----. 1 sikaj01 users  539 May 15 19:10 README.md
-drwxr-x---. 4 sikaj01 users 6144 May 16 18:57 build-agent
-drwxr-x---. 2 sikaj01 users 6144 May 15 19:10 conf
-drwxr-x---. 2 sikaj01 users 6144 May 15 19:10 deploy-agent
-[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ cd build-agent/
-[sikaj01@ip-10-56-112-33 build-agent]$ ./build-bamboo-build-agent.sh -e aws -v test-$(date +%H%M)
- 
-Creating an Angular 20 and NodeJS 22 image for the aws environment using a Centos 9 base image
- 
-Building with cache
-[+] Building 336.5s (35/35) FINISHED                                                                docker:default
- => [internal] load build definition from Dockerfile                                                          0.0s
- => => transferring dockerfile: 9.81kB                                                                        0.0s
- => [internal] load metadata for quay.io/centos/centos:stream9                                                0.4s
- => [internal] load .dockerignore                                                                             0.0s
- => => transferring context: 2B                                                                               0.0s
- => [ 1/30] FROM quay.io/centos/centos:stream9@sha256:dbd9d8293d90c33829dab178cb2713218855c11d30353ea1b2e06f  5.6s
- => => resolve quay.io/centos/centos:stream9@sha256:dbd9d8293d90c33829dab178cb2713218855c11d30353ea1b2e06fb1  0.0s
- => => sha256:dbd9d8293d90c33829dab178cb2713218855c11d30353ea1b2e06fb168a7ceba 912B / 912B                    0.0s
- => => sha256:52c649219ad7e814d6552d6ed366f6a4e8bbf139fc482aafdfb919f6c12a8929 505B / 505B                    0.0s
- => => sha256:f5ba790a686edc13b75640a16c29caacff70b4ad01483652abf4e0c2bb3cc061 1.16kB / 1.16kB                0.0s
- => => sha256:c63c8769c20cdeb299bb5612374e38b4e382c099d48697fbec4f235d69ed746b 61.86MB / 61.86MB              1.3s
- => => extracting sha256:c63c8769c20cdeb299bb5612374e38b4e382c099d48697fbec4f235d69ed746b                     4.1s
- => [internal] load build context                                                                             0.1s
- => => transferring context: 11.42MB                                                                          0.1s
- => [ 2/30] RUN ln -nfs /usr/share/zoneinfo/America/Chicago /etc/localtime                                    1.0s
- => [ 3/30] RUN curl https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/docker-ce.r  0.5s
- => [ 4/30] COPY files/repos/jfrog-cli.repo /etc/yum.repos.d/                                                 0.1s
- => [ 5/30] RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm        11.2s 
- => [ 6/30] RUN yum clean all; yum makecache                                                                 17.1s 
- => [ 7/30] RUN yum -y install     git     java-17-openjdk-devel java-17-openjdk-headless     bzip2     unz  94.4s 
- => [ 8/30] RUN yum -y install jfrog-cli                                                                      3.8s 
- => [ 9/30] RUN echo "Installing pip modules"                                                                 0.4s 
- => [10/30] RUN ln -s /usr/bin/python3 /usr/local/bin/python                                                  0.5s 
- => [11/30] RUN python3 -m pip install bamboo_api                                                             2.4s 
- => [12/30] RUN rm -rf ~/.pip/cache                                                                           0.4s 
- => [13/30] RUN mkdir -p /usr/share/maven                                                                     0.4s 
- => [14/30] RUN mkdir -p /root/bamboo-agent-home/conf                                                         0.3s 
- => [15/30] RUN mkdir -p /root/.ssh                                                                           0.6s 
- => [16/30] RUN echo -e "[bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov]:7999,[10.56.112.35]:7999 ssh-rsa AAAAB3Nza  0.5s 
- => [17/30] RUN curl -k -fsSL https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apach  0.9s 
- => [18/30] ADD conf/maven/* /usr/share/maven/conf/                                                           0.1s
- => [19/30] RUN curl -k -fsSL https://rpm.nodesource.com/setup_20.x | bash -                                  2.0s
- => [20/30] RUN yum install -y nodejs                                                                         5.9s
- => [21/30] RUN yum update -y                                                                                 1.5s
- => [22/30] COPY package.json ./package.json                                                                  0.1s
- => [23/30] RUN npm install -g && npm prune && npm link @angular/cli@v20                                    106.3s
- => [24/30] RUN npm config set registry "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/np  0.6s
- => [25/30] COPY bamboo-agent.jar /opt/bamboo-agent.jar                                                       0.3s
- => [26/30] ADD conf/bamboo-agent/wrapper.conf.aws /root/bamboo-agent-home/conf/wrapper.conf                  0.1s
- => [27/30] COPY google-chrome.repo /etc/yum.repos.d/google-chrome.repo                                       0.0s
- => [28/30] RUN yum install -y google-chrome-stable openssl jq                                               16.9s
- => [29/30] RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip a  9.3s
- => [30/30] RUN yum -y clean all                                                                              0.9s
- => exporting to image                                                                                       51.8s
- => => exporting layers                                                                                      51.7s
- => => writing image sha256:4cf4bcca39a267c0e019746c90de644222d323b9213aa069f4492dfb3a45d4a0                  0.0s
- => => naming to 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-test-2200     0.0s
-removing Dockerfile
-[sikaj01@ip-10-56-112-33 build-agent]$ docker images
-REPOSITORY                                                  TAG                              IMAGE ID       CREATED         SIZE
-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   node22-angular20-el9-test-2200   4cf4bcca39a2   4 minutes ago   4.61GB
+[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ docker run --rm -it --entrypoint /bin/bash \
+  339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-test-2200
+[root@5da79ee6e88a /]# grep -A2 '<server>' /usr/share/maven/conf/settings.xml
+    <server>
+      <id>central</id>
+      <username>uploader</username>
+--
+    <server>
+      <id>conexus-feature-repo</id>
+      <username>uploader</username>
+--
+    <server>
+      <id>ArtifactoryPluginRepos</id>
+      <username>uploader</username>
+[root@5da79ee6e88a /]# cat /root/.ssh/known_hosts
+[bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov]:7999,[10.56.112.35]:7999 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDRzkjBx63yms1Ae6b5FWyxoJ8BnqfGNwk1WR3KfJVEiMo51UtUZBqcNa1MuhOc6J6ZqapJd2/ZX03S7RSP3H/Vw1cgtGhL8g6Au10YwOpzevUmiayg0PhRLM+VKJGEwWn84cyDU9UEVJaQ696tz2N82YICEEdkSPG8/xQlxnd7Xz0s3SWufLTva9f4IdiKMaZD9K9AUpdkVDRjflrBukMvDw0TaOkJf8rm9Jn17hcNMCUMCz7K4Xm6OSaNJ+r03AO6uqjw8Dd6bqtzkau9Kl5+v60VyLQ5ZLWsYY+Aelo6LcDi14X+kzx6uOIYO9ubztaIWIhsuW2+XT5jdalwzOpf
+[bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov]:7999 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDRzkjBx63yms1Ae6b5FWyxoJ8BnqfGNwk1WR3KfJVEiMo51UtUZBqcNa1MuhOc6J6ZqapJd2/ZX03S7RSP3H/Vw1cgtGhL8g6Au10YwOpzevUmiayg0PhRLM+VKJGEwWn84cyDU9UEVJaQ696tz2N82YICEEdkSPG8/xQlxnd7Xz0s3SWufLTva9f4IdiKMaZD9K9AUpdkVDRjflrBukMvDw0TaOkJf8rm9Jn17hcNMCUMCz7K4Xm6OSaNJ+r03AO6uqjw8Dd6bqtzkau9Kl5+v60VyLQ5ZLWsYY+Aelo6LcDi14X+kzx6uOIYO9ubztaIWIhsuW2+XT5jdalwzOpf
+bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBH6MCXqrf6Rij87V1ihLQSaRAPJo1YKnUdK1f2J3tMAPTsEcz+a83RLzwrSfoccTAABn59lmvXq74Kbf+Nv4Ix4=
+[root@5da79ee6e88a /]# java -version 2>&1
+mvn --version 2>&1 | head -3
+node --version
+npm --version
+aws --version
+ng version 2>&1 | grep -i 'angular cli'
+docker --version
+git --version
+openjdk version "17.0.18" 2026-01-20 LTS
+OpenJDK Runtime Environment (Red_Hat-17.0.18.0.8-2) (build 17.0.18+8-LTS)
+OpenJDK 64-Bit Server VM (Red_Hat-17.0.18.0.8-2) (build 17.0.18+8-LTS, mixed mode, sharing)
+Apache Maven 3.9.9 (8e8579a9e76f7d015ee5ec7bfcdc97d260186937)
+Maven home: /usr/share/maven
+Java version: 17.0.18, vendor: Red Hat, Inc., runtime: /usr/lib/jvm/java-17-openjdk-17.0.18.0.8-2.el9.x86_64
+v20.20.2
+Warning: Ignoring extra certs from `/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt`, load failed: error:80000002:system library::No such file or directory
+10.8.2
+aws-cli/2.34.48 Python/3.14.4 Linux/6.1.163-186.299.amzn2023.x86_64 exe/x86_64.centos.9
+Angular CLI: 20.3.26
+Docker version 29.5.0, build 98f1464
+git version 2.52.0
+[root@5da79ee6e88a /]# getent hosts bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+getent hosts artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
+10.56.119.8     bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+10.56.119.26    bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+10.56.119.26    artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
+10.56.119.8     artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
+[root@5da79ee6e88a /]# curl -sk -u uploader:AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping" \
+  -w "\nHTTP %{http_code}\n"
+OK
+HTTP 200
+[root@5da79ee6e88a /]# mkdir -p /tmp/mvn-test && cd /tmp/mvn-test
+cat > pom.xml <<'EOF'
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test.agent</groupId>
+  <artifactId>resolver-test</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+  <dependencies>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>2.11.0</version>
+    </dependency>
+  </dependencies>
+</project>
+EOF
+[root@5da79ee6e88a mvn-test]# mvn -B dependency:resolve \
+  -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ \
+  -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ \
+  2>&1 | tail -30
+[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.3.2/maven-common-artifact-filters-3.3.2.jar
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/ow2/asm/asm/9.7/asm-9.7.jar (125 kB at 233 kB/s)
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.jar (43 kB at 80 kB/s)
+[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.jar
+[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.jar
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.3.2/maven-common-artifact-filters-3.3.2.jar (58 kB at 106 kB/s)
+[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.jar (159 kB at 288 kB/s)
+[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.jar (4.2 kB at 7.6 kB/s)
+[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar (151 kB at 268 kB/s)
+[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar (168 kB at 294 kB/s)
+[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar (149 kB at 262 kB/s)
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar (8.5 kB at 15 kB/s)
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar (41 kB at 70 kB/s)
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/dom4j/dom4j/1.1/dom4j-1.1.jar (457 kB at 776 kB/s)
+[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/com/github/luben/zstd-jni/1.5.5-11/zstd-jni-1.5.5-11.jar (6.8 MB at 10 MB/s)
+[INFO] 
+[INFO] The following files have been resolved:
+[INFO]    commons-io:commons-io:jar:2.11.0:compile -- module org.apache.commons.io [auto]
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.215 s
+[INFO] Finished at: 2026-05-16T17:37:08-05:00
+[INFO] ------------------------------------------------------------------------
