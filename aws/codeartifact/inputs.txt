@@ -143,19 +143,13 @@ vim /tmp/uploadOnly.json
 ]
 
 
-
-# List ALL permission target names — should show everything not just uploader-related
-curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
-  | python3 -m json.tool
-
-
-
-curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
-  | jq '.[].name'
+for PERM in "Any%20Remote" "Anything" "conexus-deploy" "conexus-read-only" "conexus_release_local_create_permission"; do
+  echo "=== Permission: $(echo $PERM | sed 's/%20/ /g') ==="
+  curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/${PERM}" \
+    | python3 -m json.tool
+  echo
+done
 
 
-curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
-  | python3 -c 'import sys, json; data=json.load(sys.stdin); [print(p["name"]) for p in data]'
+
