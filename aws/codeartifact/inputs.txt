@@ -1,3 +1,41 @@
- to unblock the feature/ll-modelchanges builds today, I patched the live build agent containers by adding the needed <server> entries for conexus-feature-repo and ArtifactoryPluginRepos in /usr/share/maven/conf/settings.xml. That got CommonRest, Env, Domain, and the downstream BT plans passing, but the patch is temporary and will be wiped if the containers restart.
+# Save for reuse
+UPLOADER_TOKEN='AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq'
 
-I think the next step is to update the build agent image source so those entries are baked in permanently, and while we’re there, clean up the remaining DISC Artifactory references in the agent build script. Can we sync briefly so I can walk you through what changed and get your guidance on whether we should cut a new image now or batch it with other agent updates?
+echo "=== 1. Auth check (ping) ==="
+curl -sk -u uploader:${UPLOADER_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping" \
+  -w "\nHTTP %{http_code}\n"
+
+echo
+echo "=== 2. Identity check (who am I) ==="
+curl -sk -u uploader:${UPLOADER_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/access/api/v1/users/uploader" \
+  -w "\nHTTP %{http_code}\n" | head -30
+
+echo
+echo "=== 3. Read test: conexus-plugin-repository (regular plugins) ==="
+curl -sk -u uploader:${UPLOADER_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/org/apache/shiro/shiro-jakarta-ee/2.1.0/shiro-jakarta-ee-2.1.0.pom" \
+  -o /tmp/test-uploader-1.pom -w "HTTP %{http_code}\n"
+
+echo
+echo "=== 4. Read test: conexus-ll-plugin-repository (long-lived plugins) ==="
+curl -sk -u uploader:${UPLOADER_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-jakarta-ee/2.1.0/shiro-jakarta-ee-2.1.0.pom" \
+  -o /tmp/test-uploader-2.pom -w "HTTP %{http_code}\n"
+
+echo
+echo "=== 5. Read test: ll-modelchanges (feature repo) ==="
+curl -sk -u uploader:${UPLOADER_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/" \
+  -w "HTTP %{http_code}\n" -o /dev/null
+
+echo
+echo "=== 6. Write test: deploy a tiny test pom to conexus-snapshot-local ==="
+echo '<?xml version="1.0"?><project><modelVersion>4.0.0</modelVersion><groupId>test.uploader</groupId><artifactId>cred-test</artifactId><version>1.0.0-SNAPSHOT</version></project>' > /tmp/cred-test.pom
+
+curl -sk -u uploader:${UPLOADER_TOKEN} \
+  -X PUT \
+  -T /tmp/cred-test.pom \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/test/uploader/cred-test/1.0.0-SNAPSHOT/cred-test-1.0.0-SNAPSHOT.pom" \
+  -w "\nHTTP %{http_code}\n"
