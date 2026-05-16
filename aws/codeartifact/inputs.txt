@@ -98,20 +98,62 @@ docker rm -f ip-10-56-112-35.ec2.internal-ba-1
 
 
 
-
-# List all permission targets uploader belongs to
+# List all repositories in Artifactory and filter to caches
 curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
-  -w "\nHTTP %{http_code}\n" | python3 -m json.tool
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories" \
+  | python3 -m json.tool | grep -B1 -A2 '"type": "REMOTE"'
+
+
+
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/maven-central-cache/" \
+  -w "\nHTTP %{http_code}\n" | head -20
 
 
 
 
-# Repeat for each permission target name
-for PERM in anon_read_only uploadOnly; do
-  echo "=== Permission: $PERM ==="
-  curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/$PERM" \
-    | python3 -m json.tool
-  echo
-done
+# Fetch current state
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/uploadOnly" \
+  > /tmp/uploadOnly.json
+
+# Inspect — make sure it looks like what we just saw
+cat /tmp/uploadOnly.json | python3 -m json.tool
+
+# Edit in place — add "ANY REMOTE" to repositories list, OR append all the specific cache names
+vim /tmp/uploadOnly.json
+
+
+
+"repositories": [
+    "conexus-rc-local",
+    "conexus-release-local",
+    "conexus-snapshot-local",
+    "file-local",
+    "ll-2025-jboss-8",
+    "ll-CNXS-68737-newer-versions",
+    "ll-dev-cutover-test-01",
+    "ll-dev-cutover-test-02",
+    "ll-jboss8",
+    "ll-modelchanges",
+    "ll-postgres",
+    "ll-tops-task-order-ahcs",
+    "rpm-local",
+    "ANY REMOTE"
+]
+
+
+# Clear the failed-marker first
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  -X DELETE \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/maven-central-cache/org/apache/shiro/shiro-bom/2.1.0/" \
+  -w "\nHTTP %{http_code}\n"
+
+# Then retry with uploader
+UPLOADER_TOKEN='AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq'
+curl -sk -u uploader:${UPLOADER_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-bom/2.1.0/shiro-bom-2.1.0.pom" \
+  -w "\nHTTP %{http_code}\n" -o /tmp/shiro-bom-fixed.pom
+
+ls -la /tmp/shiro-bom-fixed.pom
+head -3 /tmp/shiro-bom-fixed.pom
