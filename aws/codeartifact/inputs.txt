@@ -1,49 +1,59 @@
-ls -la build-agent/bamboo-agent.jar build-agent/google-chrome.repo build-agent/package.json build-agent/files/repos/jfrog-cli.repo
-
-
-cd ~/docker-bamboo-agents/build-agent
-./build-bamboo-build-agent.sh -e aws -v test-$(date +%H%M)
-
-
-
 docker run --rm -it --entrypoint /bin/bash \
-  339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-test-XXXX
+  339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-test-2200
 
 
-# settings.xml has the right server entries
-grep -A1 '<id>' /usr/share/maven/conf/settings.xml | head -20
+grep -A2 '<server>' /usr/share/maven/conf/settings.xml
 
-# known_hosts has both RSA and ECDSA
 cat /root/.ssh/known_hosts
 
-# Java, Maven, Node, AWS CLI all installed
-mvn --version
-java -version
+java -version 2>&1
+mvn --version 2>&1 | head -3
 node --version
+npm --version
 aws --version
+ng version 2>&1 | grep -i 'angular cli'
+docker --version
+git --version
 
-# Can resolve bitbucket
+
+
 getent hosts bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
-
-# Can read from new Artifactory using uploader from settings.xml
-curl -s -u uploader:AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping"
-
-exit
+getent hosts artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
 
 
 
-# Authenticate to ECR if needed
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+curl -sk -u uploader:AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping" \
+  -w "\nHTTP %{http_code}\n"
 
-# Retag the image to a real (non-test) tag
-docker tag 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-test-XXXX \
-           339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-$(date +%F-%H%M)
 
-# Push
-docker push 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-$(date +%F-%H%M)
 
-# Then update the create_agents.sh (or whatever your rollout script is) to use the new tag,
-# and recreate the other 5 agents one at a time
+mkdir -p /tmp/mvn-test && cd /tmp/mvn-test
+cat > pom.xml <<'EOF'
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test.agent</groupId>
+  <artifactId>resolver-test</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+  <dependencies>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>2.11.0</version>
+    </dependency>
+  </dependencies>
+</project>
+EOF
 
-curl -sI https://registry.npmjs.org -o /dev/null -w "%{http_code}\n"
+# Have to set the injected vars manually since Bamboo isn't running
+mvn -B dependency:resolve \
+  -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ \
+  -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ \
+  2>&1 | tail -30
+
+
+  exit
+
+
