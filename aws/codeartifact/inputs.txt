@@ -143,17 +143,19 @@ vim /tmp/uploadOnly.json
 ]
 
 
-# Clear the failed-marker first
+
+# List ALL permission target names — should show everything not just uploader-related
 curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  -X DELETE \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/maven-central-cache/org/apache/shiro/shiro-bom/2.1.0/" \
-  -w "\nHTTP %{http_code}\n"
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
+  | python3 -m json.tool
 
-# Then retry with uploader
-UPLOADER_TOKEN='AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq'
-curl -sk -u uploader:${UPLOADER_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-bom/2.1.0/shiro-bom-2.1.0.pom" \
-  -w "\nHTTP %{http_code}\n" -o /tmp/shiro-bom-fixed.pom
 
-ls -la /tmp/shiro-bom-fixed.pom
-head -3 /tmp/shiro-bom-fixed.pom
+
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
+  | jq '.[].name'
+
+
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
+  | python3 -c 'import sys, json; data=json.load(sys.stdin); [print(p["name"]) for p in data]'
