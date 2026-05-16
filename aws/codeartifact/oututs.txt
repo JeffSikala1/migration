@@ -1,120 +1,130 @@
-[sikaj01@ip-10-56-112-33 build-agent]$ curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
-  | python3 -m json.tool
-[
-    {
-        "name": "allow deletion from conexus builds",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/allow%20deletion%20from%20conexus%20builds"
-    },
-    {
-        "name": "anon_read_only",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/anon_read_only"
-    },
-    {
-        "name": "ansible-vault-password-files-readonly",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/ansible-vault-password-files-readonly"
-    },
-    {
-        "name": "docker-push",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/docker-push"
-    },
-    {
-        "name": "docker-wso2mi",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/docker-wso2mi"
-    },
-    {
-        "name": "publish conexus build info",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/publish%20conexus%20build%20info"
-    },
-    {
-        "name": "Anything",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/Anything"
-    },
-    {
-        "name": "Any Remote",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/Any%20Remote"
-    },
-    {
-        "name": "ForOracle19cDev",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/ForOracle19cDev"
-    },
-    {
-        "name": "conexus_release_local_create_permission",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/conexus_release_local_create_permission"
-    },
-    {
-        "name": "conexus-read-only",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/conexus-read-only"
-    },
-    {
-        "name": "conexus-deploy",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/conexus-deploy"
-    },
-    {
-        "name": "keys_readonly",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/keys_readonly"
-    },
-    {
-        "name": "OWASP Report Upload",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/OWASP%20Report%20Upload"
-    },
-    {
-        "name": "antivirus_read_annotate_deploy_delete",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/antivirus_read_annotate_deploy_delete"
-    },
-    {
-        "name": "uploadOnly",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/uploadOnly"
-    },
-    {
-        "name": "create long lived repo",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/create%20long%20lived%20repo"
-    },
-    {
-        "name": "file-upload_readonly",
-        "uri": "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/file-upload_readonly"
+[sikaj01@ip-10-56-112-33 build-agent]$ for PERM in "Any%20Remote" "Anything" "conexus-deploy" "conexus-read-only" "conexus_release_local_create_permission"; do
+  echo "=== Permission: $(echo $PERM | sed 's/%20/ /g') ==="
+  curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/${PERM}" \
+    | python3 -m json.tool
+  echo
+done
+=== Permission: Any Remote ===
+{
+    "name": "Any Remote",
+    "includesPattern": "**",
+    "excludesPattern": "",
+    "repositories": [
+        "ANY REMOTE",
+        "yum-local"
+    ],
+    "principals": {
+        "users": {
+            "anonymous": [
+                "r",
+                "w"
+            ]
+        }
     }
-]
-[sikaj01@ip-10-56-112-33 build-agent]$ curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
-  | jq '.[].name'
-"allow deletion from conexus builds"
-"anon_read_only"
-"ansible-vault-password-files-readonly"
-"docker-push"
-"docker-wso2mi"
-"publish conexus build info"
-"Anything"
-"Any Remote"
-"ForOracle19cDev"
-"conexus_release_local_create_permission"
-"conexus-read-only"
-"conexus-deploy"
-"keys_readonly"
-"OWASP Report Upload"
-"antivirus_read_annotate_deploy_delete"
-"uploadOnly"
-"create long lived repo"
-"file-upload_readonly"
-[sikaj01@ip-10-56-112-33 build-agent]$ 
-curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions" \
-  | python3 -c 'import sys, json; data=json.load(sys.stdin); [print(p["name"]) for p in data]'
-allow deletion from conexus builds
-anon_read_only
-ansible-vault-password-files-readonly
-docker-push
-docker-wso2mi
-publish conexus build info
-Anything
-Any Remote
-ForOracle19cDev
-conexus_release_local_create_permission
-conexus-read-only
-conexus-deploy
-keys_readonly
-OWASP Report Upload
-antivirus_read_annotate_deploy_delete
-uploadOnly
-create long lived repo
-file-upload_readonly
+}
+
+=== Permission: Anything ===
+{
+    "name": "Anything",
+    "includesPattern": "**",
+    "excludesPattern": "",
+    "repositories": [
+        "ANY"
+    ],
+    "principals": {}
+}
+
+=== Permission: conexus-deploy ===
+{
+    "name": "conexus-deploy",
+    "includesPattern": "**,ll-*",
+    "excludesPattern": "",
+    "repositories": [
+        "conexus-rc-local",
+        "conexus-release-local",
+        "conexus-snapshot-local",
+        "file-local",
+        "ll-modelchanges"
+    ],
+    "principals": {
+        "users": {
+            "sa_bamboo": [
+                "r",
+                "w",
+                "n"
+            ],
+            "robert.wernsman@usda.gov": [
+                "r",
+                "d",
+                "w",
+                "n"
+            ],
+            "rohith.janga@usda.gov": [
+                "r",
+                "w",
+                "n"
+            ]
+        },
+        "groups": {
+            "nsfs_devops": [
+                "r",
+                "d",
+                "w",
+                "n"
+            ]
+        }
+    }
+}
+
+=== Permission: conexus-read-only ===
+{
+    "name": "conexus-read-only",
+    "includesPattern": "conexus*,ll-*",
+    "excludesPattern": "",
+    "repositories": [
+        "conexus-maven-local",
+        "conexus-plugins-backup",
+        "conexus-rc-local",
+        "conexus-release-local",
+        "conexus-snapshot-local",
+        "jaspersoft-thirdpart",
+        "jaspersoft.jfrog.io",
+        "ll-modelchanges",
+        "wso2-remote"
+    ],
+    "principals": {
+        "users": {
+            "sa_bamboo": [
+                "r"
+            ]
+        },
+        "groups": {
+            "nsfs_developers": [
+                "r"
+            ],
+            "nsfs_users": [
+                "r"
+            ]
+        }
+    }
+}
+
+=== Permission: conexus_release_local_create_permission ===
+{
+    "name": "conexus_release_local_create_permission",
+    "includesPattern": "**",
+    "excludesPattern": "",
+    "repositories": [
+        "conexus-release-local"
+    ],
+    "principals": {
+        "groups": {
+            "conexus_release_local_create": [
+                "r",
+                "w",
+                "n"
+            ]
+        }
+    }
+}
