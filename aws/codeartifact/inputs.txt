@@ -1,97 +1,91 @@
-# Use today's date (May 16, 2026) — matches the existing convention
-NEW_TAG="node22-angular20-el9-2026-05-16-1740"
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-bom/2.1.0/shiro-bom-2.1.0.pom" \
+  -w "\nHTTP %{http_code}\n" -o /tmp/shiro-bom-admin.pom
 
-# Retag
-docker tag 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-test-2200 \
-           339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:${NEW_TAG}
+ls -la /tmp/shiro-bom-admin.pom
+head -3 /tmp/shiro-bom-admin.pom
 
-# Push the new tag
+
+
+
+<servers>
+  <server>
+    <id>central</id>
+    <username>uploader</username>
+    <password>AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq</password>
+  </server>
+  <server>
+    <id>conexus-feature-repo</id>
+    <username>uploader</username>
+    <password>AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq</password>
+  </server>
+  <server>
+    <id>ArtifactoryPluginRepos</id>
+    <username>admin</username>
+    <password>YOUR_ADMIN_TOKEN_HERE</password>
+  </server>
+</servers>
+
+
+
+
+# On ip-10-56-112-35
+docker exec ip-10-56-112-35.ec2.internal-ba-2 \
+  sed -n '/<id>ArtifactoryPluginRepos<\/id>/,/<\/server>/p' \
+  /usr/share/maven/conf/settings.xml \
+  | grep -oP '(?<=<password>)[^<]+'
+
+
+
+cd ~/docker-bamboo-agents/build-agent
+./build-bamboo-build-agent.sh -e aws -v test-rebuild-$(date +%H%M)
+
+
+
+docker run --rm -it --entrypoint /bin/bash \
+  339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-test-rebuild-XXXX
+
+# Inside container:
+mkdir -p /tmp/mvn-test && cd /tmp/mvn-test
+cat > pom.xml <<'EOF'
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test.agent</groupId>
+  <artifactId>shiro-bom-test</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.shiro</groupId>
+        <artifactId>shiro-bom</artifactId>
+        <version>2.1.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+</project>
+EOF
+
+mvn -B validate \
+  -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/ \
+  -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/ \
+  2>&1 | tail -20
+
+exit
+
+
+
+NEW_TAG="node22-angular20-el9-2026-05-16-$(date +%H%M)"
+docker tag <test-tag> 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:${NEW_TAG}
 docker push 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:${NEW_TAG}
 
-# Verify both tags exist locally
-docker images | grep build-agents
+# On .35
+docker pull <new image>
+docker rm -f ip-10-56-112-35.ec2.internal-ba-1
+# re-run the docker run command with the new tag
 
 
 
-
-
-
-
-
-
-
-# Run on ip-10-56-112-35
-
-# Set up vars (matching the script's defaults)
-NEW_IMAGE="339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-16-1740"
-HOSTNAME_SHORT="$(hostname)"
-AGENT_NAME="${HOSTNAME_SHORT}-ba-1"
-HOST_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
-CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
-BAMBOO_URL="https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/"
-NETWORK_NAME="isolated_nw"
-DOCKER_SOCK="/var/run/docker.sock"
-SSH_KEYS_DIR="/opt/bamboo-keys"
-
-# Pull the new image first so the swap window is small
-docker pull "$NEW_IMAGE"
-
-# (Bamboo UI: disable ba-1 BEFORE proceeding past this point)
-
-# Stop and remove only ba-1
-docker rm -f "$AGENT_NAME"
-
-# Start ba-1 with the new image — exact same docker run shape as the script
-mkdir -p "$HOST_AGENT_HOME"
-docker run -d \
-  --net="$NETWORK_NAME" \
-  -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
-  -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
-  -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
-  --name="$AGENT_NAME" \
-  -h "$AGENT_NAME" \
-  --init \
-  --restart=always \
-  --sysctl net.ipv4.ip_forward=1 \
-  "$NEW_IMAGE" \
-  bash -lc "
-    set -e
-    echo 'startup umask before change:' \$(umask)
-    umask 0002
-    echo 'startup umask after change:' \$(umask)
-    mkdir -p /opt/java
-    ln -sfn /etc/alternatives/java_sdk_17 /opt/java/openjdk
-    mkdir -p /opt/bamboo-keys
-    mkdir -p '${CONTAINER_AGENT_HOME}'
-    exec java -Dbamboo.home='${CONTAINER_AGENT_HOME}' -jar /opt/bamboo-agent.jar '${BAMBOO_URL}'
-  "
-
-# Verify it's running
-docker ps --filter "name=${AGENT_NAME}" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-
-# Watch the agent connect to Bamboo
-docker logs -f "$AGENT_NAME"
-
-
-
-
-
-
-
-
-UPLOADER_TOKEN='AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq'
-
-# The path Maven failed on
-curl -sk -u uploader:${UPLOADER_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-bom/2.1.0/shiro-bom-2.1.0.pom" \
-  -w "\nHTTP %{http_code}\n" -o /tmp/shiro-bom-test.pom
-
-ls -la /tmp/shiro-bom-test.pom
-head -5 /tmp/shiro-bom-test.pom
-
-# Compare against the working path
-curl -sk -u uploader:${UPLOADER_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-jakarta-ee/2.1.0/shiro-jakarta-ee-2.1.0.pom" \
-  -w "\nHTTP %{http_code}\n" -o /tmp/shiro-jakarta-test.pom
-
-ls -la /tmp/shiro-jakarta-test.pom
