@@ -195,3 +195,63 @@ curl -sk -u uploader:${UPLOADER_TOKEN} \
 
 ls -la /tmp/shiro-bom-final.pom
 head -3 /tmp/shiro-bom-final.pom
+
+
+
+
+
+# A path anonymous *should* be able to read if anon access were on
+curl -sk \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping" \
+  -w "\nHTTP %{http_code}\n"
+
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/Any%20Remote" \
+  > /tmp/any-remote.json
+
+cat /tmp/any-remote.json | python3 -m json.tool
+
+
+vim /tmp/any-remote.json
+
+
+
+"principals": {
+    "users": {
+        "anonymous": ["r", "w"],
+        "uploader": ["r", "w"],
+        "sa_bamboo": ["r", "w"]
+    }
+}
+
+
+python3 -m json.tool /tmp/any-remote.json
+
+
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  -X PUT \
+  -H "Content-Type: application/json" \
+  -d @/tmp/any-remote.json \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/Any%20Remote" \
+  -w "\nHTTP %{http_code}\n"
+
+
+
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/Any%20Remote" \
+  | python3 -m json.tool
+
+
+
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  -X DELETE \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/maven-central-cache/org/apache/shiro/shiro-bom/2.1.0/" \
+  -w "\nHTTP %{http_code}\n"
+
+UPLOADER_TOKEN='AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq'
+curl -sk -u uploader:${UPLOADER_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-bom/2.1.0/shiro-bom-2.1.0.pom" \
+  -w "\nHTTP %{http_code}\n" -o /tmp/shiro-bom-final.pom
+
+ls -la /tmp/shiro-bom-final.pom
+head -3 /tmp/shiro-bom-final.pom
