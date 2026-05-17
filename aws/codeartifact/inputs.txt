@@ -143,13 +143,55 @@ vim /tmp/uploadOnly.json
 ]
 
 
-for PERM in "Any%20Remote" "Anything" "conexus-deploy" "conexus-read-only" "conexus_release_local_create_permission"; do
-  echo "=== Permission: $(echo $PERM | sed 's/%20/ /g') ==="
-  curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/${PERM}" \
-    | python3 -m json.tool
-  echo
-done
 
 
+# No auth at all
+curl -sk \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-bom/2.1.0/shiro-bom-2.1.0.pom" \
+  -w "\nHTTP %{http_code}\n" -o /tmp/anon-shiro.pom
 
+ls -la /tmp/anon-shiro.pom
+head -3 /tmp/anon-shiro.pom
+
+
+# Fetch current state
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/Any%20Remote" \
+  > /tmp/any-remote.json
+
+cat /tmp/any-remote.json | python3 -m json.tool
+
+# Edit — add uploader to principals.users
+vim /tmp/any-remote.json
+
+
+"principals": {
+    "users": {
+        "anonymous": ["r", "w"],
+        "uploader": ["r", "w"]
+    }
+}
+
+
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  -X PUT \
+  -H "Content-Type: application/json" \
+  -d @/tmp/any-remote.json \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/permissions/Any%20Remote" \
+  -w "\nHTTP %{http_code}\n"
+
+
+# Clear failed-marker cache
+curl -sk -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  -X DELETE \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/maven-central-cache/org/apache/shiro/shiro-bom/2.1.0/" \
+  -w "\nHTTP %{http_code}\n"
+
+# Retry with uploader
+UPLOADER_TOKEN='AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq'
+curl -sk -u uploader:${UPLOADER_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/shiro/shiro-bom/2.1.0/shiro-bom-2.1.0.pom" \
+  -w "\nHTTP %{http_code}\n" -o /tmp/shiro-bom-final.pom
+
+ls -la /tmp/shiro-bom-final.pom
+head -3 /tmp/shiro-bom-final.pom
