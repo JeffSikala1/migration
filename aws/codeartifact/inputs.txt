@@ -1,42 +1,36 @@
-curl -sf -u admin:${LEGACY_TOKEN} \
-  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/repositories/conexus-plugin-repository" \
-| jq '.'
-
-
-
-
-curl -sf -u admin:${LEGACY_TOKEN} \
-  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions" \
-| jq -r '.[]'
-
-
-
+# Fetch current, change only the one field, push back
 curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/anonymous" \
-| jq '.groups'
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
+| jq '.anonAccessEnabled = true' \
+| curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+    -X POST \
+    -H "Content-Type: application/json" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
+    -d @- \
+    -w "\nHTTP %{http_code}\n"
 
-
-
+# Verify the flag is now true
 curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-     "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
-     > /tmp/securityconfig-backup-$(date +%Y%m%d-%H%M%S).json
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
+| jq '.anonAccessEnabled'
+# Expected: true
 
 
+# This is the exact request that returned 401 earlier
 curl -sI "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/commons/commons-io/1.3.2/commons-io-1.3.2.pom"
-   # Should now return HTTP 200, matching legacy
 
 
-# 1. Confirm anonymous user group membership on new
+
+# What's in the snapshot repo that builds might try to pull?
 curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/anonymous" \
-| jq '.groups'
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/gavc?repos=conexus-snapshot-local" \
+| jq -r '.results[].uri' | head -20
 
-# 2. Confirm conexus-plugin-repository is a virtual on legacy and check its members
-curl -sf -u admin:${LEGACY_TOKEN} \
-  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/repositories/conexus-plugin-repository" \
-| jq '{key, rclass, packageType, repositories}'
-
-# 3. Same on new for the equivalent
+# Anything in mulesoft that builds might depend on?
 curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
-| jq '{key, rclass, packageType, repositories}'
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/mulesoft" \
+| jq '{key, rclass, packageType, url}'
+
+
+
+
