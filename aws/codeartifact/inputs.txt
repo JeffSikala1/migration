@@ -1,20 +1,11 @@
-curl -sf -u admin:LEGACY_ADMIN_TOKEN \
-  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/securityconfig" \
-  | jq '.anonAccessEnabled, .anonAccessToBuildInfosDisabled'
-
-
-# List permission targets that grant the anonymous user read
-curl -sf -u admin:LEGACY_ADMIN_TOKEN \
+for p in $(curl -sf -u admin:${LEGACY_TOKEN} \
   "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions" \
-  | jq -r '.[].name' \
-  | while read p; do
-      result=$(curl -sf -u admin:LEGACY_ADMIN_TOKEN \
-        "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/${p}" \
-        | jq -r 'select(.repo.actions.users.anonymous != null) | "\(.name): \(.repo.repositories | join(","))"')
-      [ -n "$result" ] && echo "$result"
-    done
+  | jq -r '.[].name'); do
 
-
-curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
-  | jq '.anonAccessEnabled'
+  curl -sf -u admin:${LEGACY_TOKEN} \
+    "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/${p}" \
+  | jq -r --arg name "$p" '
+      select(.repo.actions.users.anonymous != null)
+      | "[\($name)] anonymous=\(.repo.actions.users.anonymous | join(",")) repos=\(.repo.repositories | join(","))"
+    '
+done
