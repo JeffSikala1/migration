@@ -1,43 +1,174 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  -X POST \
-  -H "Content-Type: application/json" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
-  -d @/tmp/conexus-ll-plugin-repository-updated.json \
-  -w "\nHTTP %{http_code}\n"
-Repository conexus-ll-plugin-repository update successfully.
+[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ ll
+total 16
+-rw-r-----. 1 sikaj01 users  539 May 15 19:10 README.md
+drwxr-x---. 4 sikaj01 users 6144 May 16 23:28 build-agent
+drwxr-x---. 2 sikaj01 users 6144 May 15 19:10 conf
+drwxr-x---. 2 sikaj01 users 6144 May 15 19:10 deploy-agent
+[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ cd build-agent/
+[sikaj01@ip-10-56-112-33 build-agent]$ ll
+total 11200
+-rw-r-----. 1 sikaj01 users     9724 May 16 23:28 Dockerfile
+-rw-r-----. 1 sikaj01 users     1779 May 16 19:32 README.md
+-rw-r-----. 1 sikaj01 users 11404171 May 16 18:57 bamboo-agent.jar
+-rwxr-x---. 1 sikaj01 users    16475 May 16 21:37 build-bamboo-build-agent.sh
+drwxr-x---. 4 sikaj01 users     6144 May 15 19:10 conf
+-rwxr-x---. 1 sikaj01 users      556 May 16 18:57 download_artifactoryfiles.sh
+-rw-r-----. 1 sikaj01 users       43 May 16 23:31 file.properties
+drwxr-x---. 5 sikaj01 users     6144 May 15 19:10 files
+-rw-r-----. 1 sikaj01 users      173 May 16 18:57 google-chrome.repo
+-rw-r-----. 1 sikaj01 users     2132 May 15 19:10 package.json
+[sikaj01@ip-10-56-112-33 build-agent]$ ./build-bamboo-build-agent.sh 
+ 
+Creating an Angular 20 and NodeJS 22 image for the aws environment using a Centos 9 base image
+ 
+Building with cache
+[+] Building 171.8s (35/35) FINISHED                                                                docker:default
+ => [internal] load build definition from Dockerfile                                                          0.0s
+ => => transferring dockerfile: 9.81kB                                                                        0.0s
+ => [internal] load metadata for quay.io/centos/centos:stream9                                                0.1s
+ => [internal] load .dockerignore                                                                             0.0s
+ => => transferring context: 2B                                                                               0.0s
+ => [ 1/30] FROM quay.io/centos/centos:stream9@sha256:dbd9d8293d90c33829dab178cb2713218855c11d30353ea1b2e06f  0.0s
+ => [internal] load build context                                                                             0.0s
+ => => transferring context: 3.23kB                                                                           0.0s
+ => CACHED [ 2/30] RUN ln -nfs /usr/share/zoneinfo/America/Chicago /etc/localtime                             0.0s
+ => CACHED [ 3/30] RUN curl https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/dock  0.0s
+ => CACHED [ 4/30] COPY files/repos/jfrog-cli.repo /etc/yum.repos.d/                                          0.0s
+ => CACHED [ 5/30] RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm  0.0s
+ => CACHED [ 6/30] RUN yum clean all; yum makecache                                                           0.0s
+ => CACHED [ 7/30] RUN yum -y install     git     java-17-openjdk-devel java-17-openjdk-headless     bzip2    0.0s
+ => CACHED [ 8/30] RUN yum -y install jfrog-cli                                                               0.0s
+ => CACHED [ 9/30] RUN echo "Installing pip modules"                                                          0.0s
+ => CACHED [10/30] RUN ln -s /usr/bin/python3 /usr/local/bin/python                                           0.0s
+ => CACHED [11/30] RUN python3 -m pip install bamboo_api                                                      0.0s
+ => CACHED [12/30] RUN rm -rf ~/.pip/cache                                                                    0.0s
+ => CACHED [13/30] RUN mkdir -p /usr/share/maven                                                              0.0s
+ => CACHED [14/30] RUN mkdir -p /root/bamboo-agent-home/conf                                                  0.0s
+ => CACHED [15/30] RUN mkdir -p /root/.ssh                                                                    0.0s
+ => CACHED [16/30] RUN echo -e "[bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov]:7999,[10.56.112.35]:7999 ssh-rsa AA  0.0s
+ => CACHED [17/30] RUN curl -k -fsSL https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.  0.0s
+ => [18/30] ADD conf/maven/* /usr/share/maven/conf/                                                           0.1s
+ => [19/30] RUN curl -k -fsSL https://rpm.nodesource.com/setup_20.x | bash -                                  2.8s
+ => [20/30] RUN yum install -y nodejs                                                                         7.8s 
+ => [21/30] RUN yum update -y                                                                                 1.6s
+ => [22/30] COPY package.json ./package.json                                                                  0.1s
+ => [23/30] RUN npm install -g && npm prune && npm link @angular/cli@v20                                     95.7s
+ => [24/30] RUN npm config set registry "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/np  0.6s
+ => [25/30] COPY bamboo-agent.jar /opt/bamboo-agent.jar                                                       0.2s
+ => [26/30] ADD conf/bamboo-agent/wrapper.conf.aws /root/bamboo-agent-home/conf/wrapper.conf                  0.1s
+ => [27/30] COPY google-chrome.repo /etc/yum.repos.d/google-chrome.repo                                       0.1s
+ => [28/30] RUN yum install -y google-chrome-stable openssl jq                                               18.9s
+ => [29/30] RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip a  9.8s
+ => [30/30] RUN yum -y clean all                                                                              0.9s
+ => exporting to image                                                                                       32.7s
+ => => exporting layers                                                                                      32.7s
+ => => writing image sha256:bde339ea5273302ec26d1de0c28b81a55588a8b65ba2f81d971c47bd4b1ba96a                  0.0s
+ => => naming to 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-18-2  0.0s
+removing Dockerfile
+[sikaj01@ip-10-56-112-33 build-agent]$ docker image
 
-HTTP 200
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
-| jq '{key, rclass, repositories}'
-{
-  "key": "conexus-ll-plugin-repository",
-  "rclass": "virtual",
-  "repositories": [
-    "conexus-maven-local",
-    "conexus-plugins-backup",
-    "conexus-release-local",
-    "conexus-rc-local",
-    "conexus-snapshot-local",
-    "fusesource",
-    "jaspersoft-thirdpart",
-    "jboss.org-ea",
-    "jboss.org_releases",
-    "maven-central",
-    "mulesoft",
-    "redhat-ga",
-    "sonatype",
-    "redhat-earlyaccess",
-    "hibernate",
-    "jaspersoft.jfrog.io"
-  ]
-}
+Usage:  docker image COMMAND
 
+Manage images
 
+Commands:
+  build       Build an image from a Dockerfile
+  history     Show the history of an image
+  import      Import the contents from a tarball to create a filesystem image
+  inspect     Display detailed information on one or more images
+  load        Load an image from a tar archive or STDIN
+  ls          List images
+  prune       Remove unused images
+  pull        Download an image from a registry
+  push        Upload an image to a registry
+  rm          Remove one or more images
+  save        Save one or more images to a tar archive (streamed to STDOUT by default)
+  tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE
 
+Run 'docker image COMMAND --help' for more information on a command.
+[sikaj01@ip-10-56-112-33 build-agent]$ docker images
+REPOSITORY                                                  TAG                                      IMAGE ID       CREATED          SIZE
+339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   node22-angular20-el9-2026-05-18-2048     bde339ea5273   56 seconds ago   4.64GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   node22-angular20-el9-test-rebuild-2328   6d1fdde583a1   45 hours ago     4.61GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   node22-angular20-el9-2026-05-16-1740     4cf4bcca39a2   47 hours ago     4.61GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   node22-angular20-el9-test-2200           4cf4bcca39a2   47 hours ago     4.61GB
+[sikaj01@ip-10-56-112-33 build-agent]$ docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:ARTIFAnode22-angular20-el9-2026-05-18-2048 CTORY_TOKEN \
+  cat /usr/share/maven/conf/settings.xml
+Unable to find image '339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:ARTIFAnode22-angular20-el9-2026-05-18-2048' locally
+docker: Error response from daemon: pull access denied for 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents, repository does not exist or may require 'docker login': denied: Your authorization token has expired. Reauthenticate and try again.
+See 'docker run --help'.
+[sikaj01@ip-10-56-112-33 build-agent]$ aws ecr get-login-password --region us-east-1 \
+  | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+WARNING! Your password will be stored unencrypted in /home/sikaj01/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sf "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/mulesoft?list&deep=0" \
-| jq -r '.children[].uri' | head -10
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sf "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/mulesoft?list&deep=0" \
-| jq -r '.children[].uri' | head -10
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
+Login Succeeded
+[sikaj01@ip-10-56-112-33 build-agent]$ docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-18-2048 CTORY_TOKEN \
+  cat /usr/share/maven/conf/settings.xml
+docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "CTORY_TOKEN": executable file not found in $PATH: unknown.
+[sikaj01@ip-10-56-112-33 build-agent]$ 
+
+[sikaj01@ip-10-56-112-33 build-agent]$ cat conf/maven/settings.xml 
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<settings xmlns="http://maven.apache.org/settings/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+<pluginGroups>
+    <pluginGroup>org.jvnet.hudson.tools</pluginGroup>
+    </pluginGroups>
+<proxies>
+</proxies>
+  <servers>
+    <server>
+      <id>central</id>
+      <username>uploader</username>
+      <password>AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq</password>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+      <id>ArtifactoryPluginRepos</id>
+      <name>Artifactory Plugin Repos</name>
+      <url>${bamboo.inject.pluginRepositoryUrl}</url>
+      <mirrorOf>*,!conexus-feature-repo</mirrorOf>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <properties>
+        <docker-networkMode>bridge</docker-networkMode>
+        <dbUsername>system</dbUsername>
+        <dbPassword>manager</dbPassword>
+        <dbSID>(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(Host=${dbHost})(Port=${dbPort}))(CONNECT_DATA=(SID=${dbService})))</dbSID>
+        <dbPort>1521</dbPort>
+        <dbService>ORCL</dbService>
+        <additionalparam>-Xdoclint:none</additionalparam>
+      </properties>
+      <repositories>
+        <repository>
+          <id>conexus-feature-repo</id>
+          <name>Conexus Feature Repo</name>
+          <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
+          <snapshots>
+            <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
+          </snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <snapshots>
+            <enabled>false</enabled>
+            <updatePolicy>always</updatePolicy>
+          </snapshots>
+          <id>central</id>
+          <name>conexus-plugin-repository</name>
+          <url>${bamboo.inject.pluginRepositoryUrl}</url>
+        </pluginRepository>
+      </pluginRepositories>
+      <id>artifactory</id>
+    </profile>
+  </profiles>
+  <activeProfiles>
+    <activeProfile>artifactory</activeProfile>
+  </activeProfiles>
+</settings>
