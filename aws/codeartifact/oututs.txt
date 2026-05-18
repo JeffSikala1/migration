@@ -1,13 +1,95 @@
-[root@gsansfs0066 /home/psikaj01] 02:42 PM 15 # for p in $(curl -sf -u admin:${LEGACY_TOKEN} \
+[root@gsansfs0066 /home/psikaj01] 02:54 PM 17 # for p in $(curl -sf -u admin:${LEGACY_TOKEN} \
 >   "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions" \
 >   | jq -r '.[].name'); do
 > 
 >   curl -sf -u admin:${LEGACY_TOKEN} \
 >     "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/${p}" \
 >   | jq -r --arg name "$p" '
->       select(.repo.actions.users.anonymous != null)
->       | "[\($name)] anonymous=\(.repo.actions.users.anonymous | join(",")) repos=\(.repo.repositories | join(","))"
+>       .repo as $repo
+>       | if ($repo.actions.users // {}) | keys | length > 0 then
+>           "[\($name)] USERS: \($repo.actions.users)  REPOS: \($repo.repositories | join(","))"
+>         else empty end,
+>         if ($repo.actions.groups // {}) | keys | length > 0 then
+>           "[\($name)] GROUPS: \($repo.actions.groups) REPOS: \($repo.repositories | join(","))"
+>         else empty end
 >     '
 > done
-[root@gsansfs0066 /home/psikaj01] 02:42 PM 16 # 
-[root@gsansfs0066 /home/psikaj01] 02:42 PM 16 # 
+[conexus-deploy] USERS: {"robert.wernsman@usda.gov":["read","annotate","write","delete"],"simon.branton-housley@usda.gov":["read","annotate","write","delete","manage"],"rohith.janga@usda.gov":["read","annotate","write"]}  REPOS: conexus-rc-local,conexus-release-local,conexus-snapshot-local,file-local,ll-modelchanges
+[conexus-deploy] GROUPS: {"nsfs_devops":["read","annotate","write","delete"]} REPOS: conexus-rc-local,conexus-release-local,conexus-snapshot-local,file-local,ll-modelchanges
+[ForOracle19cDev] USERS: {"kristian.fitzgerald@usda.gov":["read","annotate","write"]}  REPOS: conexus-release-local,ll-modelchanges
+[antivirus_read_annotate_deploy_delete] USERS: {"avupload":["read","annotate","write","delete"]}  REPOS: mcafee
+[conexus_release_local_create_permission] GROUPS: {"conexus_release_local_create":["read","annotate","write"]} REPOS: conexus-release-local
+[docker-push] USERS: {"docker-uploader":["read","annotate","write"],"simon.branton-housley@usda.gov":["read","annotate","write","delete","manage"]}  REPOS: docker-local
+[docker-push] GROUPS: {"docker_push_group":["read","annotate","write","delete"]} REPOS: docker-local
+[uploadOnly] USERS: {"uploader":["read","annotate","write","delete"],"sa_conexus":["read","annotate","write","delete"]}  REPOS: conexus-rc-local,conexus-release-local,conexus-snapshot-local,file-local,ll-2025-jboss-8,ll-CNXS-68737-newer-versions,ll-jboss8,ll-modelchanges,ll-postgres,ll-tops-task-order-ahcs,rpm-local
+[uploadOnly] GROUPS: {"uploadOnly":["read","annotate","write","delete"]} REPOS: conexus-rc-local,conexus-release-local,conexus-snapshot-local,file-local,ll-2025-jboss-8,ll-CNXS-68737-newer-versions,ll-jboss8,ll-modelchanges,ll-postgres,ll-tops-task-order-ahcs,rpm-local
+[keys_readonly] GROUPS: {"keys":["read"]} REPOS: keys
+[ansible-vault-password-files-readonly] USERS: {"sa_conexus":["read"]}  REPOS: ansible-vault-password-files
+[anon_read_only] GROUPS: {"anon_read_only":["read"],"nsfs_users":["read"]} REPOS: centos,conexus-maven-local,conexus-plugins-backup,conexus-rc-local,conexus-release-local,conexus-snapshot-local,docker-local,docker-remote,file-local,fusesource,jaspersoft-thirdpart,jboss.org-ea,jboss.org_releases,jcenter,ll-2025-jboss-8,ll-CNXS-68737-newer-versions,ll-jboss8,ll-modelchanges,ll-postgres,ll-tops-task-order-ahcs,maven-central,mcafee,nodesource12x,nodesource8x,npm-local,npm-remote,pypi-local,redhat-earlyaccess,redhat-ga,redhat-techpreview,rpm-local,rpm-remote,sonatype
+[conexus-read-only] GROUPS: {"nsfs_developers":["read"],"nsfs_users":["read"]} REPOS: conexus-maven-local,conexus-plugins-backup,conexus-rc-local,conexus-release-local,conexus-snapshot-local,ll-modelchanges
+[docker-wso2mi] USERS: {"sasikanth.dale@usda.gov":["read","annotate","write","delete"]}  REPOS: docker-wso2mi
+[docker-wso2mi] GROUPS: {"nsfs_users":["read"]} REPOS: docker-wso2mi
+[file-upload_readonly] USERS: {"avupload":["read"],"owasp_report_upload":["read"]}  REPOS: file-local
+
+
+[root@gsansfs0066 /home/psikaj01] 02:54 PM 18 # curl -sf -u admin:${LEGACY_TOKEN} \
+>   "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/groups" \
+> | jq -r '.[].name'
+anon_read_only
+nsfs_users
+readers
+uploadOnly
+docker_push_group
+nsfs_qa
+keys
+nsfs_administrators
+conexus_release_local_create
+admins
+nsfs_devops
+nsfs_developers
+avupload
+nsfs_security
+
+
+[root@gsansfs0066 /home/psikaj01] 02:55 PM 19 # curl -sf -u admin:${LEGACY_TOKEN} \
+>   "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/users/anonymous" \
+> | jq '.groups'
+[
+  "anon_read_only"
+]
+
+
+
+
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ for p in $(curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions" \
+  | jq -r '.[].name'); do
+
+  curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/${p}" \
+  | jq -r --arg name "$p" '
+      .repo as $repo
+      | if ($repo.actions.users // {}) | keys | length > 0 then
+          "[\($name)] USERS: \($repo.actions.users)  REPOS: \($repo.repositories | join(","))"
+        else empty end,
+        if ($repo.actions.groups // {}) | keys | length > 0 then
+          "[\($name)] GROUPS: \($repo.actions.groups) REPOS: \($repo.repositories | join(","))"
+done'   else empty end
+[docker-wso2mi] USERS: {"sasikanth.dale@usda.gov":["read","annotate","write","delete"]}  REPOS: docker-wso2mi
+[docker-wso2mi] GROUPS: {"nsfs_users":["read"]} REPOS: docker-wso2mi
+[anon_read_only] GROUPS: {"anon_read_only":["read"],"nsfs_developers":["read"],"nsfs_users":["read"]} REPOS: centos,conexus-maven-local,conexus-plugins-backup,conexus-rc-local,conexus-release-local,conexus-snapshot-local,docker-local,docker-remote,file-local,fusesource,hibernate,jaspersoft-thirdpart,jboss.org-ea,jboss.org_releases,jcenter,ll-2025-jboss-8,ll-CNXS-68737-newer-versions,ll-dev-cutover-test-01,ll-dev-cutover-test-02,ll-jboss8,ll-modelchanges,ll-postgres,ll-tops-task-order-ahcs,maven-central,mcafee,mulesoft,nodesource12x,nodesource8x,npm-local,npm-remote,pypi-local,redhat-earlyaccess,redhat-ga,redhat-techpreview,rpm-local,rpm-remote,sonatype,wso2-remote
+[conexus-read-only] USERS: {"sa_bamboo":["read"]}  REPOS: conexus-maven-local,conexus-plugins-backup,conexus-rc-local,conexus-release-local,conexus-snapshot-local,jaspersoft-thirdpart,jaspersoft.jfrog.io,ll-modelchanges,wso2-remote
+[conexus-read-only] GROUPS: {"nsfs_developers":["read"],"nsfs_users":["read"]} REPOS: conexus-maven-local,conexus-plugins-backup,conexus-rc-local,conexus-release-local,conexus-snapshot-local,jaspersoft-thirdpart,jaspersoft.jfrog.io,ll-modelchanges,wso2-remote
+[antivirus_read_annotate_deploy_delete] USERS: {"avupload":["read","annotate","write","delete"]}  REPOS: mcafee
+[keys_readonly] GROUPS: {"keys":["read"]} REPOS: keys
+[conexus_release_local_create_permission] GROUPS: {"conexus_release_local_create":["read","annotate","write"]} REPOS: conexus-release-local
+[ForOracle19cDev] USERS: {"kristian.fitzgerald@usda.gov":["read","annotate","write"]}  REPOS: conexus-release-local,ll-modelchanges
+[conexus-deploy] USERS: {"sa_bamboo":["read","annotate","write"],"robert.wernsman@usda.gov":["read","annotate","write","delete"],"rohith.janga@usda.gov":["read","annotate","write"]}  REPOS: conexus-rc-local,conexus-release-local,conexus-snapshot-local,file-local,ll-modelchanges
+[conexus-deploy] GROUPS: {"nsfs_devops":["read","annotate","write","delete"]} REPOS: conexus-rc-local,conexus-release-local,conexus-snapshot-local,file-local,ll-modelchanges
+[file-upload_readonly] USERS: {"avupload":["read"],"owasp_report_upload":["read"]}  REPOS: file-local
+[ansible-vault-password-files-readonly] USERS: {"sa_conexus":["read"]}  REPOS: ansible-vault-password-files
+[uploadOnly] USERS: {"sa_bamboo":["read","annotate","write","delete"],"uploader":["read","annotate","write","delete"],"sa_conexus":["read","annotate","write","delete"]}  REPOS: conexus-rc-local,conexus-release-local,conexus-snapshot-local,file-local,ll-2025-jboss-8,ll-CNXS-68737-newer-versions,ll-dev-cutover-test-01,ll-dev-cutover-test-02,ll-jboss8,ll-modelchanges,ll-postgres,ll-tops-task-order-ahcs,rpm-local
+[uploadOnly] GROUPS: {"uploadOnly":["read","annotate","write","delete"]} REPOS: conexus-rc-local,conexus-release-local,conexus-snapshot-local,file-local,ll-2025-jboss-8,ll-CNXS-68737-newer-versions,ll-dev-cutover-test-01,ll-dev-cutover-test-02,ll-jboss8,ll-modelchanges,ll-postgres,ll-tops-task-order-ahcs,rpm-local
+[docker-push] USERS: {"docker-uploader":["read","annotate","write"]}  REPOS: docker-local
+[docker-push] GROUPS: {"docker_push_group":["read","annotate","write","delete"]} REPOS: docker-local
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
