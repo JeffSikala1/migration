@@ -1,59 +1,8 @@
-for r in conexus-rc-local conexus-snapshot-local mulesoft; do
-  echo "=== $r ==="
-  curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/${r}" \
-  | jq '{key, rclass, packageType, url}'
-done
+# What's in mulesoft we can probe?
+curl -sf "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/mulesoft?list&deep=0" \
+| jq -r '.children[].uri' | head -10
 
 
 
-curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
-  > /tmp/conexus-ll-plugin-repository-backup-$(date +%Y%m%d-%H%M%S).json
-
-# Confirm the backup looks right
-jq '.repositories' /tmp/conexus-ll-plugin-repository-backup-*.json
-
-
-
-# Fetch, append the three missing members in legacy's order, push back
-curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
-| jq '.repositories = [
-    "conexus-maven-local",
-    "conexus-plugins-backup",
-    "conexus-release-local",
-    "conexus-rc-local",
-    "conexus-snapshot-local",
-    "fusesource",
-    "jaspersoft-thirdpart",
-    "jboss.org-ea",
-    "jboss.org_releases",
-    "maven-central",
-    "mulesoft",
-    "redhat-ga",
-    "sonatype",
-    "redhat-earlyaccess",
-    "hibernate",
-    "jaspersoft.jfrog.io"
-  ]' \
-  > /tmp/conexus-ll-plugin-repository-updated.json
-
-# Preview the change to confirm
-diff <(jq '.repositories' /tmp/conexus-ll-plugin-repository-backup-*.json) \
-     <(jq '.repositories' /tmp/conexus-ll-plugin-repository-updated.json)
-
-
-
-curl -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  -X POST \
-  -H "Content-Type: application/json" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
-  -d @/tmp/conexus-ll-plugin-repository-updated.json \
-  -w "\nHTTP %{http_code}\n"
-
-
-
-curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
-| jq '{key, rclass, repositories}'
+# Replace <PATH_FROM_ABOVE> with something real
+curl -sI "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/<PATH>"
