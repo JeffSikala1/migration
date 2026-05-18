@@ -1,63 +1,42 @@
-for p in $(curl -sf -u admin:${LEGACY_TOKEN} \
+curl -sf -u admin:${LEGACY_TOKEN} \
+  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/repositories/conexus-plugin-repository" \
+| jq '.'
+
+
+
+
+curl -sf -u admin:${LEGACY_TOKEN} \
   "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions" \
-  | jq -r '.[].name'); do
-
-  curl -sf -u admin:${LEGACY_TOKEN} \
-    "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/${p}" \
-  | jq -r --arg name "$p" '
-      .repo as $repo
-      | if ($repo.actions.users // {}) | keys | length > 0 then
-          "[\($name)] USERS: \($repo.actions.users)  REPOS: \($repo.repositories | join(","))"
-        else empty end,
-        if ($repo.actions.groups // {}) | keys | length > 0 then
-          "[\($name)] GROUPS: \($repo.actions.groups) REPOS: \($repo.repositories | join(","))"
-        else empty end
-    '
-done
+| jq -r '.[]'
 
 
 
-# What groups exist in legacy
-curl -sf -u admin:${LEGACY_TOKEN} \
-  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/groups" \
-| jq -r '.[].name'
-
-# Is anonymous in the default 'readers' group?
-curl -sf -u admin:${LEGACY_TOKEN} \
-  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/users/anonymous" \
+curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/anonymous" \
 | jq '.groups'
 
 
 
+curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+     "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
+     > /tmp/securityconfig-backup-$(date +%Y%m%d-%H%M%S).json
 
 
-# What groups exist in legacy
-curl -sf -u admin:${LEGACY_TOKEN} \
-  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/groups" \
-| jq -r '.[].name'
+curl -sI "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/commons/commons-io/1.3.2/commons-io-1.3.2.pom"
+   # Should now return HTTP 200, matching legacy
 
-# Is anonymous in the default 'readers' group?
-curl -sf -u admin:${LEGACY_TOKEN} \
-  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/users/anonymous" \
+
+# 1. Confirm anonymous user group membership on new
+curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/anonymous" \
 | jq '.groups'
 
+# 2. Confirm conexus-plugin-repository is a virtual on legacy and check its members
+curl -sf -u admin:${LEGACY_TOKEN} \
+  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/repositories/conexus-plugin-repository" \
+| jq '{key, rclass, packageType, repositories}'
 
-
-
-
-for p in $(curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions" \
-  | jq -r '.[].name'); do
-
-  curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/${p}" \
-  | jq -r --arg name "$p" '
-      .repo as $repo
-      | if ($repo.actions.users // {}) | keys | length > 0 then
-          "[\($name)] USERS: \($repo.actions.users)  REPOS: \($repo.repositories | join(","))"
-        else empty end,
-        if ($repo.actions.groups // {}) | keys | length > 0 then
-          "[\($name)] GROUPS: \($repo.actions.groups) REPOS: \($repo.repositories | join(","))"
-        else empty end
-    '
-done
+# 3. Same on new for the equivalent
+curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
+| jq '{key, rclass, packageType, repositories}'
