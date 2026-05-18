@@ -1,7 +1,20 @@
-# Against legacy (if still reachable):
-curl -sI "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-io/1.3.2/commons-io-1.3.2.pom"
-
-# Against new:
-curl -sI "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/commons/commons-io/1.3.2/commons-io-1.3.2.pom"
+curl -sf -u admin:LEGACY_ADMIN_TOKEN \
+  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/securityconfig" \
+  | jq '.anonAccessEnabled, .anonAccessToBuildInfosDisabled'
 
 
+# List permission targets that grant the anonymous user read
+curl -sf -u admin:LEGACY_ADMIN_TOKEN \
+  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions" \
+  | jq -r '.[].name' \
+  | while read p; do
+      result=$(curl -sf -u admin:LEGACY_ADMIN_TOKEN \
+        "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/${p}" \
+        | jq -r 'select(.repo.actions.users.anonymous != null) | "\(.name): \(.repo.repositories | join(","))"')
+      [ -n "$result" ] && echo "$result"
+    done
+
+
+curl -sf -u admin:NEW_ADMIN_TOKEN \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
+  | jq '.anonAccessEnabled'
