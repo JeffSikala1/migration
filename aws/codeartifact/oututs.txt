@@ -61,32 +61,24 @@ simple	18-May-2026 18:58:20	Finished building SR-REPSR-JOB1-110.
 
 
 
-[root@gsansfs0066 /home/psikaj01] 01:54 PM 2 # curl -sI "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/conexus-plugin-repository/org/apache/commons/commons-io/1.3.2/commons-io-1.3.2.pom"
-HTTP/1.1 200 
-Date: Mon, 18 May 2026 19:15:45 GMT
-Content-Type: application/x-maven-pom+xml
-Content-Length: 640
-Connection: keep-alive
-X-JFrog-Version: Artifactory/7.104.14 80414900
-X-Artifactory-Id: f124175cb6df3343:5d831b3e:19e14256b52:-8000
-X-Artifactory-Node-Id: 91fddf6cf0e0
-Last-Modified: Tue, 09 Oct 2012 19:28:51 GMT
-ETag: 785e86ecf26be3f245edcc567d5628bd8cea08fa
-X-Checksum-Sha1: 785e86ecf26be3f245edcc567d5628bd8cea08fa
-X-Checksum-Sha256: 6bd9a4de95b23d52956909e91aab6f79c8a7aa269e3519b31f77f1ef7a729f4d
-X-Checksum-Md5: 70c85031bf14b4ac3211d3f23a100297
-Accept-Ranges: bytes
-X-Artifactory-Filename: commons-io-1.3.2.pom
-Content-Disposition: attachment; filename="commons-io-1.3.2.pom"; filename*=UTF-8''commons-io-1.3.2.pom
-Strict-Transport-Security: max-age=31536000; includeSubDomains
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
+  | jq '.anonAccessEnabled'
+false
 
 
+[root@gsansfs0066 /home/psikaj01] 02:29 PM 8 # curl -sf -u admin:$LEGACY_TOKEN   "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/securityconfig"   | jq '.anonAccessEnabled, .anonAccessToBuildInfosDisabled'
+true
+null
+[root@gsansfs0066 /home/psikaj01] 02:30 PM 9 # curl -sf -u admin:test   "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/securityconfig"   | jq '.anonAccessEnabled, .anonAccessToBuildInfosDisabled'
+[root@gsansfs0066 /home/psikaj01] 02:30 PM 10 # curl -sf -u admin:${LEGACY_TOKEN}   "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/securityconfig"   | jq '.anonAccessEnabled, .anonAccessToBuildInfosDisabled'
+true
+null
+[root@gsansfs0066 /home/psikaj01] 02:30 PM 11 # curl -sf -u admin:${LEGACY_TOKEN} \
+>   "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions" \
+>   | jq -r '.[].name' \
+>   | while read p; do
+>       result=$(curl -sf -u admin:${LEGACY_TOKEN} \
+>         "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/${p}" \
+>         | jq -r 'select(.repo.actions.users.anonymous != null) | "\(.name): \(.repo.repositories | join(","))"')
 
-
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sI "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/commons/commons-io/1.3.2/commons-io-1.3.2.pom"
-HTTP/2 401 
-server: nginx/1.29.3
-date: Mon, 18 May 2026 19:16:47 GMT
-content-type: application/json;charset=ISO-8859-1
-content-length: 91
-www-authenticate: Basic realm="Artifactory Realm"
