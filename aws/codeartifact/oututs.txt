@@ -1,763 +1,486 @@
-[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ ll
-total 16
--rw-r-----. 1 sikaj01 users  539 May 15 19:10 README.md
-drwxr-x---. 4 sikaj01 users 6144 May 16 23:28 build-agent
-drwxr-x---. 2 sikaj01 users 6144 May 15 19:10 conf
-drwxr-x---. 2 sikaj01 users 6144 May 15 19:10 deploy-agent
-[sikaj01@ip-10-56-112-33 docker-bamboo-agents]$ cd build-agent/
-[sikaj01@ip-10-56-112-33 build-agent]$ ll
-total 11200
--rw-r-----. 1 sikaj01 users     9724 May 16 23:28 Dockerfile
--rw-r-----. 1 sikaj01 users     1779 May 16 19:32 README.md
--rw-r-----. 1 sikaj01 users 11404171 May 16 18:57 bamboo-agent.jar
--rwxr-x---. 1 sikaj01 users    16475 May 16 21:37 build-bamboo-build-agent.sh
-drwxr-x---. 4 sikaj01 users     6144 May 15 19:10 conf
--rwxr-x---. 1 sikaj01 users      556 May 16 18:57 download_artifactoryfiles.sh
--rw-r-----. 1 sikaj01 users       43 May 16 23:31 file.properties
-drwxr-x---. 5 sikaj01 users     6144 May 15 19:10 files
--rw-r-----. 1 sikaj01 users      173 May 16 18:57 google-chrome.repo
--rw-r-----. 1 sikaj01 users     2132 May 15 19:10 package.json
-[sikaj01@ip-10-56-112-33 build-agent]$ ./build-bamboo-build-agent.sh 
- 
-Creating an Angular 20 and NodeJS 22 image for the aws environment using a Centos 9 base image
- 
-Building with cache
-[+] Building 171.8s (35/35) FINISHED                                                                docker:default
- => [internal] load build definition from Dockerfile                                                          0.0s
- => => transferring dockerfile: 9.81kB                                                                        0.0s
- => [internal] load metadata for quay.io/centos/centos:stream9                                                0.1s
- => [internal] load .dockerignore                                                                             0.0s
- => => transferring context: 2B                                                                               0.0s
- => [ 1/30] FROM quay.io/centos/centos:stream9@sha256:dbd9d8293d90c33829dab178cb2713218855c11d30353ea1b2e06f  0.0s
- => [internal] load build context                                                                             0.0s
- => => transferring context: 3.23kB                                                                           0.0s
- => CACHED [ 2/30] RUN ln -nfs /usr/share/zoneinfo/America/Chicago /etc/localtime                             0.0s
- => CACHED [ 3/30] RUN curl https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/dock  0.0s
- => CACHED [ 4/30] COPY files/repos/jfrog-cli.repo /etc/yum.repos.d/                                          0.0s
- => CACHED [ 5/30] RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm  0.0s
- => CACHED [ 6/30] RUN yum clean all; yum makecache                                                           0.0s
- => CACHED [ 7/30] RUN yum -y install     git     java-17-openjdk-devel java-17-openjdk-headless     bzip2    0.0s
- => CACHED [ 8/30] RUN yum -y install jfrog-cli                                                               0.0s
- => CACHED [ 9/30] RUN echo "Installing pip modules"                                                          0.0s
- => CACHED [10/30] RUN ln -s /usr/bin/python3 /usr/local/bin/python                                           0.0s
- => CACHED [11/30] RUN python3 -m pip install bamboo_api                                                      0.0s
- => CACHED [12/30] RUN rm -rf ~/.pip/cache                                                                    0.0s
- => CACHED [13/30] RUN mkdir -p /usr/share/maven                                                              0.0s
- => CACHED [14/30] RUN mkdir -p /root/bamboo-agent-home/conf                                                  0.0s
- => CACHED [15/30] RUN mkdir -p /root/.ssh                                                                    0.0s
- => CACHED [16/30] RUN echo -e "[bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov]:7999,[10.56.112.35]:7999 ssh-rsa AA  0.0s
- => CACHED [17/30] RUN curl -k -fsSL https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.  0.0s
- => [18/30] ADD conf/maven/* /usr/share/maven/conf/                                                           0.1s
- => [19/30] RUN curl -k -fsSL https://rpm.nodesource.com/setup_20.x | bash -                                  2.8s
- => [20/30] RUN yum install -y nodejs                                                                         7.8s 
- => [21/30] RUN yum update -y                                                                                 1.6s
- => [22/30] COPY package.json ./package.json                                                                  0.1s
- => [23/30] RUN npm install -g && npm prune && npm link @angular/cli@v20                                     95.7s
- => [24/30] RUN npm config set registry "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/np  0.6s
- => [25/30] COPY bamboo-agent.jar /opt/bamboo-agent.jar                                                       0.2s
- => [26/30] ADD conf/bamboo-agent/wrapper.conf.aws /root/bamboo-agent-home/conf/wrapper.conf                  0.1s
- => [27/30] COPY google-chrome.repo /etc/yum.repos.d/google-chrome.repo                                       0.1s
- => [28/30] RUN yum install -y google-chrome-stable openssl jq                                               18.9s
- => [29/30] RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip a  9.8s
- => [30/30] RUN yum -y clean all                                                                              0.9s
- => exporting to image                                                                                       32.7s
- => => exporting layers                                                                                      32.7s
- => => writing image sha256:bde339ea5273302ec26d1de0c28b81a55588a8b65ba2f81d971c47bd4b1ba96a                  0.0s
- => => naming to 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-18-2  0.0s
-removing Dockerfile
-[sikaj01@ip-10-56-112-33 build-agent]$ docker image
+simple	18-May-2026 13:58:19	Build Start Release - (09a) Reporting - Start Release - Gitflow release start #110 (SR-REPSR-JOB1-110) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-1 (2), bamboo version: 10.2.11
+simple	18-May-2026 13:58:19	Remote agent on host ip-10-56-112-35.ec2.internal-ba-1
+simple	18-May-2026 13:58:19	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-JOB1
+simple	18-May-2026 13:58:19	Executing build Start Release - (09a) Reporting - Start Release - Gitflow release start #110 (SR-REPSR-JOB1-110)
+simple	18-May-2026 13:58:19	Starting task 'Clean working directory task' of type 'com.atlassian.bamboo.plugins.bamboo-artifact-downloader-plugin:cleanWorkingDirectoryTask'
+simple	18-May-2026 13:58:19	Cleaning working directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-JOB1'
+simple	18-May-2026 13:58:19	Finished task 'Clean working directory task' with result: Success
+simple	18-May-2026 13:58:19	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	18-May-2026 13:58:19	Build always requires a clean checkout
+simple	18-May-2026 13:58:19	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-JOB1'
+simple	18-May-2026 13:58:19	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-JOB1
+simple	18-May-2026 13:58:19	Updating source code to revision: 72c38dd83666a0d9a7e20d8ff83577d6d8282b4d
+simple	18-May-2026 13:58:19	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git'.
+simple	18-May-2026 13:58:20	Warning: Permanently added '[127.0.0.1]:39281' (RSA) to the list of known hosts.
+simple	18-May-2026 13:58:20	Checking out revision 72c38dd83666a0d9a7e20d8ff83577d6d8282b4d.
+simple	18-May-2026 13:58:20	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-JOB1/.git'.
+simple	18-May-2026 13:58:20	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-JOB1'...
+simple	18-May-2026 13:58:20	done.
+simple	18-May-2026 13:58:20	Switched to a new branch 'develop'
+simple	18-May-2026 13:58:20	branch 'develop' set up to track 'origin/develop'.
+simple	18-May-2026 13:58:20	Updated source code to revision: 72c38dd83666a0d9a7e20d8ff83577d6d8282b4d
+simple	18-May-2026 13:58:20	Finished task 'Checkout Default Repository' with result: Success
+simple	18-May-2026 13:58:20	Running pre-build action: Build Log Labeller Pre Build Action
+simple	18-May-2026 13:58:20	Running pre-build action: VCS Version Collector
+simple	18-May-2026 13:58:20	Build Start Release - (09a) Reporting - Start Release - Gitflow release start #110 (SR-REPSR-JOB1-110) started building on agent 'ip-10-56-112-35.ec2.internal-ba-1 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-1)
+simple	18-May-2026 13:58:20	Starting task 'Install SSH key' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	18-May-2026 13:58:20	Beginning to execute external process for build 'Start Release - (09a) Reporting - Start Release - Gitflow release start #110 (SR-REPSR-JOB1-110)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/temp/SR-REPSR-JOB1-110-ScriptBuildTask-330675088473439588.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-JOB1\n
+build	18-May-2026 13:58:20	Writing private key
+error	18-May-2026 13:58:20	  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+error	18-May-2026 13:58:20	                                 Dload  Upload   Total   Spent    Left  Speed
+error	18-May-2026 13:58:20	
+error	18-May-2026 13:58:20	  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+error	18-May-2026 13:58:20	100    80  100    80    0     0   1038      0 --:--:-- --:--:-- --:--:--  1038
+build	18-May-2026 13:58:20	Host *
+error	18-May-2026 13:58:20	/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/temp/SR-REPSR-JOB1-110-ScriptBuildTask-330675088473439588.sh: line 9: gt: command not found
+error	18-May-2026 13:58:20	/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/temp/SR-REPSR-JOB1-110-ScriptBuildTask-330675088473439588.sh: line 9: /root/.ssh/config: No such file or directory
+error	18-May-2026 13:58:20	/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/temp/SR-REPSR-JOB1-110-ScriptBuildTask-330675088473439588.sh: line 10: syntax error near unexpected token `;&'
+error	18-May-2026 13:58:20	/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/temp/SR-REPSR-JOB1-110-ScriptBuildTask-330675088473439588.sh: line 10: `echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config'
+simple	18-May-2026 13:58:20	Failing task since return code of [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/temp/SR-REPSR-JOB1-110-ScriptBuildTask-330675088473439588.sh] was 2 while expected 0
+simple	18-May-2026 13:58:20	Finished task 'Install SSH key' with result: Failed
+simple	18-May-2026 13:58:20	Running post build plugin 'Docker Container Cleanup'
+simple	18-May-2026 13:58:20	Running post build plugin 'NCover Results Collector'
+simple	18-May-2026 13:58:20	Running post build plugin 'Build Results Label Collector'
+simple	18-May-2026 13:58:20	Running post build plugin 'Clover Results Collector'
+simple	18-May-2026 13:58:20	Running post build plugin 'npm Cache Cleanup'
+simple	18-May-2026 13:58:20	Running post build plugin 'Artifact Copier'
+simple	18-May-2026 13:58:20	Finalising the build...
+simple	18-May-2026 13:58:20	Stopping timer.
+simple	18-May-2026 13:58:20	Build SR-REPSR-JOB1-110 completed.
+simple	18-May-2026 18:58:20	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	18-May-2026 18:58:20	Running on server: post build plugin 'NCover Results Collector'
+simple	18-May-2026 18:58:20	Running on server: post build plugin 'Build Labeller'
+simple	18-May-2026 18:58:20	Running on server: post build plugin 'Clover Delta Calculator'
+simple	18-May-2026 18:58:20	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	18-May-2026 18:58:20	All post build plugins have finished
+simple	18-May-2026 18:58:20	Generating build results summary...
+simple	18-May-2026 18:58:20	Saving build results to disk...
+simple	18-May-2026 18:58:20	Store variable context...
+simple	18-May-2026 18:58:20	Finished building SR-REPSR-JOB1-110.
 
-Usage:  docker image COMMAND
+simple	18-May-2026 13:58:20	Build Start Release - (09a) Reporting - Start Release - Delete release branch if failed #110 (SR-REPSR-DRBIF-110) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-1 (2), bamboo version: 10.2.11
+simple	18-May-2026 13:58:20	Remote agent on host ip-10-56-112-35.ec2.internal-ba-1
+simple	18-May-2026 13:58:20	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-DRBIF
+simple	18-May-2026 13:58:20	Executing build Start Release - (09a) Reporting - Start Release - Delete release branch if failed #110 (SR-REPSR-DRBIF-110)
+simple	18-May-2026 13:58:20	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	18-May-2026 13:58:20	Build always requires a clean checkout
+simple	18-May-2026 13:58:20	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-DRBIF'
+simple	18-May-2026 13:58:20	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-DRBIF
+simple	18-May-2026 13:58:20	Updating source code to revision: 72c38dd83666a0d9a7e20d8ff83577d6d8282b4d
+simple	18-May-2026 13:58:20	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git'.
+simple	18-May-2026 13:58:20	Warning: Permanently added '[127.0.0.1]:39281' (RSA) to the list of known hosts.
+simple	18-May-2026 13:58:20	Checking out revision 72c38dd83666a0d9a7e20d8ff83577d6d8282b4d.
+simple	18-May-2026 13:58:20	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-DRBIF/.git'.
+simple	18-May-2026 13:58:20	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-DRBIF'...
+simple	18-May-2026 13:58:20	done.
+simple	18-May-2026 13:58:20	Switched to a new branch 'develop'
+simple	18-May-2026 13:58:20	branch 'develop' set up to track 'origin/develop'.
+simple	18-May-2026 13:58:20	Updated source code to revision: 72c38dd83666a0d9a7e20d8ff83577d6d8282b4d
+simple	18-May-2026 13:58:20	Finished task 'Checkout Default Repository' with result: Success
+simple	18-May-2026 13:58:20	Running pre-build action: Build Log Labeller Pre Build Action
+simple	18-May-2026 13:58:20	Running pre-build action: VCS Version Collector
+simple	18-May-2026 13:58:20	Build Start Release - (09a) Reporting - Start Release - Delete release branch if failed #110 (SR-REPSR-DRBIF-110) started building on agent 'ip-10-56-112-35.ec2.internal-ba-1 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-1)
+simple	18-May-2026 13:58:20	Starting task 'Dump variables to log' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump'
+simple	18-May-2026 13:58:20	---- DUMPING VARIABLES TO LOG --- 
+simple	18-May-2026 13:58:20	key: [ManualBuildTriggerReason.userName] value: [steven.kuzmich@gsa.gov] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [SNYK_CLIENT_ID] value: [004cb1fd-36d1-4c46-84e0-2d4e2654fa9e and the ORG ID is 6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [SNYK_CLIENT_SECRET] value: [**********] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [SNYK_ORG_ID] value: [6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [agentId] value: [1572867] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [agentWorkingDirectory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [artifactory_access_token_secret] value: [**********] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [artifactory_admin_api_key_secret] value: [**********] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [artifactory_admin_password] value: [**********] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [artifactory_admin_username] value: [admin] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [artifactory_sa_conexus_password] value: [**********] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [bamboo_artifactory_auth] value: [AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw] type: PLAN
+simple	18-May-2026 13:58:20	key: [bitbucket_branch] value: [feature/ll-postgres] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [build.working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-DRBIF] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [buildFailed] value: [true] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [buildKey] value: [SR-REPSR-DRBIF] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [buildNumber] value: [110] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [buildPlanName] value: [Start Release - (09a) Reporting - Start Release - Delete release branch if failed] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [buildResultKey] value: [SR-REPSR-DRBIF-110] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [buildResultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/SR-REPSR-DRBIF-110] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [buildTimeStamp] value: [2026-05-18T18:58:20.576Z] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.builder.command.aws] value: [/usr/local/bin/aws] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.builder.command.kubectl] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.builder.mvn3.Maven 3] value: [/usr/share/maven] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.builder.node.Node.js] value: [/usr/bin/node] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.docker.executable] value: [/usr/bin/docker] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.git.executable] value: [/usr/bin/git] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.jdk.JDK] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.jdk.JDK 17] value: [/etc/alternatives/java_sdk_17] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.jdk.JDK 17.0.18] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [capability.system.kubectl.executable] value: [/usr/local/bin/kubectl] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [dependenciesDisabled] value: [false] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [git.cache.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/_git-repositories-cache] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [plan.storageTag] value: [plan-1736816] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planKey] value: [SR-REPSR] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planName] value: [Start Release - (09a) Reporting - Start Release] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.1.branch] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.1.branchDisplayName] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.1.branchName] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.1.name] value: [Reporting] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.1.previousRevision] value: [78999e57767fb75aafa59731bc9f58d480bdfb9d] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.1.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.1.revision] value: [72c38dd83666a0d9a7e20d8ff83577d6d8282b4d] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.1.type] value: [bbserver] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.1.username] value: [] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.branch] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.branchDisplayName] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.branchName] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.name] value: [Reporting] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.previousRevision] value: [78999e57767fb75aafa59731bc9f58d480bdfb9d] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.revision] value: [72c38dd83666a0d9a7e20d8ff83577d6d8282b4d] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.type] value: [bbserver] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [planRepository.username] value: [] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.1998923.branch.name] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.1998923.git.branch] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.1998923.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.1998923.git.username] value: [] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.1998923.name] value: [Reporting] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.1998923.previous.revision.number] value: [78999e57767fb75aafa59731bc9f58d480bdfb9d] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.1998923.revision.number] value: [72c38dd83666a0d9a7e20d8ff83577d6d8282b4d] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.branch.name] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.git.branch] value: [develop] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.git.username] value: [] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.name] value: [Reporting] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.previous.revision.number] value: [78999e57767fb75aafa59731bc9f58d480bdfb9d] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [repository.revision.number] value: [72c38dd83666a0d9a7e20d8ff83577d6d8282b4d] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [resultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/SR-REPSR-DRBIF-110] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [sa_bambooecr_key] value: [AKIAU6GDZJSTYK4UQMXY] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [sa_bambooecr_secret] value: [**********] type: GLOBAL
+simple	18-May-2026 13:58:20	key: [shortJobKey] value: [DRBIF] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [shortJobName] value: [Delete release branch if failed] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [shortPlanBranchName] value: [] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [shortPlanKey] value: [REPSR] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [shortPlanName] value: [(09a) Reporting - Start Release] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [simpleBuildTimeStamp] value: [20260518185820] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [tmp.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/temp] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [triggerReason.key] value: [com.atlassian.bamboo.plugin.system.triggerReason:ManualBuildTriggerReason] type: CUSTOM
+simple	18-May-2026 13:58:20	key: [working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-DRBIF] type: CUSTOM
+simple	18-May-2026 13:58:20	---- END DUMPING VARIABLES TO LOG  --- 
+simple	18-May-2026 13:58:20	Finished task 'Dump variables to log' with result: Success
+command	18-May-2026 13:58:20	Substituting variable: ${bamboo.buildFailed} with true
+command	18-May-2026 13:58:20	Substituting variable: ${bamboo.planRepository.repositoryUrl} with ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git
+simple	18-May-2026 13:58:20	Starting task 'Delete release branch if previous stages failed' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	18-May-2026 13:58:20	Beginning to execute external process for build 'Start Release - (09a) Reporting - Start Release - Delete release branch if failed #110 (SR-REPSR-DRBIF-110)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/temp/SR-REPSR-DRBIF-110-ScriptBuildTask-5008509172839840829.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/xml-data/build-dir/SR-REPSR-DRBIF\n
+build	18-May-2026 13:58:20	Build failed
+error	18-May-2026 13:58:20	Load key "/root/.ssh/id_rsa": invalid format
+error	18-May-2026 13:58:20	git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov: Permission denied (publickey).
+error	18-May-2026 13:58:20	fatal: Could not read from remote repository.
+error	18-May-2026 13:58:20	
+error	18-May-2026 13:58:20	Please make sure you have the correct access rights
+error	18-May-2026 13:58:20	and the repository exists.
+error	18-May-2026 13:58:20	grep: syntax error in subpattern name (missing terminator)
+build	18-May-2026 13:58:20	Deleting 
+error	18-May-2026 13:58:20	fatal: --delete doesn't make sense without any refs
+simple	18-May-2026 13:58:20	Failing task since return code of [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/temp/SR-REPSR-DRBIF-110-ScriptBuildTask-5008509172839840829.sh] was 1 while expected 0
+simple	18-May-2026 13:58:20	Finished task 'Delete release branch if previous stages failed' with result: Failed
+simple	18-May-2026 13:58:20	Running post build plugin 'Docker Container Cleanup'
+simple	18-May-2026 13:58:20	Running post build plugin 'NCover Results Collector'
+simple	18-May-2026 13:58:20	Running post build plugin 'Build Results Label Collector'
+simple	18-May-2026 13:58:20	Running post build plugin 'Clover Results Collector'
+simple	18-May-2026 13:58:20	Running post build plugin 'npm Cache Cleanup'
+simple	18-May-2026 13:58:20	Running post build plugin 'Artifact Copier'
+simple	18-May-2026 13:58:20	Finalising the build...
+simple	18-May-2026 13:58:20	Stopping timer.
+simple	18-May-2026 13:58:20	Build SR-REPSR-DRBIF-110 completed.
+simple	18-May-2026 18:58:21	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	18-May-2026 18:58:21	Running on server: post build plugin 'NCover Results Collector'
+simple	18-May-2026 18:58:21	Running on server: post build plugin 'Build Labeller'
+simple	18-May-2026 18:58:21	Running on server: post build plugin 'Clover Delta Calculator'
+simple	18-May-2026 18:58:21	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	18-May-2026 18:58:21	All post build plugins have finished
+simple	18-May-2026 18:58:21	Generating build results summary...
+simple	18-May-2026 18:58:21	Saving build results to disk...
+simple	18-May-2026 18:58:21	Store variable context...
+simple	18-May-2026 18:58:21	Finished building SR-REPSR-DRBIF-110.
 
-Manage images
 
-Commands:
-  build       Build an image from a Dockerfile
-  history     Show the history of an image
-  import      Import the contents from a tarball to create a filesystem image
-  inspect     Display detailed information on one or more images
-  load        Load an image from a tar archive or STDIN
-  ls          List images
-  prune       Remove unused images
-  pull        Download an image from a registry
-  push        Upload an image to a registry
-  rm          Remove one or more images
-  save        Save one or more images to a tar archive (streamed to STDOUT by default)
-  tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE
 
-Run 'docker image COMMAND --help' for more information on a command.
-[sikaj01@ip-10-56-112-33 build-agent]$ docker images
-REPOSITORY                                                  TAG                                      IMAGE ID       CREATED          SIZE
-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   node22-angular20-el9-2026-05-18-2048     bde339ea5273   56 seconds ago   4.64GB
-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   node22-angular20-el9-test-rebuild-2328   6d1fdde583a1   45 hours ago     4.61GB
-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   node22-angular20-el9-2026-05-16-1740     4cf4bcca39a2   47 hours ago     4.61GB
-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   node22-angular20-el9-test-2200           4cf4bcca39a2   47 hours ago     4.61GB
-[sikaj01@ip-10-56-112-33 build-agent]$ docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:ARTIFAnode22-angular20-el9-2026-05-18-2048 CTORY_TOKEN \
-  cat /usr/share/maven/conf/settings.xml
-Unable to find image '339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:ARTIFAnode22-angular20-el9-2026-05-18-2048' locally
-docker: Error response from daemon: pull access denied for 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents, repository does not exist or may require 'docker login': denied: Your authorization token has expired. Reauthenticate and try again.
-See 'docker run --help'.
-[sikaj01@ip-10-56-112-33 build-agent]$ aws ecr get-login-password --region us-east-1 \
-  | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
-WARNING! Your password will be stored unencrypted in /home/sikaj01/.docker/config.json.
-Configure a credential helper to remove this warning. See
-https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+---
+version: 2
+plan:
+  project-key: SR
+  key: REPSR
+  name: (09a) Reporting - Start Release
+stages:
+- Default Stage:
+    manual: false
+    final: false
+    jobs:
+    - Gitflow release start
+- Deploy RC:
+    manual: false
+    final: false
+    jobs:
+    - Deploy RC
+- Snapshot Maven Deploy:
+    manual: false
+    final: false
+    jobs:
+    - Snapshot Maven Deploy
+- Check build plan result:
+    manual: false
+    final: true
+    jobs:
+    - Delete release branch if failed
+Gitflow release start:
+  key: JOB1
+  tasks:
+  - clean
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
 
-Login Succeeded
-[sikaj01@ip-10-56-112-33 build-agent]$ docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-18-2048 CTORY_TOKEN \
-  cat /usr/share/maven/conf/settings.xml
-docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "CTORY_TOKEN": executable file not found in $PATH: unknown.
-[sikaj01@ip-10-56-112-33 build-agent]$ 
+        # Copy in the SSH Key
+        echo "Writing private key"
+        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 400 ~/.ssh/id_rsa
 
-[sikaj01@ip-10-56-112-33 build-agent]$ cat conf/maven/settings.xml 
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<settings xmlns="http://maven.apache.org/settings/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-<pluginGroups>
-    <pluginGroup>org.jvnet.hudson.tools</pluginGroup>
-    </pluginGroups>
-<proxies>
-</proxies>
-  <servers>
-    <server>
-      <id>central</id>
-      <username>uploader</username>
-      <password>AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq</password>
-    </server>
-  </servers>
-  <mirrors>
-    <mirror>
-      <id>ArtifactoryPluginRepos</id>
-      <name>Artifactory Plugin Repos</name>
-      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-      <mirrorOf>*,!conexus-feature-repo</mirrorOf>
-    </mirror>
-  </mirrors>
-  <profiles>
-    <profile>
-      <properties>
-        <docker-networkMode>bridge</docker-networkMode>
-        <dbUsername>system</dbUsername>
-        <dbPassword>manager</dbPassword>
-        <dbSID>(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(Host=${dbHost})(Port=${dbPort}))(CONNECT_DATA=(SID=${dbService})))</dbSID>
-        <dbPort>1521</dbPort>
-        <dbService>ORCL</dbService>
-        <additionalparam>-Xdoclint:none</additionalparam>
-      </properties>
-      <repositories>
-        <repository>
-          <id>conexus-feature-repo</id>
-          <name>Conexus Feature Repo</name>
-          <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
-          <snapshots>
-            <enabled>true</enabled>
-            <updatePolicy>always</updatePolicy>
-          </snapshots>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <snapshots>
-            <enabled>false</enabled>
-            <updatePolicy>always</updatePolicy>
-          </snapshots>
-          <id>central</id>
-          <name>conexus-plugin-repository</name>
-          <url>${bamboo.inject.pluginRepositoryUrl}</url>
-        </pluginRepository>
-      </pluginRepositories>
-      <id>artifactory</id>
-    </profile>
-  </profiles>
-  <activeProfiles>
-    <activeProfile>artifactory</activeProfile>
-  </activeProfiles>
-</settings>
+        # Configure git to use this key
+        echo "Host *" &gt; ~/.ssh/config
+        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
+      description: Install SSH key
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
+      configuration:
+        variable: currentVersion
+        removeSnapshot: 'true'
+        variableScope: JOB
+      description: Get current version
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+        echo "Checking for tag version ${bamboo_currentVersion}"
 
-[sikaj01@ip-10-56-112-33 build-agent]$ docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-18-2048 CTORY_TOKEN \
-  cat /usr/share/maven/conf/settings.xml
-docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "CTORY_TOKEN": executable file not found in $PATH: unknown.
-[sikaj01@ip-10-56-112-33 build-agent]$ cat 
-Dockerfile                    conf/                         google-chrome.repo
-README.md                     download_artifactoryfiles.sh  package.json
-bamboo-agent.jar              file.properties               
-build-bamboo-build-agent.sh   files/                        
-[sikaj01@ip-10-56-112-33 build-agent]$ cat conf/maven/settings.xml 
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<settings xmlns="http://maven.apache.org/settings/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-<pluginGroups>
-    <pluginGroup>org.jvnet.hudson.tools</pluginGroup>
-    </pluginGroups>
-<proxies>
-</proxies>
-  <servers>
-    <server>
-      <id>central</id>
-      <username>uploader</username>
-      <password>AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq</password>
-    </server>
-  </servers>
-  <mirrors>
-    <mirror>
-      <id>ArtifactoryPluginRepos</id>
-      <name>Artifactory Plugin Repos</name>
-      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-      <mirrorOf>*,!conexus-feature-repo</mirrorOf>
-    </mirror>
-  </mirrors>
-  <profiles>
-    <profile>
-      <properties>
-        <docker-networkMode>bridge</docker-networkMode>
-        <dbUsername>system</dbUsername>
-        <dbPassword>manager</dbPassword>
-        <dbSID>(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(Host=${dbHost})(Port=${dbPort}))(CONNECT_DATA=(SID=${dbService})))</dbSID>
-        <dbPort>1521</dbPort>
-        <dbService>ORCL</dbService>
-        <additionalparam>-Xdoclint:none</additionalparam>
-      </properties>
-      <repositories>
-        <repository>
-          <id>conexus-feature-repo</id>
-          <name>Conexus Feature Repo</name>
-          <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
-          <snapshots>
-            <enabled>true</enabled>
-            <updatePolicy>always</updatePolicy>
-          </snapshots>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <snapshots>
-            <enabled>false</enabled>
-            <updatePolicy>always</updatePolicy>
-          </snapshots>
-          <id>central</id>
-          <name>conexus-plugin-repository</name>
-          <url>${bamboo.inject.pluginRepositoryUrl}</url>
-        </pluginRepository>
-      </pluginRepositories>
-      <id>artifactory</id>
-    </profile>
-  </profiles>
-  <activeProfiles>
-    <activeProfile>artifactory</activeProfile>
-  </activeProfiles>
-</settings>
-[sikaj01@ip-10-56-112-33 build-agent]$ docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-18-2048 \
-  cat /usr/share/maven/conf/settings.xml
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<settings xmlns="http://maven.apache.org/settings/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-<pluginGroups>
-    <pluginGroup>org.jvnet.hudson.tools</pluginGroup>
-    </pluginGroups>
-<proxies>
-</proxies>
-  <servers>
-    <server>
-      <id>central</id>
-      <username>uploader</username>
-      <password>AP2DoTweruTsyQahbU6M34Y75vrrD2o9Re3tz8Z9tGEZdQidaWcdT3jrSw5cw3Nu8fF8GQq</password>
-    </server>
-  </servers>
-  <mirrors>
-    <mirror>
-      <id>ArtifactoryPluginRepos</id>
-      <name>Artifactory Plugin Repos</name>
-      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-      <mirrorOf>*,!conexus-feature-repo</mirrorOf>
-    </mirror>
-  </mirrors>
-  <profiles>
-    <profile>
-      <properties>
-        <docker-networkMode>bridge</docker-networkMode>
-        <dbUsername>system</dbUsername>
-        <dbPassword>manager</dbPassword>
-        <dbSID>(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(Host=${dbHost})(Port=${dbPort}))(CONNECT_DATA=(SID=${dbService})))</dbSID>
-        <dbPort>1521</dbPort>
-        <dbService>ORCL</dbService>
-        <additionalparam>-Xdoclint:none</additionalparam>
-      </properties>
-      <repositories>
-        <repository>
-          <id>conexus-feature-repo</id>
-          <name>Conexus Feature Repo</name>
-          <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
-          <snapshots>
-            <enabled>true</enabled>
-            <updatePolicy>always</updatePolicy>
-          </snapshots>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <snapshots>
-            <enabled>false</enabled>
-            <updatePolicy>always</updatePolicy>
-          </snapshots>
-          <id>central</id>
-          <name>conexus-plugin-repository</name>
-          <url>${bamboo.inject.pluginRepositoryUrl}</url>
-        </pluginRepository>
-      </pluginRepositories>
-      <id>artifactory</id>
-    </profile>
-  </profiles>
-  <activeProfiles>
-    <activeProfile>artifactory</activeProfile>
-  </activeProfiles>
-</settings>
-[sikaj01@ip-10-56-112-33 build-agent]$ docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-18-2048 \
-  bash -lc '
-    mkdir -p /tmp/m2test && cd /tmp/m2test
-    cat > pom.xml <<EOF
-<project xmlns="http://maven.apache.org/POM/4.0.0">
-<modelVersion>4.0.0</modelVersion>
-<groupId>test</groupId><artifactId>test</artifactId><version>1.0</version>
-<dependencies>
-<dependency><groupId>commons-io</groupId><artifactId>commons-io</artifactId><version>1.3.2</version></dependency>
-</dependencies>
-</project>
-EOF
-    mvn -B \
-      -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/ \
-      -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ \
-      -Dmaven.repo.local=/tmp/m2repo \
-      dependency:resolve 2>&1 | tail -25
-  '
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.jar (4.2 kB at 14 kB/s)
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.3.2/maven-common-artifact-filters-3.3.2.jar (58 kB at 186 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.jar (159 kB at 507 kB/s)
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/ow2/asm/asm/9.7/asm-9.7.jar (125 kB at 398 kB/s)
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar (151 kB at 471 kB/s)
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar (8.5 kB at 26 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar (149 kB at 451 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar (41 kB at 121 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar (168 kB at 490 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/com/github/luben/zstd-jni/1.5.5-11/zstd-jni-1.5.5-11.jar (6.8 MB at 16 MB/s)
-[INFO] 
-[INFO] The following files have been resolved:
-[INFO]    commons-io:commons-io:jar:1.3.2:compile -- module commons.io (auto)
-[INFO] 
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  6.537 s
-[INFO] Finished at: 2026-05-18T16:00:27-05:00
-[INFO] ------------------------------------------------------------------------
-[sikaj01@ip-10-56-112-33 build-agent]$ docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-18-2048 \
-  bash -lc '
-    mkdir -p /tmp/m2test && cd /tmp/m2test
-    cat > pom.xml <<EOF
-<project xmlns="http://maven.apache.org/POM/4.0.0">
-<modelVersion>4.0.0</modelVersion>
-<groupId>test</groupId><artifactId>test</artifactId><version>1.0</version>
-<dependencies>
-<dependency><groupId>commons-io</groupId><artifactId>commons-io</artifactId><version>1.3.2</version></dependency>
-</dependencies>
-</project>
-EOF
-    mvn -B \
-      -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/ \
-      -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ \
-      -Dmaven.repo.local=/tmp/m2repo \
-      dependency:resolve 2>&1 | tail -25
-  '
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.jar (159 kB at 538 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.jar (4.2 kB at 14 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/shared/maven-common-artifact-filters/3.3.2/maven-common-artifact-filters-3.3.2.jar (58 kB at 195 kB/s)
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.jar (43 kB at 144 kB/s)
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar (8.5 kB at 27 kB/s)
-[INFO] Downloading from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar (168 kB at 522 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar (149 kB at 457 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar (151 kB at 462 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar (41 kB at 126 kB/s)
-[INFO] Downloaded from ArtifactoryPluginRepos: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/com/github/luben/zstd-jni/1.5.5-11/zstd-jni-1.5.5-11.jar (6.8 MB at 17 MB/s)
-[INFO] 
-[INFO] The following files have been resolved:
-[INFO]    commons-io:commons-io:jar:1.3.2:compile -- module commons.io (auto)
-[INFO] 
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  6.125 s
-[INFO] Finished at: 2026-05-18T16:00:57-05:00
-[INFO] ------------------------------------------------------------------------
-[sikaj01@ip-10-56-112-33 build-agent]$ docker push 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:node22-angular20-el9-2026-05-18-2048
-The push refers to repository [339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents]
-833e80b4adb8: Pushed 
-3ed1a8066c49: Pushed 
-ae5c2a5d2c03: Pushed 
-96d332595515: Pushed 
-0ff3519ef17a: Pushed 
-e2285e94dee4: Pushed 
-72dac126ffe0: Pushed 
-50375805ed90: Pushed 
-b1ddc3d77f36: Layer already exists 
-1248539efd6e: Pushed 
-2a50d857703f: Pushed 
-fdf5c08784a2: Pushed 
-232b8ad29bf7: Pushed 
-b2929d75ee99: Layer already exists 
-2c79cc6777de: Layer already exists 
-5f70bf18a086: Layer already exists 
-b28a0d599a1f: Layer already exists 
-2f4fdccc1c50: Layer already exists 
-e964bf92e27e: Layer already exists 
-d2913dc03f11: Layer already exists 
-88966780abd8: Layer already exists 
-0a1a5534a031: Layer already exists 
-eb92abbe4656: Layer already exists 
-f52ffe0d3d5e: Layer already exists 
-8cfcade1e88c: Layer already exists 
-966221b97285: Layer already exists 
-fd53183cfa39: Layer already exists 
-a71b3d89d676: Layer already exists 
-node22-angular20-el9-2026-05-18-2048: digest: sha256:0f3fb6486ff57c2dd7c42dfb3ef3d2014bff0677a0dbcf1ba7e0e353b3dc7623 size: 6601
+        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
 
-simple	18-May-2026 16:12:51	Build Build and Test - Env - Build - feature-ll-modelchanges - Default Job #22 (BT-ENV19-JOB1-22) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-5 (2), bamboo version: 10.2.11
-simple	18-May-2026 16:12:51	Remote agent on host ip-10-56-112-35.ec2.internal-ba-5
-simple	18-May-2026 16:12:51	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1
-simple	18-May-2026 16:12:51	Executing build Build and Test - Env - Build - feature-ll-modelchanges - Default Job #22 (BT-ENV19-JOB1-22)
-simple	18-May-2026 16:12:51	Starting task 'Checkout Default Repository' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
-simple	18-May-2026 16:12:51	Build always requires a clean checkout
-simple	18-May-2026 16:12:51	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1'
-simple	18-May-2026 16:12:51	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1
-simple	18-May-2026 16:12:51	Updating source code to revision: 2996fbc3aa96c57f5a0714b9cbe90bba9040a0be
-simple	18-May-2026 16:12:51	Fetching 'refs/heads/feature/ll-modelchanges' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git'.
-simple	18-May-2026 16:12:51	Warning: Permanently added '[127.0.0.1]:35851' (RSA) to the list of known hosts.
-simple	18-May-2026 16:12:51	Checking out revision 2996fbc3aa96c57f5a0714b9cbe90bba9040a0be.
-simple	18-May-2026 16:12:51	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/.git'.
-simple	18-May-2026 16:12:51	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1'...
-simple	18-May-2026 16:12:51	done.
-simple	18-May-2026 16:12:51	Switched to a new branch 'feature/ll-modelchanges'
-simple	18-May-2026 16:12:51	branch 'feature/ll-modelchanges' set up to track 'origin/feature/ll-modelchanges'.
-simple	18-May-2026 16:12:51	Updated source code to revision: 2996fbc3aa96c57f5a0714b9cbe90bba9040a0be
-simple	18-May-2026 16:12:51	Finished task 'Checkout Default Repository' with result: Success
-simple	18-May-2026 16:12:51	Starting task 'Checkout bamboo-deployment' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
-simple	18-May-2026 16:12:51	Build always requires a clean checkout
-simple	18-May-2026 16:12:51	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/bamboo-deployment'
-simple	18-May-2026 16:12:51	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/bamboo-deployment
-simple	18-May-2026 16:12:51	Updating source code to revision: 0f336b727d20d13178520ec5fe0cb17c1b117adc
-simple	18-May-2026 16:12:52	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git'.
-simple	18-May-2026 16:12:52	Warning: Permanently added '[127.0.0.1]:35851' (RSA) to the list of known hosts.
-simple	18-May-2026 16:12:52	Checking out revision 0f336b727d20d13178520ec5fe0cb17c1b117adc.
-simple	18-May-2026 16:12:52	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/bamboo-deployment/.git'.
-simple	18-May-2026 16:12:52	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/bamboo-deployment'...
-simple	18-May-2026 16:12:52	done.
-simple	18-May-2026 16:12:52	Switched to a new branch 'develop'
-simple	18-May-2026 16:12:52	branch 'develop' set up to track 'origin/develop'.
-simple	18-May-2026 16:12:52	Updated source code to revision: 0f336b727d20d13178520ec5fe0cb17c1b117adc
-simple	18-May-2026 16:12:52	Finished task 'Checkout bamboo-deployment' with result: Success
-simple	18-May-2026 16:12:52	Running pre-build action: Build Log Labeller Pre Build Action
-simple	18-May-2026 16:12:52	Running pre-build action: VCS Version Collector
-simple	18-May-2026 16:12:52	Build Build and Test - Env - Build - feature-ll-modelchanges - Default Job #22 (BT-ENV19-JOB1-22) started building on agent 'ip-10-56-112-35.ec2.internal-ba-5 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-5)
-simple	18-May-2026 16:12:52	Starting task 'Remove existing cnxs maven repo directory' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
-command	18-May-2026 16:12:52	Beginning to execute external process for build 'Build and Test - Env - Build - feature-ll-modelchanges - Default Job #22 (BT-ENV19-JOB1-22)'\n ... running command line: \n/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/temp/BT-ENV19-JOB1-22-ScriptBuildTask-12735070605194675685.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1\n
-build	18-May-2026 16:12:53	Last metadata expiration check: 4:45:09 ago on Mon May 18 11:27:43 2026.
-build	18-May-2026 16:12:53	Package jq-1.6-21.el9.x86_64 is already installed.
-build	18-May-2026 16:12:53	Dependencies resolved.
-build	18-May-2026 16:12:53	Nothing to do.
-build	18-May-2026 16:12:53	Complete!
-simple	18-May-2026 16:12:53	Finished task 'Remove existing cnxs maven repo directory' with result: Success
-simple	18-May-2026 16:12:53	Starting task 'Determine parent branch and pass correct variables' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
-command	18-May-2026 16:12:53	Beginning to execute external process for build 'Build and Test - Env - Build - feature-ll-modelchanges - Default Job #22 (BT-ENV19-JOB1-22)'\n ... running command line: \nbamboo-deployment/build-determination-migration.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1\n
-build	18-May-2026 16:12:53	This is a long lived branch
-build	18-May-2026 16:12:53	Checking if repo exists
-build	18-May-2026 16:12:53	Repo does exist
-simple	18-May-2026 16:12:53	Finished task 'Determine parent branch and pass correct variables' with result: Success
-simple	18-May-2026 16:12:53	Starting task 'Inject values' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:inject'
-simple	18-May-2026 16:12:53	Injected variable bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/ in LOCAL scope
-simple	18-May-2026 16:12:53	Injected variable bamboo.inject.BranchName=ll-modelchanges in LOCAL scope
-simple	18-May-2026 16:12:53	Injected variable bamboo.inject.ChildBranchName= in LOCAL scope
-simple	18-May-2026 16:12:53	Injected variable bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/ in LOCAL scope
-simple	18-May-2026 16:12:53	Finished task 'Inject values' with result: Success
-simple	18-May-2026 16:12:53	Starting task 'Dump variables to log' of type 'com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump'
-simple	18-May-2026 16:12:53	---- DUMPING VARIABLES TO LOG --- 
-simple	18-May-2026 16:12:53	key: [ManualBuildTriggerReason.userName] value: [jeff.sikala] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [SNYK_CLIENT_ID] value: [004cb1fd-36d1-4c46-84e0-2d4e2654fa9e and the ORG ID is 6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [SNYK_CLIENT_SECRET] value: [**********] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [SNYK_ORG_ID] value: [6f6830ec-4f19-4750-9a8c-8ef1a936f26b] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [agentId] value: [1572868] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [agentWorkingDirectory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [artifactory_access_token_secret] value: [**********] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [artifactory_admin_api_key_secret] value: [**********] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [artifactory_admin_password] value: [**********] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [artifactory_admin_username] value: [admin] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [artifactory_sa_conexus_password] value: [**********] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [bitbucket_branch] value: [feature/ll-postgres] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.3] value: [/bin/sh /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/temp/BT-ENV19-JOB1-22-ScriptBuildTask-12735070605194675685.sh] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [build.commandline.com.atlassian.bamboo.plugins.scripttask:task.builder.script.4] value: [bamboo-deployment/build-determination-migration.sh] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [build.working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [buildFailed] value: [false] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [buildKey] value: [BT-ENV19-JOB1] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [buildNumber] value: [22] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [buildPlanName] value: [Build and Test - Env - Build - feature-ll-modelchanges - Default Job] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [buildResultKey] value: [BT-ENV19-JOB1-22] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [buildResultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-ENV19-JOB1-22] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [buildTimeStamp] value: [2026-05-18T21:12:51.402Z] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.builder.command.aws] value: [/usr/local/bin/aws] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.builder.command.kubectl] value: [/usr/local/bin/kubectl] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.builder.mvn3.Maven 3] value: [/usr/share/maven] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.builder.node.Node.js] value: [/usr/bin/node] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.docker.executable] value: [/usr/bin/docker] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.git.executable] value: [/usr/bin/git] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.jdk.JDK] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.jdk.JDK 17] value: [/etc/alternatives/java_sdk_17] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.jdk.JDK 17.0.18] value: [/etc/alternatives/java_sdk_17/] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [capability.system.kubectl.executable] value: [/usr/local/bin/kubectl] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [dependenciesDisabled] value: [false] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [git.cache.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/_git-repositories-cache] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [inject.BranchName] value: [ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [inject.ChildBranchName] value: [] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [inject.mavenFeatureRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [inject.pluginRepositoryUrl] value: [https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [plan.storageTag] value: [plan-15958033] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planKey] value: [BT-ENV19] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planName] value: [Build and Test - Env - Build - feature-ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.1.branch] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.1.branchDisplayName] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.1.branchName] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.1.name] value: [Env] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.1.previousRevision] value: [2996fbc3aa96c57f5a0714b9cbe90bba9040a0be] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.1.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.1.revision] value: [2996fbc3aa96c57f5a0714b9cbe90bba9040a0be] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.1.type] value: [bbserver] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.1.username] value: [] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.2.branch] value: [develop] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.2.branchDisplayName] value: [develop] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.2.branchName] value: [develop] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.2.name] value: [bamboo-deployment] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.2.previousRevision] value: [0f336b727d20d13178520ec5fe0cb17c1b117adc] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.2.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.2.revision] value: [0f336b727d20d13178520ec5fe0cb17c1b117adc] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.2.type] value: [bbserver] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.2.username] value: [] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.branch] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.branchDisplayName] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.branchName] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.name] value: [Env] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.previousRevision] value: [2996fbc3aa96c57f5a0714b9cbe90bba9040a0be] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.revision] value: [2996fbc3aa96c57f5a0714b9cbe90bba9040a0be] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.type] value: [bbserver] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [planRepository.username] value: [] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.16121872.branch.name] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.16121872.git.branch] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.16121872.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.16121872.git.username] value: [] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.16121872.name] value: [Env] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.16121872.previous.revision.number] value: [2996fbc3aa96c57f5a0714b9cbe90bba9040a0be] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.16121872.revision.number] value: [2996fbc3aa96c57f5a0714b9cbe90bba9040a0be] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.5013544.branch.name] value: [develop] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.5013544.git.branch] value: [develop] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.5013544.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.5013544.git.username] value: [] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.5013544.name] value: [bamboo-deployment] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.5013544.previous.revision.number] value: [0f336b727d20d13178520ec5fe0cb17c1b117adc] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.5013544.revision.number] value: [0f336b727d20d13178520ec5fe0cb17c1b117adc] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.branch.name] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.git.branch] value: [feature/ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.git.repositoryUrl] value: [ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/env.git] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.git.username] value: [] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.name] value: [bamboo-deployment] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.previous.revision.number] value: [2996fbc3aa96c57f5a0714b9cbe90bba9040a0be] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [repository.revision.number] value: [2996fbc3aa96c57f5a0714b9cbe90bba9040a0be] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [resultsUrl] value: [https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/browse/BT-ENV19-JOB1-22] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [sa_bambooecr_key] value: [AKIAU6GDZJSTYK4UQMXY] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [sa_bambooecr_secret] value: [**********] type: GLOBAL
-simple	18-May-2026 16:12:53	key: [shortJobKey] value: [JOB1] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [shortJobName] value: [Default Job] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [shortPlanBranchName] value: [feature-ll-modelchanges] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [shortPlanKey] value: [ENV19] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [shortPlanName] value: [Env - Build] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [simpleBuildTimeStamp] value: [20260518211251] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [tmp.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/temp] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [triggerReason.key] value: [com.atlassian.bamboo.plugin.system.triggerReason:ManualBuildTriggerReason] type: CUSTOM
-simple	18-May-2026 16:12:53	key: [working.directory] value: [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1] type: CUSTOM
-simple	18-May-2026 16:12:53	---- END DUMPING VARIABLES TO LOG  --- 
-simple	18-May-2026 16:12:53	Finished task 'Dump variables to log' with result: Success
-simple	18-May-2026 16:12:53	Starting task 'Determine if deploy to Artifactory is needed' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
-command	18-May-2026 16:12:53	Beginning to execute external process for build 'Build and Test - Env - Build - feature-ll-modelchanges - Default Job #22 (BT-ENV19-JOB1-22)'\n ... running command line: \nbamboo-deployment/deploy-to-artifactory-skip-bamboo-version-migrate.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1\n
-build	18-May-2026 16:12:53	This is a long lived branch
-build	18-May-2026 16:12:53	This is a parent long-lived branch
-build	18-May-2026 16:12:54	[INFO] Scanning for projects...
-build	18-May-2026 16:12:54	[INFO] ------------------------------------------------------------------------
-build	18-May-2026 16:12:54	[INFO] Reactor Build Order:
-build	18-May-2026 16:12:54	[INFO] 
-build	18-May-2026 16:12:54	[INFO] Base Environment                                                   [pom]
-build	18-May-2026 16:12:54	[INFO] Build Tools                                                        [jar]
-build	18-May-2026 16:12:54	[INFO] Environment                                                        [pom]
-build	18-May-2026 16:12:54	[INFO] 
-build	18-May-2026 16:12:54	[INFO] ---------------------< gov.gsa.cnxs.bom:env-base >----------------------
-build	18-May-2026 16:12:54	[INFO] Building Base Environment 02.00.000.170-SNAPSHOT                   [1/3]
-build	18-May-2026 16:12:54	[INFO]   from pom.xml
-build	18-May-2026 16:12:54	[INFO] --------------------------------[ pom ]---------------------------------
-build	18-May-2026 16:12:54	[INFO] 
-build	18-May-2026 16:12:54	[INFO] --- install:3.1.3:install (default-install) @ env-base ---
-build	18-May-2026 16:12:54	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/pom.xml to /root/.m2/repository/gov/gsa/cnxs/bom/env-base/02.00.000.170-SNAPSHOT/env-base-02.00.000.170-SNAPSHOT.pom
-build	18-May-2026 16:12:54	[INFO] 
-build	18-May-2026 16:12:54	[INFO] --- deploy:3.1.3:deploy (default-deploy) @ env-base ---
-build	18-May-2026 16:12:54	[INFO] Using alternate deployment repository central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/
-build	18-May-2026 16:12:54	[WARNING] Using legacy syntax for alternative repository. Use "central::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/" instead.
-build	18-May-2026 16:12:54	Downloading from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/02.00.000.170-SNAPSHOT/maven-metadata.xml
-build	18-May-2026 16:12:54	Progress (1): 619 B
-build	18-May-2026 16:12:54	                   
-build	18-May-2026 16:12:54	Downloaded from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/02.00.000.170-SNAPSHOT/maven-metadata.xml (619 B at 3.8 kB/s)
-build	18-May-2026 16:12:54	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/02.00.000.170-SNAPSHOT/env-base-02.00.000.170-20260518.211254-20.pom
-build	18-May-2026 16:12:54	Progress (1): 28 kB
-build	18-May-2026 16:12:55	                   
-build	18-May-2026 16:12:55	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/02.00.000.170-SNAPSHOT/env-base-02.00.000.170-20260518.211254-20.pom (28 kB at 68 kB/s)
-build	18-May-2026 16:12:55	Downloading from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/maven-metadata.xml
-build	18-May-2026 16:12:55	Progress (1): 480 B
-build	18-May-2026 16:12:55	                   
-build	18-May-2026 16:12:55	Downloaded from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/maven-metadata.xml (480 B at 48 kB/s)
-build	18-May-2026 16:12:55	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/02.00.000.170-SNAPSHOT/maven-metadata.xml
-build	18-May-2026 16:12:55	Progress (1): 619 B
-build	18-May-2026 16:12:55	                   
-build	18-May-2026 16:12:55	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/02.00.000.170-SNAPSHOT/maven-metadata.xml (619 B at 20 kB/s)
-build	18-May-2026 16:12:55	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/maven-metadata.xml
-build	18-May-2026 16:12:55	Progress (1): 480 B
-build	18-May-2026 16:12:55	                   
-build	18-May-2026 16:12:55	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env-base/maven-metadata.xml (480 B at 2.8 kB/s)
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --------------------< gov.gsa.cnxs.bom:build-tools >--------------------
-build	18-May-2026 16:12:55	[INFO] Building Build Tools 02.00.000.170-SNAPSHOT                        [2/3]
-build	18-May-2026 16:12:55	[INFO]   from build-tools/pom.xml
-build	18-May-2026 16:12:55	[INFO] --------------------------------[ jar ]---------------------------------
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --- resources:3.3.1:resources (default-resources) @ build-tools ---
-build	18-May-2026 16:12:55	[INFO] Copying 1 resource from src/main/resources to target/classes
-build	18-May-2026 16:12:55	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/build-tools/src/main/java
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --- compiler:3.13.0:compile (default-compile) @ build-tools ---
-build	18-May-2026 16:12:55	[INFO] No sources to compile
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --- resources:3.3.1:testResources (default-testResources) @ build-tools ---
-build	18-May-2026 16:12:55	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/build-tools/src/test/resources
-build	18-May-2026 16:12:55	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/build-tools/src/test/resources
-build	18-May-2026 16:12:55	[INFO] skip non existing resourceDirectory /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/build-tools/src/test/java
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ build-tools ---
-build	18-May-2026 16:12:55	[INFO] No sources to compile
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --- surefire:3.5.2:test (default-test) @ build-tools ---
-build	18-May-2026 16:12:55	[INFO] Tests are skipped.
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --- jar:3.4.1:jar (default-jar) @ build-tools ---
-build	18-May-2026 16:12:55	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/build-tools/target/build-tools-02.00.000.170-SNAPSHOT.jar
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --- jar:3.4.1:test-jar (default) @ build-tools ---
-build	18-May-2026 16:12:55	[WARNING] JAR will be empty - no content was marked for inclusion!
-build	18-May-2026 16:12:55	[INFO] Building jar: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/build-tools/target/build-tools-02.00.000.170-SNAPSHOT-tests.jar
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --- install:3.1.3:install (default-install) @ build-tools ---
-build	18-May-2026 16:12:55	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/build-tools/pom.xml to /root/.m2/repository/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/build-tools-02.00.000.170-SNAPSHOT.pom
-build	18-May-2026 16:12:55	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/build-tools/target/build-tools-02.00.000.170-SNAPSHOT.jar to /root/.m2/repository/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/build-tools-02.00.000.170-SNAPSHOT.jar
-build	18-May-2026 16:12:55	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/build-tools/target/build-tools-02.00.000.170-SNAPSHOT-tests.jar to /root/.m2/repository/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/build-tools-02.00.000.170-SNAPSHOT-tests.jar
-build	18-May-2026 16:12:55	[INFO] 
-build	18-May-2026 16:12:55	[INFO] --- deploy:3.1.3:deploy (default-deploy) @ build-tools ---
-build	18-May-2026 16:12:55	[INFO] Using alternate deployment repository central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/
-build	18-May-2026 16:12:55	[WARNING] Using legacy syntax for alternative repository. Use "central::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/" instead.
-build	18-May-2026 16:12:55	Downloading from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/maven-metadata.xml
-build	18-May-2026 16:12:55	Progress (1): 1.0 kB
-build	18-May-2026 16:12:55	                    
-build	18-May-2026 16:12:55	Downloaded from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/maven-metadata.xml (1.0 kB at 114 kB/s)
-build	18-May-2026 16:12:55	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/build-tools-02.00.000.170-20260518.211254-20.pom
-build	18-May-2026 16:12:55	Progress (1): 354 B
-build	18-May-2026 16:12:56	                   
-build	18-May-2026 16:12:56	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/build-tools-02.00.000.170-20260518.211254-20.pom (354 B at 1.2 kB/s)
-build	18-May-2026 16:12:56	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/build-tools-02.00.000.170-20260518.211254-20.jar
-build	18-May-2026 16:12:56	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/build-tools-02.00.000.170-20260518.211254-20-tests.jar
-build	18-May-2026 16:12:56	Progress (1): 3.1 kB
-build	18-May-2026 16:12:56	Progress (2): 3.1 kB | 1.3 kB
-build	18-May-2026 16:12:56	                             
-build	18-May-2026 16:12:56	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/build-tools-02.00.000.170-20260518.211254-20.jar (3.1 kB at 11 kB/s)
-build	18-May-2026 16:12:56	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/build-tools-02.00.000.170-20260518.211254-20-tests.jar (1.3 kB at 3.9 kB/s)
-build	18-May-2026 16:12:56	Downloading from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/maven-metadata.xml
-build	18-May-2026 16:12:56	Progress (1): 548 B
-build	18-May-2026 16:12:56	                   
-build	18-May-2026 16:12:56	Downloaded from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/maven-metadata.xml (548 B at 50 kB/s)
-build	18-May-2026 16:12:56	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/maven-metadata.xml
-build	18-May-2026 16:12:56	Progress (1): 1.0 kB
-build	18-May-2026 16:12:56	                    
-build	18-May-2026 16:12:56	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/02.00.000.170-SNAPSHOT/maven-metadata.xml (1.0 kB at 39 kB/s)
-build	18-May-2026 16:12:56	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/maven-metadata.xml
-build	18-May-2026 16:12:56	Progress (1): 483 B
-build	18-May-2026 16:12:56	                   
-build	18-May-2026 16:12:56	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/build-tools/maven-metadata.xml (483 B at 3.3 kB/s)
-build	18-May-2026 16:12:56	[INFO] 
-build	18-May-2026 16:12:56	[INFO] ------------------------< gov.gsa.cnxs.bom:env >------------------------
-build	18-May-2026 16:12:56	[INFO] Building Environment 02.00.000.170-SNAPSHOT                        [3/3]
-build	18-May-2026 16:12:56	[INFO]   from core/pom.xml
-build	18-May-2026 16:12:56	[INFO] --------------------------------[ pom ]---------------------------------
-build	18-May-2026 16:12:56	[INFO] 
-build	18-May-2026 16:12:56	[INFO] --- install:3.1.3:install (default-install) @ env ---
-build	18-May-2026 16:12:56	[INFO] Installing /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/BT-ENV19-JOB1/core/pom.xml to /root/.m2/repository/gov/gsa/cnxs/bom/env/02.00.000.170-SNAPSHOT/env-02.00.000.170-SNAPSHOT.pom
-build	18-May-2026 16:12:56	[INFO] 
-build	18-May-2026 16:12:56	[INFO] --- deploy:3.1.3:deploy (default-deploy) @ env ---
-build	18-May-2026 16:12:56	[INFO] Using alternate deployment repository central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/
-build	18-May-2026 16:12:56	[WARNING] Using legacy syntax for alternative repository. Use "central::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/" instead.
-build	18-May-2026 16:12:56	Downloading from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/02.00.000.170-SNAPSHOT/maven-metadata.xml
-build	18-May-2026 16:12:56	Progress (1): 614 B
-build	18-May-2026 16:12:56	                   
-build	18-May-2026 16:12:56	Downloaded from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/02.00.000.170-SNAPSHOT/maven-metadata.xml (614 B at 88 kB/s)
-build	18-May-2026 16:12:56	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/02.00.000.170-SNAPSHOT/env-02.00.000.170-20260518.211254-20.pom
-build	18-May-2026 16:12:56	Progress (1): 8.9 kB
-build	18-May-2026 16:12:56	                    
-build	18-May-2026 16:12:56	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/02.00.000.170-SNAPSHOT/env-02.00.000.170-20260518.211254-20.pom (8.9 kB at 41 kB/s)
-build	18-May-2026 16:12:56	Downloading from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/maven-metadata.xml
-build	18-May-2026 16:12:56	Progress (1): 475 B
-build	18-May-2026 16:12:56	                   
-build	18-May-2026 16:12:56	Downloaded from central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/maven-metadata.xml (475 B at 68 kB/s)
-build	18-May-2026 16:12:56	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/02.00.000.170-SNAPSHOT/maven-metadata.xml
-build	18-May-2026 16:12:56	Progress (1): 614 B
-build	18-May-2026 16:12:57	                   
-build	18-May-2026 16:12:57	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/02.00.000.170-SNAPSHOT/maven-metadata.xml (614 B at 26 kB/s)
-build	18-May-2026 16:12:57	Uploading to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/maven-metadata.xml
-build	18-May-2026 16:12:57	Progress (1): 475 B
-build	18-May-2026 16:12:57	                   
-build	18-May-2026 16:12:57	Uploaded to central: https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges/gov/gsa/cnxs/bom/env/maven-metadata.xml (475 B at 3.3 kB/s)
-build	18-May-2026 16:12:57	[INFO] ------------------------------------------------------------------------
-build	18-May-2026 16:12:57	[INFO] Reactor Summary for Base Environment 02.00.000.170-SNAPSHOT:
-build	18-May-2026 16:12:57	[INFO] 
-build	18-May-2026 16:12:57	[INFO] Base Environment ................................... SUCCESS [  1.087 s]
-build	18-May-2026 16:12:57	[INFO] Build Tools ........................................ SUCCESS [  1.358 s]
-build	18-May-2026 16:12:57	[INFO] Environment ........................................ SUCCESS [  0.411 s]
-build	18-May-2026 16:12:57	[INFO] ------------------------------------------------------------------------
-build	18-May-2026 16:12:57	[INFO] BUILD SUCCESS
-build	18-May-2026 16:12:57	[INFO] ------------------------------------------------------------------------
-build	18-May-2026 16:12:57	[INFO] Total time:  2.997 s
-build	18-May-2026 16:12:57	[INFO] Finished at: 2026-05-18T16:12:57-05:00
-build	18-May-2026 16:12:57	[INFO] ------------------------------------------------------------------------
-simple	18-May-2026 16:12:57	Finished task 'Determine if deploy to Artifactory is needed' with result: Success
-simple	18-May-2026 16:12:57	Running post build plugin 'Docker Container Cleanup'
-simple	18-May-2026 16:12:57	Running post build plugin 'NCover Results Collector'
-simple	18-May-2026 16:12:57	Running post build plugin 'Build Results Label Collector'
-simple	18-May-2026 16:12:57	Running post build plugin 'Clover Results Collector'
-simple	18-May-2026 16:12:57	Running post build plugin 'npm Cache Cleanup'
-simple	18-May-2026 16:12:57	Running post build plugin 'Artifact Copier'
-simple	18-May-2026 16:12:57	Finalising the build...
-simple	18-May-2026 16:12:57	Stopping timer.
-simple	18-May-2026 16:12:57	Build BT-ENV19-JOB1-22 completed.
-simple	18-May-2026 21:12:57	Running on server: post build plugin 'Build Hanging Detection Configuration'
-simple	18-May-2026 21:12:57	Running on server: post build plugin 'NCover Results Collector'
-simple	18-May-2026 21:12:57	Running on server: post build plugin 'Build Labeller'
-simple	18-May-2026 21:12:57	Running on server: post build plugin 'Clover Delta Calculator'
-simple	18-May-2026 21:12:57	Running on server: post build plugin 'Maven Dependencies Postprocessor'
-simple	18-May-2026 21:12:57	All post build plugins have finished
-simple	18-May-2026 21:12:57	Generating build results summary...
-simple	18-May-2026 21:12:57	Saving build results to disk...
-simple	18-May-2026 21:12:57	Store variable context...
-simple	18-May-2026 21:12:57	Finished building BT-ENV19-JOB1-22.
+        # If the currentVersionm, from the previous Maven version variable
+        # extractor, is also a tag version, then the tag version/name will be in
+        # the variable $does_tag_exist
+        # Else $does_tag_exist will be a null string
+        does_tag_exist=$(git tag -l ${bamboo.currentVersion})
+        echo $does_tag_exist
+
+        if [ $does_tag_exist ]; then
+          echo "Deleting the tag $does_tag_exist"
+          echo "git tag -d $does_tag_exist"
+          git tag -d $does_tag_exist
+          echo "git push --delete origin $does_tag_exist"
+          git push --delete origin $does_tag_exist
+        else
+            echo "No tag found"
+        fi
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      description: Delete tag, if it already exists
+  - script:
+      interpreter: SHELL
+      scripts:
+      - "#!/usr/bin/env bash\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\ngit pull\nrelease_branch=$(git branch -r | grep -oP '(?&lt;=origin\\/)release\\/.*')\n\n# Handle the case of more than one release branch\nif [ -n \"${release_branch}\" ]; then\n  for i in \"${release_branch[@]}\"; do\n    echo \"Deleting the release branch $i\"\n        git push origin --delete $i\n        git branch -D $i\n        git fetch\n  done\nelse\n        echo \"No release branch\"\n        exit 0 \nfi"
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      description: Delete Release Branch
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: -U -B external.atlassian.jgitflow:jgitflow-maven-plugin:release-start -DpushReleases=true -DallowSnapshots=true -DenableSshAgent=true -DdefaultOriginUrl=${bamboo.planRepository.repositoryUrl} -s /usr/share/maven/conf/settings-release.xml
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      description: GitFlow Release Start
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+        git pull
+
+        git branch
+
+        find . -type f -name pom.xml -exec sed -i 's/SNAPSHOT/RC/g' {} +
+        git commit -a -m "Updated versions from SNAPSHOT to RC"
+        git config --global push.default simple
+        git push
+        #git push --set-upstream origin $BRANCH_NAME
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      description: Update SNAPSHOT with RC
+  artifact-subscriptions: []
+Deploy RC:
+  key: DR
+  tasks:
+  - checkout:
+      force-clean-build: true
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        # Copy in the SSH Key
+        echo "Writing private key"
+        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 400 ~/.ssh/id_rsa
+
+        # Configure git to use this key
+        echo "Host *" &gt; ~/.ssh/config
+        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
+      description: Obtain SSH Key
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+        git pull
+
+        release_branch=$(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*')
+
+        echo "Release branch is set from grep above is $release_branch"
+
+        if [ -z "${release_branch}" ]; then
+            echo "Failed to match release branch from the following: "
+            git branch -r
+            exit 1
+        else
+            echo "Checking out ${release_branch}"
+            git checkout "${release_branch}"
+        fi
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      description: Checkout release branch
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      description: Deploy RC to RC repo
+  artifact-subscriptions: []
+Snapshot Maven Deploy:
+  key: SMD
+  tasks:
+  - checkout:
+      force-clean-build: true
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        # Copy in the SSH Key
+        echo "Writing private key"
+        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 400 ~/.ssh/id_rsa
+
+        # Configure git to use this key
+        echo "Host *" &gt; ~/.ssh/config
+        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
+      description: Obtain SSH Key
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+        git pull origin develop
+        git fetch
+        git checkout develop
+      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
+      description: Pull Latest Develop branch
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: -U versions:update-parent versions:update-properties -DpushChanges=true -DincludeProperties=version.task,version.domain,version.rest,conexus-common.version,version.common-rest -DallowSnapshots=true -DgenerateBackupPoms=false
+      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
+      description: update dependencies to latest snapshot versions
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: org.apache.maven.plugins:maven-scm-plugin:checkin -Dmessage=updated-parent-and-properties -DpushChanges=true -DdeveloperConnectionUrl=scm:git:${bamboo.planRepository.repositoryUrl}
+      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
+      description: Checkin changes
+  - maven:
+      executable: Maven 3
+      jdk: JDK 17
+      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
+      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
+      description: Maven Deploy to Artifactory
+  artifact-subscriptions: []
+Delete release branch if failed:
+  key: DRBIF
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        if [ ${bamboo.buildFailed} == "true" ]; then
+          echo "Build failed"
+          # Delete the release branch
+          git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+          git pull
+          release_branch=$(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*')
+          echo "Deleting $release_branch"
+          git push origin --delete $release_branch
+          exit 1
+        fi
+      description: Delete release branch if previous stages failed
+  artifact-subscriptions: []
+variables:
+  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
+repositories:
+- Reporting:
+    scope: global
+triggers: []
+branches:
+  create: manually
+  delete: never
+  link-to-jira: true
+notifications: []
+labels: []
+dependencies:
+  require-all-stages-passing: false
+  enabled-for-branches: true
+  block-strategy: none
+  plans: []
+other:
+  concurrent-build-plugin:
+    number-of-concurrent-builds: system-default
+    execution-strategy: block-triggering
+  force-stop-build: true
+---
+version: 2
+plan:
+  key: SR-REPSR
+plan-permissions:
+- users:
+  - jeff.sikala
+  groups:
+  - bamboo-admin
+  permissions:
+  - view
+  - edit
+  - build
+  - clone
+  - admin
+  - view-configuration
+  - create-plan-branch
+...
