@@ -1,8 +1,44 @@
-# What's in mulesoft we can probe?
-curl -sf "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storage/mulesoft?list&deep=0" \
-| jq -r '.children[].uri' | head -10
+# Hit a real artifact through the remote — this will trigger a proxy fetch + cache
+curl -sI "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/mulesoft/org/mule/munit/munit-runner/4.5.0/munit-runner-4.5.0.pom"
+
+# Then check the same path through the virtual
+curl -sI "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/mule/munit/munit-runner/4.5.0/munit-runner-4.5.0.pom"
 
 
 
-# Replace <PATH_FROM_ABOVE> with something real
-curl -sI "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/<PATH>"
+
+NEW_TAG="node22-angular20-el9-2026-05-18-$(date +%H%M)"
+docker tag <whatever_local_tag> 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:${NEW_TAG}
+echo "Image: ${NEW_TAG}"
+
+
+
+docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:${NEW_TAG} \
+  cat /usr/share/maven/conf/settings.xml
+
+
+
+docker run --rm 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:${NEW_TAG} \
+  bash -lc '
+    mkdir -p /tmp/m2test && cd /tmp/m2test
+    cat > pom.xml <<EOF
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+<modelVersion>4.0.0</modelVersion>
+<groupId>test</groupId><artifactId>test</artifactId><version>1.0</version>
+<dependencies>
+<dependency><groupId>commons-io</groupId><artifactId>commons-io</artifactId><version>1.3.2</version></dependency>
+</dependencies>
+</project>
+EOF
+    mvn -B \
+      -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/ \
+      -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/ \
+      -Dmaven.repo.local=/tmp/m2repo \
+      dependency:resolve 2>&1 | tail -25
+  '
+
+
+aws ecr get-login-password --region us-east-1 \
+  | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+
+docker push 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:${NEW_TAG}
