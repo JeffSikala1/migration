@@ -5,7 +5,59 @@ for p in $(curl -sf -u admin:${LEGACY_TOKEN} \
   curl -sf -u admin:${LEGACY_TOKEN} \
     "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/v2/security/permissions/${p}" \
   | jq -r --arg name "$p" '
-      select(.repo.actions.users.anonymous != null)
-      | "[\($name)] anonymous=\(.repo.actions.users.anonymous | join(",")) repos=\(.repo.repositories | join(","))"
+      .repo as $repo
+      | if ($repo.actions.users // {}) | keys | length > 0 then
+          "[\($name)] USERS: \($repo.actions.users)  REPOS: \($repo.repositories | join(","))"
+        else empty end,
+        if ($repo.actions.groups // {}) | keys | length > 0 then
+          "[\($name)] GROUPS: \($repo.actions.groups) REPOS: \($repo.repositories | join(","))"
+        else empty end
+    '
+done
+
+
+
+# What groups exist in legacy
+curl -sf -u admin:${LEGACY_TOKEN} \
+  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/groups" \
+| jq -r '.[].name'
+
+# Is anonymous in the default 'readers' group?
+curl -sf -u admin:${LEGACY_TOKEN} \
+  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/users/anonymous" \
+| jq '.groups'
+
+
+
+
+
+# What groups exist in legacy
+curl -sf -u admin:${LEGACY_TOKEN} \
+  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/groups" \
+| jq -r '.[].name'
+
+# Is anonymous in the default 'readers' group?
+curl -sf -u admin:${LEGACY_TOKEN} \
+  "https://conexus-artifactory.edc.ds1.usda.gov/artifactory/api/security/users/anonymous" \
+| jq '.groups'
+
+
+
+
+
+for p in $(curl -sf -u admin:${NEW_ADMIN_TOKEN} \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions" \
+  | jq -r '.[].name'); do
+
+  curl -sf -u admin:${NEW_ADMIN_TOKEN} \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/${p}" \
+  | jq -r --arg name "$p" '
+      .repo as $repo
+      | if ($repo.actions.users // {}) | keys | length > 0 then
+          "[\($name)] USERS: \($repo.actions.users)  REPOS: \($repo.repositories | join(","))"
+        else empty end,
+        if ($repo.actions.groups // {}) | keys | length > 0 then
+          "[\($name)] GROUPS: \($repo.actions.groups) REPOS: \($repo.repositories | join(","))"
+        else empty end
     '
 done
