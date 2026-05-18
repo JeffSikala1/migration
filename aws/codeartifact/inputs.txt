@@ -1,36 +1,59 @@
-# Fetch current, change only the one field, push back
+for r in conexus-rc-local conexus-snapshot-local mulesoft; do
+  echo "=== $r ==="
+  curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/${r}" \
+  | jq '{key, rclass, packageType, url}'
+done
+
+
+
 curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
-| jq '.anonAccessEnabled = true' \
-| curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-    -X POST \
-    -H "Content-Type: application/json" \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
-    -d @- \
-    -w "\nHTTP %{http_code}\n"
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
+  > /tmp/conexus-ll-plugin-repository-backup-$(date +%Y%m%d-%H%M%S).json
 
-# Verify the flag is now true
+# Confirm the backup looks right
+jq '.repositories' /tmp/conexus-ll-plugin-repository-backup-*.json
+
+
+
+# Fetch, append the three missing members in legacy's order, push back
 curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/securityconfig" \
-| jq '.anonAccessEnabled'
-# Expected: true
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
+| jq '.repositories = [
+    "conexus-maven-local",
+    "conexus-plugins-backup",
+    "conexus-release-local",
+    "conexus-rc-local",
+    "conexus-snapshot-local",
+    "fusesource",
+    "jaspersoft-thirdpart",
+    "jboss.org-ea",
+    "jboss.org_releases",
+    "maven-central",
+    "mulesoft",
+    "redhat-ga",
+    "sonatype",
+    "redhat-earlyaccess",
+    "hibernate",
+    "jaspersoft.jfrog.io"
+  ]' \
+  > /tmp/conexus-ll-plugin-repository-updated.json
+
+# Preview the change to confirm
+diff <(jq '.repositories' /tmp/conexus-ll-plugin-repository-backup-*.json) \
+     <(jq '.repositories' /tmp/conexus-ll-plugin-repository-updated.json)
 
 
-# This is the exact request that returned 401 earlier
-curl -sI "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository/org/apache/commons/commons-io/1.3.2/commons-io-1.3.2.pom"
+
+curl -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  -X POST \
+  -H "Content-Type: application/json" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
+  -d @/tmp/conexus-ll-plugin-repository-updated.json \
+  -w "\nHTTP %{http_code}\n"
 
 
 
-# What's in the snapshot repo that builds might try to pull?
 curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/gavc?repos=conexus-snapshot-local" \
-| jq -r '.results[].uri' | head -20
-
-# Anything in mulesoft that builds might depend on?
-curl -sf -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/mulesoft" \
-| jq '{key, rclass, packageType, url}'
-
-
-
-
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-ll-plugin-repository" \
+| jq '{key, rclass, repositories}'
