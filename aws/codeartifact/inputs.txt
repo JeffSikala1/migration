@@ -1,12 +1,7 @@
-head -1 /opt/bamboo-keys/bitbucket_ci
-
-
-
-for i in 1 2 3 4 5 6; do
-  docker exec ip-10-56-112-35.ec2.internal-ba-${i} rm -f /root/.ssh/config
-done
-
-
+# Check if env RC exists anywhere else it might resolve from
 curl -sk -u sa_bamboo:${bamboo_artifactory_access_token_secret} \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/gavc?g=gov.gsa.cnxs.bom&a=env&v=02.00.000.170-RC&repos=conexus-rc-local" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/gavc?g=gov.gsa.cnxs.bom&a=env&v=02.00.000.170-RC" \
   | python3 -m json.tool
+
+
+The Reporting start release ran successfully through Stage 1 — the release branch release/02.00.000.118 was created in Bitbucket. However, Deploy RC is blocked because the parent POM gov.gsa.cnxs.bom:env:02.00.000.170-RC doesn't exist in conexus-rc-local yet. The env start release plan needs to run first and complete through its own Deploy RC stage before we can continue with Reporting. Once env RC is in Artifactory, we can re-trigger Reporting's Deploy RC stage directly without rerunning Stage 1.
