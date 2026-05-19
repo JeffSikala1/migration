@@ -1,8 +1,9 @@
 version: 2
 plan:
   project-key: SR
-  key: TASKSR
-  name: (08b) Task - Start Release
+  key: CMSR
+  name: (11) Contract Mod - Start Release
+  description: EIS Contract Mod start release
 stages:
 - Default Stage:
     manual: false
@@ -14,7 +15,7 @@ stages:
     final: false
     jobs:
     - Deploy RC
-- Snapshot Maven Deploy:
+- Update Dependencies to latest Snapshot versions:
     manual: false
     final: false
     jobs:
@@ -85,11 +86,11 @@ Gitflow release start:
       scripts:
       - "#!/usr/bin/env bash\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\ngit pull\nrelease_branch=$(git branch -r | grep -oP '(?&lt;=origin\\/)release\\/.*')\n\n# Handle the case of more than one release branch\nif [ -n \"${release_branch}\" ]; then\n  for i in \"${release_branch[@]}\"; do\n    echo \"Deleting the release branch $i\"\n        git push origin --delete $i\n        git branch -D $i\n        git fetch\n  done\nelse\n        echo \"No release branch\"\n        exit 0 \nfi"
       environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Delete release branch
+      description: Delete Release Branch
   - maven:
       executable: Maven 3
       jdk: JDK 17
-      goal: -U -B external.atlassian.jgitflow:jgitflow-maven-plugin:release-start -DpushReleases=true -DallowSnapshots=true -DenableSshAgent=true -DdefaultOriginUrl=${bamboo.planRepository.repositoryUrl} -s /usr/share/maven/conf/settings-release.xml
+      goal: -B -U external.atlassian.jgitflow:jgitflow-maven-plugin:release-start -DpushReleases=true -DallowSnapshots=true -DenableSshAgent=true -DdefaultOriginUrl=${bamboo.planRepository.repositoryUrl} -s /usr/share/maven/conf/settings-release.xml
       environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
       description: GitFlow Release Start
   - script:
@@ -196,9 +197,9 @@ Snapshot Maven Deploy:
   - maven:
       executable: Maven 3
       jdk: JDK 17
-      goal: -U versions:update-parent versions:update-properties -DpushChanges=true -DincludeProperties=version.domain,version.common,version.pricing -DallowSnapshots=true -DgenerateBackupPoms=false
+      goal: -U versions:update-parent versions:update-properties -DpushChanges=true -DincludeProperties=version.conexus-domain,version.conexus-common,version.conexus-ws,version.conexus-ws-client,version.conexus-pricing,version.conexus-webservices,version.conexus-task,version.billingsftp -DallowSnapshots=true -DgenerateBackupPoms=false
       environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
-      description: update dependencies to latest snapshot versions
+      description: update-parent update-properties
   - maven:
       executable: Maven 3
       jdk: JDK 17
@@ -209,7 +210,6 @@ Snapshot Maven Deploy:
       executable: Maven 3
       jdk: JDK 17
       goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
       description: Maven Deploy to Artifactory
   artifact-subscriptions: []
 Delete release branch if failed:
@@ -242,7 +242,7 @@ Delete release branch if failed:
 variables:
   bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
 repositories:
-- Task:
+- ContractMod:
       scope: global
 triggers: []
 branches:
