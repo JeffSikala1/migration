@@ -34,12 +34,14 @@ Gitflow release start:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        mkdir -p ~/.ssh
+        cp /opt/bamboo-keys/bitbucket_ci_jgit ~/.ssh/id_rsa
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
-        echo "Host *" &gt; ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" &gt;&gt; ~/.ssh/config
+        echo "Host *" > ~/.ssh/config
+        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+        chmod 600 ~/.ssh/config
       description: Install SSH key
   - any-task:
       plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
@@ -78,7 +80,7 @@ Gitflow release start:
   - script:
       interpreter: SHELL
       scripts:
-      - "#!/usr/bin/env bash\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\ngit pull\nrelease_branch=$(git branch -r | grep -oP '(?&lt;=origin\\/)release\\/.*')\n\n# Handle the case of more than one release branch\nif [ -n \"${release_branch}\" ]; then\n  for i in \"${release_branch[@]}\"; do\n    echo \"Deleting the release branch $i\"\n        git push origin --delete $i\n        git branch -D $i\n        git fetch\n  done\nelse\n        echo \"No release branch\"\n        exit 0 \nfi"
+      - "#!/usr/bin/env bash\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\ngit pull\nrelease_branch=$(git branch -r | grep -oP '(?<=origin\\/)release\\/.*')\n\n# Handle the case of more than one release branch\nif [ -n \"${release_branch}\" ]; then\n  for i in \"${release_branch[@]}\"; do\n    echo \"Deleting the release branch $i\"\n        git push origin --delete $i\n        git branch -D $i\n        git fetch\n  done\nelse\n        echo \"No release branch\"\n        exit 0 \nfi"
       environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
       description: Delete Release Branch
   - script:
@@ -129,8 +131,14 @@ Deploy RC:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        mkdir -p ~/.ssh
+        cp /opt/bamboo-keys/bitbucket_ci_jgit ~/.ssh/id_rsa
         chmod 400 ~/.ssh/id_rsa
+
+        # Configure git to use this key
+        echo "Host *" > ~/.ssh/config
+        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+        chmod 600 ~/.ssh/config
       description: Obtain SSH Key
   - script:
       interpreter: SHELL
@@ -141,7 +149,7 @@ Deploy RC:
         git remote set-url origin ${bamboo.planRepository.repositoryUrl}
         git pull
 
-        release_branch=$(git branch -r | grep -oP '(?&lt;=origin\/)release\/.*')
+        release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
 
         echo "Release branch is set from grep above is $release_branch"
 
@@ -165,7 +173,7 @@ Deploy RC:
         export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
 
         # Install/Update Google Chrome for Headless testing
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo &gt; /etc/yum.repos.d/google-chrome.repo
+        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
         yum install -y google-chrome-stable
 
         npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/
@@ -205,8 +213,14 @@ Snapshot Maven Deploy:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo_artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        mkdir -p ~/.ssh
+        cp /opt/bamboo-keys/bitbucket_ci_jgit ~/.ssh/id_rsa
         chmod 400 ~/.ssh/id_rsa
+
+        # Configure git to use this key
+        echo "Host *" > ~/.ssh/config
+        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+        chmod 600 ~/.ssh/config
       description: Obtain SSH Key
   - script:
       interpreter: SHELL
@@ -225,7 +239,7 @@ Snapshot Maven Deploy:
         export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
 
         # Install/Update Google Chrome for Headless testing
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo &gt; /etc/yum.repos.d/google-chrome.repo
+        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
         yum install -y google-chrome-stable
 
         npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/
@@ -240,11 +254,10 @@ Snapshot Maven Deploy:
   - maven:
       executable: Maven 3
       jdk: JDK 11
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
+      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
       description: Maven Deploy to Artifactory
   artifact-subscriptions: []
-variables:
-  bamboo_artifactory_auth: AP2cdT4jUtzhqTLUr5cuWQDEYWPLmHqXWmY6WiewBbibWDB2n2ivK2oD1o2GCJY3j3QRqtw
+variables: {}
 repositories:
 - UI:
       scope: global
