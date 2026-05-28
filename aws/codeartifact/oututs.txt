@@ -1,273 +1,236 @@
----
-version: 2
-plan:
-  project-key: SR
-  key: UISR
-  name: (03b) UI - Start Release
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Gitflow release start
-- Deploy RC:
-    manual: false
-    final: false
-    jobs:
-    - Deploy RC
-- Snapshot Maven Deploy:
-    manual: false
-    final: false
-    jobs:
-    - Snapshot Maven Deploy
-Gitflow release start:
-  key: JOB1
-  tasks:
-  - clean
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        chmod 400 ~/.ssh/id_rsa
-
-        # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-      description: Install SSH key
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: currentVersion
-        removeSnapshot: 'true'
-        variableScope: JOB
-      description: Get current version
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-        echo "Checking for tag version ${bamboo_currentVersion}"
-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-
-        # If the currentVersionm, from the previous Maven version variable
-        # extractor, is also a tag version, then the tag version/name will be in
-        # the variable $does_tag_exist
-        # Else $does_tag_exist will be a null string
-        does_tag_exist=$(git tag -l ${bamboo.currentVersion})
-        echo $does_tag_exist
-
-        if [ $does_tag_exist ]; then
-          echo "Deleting the tag $does_tag_exist"
-          echo "git tag -d $does_tag_exist"
-          git tag -d $does_tag_exist
-          echo "git push --delete origin $does_tag_exist"
-          git push --delete origin $does_tag_exist
-        else
-            echo "No tag found"
-        fi
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Delete tag, if it already exists
-  - script:
-      interpreter: SHELL
-      scripts:
-      - "#!/usr/bin/env bash\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\ngit pull\nrelease_branch=$(git branch -r | grep -oP '(?<=origin\\/)release\\/.*')\n\n# Handle the case of more than one release branch\nif [ -n \"${release_branch}\" ]; then\n  for i in \"${release_branch[@]}\"; do\n    echo \"Deleting the release branch $i\"\n        git push origin --delete $i\n        git branch -D $i\n        git fetch\n  done\nelse\n        echo \"No release branch\"\n        exit 0 \nfi"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Delete Release Branch
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        git checkout develop
-        git branch -a
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Pull latest Develop branch
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U -B external.atlassian.jgitflow:jgitflow-maven-plugin:release-start -DpushReleases=true -DallowSnapshots=true -DenableSshAgent=true -DdefaultOriginUrl=${bamboo.planRepository.repositoryUrl} -s /usr/share/maven/conf/settings-release.xml
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: GitFlow Release Start
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
-
-        git branch
-
-        find . -type f -name pom.xml -exec sed -i 's/SNAPSHOT/RC/g' {} +
-        git commit -a -m "Updated versions from SNAPSHOT to RC"
-        git config --global push.default simple
-        git push
-        #git push --set-upstream origin $BRANCH_NAME
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Update SNAPSHOT with RC
-  artifact-subscriptions: []
-Deploy RC:
-  key: DR
-  tasks:
-  - checkout:
-      force-clean-build: true
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        chmod 400 ~/.ssh/id_rsa
-
-        # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-      description: Obtain SSH Key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
-
-        release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
-
-        echo "Release branch is set from grep above is $release_branch"
-
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            #exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Checkout release branch
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-        source ~/.bashrc
-
-        # Install/Update Google Chrome for Headless testing
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
-        yum install -y google-chrome-stable
-
-        npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/
-
-        #SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
-        npm install
-        npm test
-
-
-        # pre angular 14
-        #ng build --prod --build-optimizer --output-hashing=all --vendor-chunk --optimization --progress
-        ng build --configuration production --output-hashing=all --optimization --progress
-
-        # New - needs extra node parameters because source-map generation takes more memory
-        #node --max_old_space_size=8192 \
-        #     node_modules/@angular/cli/bin/ng build \
-        #     --prod --build-optimizer --output-hashing=all --vendor-chunk  --optimization --source-map=true
-      working-dir: web/src/main/
-      description: ng build
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Deploy RC to RC repo
-  artifact-subscriptions: []
-Snapshot Maven Deploy:
-  key: SMD
-  tasks:
-  - checkout:
-      force-clean-build: true
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        chmod 400 ~/.ssh/id_rsa
-
-        # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-      description: Obtain SSH Key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull origin develop
-      description: Pull Latest Develop branch
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-        source ~/.bashrc
-
-        # Install/Update Google Chrome for Headless testing
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
-        yum install -y google-chrome-stable
-
-        npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/
-
-        SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
-        npm install
-        npm test
-
-        ng build --optimization --output-hashing=all --progress
-      working-dir: web/src/main/
-      description: ng build
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
-      description: Maven Deploy to Artifactory
-  artifact-subscriptions: []
-repositories:
-- UI:
-    scope: global
-triggers: []
-branches:
-  create: manually
-  delete: never
-  link-to-jira: true
-notifications: []
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: []
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
-  force-stop-build: true
+simple	28-May-2026 10:18:44	Build Start Release - (04a) Domain - Start Release - Deploy RC #113 (SR-DSR-DR-113) is being prepared for building on agent ip-10-56-112-35.ec2.internal-ba-5 (2), bamboo version: 10.2.11
+simple	28-May-2026 10:18:44	Remote agent on host ip-10-56-112-35.ec2.internal-ba-5
+simple	28-May-2026 10:18:44	Build working directory is /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/SR-DSR-DR
+simple	28-May-2026 10:18:44	Executing build Start Release - (04a) Domain - Start Release - Deploy RC #113 (SR-DSR-DR-113)
+simple	28-May-2026 10:18:44	Starting task 'Source Code Checkout' of type 'com.atlassian.bamboo.plugins.vcs:task.vcs.checkout'
+simple	28-May-2026 10:18:44	Build always requires a clean checkout
+simple	28-May-2026 10:18:44	Cleaning build directory '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/SR-DSR-DR'
+simple	28-May-2026 10:18:44	Checking out into /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/SR-DSR-DR
+simple	28-May-2026 10:18:44	Updating source code to revision: ac81c03fc19bd25ad5487a7c5ee66947c664e4d9
+simple	28-May-2026 10:18:44	Fetching 'refs/heads/develop' from 'ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/domain.git'.
+simple	28-May-2026 10:18:44	Warning: Permanently added '[127.0.0.1]:35851' (RSA) to the list of known hosts.
+simple	28-May-2026 10:18:44	Checking out revision ac81c03fc19bd25ad5487a7c5ee66947c664e4d9.
+simple	28-May-2026 10:18:44	Creating local git repository in '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/SR-DSR-DR/.git'.
+simple	28-May-2026 10:18:45	Cloning into '/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/SR-DSR-DR'...
+simple	28-May-2026 10:18:45	done.
+simple	28-May-2026 10:18:45	Note: switching to 'ac81c03fc19bd25ad5487a7c5ee66947c664e4d9'.
+simple	28-May-2026 10:18:45	
+simple	28-May-2026 10:18:45	You are in 'detached HEAD' state. You can look around, make experimental
+simple	28-May-2026 10:18:45	changes and commit them, and you can discard any commits you make in this
+simple	28-May-2026 10:18:45	state without impacting any branches by switching back to a branch.
+simple	28-May-2026 10:18:45	
+simple	28-May-2026 10:18:45	If you want to create a new branch to retain commits you create, you may
+simple	28-May-2026 10:18:45	do so (now or later) by using -c with the switch command. Example:
+simple	28-May-2026 10:18:45	
+simple	28-May-2026 10:18:45	  git switch -c <new-branch-name>
+simple	28-May-2026 10:18:45	
+simple	28-May-2026 10:18:45	Or undo this operation with:
+simple	28-May-2026 10:18:45	
+simple	28-May-2026 10:18:45	  git switch -
+simple	28-May-2026 10:18:45	
+simple	28-May-2026 10:18:45	Turn off this advice by setting config variable advice.detachedHead to false
+simple	28-May-2026 10:18:45	
+simple	28-May-2026 10:18:45	HEAD is now at ac81c03fc updated-parent-and-properties
+simple	28-May-2026 10:18:45	Updated source code to revision: ac81c03fc19bd25ad5487a7c5ee66947c664e4d9
+simple	28-May-2026 10:18:45	Finished task 'Source Code Checkout' with result: Success
+simple	28-May-2026 10:18:45	Running pre-build action: Build Log Labeller Pre Build Action
+simple	28-May-2026 10:18:45	Running pre-build action: VCS Version Collector
+simple	28-May-2026 10:18:45	Build Start Release - (04a) Domain - Start Release - Deploy RC #113 (SR-DSR-DR-113) started building on agent 'ip-10-56-112-35.ec2.internal-ba-5 (2)' (Remote agent on host ip-10-56-112-35.ec2.internal-ba-5)
+command	28-May-2026 10:18:45	Substituting variable: ${bamboo.artifactory_auth} with some_key
+simple	28-May-2026 10:18:45	Starting task 'Obtain SSH Key' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	28-May-2026 10:18:45	Beginning to execute external process for build 'Start Release - (04a) Domain - Start Release - Deploy RC #113 (SR-DSR-DR-113)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/temp/SR-DSR-DR-113-ScriptBuildTask-952832691028186042.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/SR-DSR-DR\n
+build	28-May-2026 10:18:45	Writing private key
+error	28-May-2026 10:18:45	  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+error	28-May-2026 10:18:45	                                 Dload  Upload   Total   Spent    Left  Speed
+error	28-May-2026 10:18:45	
+error	28-May-2026 10:18:45	  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+error	28-May-2026 10:18:45	100  3296  100  3296    0     0   114k      0 --:--:-- --:--:-- --:--:--  110k
+error	28-May-2026 10:18:45	100  3296  100  3296    0     0   110k      0 --:--:-- --:--:-- --:--:--  107k
+simple	28-May-2026 10:18:45	Finished task 'Obtain SSH Key' with result: Success
+command	28-May-2026 10:18:45	Substituting variable: ${bamboo.planRepository.repositoryUrl} with ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/domain.git
+simple	28-May-2026 10:18:45	Starting task 'Checkout release branch' of type 'com.atlassian.bamboo.plugins.scripttask:task.builder.script'
+command	28-May-2026 10:18:45	Beginning to execute external process for build 'Start Release - (04a) Domain - Start Release - Deploy RC #113 (SR-DSR-DR-113)'\n ... running command line: \n/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/temp/SR-DSR-DR-113-ScriptBuildTask-7216752366891550184.sh\n ... in: /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/xml-data/build-dir/SR-DSR-DR\n
+error	28-May-2026 10:18:45	From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/domain
+error	28-May-2026 10:18:45	 * [new branch]          Fix-rest-It-teardown-issues -> origin/Fix-rest-It-teardown-issues
+error	28-May-2026 10:18:45	 * [new branch]          bugfix/CNXS-70409-name-is-not-getting-populated-in-the-person-table-for-users-with-non-.gov-emails -> origin/bugfix/CNXS-70409-name-is-not-getting-populated-in-the-person-table-for-users-with-non-.gov-emails
+error	28-May-2026 10:18:45	 * [new branch]          bugfix/ll-tops+CNXS-62939-active-inactive-tab-task-order-field-displays-incorrect-value -> origin/bugfix/ll-tops+CNXS-62939-active-inactive-tab-task-order-field-displays-incorrect-value
+error	28-May-2026 10:18:45	 * [new branch]          bugfix/ll-tops+CNXS-64670-email-queue-record-not-created-when-a-user-is-found-and-added -> origin/bugfix/ll-tops+CNXS-64670-email-queue-record-not-created-when-a-user-is-found-and-added
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-69906-for-inactive-co-cor-requesting-reactivation-reset-status-back-to-active -> origin/feature/CNXS-69906-for-inactive-co-cor-requesting-reactivation-reset-status-back-to-active
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-73033-setup-to-load-json-file-on-startup-along-with-jrxml -> origin/feature/CNXS-73033-setup-to-load-json-file-on-startup-along-with-jrxml
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-73034-convert-usermanager-report-into-json-file-structure-end-to-end -> origin/feature/CNXS-73034-convert-usermanager-report-into-json-file-structure-end-to-end
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-73427-clean-up-transaction-handling-in-order-generation -> origin/feature/CNXS-73427-clean-up-transaction-handling-in-order-generation
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-75854-look-into-the-slowness-when-reconciling-large-tax-detail-files-the-persistence-of -> origin/feature/CNXS-75854-look-into-the-slowness-when-reconciling-large-tax-detail-files-the-persistence-of
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-76188-call-civ-submit-and-pay-nopay-asynchronously -> origin/feature/CNXS-76188-call-civ-submit-and-pay-nopay-asynchronously
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-76226-soac-central-update-status-for-container-order-when-change-service-orders-have -> origin/feature/CNXS-76226-soac-central-update-status-for-container-order-when-change-service-orders-have
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-76742-program-support-adhoc-for-sprint-174 -> origin/feature/CNXS-76742-program-support-adhoc-for-sprint-174
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-76745-perform-jboss-docker-image-from-8.0.8-to-8.1.3-sasikanth -> origin/feature/CNXS-76745-perform-jboss-docker-image-from-8.0.8-to-8.1.3-sasikanth
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-76927-build-docker-jboss-image-pust-to-ECR -> origin/feature/CNXS-76927-build-docker-jboss-image-pust-to-ECR
+error	28-May-2026 10:18:45	 * [new branch]          feature/CNXS-77108-soac-central-update-status-for-container-order-when-change-service-orders-have -> origin/feature/CNXS-77108-soac-central-update-status-for-container-order-when-change-service-orders-have
+error	28-May-2026 10:18:45	 * [new branch]          feature/CTX-39-Complete-User-Management-Report-in-Java -> origin/feature/CTX-39-Complete-User-Management-Report-in-Java
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-2025-jboss-8 -> origin/feature/ll-2025-jboss-8
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-CNXS-68737-newer-versions -> origin/feature/ll-CNXS-68737-newer-versions
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-jboss8       -> origin/feature/ll-jboss8
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-jboss8+CNXS-65884-upgrade-to-jboss-8.x-for-Domain -> origin/feature/ll-jboss8+CNXS-65884-upgrade-to-jboss-8.x-for-Domain
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-modelchanges -> origin/feature/ll-modelchanges
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres     -> origin/feature/ll-postgres
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-65170-rest-module-run-it-tests-domain -> origin/feature/ll-postgres+CNXS-65170-rest-module-run-it-tests-domain
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-65185-support-component-modules-run-full-set-of-unit-and-it-automated-tests-against -> origin/feature/ll-postgres+CNXS-65185-support-component-modules-run-full-set-of-unit-and-it-automated-tests-against
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-66040-use-postgres-temporary-tables-for-phone-cards-domain -> origin/feature/ll-postgres+CNXS-66040-use-postgres-temporary-tables-for-phone-cards-domain
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-70573-fix-tests-on-gsa-local -> origin/feature/ll-postgres+CNXS-70573-fix-tests-on-gsa-local
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-70621-apply-aurora-pg-dumps-for-dm-sprint-160-sprint-161 -> origin/feature/ll-postgres+CNXS-70621-apply-aurora-pg-dumps-for-dm-sprint-160-sprint-161
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-72960-provide-the-ability-for-sending-emails-in-the-test-vpcaas-environment -> origin/feature/ll-postgres+CNXS-72960-provide-the-ability-for-sending-emails-in-the-test-vpcaas-environment
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-74686-implement-auth-from-jboss-to-api-exchange -> origin/feature/ll-postgres+CNXS-74686-implement-auth-from-jboss-to-api-exchange
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-75173-update-default-email-address -> origin/feature/ll-postgres+CNXS-75173-update-default-email-address
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-75611-prevent-invalid-json-data-in-clobs -> origin/feature/ll-postgres+CNXS-75611-prevent-invalid-json-data-in-clobs
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-75626-fix-issue-with-performance-slas-using-nsfs_report.billing_detail_summ -> origin/feature/ll-postgres+CNXS-75626-fix-issue-with-performance-slas-using-nsfs_report.billing_detail_summ
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-postgres+CNXS-76051-upgrade-jboss-docker-image-from-8.0.8-to-8.1.3 -> origin/feature/ll-postgres+CNXS-76051-upgrade-jboss-docker-image-from-8.0.8-to-8.1.3
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-tops         -> origin/feature/ll-tops
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-tops+CNXS-60761-task-order-permissions-send-notification-to-system-admin-to-validate -> origin/feature/ll-tops+CNXS-60761-task-order-permissions-send-notification-to-system-admin-to-validate
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-tops+CNXS-65411-task-order-permissions-remove-all-references-to-agency-id-column -> origin/feature/ll-tops+CNXS-65411-task-order-permissions-remove-all-references-to-agency-id-column
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-tops+CNXS-67567-billing-civ-pages-and-buttons-display-results-based-on-scoped-task-orders -> origin/feature/ll-tops+CNXS-67567-billing-civ-pages-and-buttons-display-results-based-on-scoped-task-orders
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-tops+CNXS-67809-billing-slas-performance-sla-page-and-buttons-display-results -> origin/feature/ll-tops+CNXS-67809-billing-slas-performance-sla-page-and-buttons-display-results
+error	28-May-2026 10:18:45	 * [new branch]          feature/ll-tops+implement-limiting-permissions -> origin/feature/ll-tops+implement-limiting-permissions
+error	28-May-2026 10:18:45	 * [new branch]          main                    -> origin/main
+error	28-May-2026 10:18:45	 * [new branch]          release/02.00.000.176   -> origin/release/02.00.000.176
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.100           -> 01.00.000.100
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.101           -> 01.00.000.101
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.102           -> 01.00.000.102
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.103           -> 01.00.000.103
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.104           -> 01.00.000.104
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.105           -> 01.00.000.105
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.106           -> 01.00.000.106
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.108           -> 01.00.000.108
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.109           -> 01.00.000.109
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.110           -> 01.00.000.110
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.112           -> 01.00.000.112
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.115           -> 01.00.000.115
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.116.1         -> 01.00.000.116.1
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.117           -> 01.00.000.117
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.118           -> 01.00.000.118
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.119           -> 01.00.000.119
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.120           -> 01.00.000.120
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.121           -> 01.00.000.121
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.122           -> 01.00.000.122
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.123           -> 01.00.000.123
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.124           -> 01.00.000.124
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.125           -> 01.00.000.125
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.126           -> 01.00.000.126
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.127           -> 01.00.000.127
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.128           -> 01.00.000.128
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.129           -> 01.00.000.129
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.130           -> 01.00.000.130
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.131           -> 01.00.000.131
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.132           -> 01.00.000.132
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.133           -> 01.00.000.133
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.134           -> 01.00.000.134
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.135           -> 01.00.000.135
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.136           -> 01.00.000.136
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.137           -> 01.00.000.137
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.138           -> 01.00.000.138
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.139           -> 01.00.000.139
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.140           -> 01.00.000.140
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.141           -> 01.00.000.141
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.142           -> 01.00.000.142
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.143           -> 01.00.000.143
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.144           -> 01.00.000.144
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.145           -> 01.00.000.145
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.146           -> 01.00.000.146
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.147           -> 01.00.000.147
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.148           -> 01.00.000.148
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.149           -> 01.00.000.149
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.150           -> 01.00.000.150
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.151           -> 01.00.000.151
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.152           -> 01.00.000.152
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.153           -> 01.00.000.153
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.154           -> 01.00.000.154
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.155           -> 01.00.000.155
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.156.1         -> 01.00.000.156.1
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.157           -> 01.00.000.157
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.158           -> 01.00.000.158
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.159           -> 01.00.000.159
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.160           -> 01.00.000.160
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.161           -> 01.00.000.161
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.162           -> 01.00.000.162
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.163           -> 01.00.000.163
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.164           -> 01.00.000.164
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.165           -> 01.00.000.165
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.166           -> 01.00.000.166
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.167           -> 01.00.000.167
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.168           -> 01.00.000.168
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.169           -> 01.00.000.169
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.56            -> 01.00.000.56
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.60            -> 01.00.000.60
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.61            -> 01.00.000.61
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.62            -> 01.00.000.62
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.63            -> 01.00.000.63
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.64            -> 01.00.000.64
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.65            -> 01.00.000.65
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.66            -> 01.00.000.66
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.67            -> 01.00.000.67
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.68            -> 01.00.000.68
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.69            -> 01.00.000.69
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.70            -> 01.00.000.70
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.71            -> 01.00.000.71
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.72            -> 01.00.000.72
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.73            -> 01.00.000.73
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.75            -> 01.00.000.75
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.76            -> 01.00.000.76
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.77            -> 01.00.000.77
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.78            -> 01.00.000.78
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.79            -> 01.00.000.79
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.80            -> 01.00.000.80
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.81            -> 01.00.000.81
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.82            -> 01.00.000.82
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.83            -> 01.00.000.83
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.84            -> 01.00.000.84
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.85            -> 01.00.000.85
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.86            -> 01.00.000.86
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.87            -> 01.00.000.87
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.88            -> 01.00.000.88
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.89            -> 01.00.000.89
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.90            -> 01.00.000.90
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.91            -> 01.00.000.91
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.92            -> 01.00.000.92
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.93            -> 01.00.000.93
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.94.1          -> 01.00.000.94.1
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.95            -> 01.00.000.95
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.96            -> 01.00.000.96
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.97            -> 01.00.000.97
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.97.1          -> 01.00.000.97.1
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.98            -> 01.00.000.98
+error	28-May-2026 10:18:45	 * [new tag]             01.00.000.99            -> 01.00.000.99
+error	28-May-2026 10:18:45	 * [new tag]             02.00.000.175           -> 02.00.000.175
+error	28-May-2026 10:18:45	 * [new tag]             S169                    -> S169
+error	28-May-2026 10:18:45	You are not currently on a branch.
+error	28-May-2026 10:18:45	Please specify which branch you want to merge with.
+error	28-May-2026 10:18:45	See git-pull(1) for details.
+error	28-May-2026 10:18:45	
+error	28-May-2026 10:18:45	    git pull <remote> <branch>
+error	28-May-2026 10:18:45	
+build	28-May-2026 10:18:45	Release branch is set from grep above is release/02.00.000.175
+build	28-May-2026 10:18:45	release/02.00.000.176
+build	28-May-2026 10:18:45	Checking out release/02.00.000.175
+build	28-May-2026 10:18:45	release/02.00.000.176
+error	28-May-2026 10:18:45	error: pathspec 'release/02.00.000.175
+error	28-May-2026 10:18:45	release/02.00.000.176' did not match any file(s) known to git
+simple	28-May-2026 10:18:45	Failing task since return code of [/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-5/temp/SR-DSR-DR-113-ScriptBuildTask-7216752366891550184.sh] was 1 while expected 0
+simple	28-May-2026 10:18:45	Finished task 'Checkout release branch' with result: Failed
+simple	28-May-2026 10:18:45	Running post build plugin 'Docker Container Cleanup'
+simple	28-May-2026 10:18:45	Running post build plugin 'NCover Results Collector'
+simple	28-May-2026 10:18:45	Running post build plugin 'Build Results Label Collector'
+simple	28-May-2026 10:18:45	Running post build plugin 'Clover Results Collector'
+simple	28-May-2026 10:18:45	Running post build plugin 'npm Cache Cleanup'
+simple	28-May-2026 10:18:45	Running post build plugin 'Artifact Copier'
+simple	28-May-2026 10:18:45	Finalising the build...
+simple	28-May-2026 10:18:45	Stopping timer.
+simple	28-May-2026 10:18:45	Build SR-DSR-DR-113 completed.
+simple	28-May-2026 15:18:45	Running on server: post build plugin 'Build Hanging Detection Configuration'
+simple	28-May-2026 15:18:45	Running on server: post build plugin 'NCover Results Collector'
+simple	28-May-2026 15:18:45	Running on server: post build plugin 'Build Labeller'
+simple	28-May-2026 15:18:45	Running on server: post build plugin 'Clover Delta Calculator'
+simple	28-May-2026 15:18:45	Running on server: post build plugin 'Maven Dependencies Postprocessor'
+simple	28-May-2026 15:18:45	All post build plugins have finished
+simple	28-May-2026 15:18:45	Generating build results summary...
+simple	28-May-2026 15:18:45	Saving build results to disk...
+simple	28-May-2026 15:18:45	Store variable context...
+simple	28-May-2026 15:18:45	Finished building SR-DSR-DR-113.
