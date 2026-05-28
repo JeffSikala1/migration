@@ -1,3 +1,17 @@
-for i in 1 2 3 4 5 6; do
-  rm -rf /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-${i}/xml-data/build-dir/SR-BSSR-DR
-done
+# Confirm running container name and postgres user
+docker exec artifactory-postgres psql -U artifactory -c "\l"
+
+# Confirm what's actually in the DB list
+docker exec artifactory-postgres psql -U artifactory -c "SELECT datname FROM pg_database WHERE datistemplate = false;"
+
+
+
+# Verify the bind mount paths are what we expect
+docker inspect artifactory --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
+docker inspect artifactory-postgres --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
+
+# Confirm AWS creds are available on .243
+aws sts get-caller-identity
+aws s3 ls s3://cnxs-atlassian-backups/ --region us-east-1
+
+
