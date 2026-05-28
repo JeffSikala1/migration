@@ -1,3 +1,4 @@
+---
 version: 2
 plan:
   project-key: SR
@@ -34,14 +35,13 @@ Gitflow release start:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        mkdir -p ~/.ssh
-        cp /opt/bamboo-keys/bitbucket_ci_jgit ~/.ssh/id_rsa
+        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 600 ~/.ssh
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
         echo "Host *" > ~/.ssh/config
         echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
       description: Install SSH key
   - any-task:
       plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
@@ -131,14 +131,13 @@ Deploy RC:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        mkdir -p ~/.ssh
-        cp /opt/bamboo-keys/bitbucket_ci_jgit ~/.ssh/id_rsa
+        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 600 ~/.ssh
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
         echo "Host *" > ~/.ssh/config
         echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
       description: Obtain SSH Key
   - script:
       interpreter: SHELL
@@ -147,9 +146,9 @@ Deploy RC:
         #!/usr/bin/env bash
 
         git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+        git fetch origin
 
-        release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
+        release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*' | head -1)
 
         echo "Release branch is set from grep above is $release_branch"
 
@@ -169,8 +168,6 @@ Deploy RC:
       - |-
         #!/usr/bin/env bash
         source ~/.bashrc
-
-        export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
 
         # Install/Update Google Chrome for Headless testing
         curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
@@ -213,14 +210,13 @@ Snapshot Maven Deploy:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        mkdir -p ~/.ssh
-        cp /opt/bamboo-keys/bitbucket_ci_jgit ~/.ssh/id_rsa
+        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 600 ~/.ssh
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
         echo "Host *" > ~/.ssh/config
         echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
       description: Obtain SSH Key
   - script:
       interpreter: SHELL
@@ -236,8 +232,6 @@ Snapshot Maven Deploy:
         #!/usr/bin/env bash
         source ~/.bashrc
 
-        export NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
-
         # Install/Update Google Chrome for Headless testing
         curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
         yum install -y google-chrome-stable
@@ -248,19 +242,18 @@ Snapshot Maven Deploy:
         npm install
         npm test
 
-        ng build --prod --build-optimizer --output-hashing=all --vendor-chunk --progress
+        ng build --optimization --output-hashing=all --progress
       working-dir: web/src/main/
       description: ng build
   - maven:
       executable: Maven 3
-      jdk: JDK 11
+      jdk: JDK 17
       goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
       description: Maven Deploy to Artifactory
   artifact-subscriptions: []
-variables: {}
 repositories:
 - UI:
-      scope: global
+    scope: global
 triggers: []
 branches:
   create: manually
@@ -277,3 +270,4 @@ other:
   concurrent-build-plugin:
     number-of-concurrent-builds: system-default
     execution-strategy: block-triggering
+  force-stop-build: true
