@@ -1,1 +1,23 @@
-clear this
+clear this[ec2-user@ip-10-56-112-243 ~]$ TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+
+INSTANCE_ID=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/instance-id)
+
+REGION=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')
+
+echo "Instance: $INSTANCE_ID  Region: $REGION"
+
+aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
+  --query "Reservations[].Instances[].BlockDeviceMappings[].[DeviceName,Ebs.VolumeId]" \
+  --output table
+Instance: i-03501abbdb05ec7ac  Region: us-east-1
+----------------------------------------
+|           DescribeInstances          |
++------------+-------------------------+
+|  /dev/xvda |  vol-078ee09ac10c02f62  |
+|  /dev/sdb  |  vol-060bb45ae6b8d71bc  |
+|  /dev/sdc  |  vol-04f0ab9e32f79dc75  |
++------------+-------------------------+
+[ec2-user@ip-10-56-112-243 ~]$ 
