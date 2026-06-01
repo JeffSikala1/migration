@@ -1,118 +1,60 @@
+mkdir -p /app/artifactorybackup/{bin,logs,staging}
+cp nightly_backup.sh weekly_backup.sh secrets_backup_daily.sh /app/artifactorybackup/bin/
+chmod 700 /app/artifactorybackup/bin/*.sh
+
+
 # ===== Setup instructions for ip-10-56-112-243 =====
 #
 # 1. Create directory structure and install scripts
-#    mkdir -p /app/artifactorybackup/atlassian-backups/bin
-#    mkdir -p /app/artifactorybackup/atlassian-backups/logs
-#    mkdir -p /app/artifactorybackup/atlassian-backups/staging
+#    mkdir -p /app/artifactorybackup/bin
+#    mkdir -p /app/artifactorybackup/logs
+#    mkdir -p /app/artifactorybackup/staging
 #
-#    cp nightly_backup.sh  /app/artifactorybackup/atlassian-backups/bin/
-#    cp weekly_backup.sh   /app/artifactorybackup/atlassian-backups/bin/
-#    cp secrets_backup_daily.sh /app/artifactorybackup/atlassian-backups/bin/
+#    cp nightly_backup.sh  /app/artifactorybackup/bin/
+#    cp weekly_backup.sh   /app/artifactorybackup/bin/
+#    cp secrets_backup_daily.sh /app/artifactorybackup/bin/
 #
-#    chmod 700 /app/artifactorybackup/atlassian-backups/bin/*.sh
+#    chmod 700 /app/artifactorybackup/bin/*.sh
 #
 # 2. Add to root crontab (crontab -e as root):
 
 # Nightly at 02:15
-15 2 * * * /app/artifactorybackup/atlassian-backups/bin/nightly_backup.sh
+15 2 * * * /app/artifactorybackup/bin/nightly_backup.sh
 
 # Weekly Sunday at 03:00
-0 3 * * 0 /app/artifactorybackup/atlassian-backups/bin/weekly_backup.sh
+0 3 * * 0 /app/artifactorybackup/bin/weekly_backup.sh
 
 # Daily Secrets Manager backup (encrypted to S3)
-55 1 * * * /app/artifactorybackup/atlassian-backups/bin/secrets_backup_daily.sh
+55 1 * * * /app/artifactorybackup/bin/secrets_backup_daily.sh
 
 # Cleanup local staging older than 1 day
-0 4 * * * find /app/artifactorybackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+0 4 * * * find /app/artifactorybackup/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
 
 # ===== S3 layout this produces =====
 #
-# cnxs-atlassian-backups/
-#   artifactory/
-#     apps/
+# cnxs-artifactory-backups/
+#   apps/
+#     YYYY-MM-DD/
+#       artifactory_var_TIMESTAMP.tar.gz
+#       artifactory_security_TIMESTAMP.tar.gz
+#   crypto/
+#     YYYY-MM-DD/
+#       artifactory_keys_TIMESTAMP.tar.gz
+#   postgres/
+#     YYYY-MM-DD/
+#       artifactory_TIMESTAMP.dump
+#       globals_TIMESTAMP.sql
+#   metadata/
+#     YYYY-MM-DD/
+#       metadata_TIMESTAMP.json
+#   secrets/
+#     daily/
 #       YYYY-MM-DD/
-#         artifactory_var_TIMESTAMP.tar.gz
-#         artifactory_security_TIMESTAMP.tar.gz
-#     crypto/
-#       YYYY-MM-DD/
-#         artifactory_keys_TIMESTAMP.tar.gz
-#     postgres/
-#       YYYY-MM-DD/
-#         artifactory_TIMESTAMP.dump
-#         globals_TIMESTAMP.sql
-#     metadata/
-#       YYYY-MM-DD/
-#         metadata_TIMESTAMP.json
-#     secrets/
-#       daily/
-#         YYYY-MM-DD/
-#           secrets_export_HOSTNAME_TIMESTAMP.ndjson.gz
-#     weekly/
-#       apps/    YYYY-Www/
-#       crypto/  YYYY-Www/
-#       postgres/YYYY-Www/
-#       metadata/YYYY-Www/
+#         secrets_export_HOSTNAME_TIMESTAMP.ndjson.gz
+#   weekly/
+#     apps/     YYYY-Www/
+#     crypto/   YYYY-Www/
+#     postgres/ YYYY-Www/
+#     metadata/ YYYY-Www/
 
 
-
-# Create bucket
-aws s3api create-bucket \
-  --bucket cnxs-artifactory-backups \
-  --region us-east-1
-
-# Block all public access
-aws s3api put-public-access-block \
-  --bucket cnxs-artifactory-backups \
-  --public-access-block-configuration \
-    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-
-# Enable versioning
-aws s3api put-bucket-versioning \
-  --bucket cnxs-artifactory-backups \
-  --versioning-configuration Status=Enabled
-
-# Match KMS encryption config from cnxs-atlassian-backups
-aws s3api put-bucket-encryption \
-  --bucket cnxs-artifactory-backups \
-  --server-side-encryption-configuration '{
-    "Rules": [{
-      "ApplyServerSideEncryptionByDefault": {
-        "SSEAlgorithm": "aws:kms",
-        "KMSMasterKeyID": "arn:aws:kms:us-east-1:339713019047:key/ae797822-83c9-4752-89f1-eb9d3fc53b68"
-      },
-      "BucketKeyEnabled": true
-    }]
-  }'
-
-# Lifecycle policy matching Atlassian pattern, adjusted for flat structure
-aws s3api put-bucket-lifecycle-configuration \
-  --bucket cnxs-artifactory-backups \
-  --lifecycle-configuration '{
-    "Rules": [
-      {
-        "ID": "daily retention",
-        "Filter": {
-          "Prefix": ""
-        },
-        "Status": "Enabled",
-        "Expiration": {
-          "Days": 30
-        }
-      },
-      {
-        "ID": "weekly retention",
-        "Filter": {
-          "Prefix": "weekly/"
-        },
-        "Status": "Enabled",
-        "Expiration": {
-          "Days": 90
-        }
-      }
-    ]
-  }'
-
-# Verify
-aws s3api get-bucket-encryption --bucket cnxs-artifactory-backups
-aws s3api get-bucket-lifecycle-configuration --bucket cnxs-artifactory-backups
-aws s3api get-public-access-block --bucket cnxs-artifactory-backups

@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # ===== Config =====
-BUCKET="s3://cnxs-atlassian-backups"
+BUCKET="s3://cnxs-artifactory-backups"
 DATE="$(date +%F)"
 TS="$(date +%Y%m%d_%H%M%S)"
-BASE="/app/artifactorybackup/atlassian-backups"
+BASE="/app/artifactorybackup"
 STAGE="${BASE}/staging/${DATE}/${TS}"
 LOGDIR="${BASE}/logs"
 LOG="${LOGDIR}/nightly-${DATE}.log"
@@ -113,11 +113,11 @@ JSON
 fi
 
 # ===== 5) Upload to S3 =====
-echo "[5/5] Uploading to S3 (artifactory/ prefix)..."
-s3_put_dir  "$STAGE/postgres" "${BUCKET}/artifactory/postgres/${DATE}/"
-s3_put_dir  "$STAGE/apps"     "${BUCKET}/artifactory/apps/${DATE}/"
-s3_put_dir  "$STAGE/crypto"   "${BUCKET}/artifactory/crypto/${DATE}/"
-s3_put_file "$STAGE/metadata.json" "${BUCKET}/artifactory/metadata/${DATE}/metadata_${TS}.json"
+echo "[5/5] Uploading to S3..."
+s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
+s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
+s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
+s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
 
 # ===== EBS snapshots =====
 echo "[EXTRA] EBS snapshots..."
