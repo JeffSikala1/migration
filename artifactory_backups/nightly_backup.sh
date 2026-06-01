@@ -54,7 +54,7 @@ if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
 fi
 
 echo "  - dumping globals (roles/grants)"
-docker exec "$PG_CONTAINER" pg_dumpall -U "$PG_USER" --globals-only \
+docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
   > "$STAGE/postgres/globals_${TS}.sql"
 
 for DB in "${DB_LIST[@]}"; do
@@ -68,12 +68,15 @@ done
 # conexus-artifactory-filestore S3 bucket natively via Artifactory.
 # Nginx TLS certs are excluded — managed and backed up by the
 # Atlassian backup on .34 (shared wildcard cert).
+# artifactory/var is streamed directly to S3 — too large to stage locally.
 echo "[2/5] Artifactory volume backups..."
 mkdir -p "$STAGE/apps"
 
-tar -czf "$STAGE/apps/artifactory_var_${TS}.tar.gz" \
-  /app/jfrog/artifactory/var
+echo "  - streaming artifactory/var directly to S3 (too large to stage locally)"
+tar -czf - /app/jfrog/artifactory/var | \
+  aws s3 cp - "${BUCKET}/apps/${DATE}/artifactory_var_${TS}.tar.gz"
 
+echo "  - tarring artifactory/security"
 tar -czf "$STAGE/apps/artifactory_security_${TS}.tar.gz" \
   /app/jfrog/artifactory/security
 
@@ -82,7 +85,7 @@ echo "[3/5] Artifactory crypto safety backup..."
 mkdir -p "$STAGE/crypto"
 
 # master.key and join.key live under var/etc/security — already captured
-# in the var tarball above, but snapshot them explicitly as a safety net.
+# in the var stream above, but snapshot them explicitly as a safety net.
 tar -czf "$STAGE/crypto/artifactory_keys_${TS}.tar.gz" \
   /app/jfrog/artifactory/var/etc/security \
   2>/dev/null || true
@@ -113,6 +116,7 @@ JSON
 fi
 
 # ===== 5) Upload to S3 =====
+# Note: artifactory_var already streamed directly in step 2.
 echo "[5/5] Uploading to S3..."
 s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
 s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
