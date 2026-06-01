@@ -1,22 +1,83 @@
-TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
-  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+# ===== Setup instructions for ip-10-56-112-243 =====
+#
+# 1. Create directory structure and install scripts
+#    mkdir -p /app/artifactorybackup/atlassian-backups/bin
+#    mkdir -p /app/artifactorybackup/atlassian-backups/logs
+#    mkdir -p /app/artifactorybackup/atlassian-backups/staging
+#
+#    cp nightly_backup.sh  /app/artifactorybackup/atlassian-backups/bin/
+#    cp weekly_backup.sh   /app/artifactorybackup/atlassian-backups/bin/
+#    cp secrets_backup_daily.sh /app/artifactorybackup/atlassian-backups/bin/
+#
+#    chmod 700 /app/artifactorybackup/atlassian-backups/bin/*.sh
+#
+# 2. Add to root crontab (crontab -e as root):
 
-INSTANCE_ID=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
-  http://169.254.169.254/latest/meta-data/instance-id)
+# Nightly at 02:15
+15 2 * * * /app/artifactorybackup/atlassian-backups/bin/nightly_backup.sh
 
-REGION=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
-  http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')
+# Weekly Sunday at 03:00
+0 3 * * 0 /app/artifactorybackup/atlassian-backups/bin/weekly_backup.sh
 
-echo "Instance: $INSTANCE_ID  Region: $REGION"
+# Daily Secrets Manager backup (encrypted to S3)
+55 1 * * * /app/artifactorybackup/atlassian-backups/bin/secrets_backup_daily.sh
 
-aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
-  --query "Reservations[].Instances[].BlockDeviceMappings[].[DeviceName,Ebs.VolumeId]" \
-  --output table
+# Cleanup local staging older than 1 day
+0 4 * * * find /app/artifactorybackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+
+# ===== S3 layout this produces =====
+#
+# cnxs-atlassian-backups/
+#   artifactory/
+#     apps/
+#       YYYY-MM-DD/
+#         artifactory_var_TIMESTAMP.tar.gz
+#         artifactory_security_TIMESTAMP.tar.gz
+#     crypto/
+#       YYYY-MM-DD/
+#         artifactory_keys_TIMESTAMP.tar.gz
+#     postgres/
+#       YYYY-MM-DD/
+#         artifactory_TIMESTAMP.dump
+#         globals_TIMESTAMP.sql
+#     metadata/
+#       YYYY-MM-DD/
+#         metadata_TIMESTAMP.json
+#     secrets/
+#       daily/
+#         YYYY-MM-DD/
+#           secrets_export_HOSTNAME_TIMESTAMP.ndjson.gz
+#     weekly/
+#       apps/    YYYY-Www/
+#       crypto/  YYYY-Www/
+#       postgres/YYYY-Www/
+#       metadata/YYYY-Www/
 
 
 
-# Check mount points to map device -> purpose
-lsblk -o NAME,SIZE,MOUNTPOINT
 
-# Also check df to confirm what's mounted where
-df -h | grep -E '/app|/var/lib/docker|/$'
+aws s3api get-bucket-encryption --bucket cnxs-atlassian-backups 2>/dev/null || echo "No bucket-level encryption configured"
+
+aws s3api get-bucket-lifecycle-configuration --bucket cnxs-atlassian-backups 2>/dev/null || echo "No lifecycle policy"
+
+
+
+# Create the bucket
+aws s3api create-bucket \
+  --bucket cnxs-artifactory-backups \
+  --region us-east-1
+
+# Block all public access (same posture as cnxs-atlassian-backups)
+aws s3api put-public-access-block \
+  --bucket cnxs-artifactory-backups \
+  --public-access-block-configuration \
+    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+
+# Enable versioning (good practice for backup buckets)
+aws s3api put-bucket-versioning \
+  --bucket cnxs-artifactory-backups \
+  --versioning-configuration Status=Enabled
+
+# Confirm
+aws s3api get-bucket-location --bucket cnxs-artifactory-backups
+aws s3api get-public-access-block --bucket cnxs-artifactory-backups
