@@ -1,108 +1,18 @@
-[ec2-user@ip-10-56-112-243 ~]$ aws s3api create-bucket \
-  --bucket cnxs-artifactory-backups \
-  --region us-east-1
-{
-    "Location": "/cnxs-artifactory-backups",
-    "BucketArn": "arn:aws:s3:::cnxs-artifactory-backups"
-}
-[ec2-user@ip-10-56-112-243 ~]$ aws s3api put-public-access-block \
-  --bucket cnxs-artifactory-backups \
-  --public-access-block-configuration \
-    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-[ec2-user@ip-10-56-112-243 ~]$ aws s3api put-bucket-versioning \
-  --bucket cnxs-artifactory-backups \
-  --versioning-configuration Status=Enabled
-[ec2-user@ip-10-56-112-243 ~]$ aws s3api put-bucket-encryption \
-  --bucket cnxs-artifactory-backups \
-  --server-side-encryption-configuration '{
-    "Rules": [{
-      "ApplyServerSideEncryptionByDefault": {
-        "SSEAlgorithm": "aws:kms",
-        "KMSMasterKeyID": "arn:aws:kms:us-east-1:339713019047:key/ae797822-83c9-4752-89f1-eb9d3fc53b68"
-      },
-      "BucketKeyEnabled": true
-    }]
-  }'
-[ec2-user@ip-10-56-112-243 ~]$ aws s3api put-bucket-lifecycle-configuration \
-  --bucket cnxs-artifactory-backups \
-  --lifecycle-configuration '{
-    "Rules": [
-      {
-        "ID": "daily retention",
-        "Filter": {
-          "Prefix": ""
-        },
-        "Status": "Enabled",
-        "Expiration": {
-          "Days": 30
-        }
-      },
-      {
-        "ID": "weekly retention",
-        "Filter": {
-          "Prefix": "weekly/"
-        },
-        "Status": "Enabled",
-        "Expiration": {
-          "Days": 90
-        }
-      }
-    ]
-  }'
-{
-    "TransitionDefaultMinimumObjectSize": "all_storage_classes_128K"
-}
-[ec2-user@ip-10-56-112-243 ~]$ aws s3api get-bucket-encryption --bucket cnxs-artifactory-backups
-{
-    "ServerSideEncryptionConfiguration": {
-        "Rules": [
-            {
-                "ApplyServerSideEncryptionByDefault": {
-                    "SSEAlgorithm": "aws:kms",
-                    "KMSMasterKeyID": "arn:aws:kms:us-east-1:339713019047:key/ae797822-83c9-4752-89f1-eb9d3fc53b68"
-                },
-                "BucketKeyEnabled": true,
-                "BlockedEncryptionTypes": {
-                    "EncryptionType": [
-                        "SSE-C"
-                    ]
-                }
-            }
-        ]
-    }
-}
-[ec2-user@ip-10-56-112-243 ~]$ aws s3api get-bucket-lifecycle-configuration --bucket cnxs-artifactory-backups
-{
-    "TransitionDefaultMinimumObjectSize": "all_storage_classes_128K",
-    "Rules": [
-        {
-            "Expiration": {
-                "Days": 30
-            },
-            "ID": "daily retention",
-            "Filter": {
-                "Prefix": ""
-            },
-            "Status": "Enabled"
-        },
-        {
-            "Expiration": {
-                "Days": 90
-            },
-            "ID": "weekly retention",
-            "Filter": {
-                "Prefix": "weekly/"
-            },
-            "Status": "Enabled"
-        }
-    ]
-}
-[ec2-user@ip-10-56-112-243 ~]$ aws s3api get-public-access-block --bucket cnxs-artifactory-backups
-{
-    "PublicAccessBlockConfiguration": {
-        "BlockPublicAcls": true,
-        "IgnorePublicAcls": true,
-        "BlockPublicPolicy": true,
-        "RestrictPublicBuckets": true
-    }
-}
+[ec2-user@ip-10-56-112-243 ~]$ mkdir -p /app/artifactorybackup/{bin,logs,staging}
+mkdir: cannot create directory ‘/app/artifactorybackup’: Permission denied
+mkdir: cannot create directory ‘/app/artifactorybackup’: Permission denied
+mkdir: cannot create directory ‘/app/artifactorybackup’: Permission denied
+[ec2-user@ip-10-56-112-243 ~]$ ll /app/
+total 0
+drwxr-xr-x. 5 1030     1030 51 May  1 17:20 jfrog
+drwx------. 4  999 ssh_keys 40 Feb  3 16:05 postgres
+[ec2-user@ip-10-56-112-243 ~]$ ll /app/jfrog/
+total 0
+drwxr-xr-x. 5 1030 1030 69 Feb  4 15:47 artifactory
+drwxr-xr-x. 2 root root 53 Jan 29 13:42 certs
+drwxr-xr-x. 3 root root 20 Jan 29 13:56 nginx
+[ec2-user@ip-10-56-112-243 ~]$ ll /app/jfrog/artifactory/
+total 0
+drwx------. 2 1030 1030 43 Feb 22  2024 security
+drwx------. 8 1030 1030 83 May  8 11:12 var
+drwx------. 2 1030 1030  6 Feb  3 17:35 var.BACKUP.2026-02-04_154700
