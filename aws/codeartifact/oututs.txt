@@ -1,40 +1,45 @@
-clear this[ec2-user@ip-10-56-112-243 ~]$ TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
-  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-
-INSTANCE_ID=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
-  http://169.254.169.254/latest/meta-data/instance-id)
-
-REGION=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
-  http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')
-
-echo "Instance: $INSTANCE_ID  Region: $REGION"
-
-aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
-  --query "Reservations[].Instances[].BlockDeviceMappings[].[DeviceName,Ebs.VolumeId]" \
-  --output table
-Instance: i-03501abbdb05ec7ac  Region: us-east-1
-----------------------------------------
-|           DescribeInstances          |
-+------------+-------------------------+
-|  /dev/xvda |  vol-078ee09ac10c02f62  |
-|  /dev/sdb  |  vol-060bb45ae6b8d71bc  |
-|  /dev/sdc  |  vol-04f0ab9e32f79dc75  |
-+------------+-------------------------+
-[ec2-user@ip-10-56-112-243 ~]$ 
-
-
-
-
-
-[ec2-user@ip-10-56-112-243 ~]$ lsblk -o NAME,SIZE,MOUNTPOINT
-NAME           SIZE MOUNTPOINT
-nvme1n1        800G /app/jfrog
-nvme0n1        150G 
-├─nvme0n1p1    150G /
-├─nvme0n1p127    1M 
-└─nvme0n1p128   10M /boot/efi
-nvme2n1        200G /app/postgres
-[ec2-user@ip-10-56-112-243 ~]$ df -h | grep -E '/app|/var/lib/docker|/$'
-/dev/nvme0n1p1    150G   14G  137G   9% /
-/dev/nvme1n1      800G  408G  392G  51% /app/jfrog
-/dev/nvme2n1      200G  6.9G  194G   4% /app/postgres
+[ec2-user@ip-10-56-112-243 ~]$ aws s3api get-bucket-encryption --bucket cnxs-atlassian-backups 2>/dev/null || echo "No bucket-level encryption configured"
+{
+    "ServerSideEncryptionConfiguration": {
+        "Rules": [
+            {
+                "ApplyServerSideEncryptionByDefault": {
+                    "SSEAlgorithm": "aws:kms",
+                    "KMSMasterKeyID": "arn:aws:kms:us-east-1:339713019047:key/ae797822-83c9-4752-89f1-eb9d3fc53b68"
+                },
+                "BucketKeyEnabled": true,
+                "BlockedEncryptionTypes": {
+                    "EncryptionType": [
+                        "SSE-C"
+                    ]
+                }
+            }
+        ]
+    }
+}
+[ec2-user@ip-10-56-112-243 ~]$ aws s3api get-bucket-lifecycle-configuration --bucket cnxs-atlassian-backups 2>/dev/null || echo "No lifecycle policy"
+{
+    "TransitionDefaultMinimumObjectSize": "all_storage_classes_128K",
+    "Rules": [
+        {
+            "Expiration": {
+                "Days": 30
+            },
+            "ID": "daily retention",
+            "Filter": {
+                "Prefix": "postgres/, bitbucket/, bamboo/, nginx/, metadata/"
+            },
+            "Status": "Enabled"
+        },
+        {
+            "Expiration": {
+                "Days": 90
+            },
+            "ID": "weekly retention",
+            "Filter": {
+                "Prefix": "weekly/"
+            },
+            "Status": "Enabled"
+        }
+    ]
+}
