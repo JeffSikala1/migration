@@ -1,26 +1,5 @@
-[root@ip-10-56-112-243 ec2-user]# df -h /app/artifactorybackup/
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/nvme0n1p1  150G   14G  137G   9% /
-[root@ip-10-56-112-243 ec2-user]# df -h
-Filesystem        Size  Used Avail Use% Mounted on
-devtmpfs          4.0M     0  4.0M   0% /dev
-tmpfs             7.7G     0  7.7G   0% /dev/shm
-tmpfs             3.1G  768K  3.1G   1% /run
-/dev/nvme0n1p1    150G   14G  137G   9% /
-tmpfs             7.7G     0  7.7G   0% /tmp
-/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
-/dev/nvme1n1      800G  408G  392G  51% /app/jfrog
-/dev/nvme2n1      200G  6.9G  194G   4% /app/postgres
-overlay           150G   14G  137G   9% /var/lib/docker/overlay2/c3d925b76ae70290d883ee1b18f32c87995dcc027fb969e120a6f9724c0fe8c7/merged
-overlay           150G   14G  137G   9% /var/lib/docker/overlay2/37976cbd42301cd320d1a6deca1d3438c348247fe2d4d5ef463a1b23dad12c2d/merged
-overlay           150G   14G  137G   9% /var/lib/docker/overlay2/58dd16c23aa43909368722e285c7be2fae3ea7f993fe630bb2fdf1d21a6b29df/merged
-tmpfs             1.6G     0  1.6G   0% /run/user/1000
-[root@ip-10-56-112-243 ec2-user]# chmod 700 /app/artifactorybackup/bin/
-[root@ip-10-56-112-243 ec2-user]# chmod 700 /app/artifactorybackup/logs/
-[root@ip-10-56-112-243 ec2-user]# chmod 700 /app/artifactorybackup/staging/
-[root@ip-10-56-112-243 ec2-user]# /app/artifactorybackup/bin/nightly_backup.sh 
-==== Artifactory nightly backup start: 20260601_180751 host=ip-10-56-112-243.ec2.internal ====
-[1/5] Postgres dumps...
-  - dumping globals (roles/grants)
-pg_dumpall: error: query failed: ERROR:  permission denied for table pg_authid
-pg_dumpall: detail: Query was: SELECT oid, rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolconnlimit, rolpassword, rolvaliduntil, rolreplication, rolbypassrls, pg_catalog.shobj_description(oid, 'pg_authid') as rolcomment, rolname = current_user AS is_current_user FROM pg_authid WHERE rolname !~ '^pg_' ORDER BY 2
+[root@ip-10-56-112-243 ec2-user]# sed -i 's/pg_dumpall -U "$PG_USER"/pg_dumpall -U postgres/' \
+  /app/artifactorybackup/bin/nightly_backup.sh
+[root@ip-10-56-112-243 ec2-user]# grep "pg_dumpall" /app/artifactorybackup/bin/nightly_backup.sh
+docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
+[root@ip-10-56-112-243 ec2-user]# 
