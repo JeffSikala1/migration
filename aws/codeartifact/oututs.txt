@@ -1,18 +1,35 @@
-[ec2-user@ip-10-56-112-243 ~]$ mkdir -p /app/artifactorybackup/{bin,logs,staging}
-mkdir: cannot create directory ‘/app/artifactorybackup’: Permission denied
-mkdir: cannot create directory ‘/app/artifactorybackup’: Permission denied
-mkdir: cannot create directory ‘/app/artifactorybackup’: Permission denied
-[ec2-user@ip-10-56-112-243 ~]$ ll /app/
+[root@ip-10-56-112-243 ec2-user]# crontab -e
+no crontab for root - using an empty one
+crontab: no changes made to crontab
+[root@ip-10-56-112-243 ec2-user]# crontab -e
+no crontab for root - using an empty one
+crontab: installing new crontab
+[root@ip-10-56-112-243 ec2-user]# exit
+exit
+[ec2-user@ip-10-56-112-243 ~]$ sudo su
+[root@ip-10-56-112-243 ec2-user]# ll /app/artifactorybackup/
 total 0
-drwxr-xr-x. 5 1030     1030 51 May  1 17:20 jfrog
-drwx------. 4  999 ssh_keys 40 Feb  3 16:05 postgres
-[ec2-user@ip-10-56-112-243 ~]$ ll /app/jfrog/
+drwxr-xr-x. 2 root root 86 Jun  1 17:53 bin
+drwxr-xr-x. 2 root root  6 Jun  1 17:42 logs
+drwxr-xr-x. 2 root root  6 Jun  1 17:42 staging
+[root@ip-10-56-112-243 ec2-user]# ll /app/artifactorybackup/bin/
+total 20
+-rwx------. 1 root root 5044 Jun  1 17:53 nightly_backup.sh
+-rwx------. 1 root root 5991 Jun  1 17:53 secrets_backup_daily.sh
+-rwx------. 1 root root  412 Jun  1 17:53 weekly_backup.sh
+[root@ip-10-56-112-243 ec2-user]# ll /app/artifactorybackup/logs/
 total 0
-drwxr-xr-x. 5 1030 1030 69 Feb  4 15:47 artifactory
-drwxr-xr-x. 2 root root 53 Jan 29 13:42 certs
-drwxr-xr-x. 3 root root 20 Jan 29 13:56 nginx
-[ec2-user@ip-10-56-112-243 ~]$ ll /app/jfrog/artifactory/
-total 0
-drwx------. 2 1030 1030 43 Feb 22  2024 security
-drwx------. 8 1030 1030 83 May  8 11:12 var
-drwx------. 2 1030 1030  6 Feb  3 17:35 var.BACKUP.2026-02-04_154700
+[root@ip-10-56-112-243 ec2-user]# crontab -l
+# Nightly at 02:15
+15 2 * * * /app/artifactorybackup/bin/nightly_backup.sh
+
+# Weekly Sunday at 03:00
+0 3 * * 0 /app/artifactorybackup/bin/weekly_backup.sh
+
+# Daily Secrets Manager backup (encrypted to S3)
+55 1 * * * /app/artifactorybackup/bin/secrets_backup_daily.sh
+
+# Cleanup local staging older than 1 day
+0 4 * * * find /app/artifactorybackup/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+
+[root@ip-10-56-112-243 ec2-user]# 
