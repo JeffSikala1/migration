@@ -1,21 +1,16 @@
-Reviewed the throughput settings for all 7 EFS volumes in the prod EKS cluster.
+aws configure get default.s3.multipart_chunksize
+aws configure get default.s3.multipart_threshold
 
-Currently using Elastic:
+aws configure set default.s3.multipart_chunksize 100MB
+aws configure set default.s3.multipart_threshold 100MB
 
-* Magnolia (efs-sc-data)
-* Acacia (efs-sc-jbosstemp)
+# Verify
+aws configure get default.s3.multipart_chunksize
+aws configure get default.s3.multipart_threshold
 
-Currently using Bursting:
 
-* Maple (efs-sc-database)
-* Alder (efs-sc-attachments)
-* Baobab (efs-sc-reports)
-* Banyan (efs-sc-reject)
-* Ash (efs-sc-billingscripts)
 
-Bursting can throttle if burst credits are depleted, which may have contributed to the 4/1/26 outage. Switching to Elastic removes that limitation but may increase costs.
+sed -i 's/  --expected-size 107374182400 --sse aws:kms/  --sse aws:kms/' \
+  /app/artifactorybackup/bin/nightly_backup.sh
 
-Need confirmation from Gavin/Das before proceeding:
-
-* Should all 5 Bursting volumes be moved to Elastic, or only specific ones?
-* Are any of these intentionally configured for Bursting?
+grep "aws s3 cp" /app/artifactorybackup/bin/nightly_backup.sh
