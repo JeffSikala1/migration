@@ -14,3 +14,37 @@ sed -i 's/  --expected-size 107374182400 --sse aws:kms/  --sse aws:kms/' \
   /app/artifactorybackup/bin/nightly_backup.sh
 
 grep "aws s3 cp" /app/artifactorybackup/bin/nightly_backup.sh
+
+
+
+which pv || echo "not installed"
+
+
+dnf install pv -y
+
+
+sed -i 's|/app/jfrog/artifactory/var | /app/jfrog/artifactory/var | ' \
+  /app/artifactorybackup/bin/nightly_backup.sh
+
+
+# Confirm pv is installed
+which pv || dnf install pv -y
+
+# Confirm the script on .243 matches — easiest to just overwrite it
+cat > /app/artifactorybackup/bin/nightly_backup.sh << 'EOF'
+# paste content here
+EOF
+
+# Then verify the key lines look right
+grep -n "pv\|aws s3 cp\|multipart\|exclude" /app/artifactorybackup/bin/nightly_backup.sh
+
+
+
+
+sed -i '/need tar/a need pv' /app/artifactorybackup/bin/nightly_backup.sh
+grep "need " /app/artifactorybackup/bin/nightly_backup.sh
+
+
+
+rm -rf /app/artifactorybackup/staging/*
+/app/artifactorybackup/bin/nightly_backup.sh
