@@ -1,34 +1,631 @@
-[root@ip-10-56-112-243 bin]# /app/artifactorybackup/bin/nightly_backup.sh
-==== Artifactory nightly backup start: 20260602_124508 host=ip-10-56-112-243.ec2.internal ====
-[1/5] Postgres dumps...
-  - dumping globals (roles/grants)
-  - dumping artifactory
-[2/5] Artifactory volume backups...
-  - streaming artifactory/var directly to S3 (too large to stage locally)
-tar: Removing leading `/' from member names
-upload failed: - to s3://cnxs-artifactory-backups/apps/2026-06-02/artifactory_var_20260602_124508.tar.gz An error occurred (InvalidArgument) when calling the UploadPart operation: Part number must be an integer between 1 and 10000, inclusive
-[root@ip-10-56-112-243 bin]# aws configure get default.s3.multipart_chunksize
-[root@ip-10-56-112-243 bin]# aws configure get default.s3.multipart_threshold
-[root@ip-10-56-112-243 bin]# aws configure set default.s3.multipart_chunksize 100MB
-[root@ip-10-56-112-243 bin]# aws configure set default.s3.multipart_threshold 100MB
-[root@ip-10-56-112-243 bin]# aws configure get default.s3.multipart_chunksize
-100MB
-[root@ip-10-56-112-243 bin]# aws configure get default.s3.multipart_threshold
-100MB
-[root@ip-10-56-112-243 bin]# sed -i 's/  --expected-size 107374182400 --sse aws:kms/  --sse aws:kms/' \
-  /app/artifactorybackup/bin/nightly_backup.sh
-[root@ip-10-56-112-243 bin]# grep "aws s3 cp" /app/artifactorybackup/bin/nightly_backup.sh
-  aws s3 cp "$src" "$dest" --recursive
-  aws s3 cp "$src" "$dest"
-  aws s3 cp - "${BUCKET}/apps/${DATE}/artifactory_var_${TS}.tar.gz" \
+[sikaj01@ip-10-56-112-33 scripts]$ git pull
+remote: Enumerating objects: 536, done.
+remote: Counting objects: 100% (508/508), done.
+remote: Compressing objects: 100% (444/444), done.
+remote: Total 462 (delta 272), reused 2 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (462/462), 49.35 KiB | 24.00 KiB/s, done.
+Resolving deltas: 100% (272/272), completed with 33 local objects.
+From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts
+   fa2de52..34b76cd  develop                                            -> origin/develop
+   5a45760..fc736ab  feature/cicdsplit                                  -> origin/feature/cicdsplit
+ * [new branch]      feature/merging-updates                            -> origin/feature/merging-updates
+ * [new branch]      feature/modifying-standalone.xml                   -> origin/feature/modifying-standalone.xml
+ * [new branch]      feature/pushing-artifacts-for-mini-release-CXN-317 -> origin/feature/pushing-artifacts-for-mini-release-CXN-317
+ * [new branch]      feature/testperfadditions                          -> origin/feature/testperfadditions
+ * [new branch]      fixcheckedinearwars                                -> origin/fixcheckedinearwars
+Your configuration specifies to merge with the ref 'refs/heads/migrate-argocd'
+from the remote, but no such ref was fetched.
+[sikaj01@ip-10-56-112-33 scripts]$ git branch
+  develop
+  jboss-build-push
+* migrate-argocd
+  update-waf
+[sikaj01@ip-10-56-112-33 scripts]$ git checkout develop
+Switched to branch 'develop'
+Your branch and 'origin/develop' have diverged,
+and have 2 and 165 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+[sikaj01@ip-10-56-112-33 scripts]$ git pull
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+[sikaj01@ip-10-56-112-33 scripts]$ git pull -no-rebase
+error: did you mean `--no-rebase` (with two dashes)?
+[sikaj01@ip-10-56-112-33 scripts]$ git pull --no-rebase
+Merge made by the 'ort' strategy.
+ devvpc/deploy/jboss_deploy.sh                                                                          |  181 +++
+ devvpc/deploy/jboss_updatemanifest.sh                                                                  |   35 +
+ devvpc/dockers/apache/Dockerfile                                                                       |    6 +-
+ devvpc/dockers/apache/conexus-ui-public/index.html                                                     |    2 +-
+ devvpc/dockers/apache/conexus_vhost.conf                                                               |    8 +-
+ devvpc/dockers/apache/httpd.conf                                                                       |    2 +-
+ devvpc/dockers/ironbankDockerfileonly/Dockerfile                                                       |   60 +
+ devvpc/dockers/jboss/BrmsDockerfile                                                                    |    4 +-
+ devvpc/dockers/jboss/Dockerfile                                                                        |    2 +-
+ devvpc/dockers/jboss/JbossDockerfile                                                                   |   17 +-
+ devvpc/dockers/jboss/JmsDockerfile                                                                     |    4 +-
+ devvpc/dockers/jboss/PortalDockerfile                                                                  |    4 +-
+ devvpc/dockers/jboss/ReportingDockerfile                                                               |    4 +-
+ devvpc/dockers/jboss/WebserviceDockerfile                                                              |    4 +-
+ devvpc/dockers/jboss/brms_contract-mod-war_url_text                                                    |    1 +
+ devvpc/dockers/jboss/brms_image_name_txt                                                               |    1 +
+ devvpc/dockers/jboss/brms_reconciliation-war_url_text                                                  |    1 +
+ devvpc/dockers/jboss/brms_vendor-emulator-war_url_text                                                 |    1 +
+ devvpc/dockers/jboss/builder.sh                                                                        |   79 +-
+ devvpc/dockers/jboss/cleanwarear.sh                                                                    |   69 +
+ devvpc/dockers/jboss/deployergitcommit.sh                                                              |    6 +
+ devvpc/dockers/jboss/ecruploader.sh                                                                    |   47 +
+ devvpc/dockers/jboss/latestdockerimagename.sh                                                          |   31 +
+ devvpc/dockers/jboss/module.xml                                                                        |    2 +-
+ devvpc/dockers/jboss/wareardownloader.sh                                                               |   96 ++
+ devvpc/dockers/sftp/ConexusSFTP/conf.d/scannmove.conf                                                  |    2 +-
+ devvpc/dockers/sftp/ConexusSFTP/conf.d/scannmove.conf.PROD                                             |    4 +-
+ devvpc/dockers/sftp/ConexusSFTP/functions/scannmovefunc.sh                                             |   13 +-
+ devvpc/dockers/sftp/ConexusSFTP/maps/pathways.db.PROD                                                  |  Bin 5639168 -> 5639168 bytes
+ devvpc/dockers/sftp/Dockerfile                                                                         |    9 +-
+ devvpc/dockers/sftp/dbfolders.txt                                                                      |    2 -
+ devvpc/dockers/sftp/efschrootfolders-certcreate.txt                                                    |   24 +-
+ devvpc/dockers/sftp/mailrc                                                                             |    3 +
+ devvpc/dockers/sftp/refdatacron                                                                        |    1 +
+ devvpc/dockers/sftp/sftpservercrons                                                                    |    4 +
+ devvpc/dockers/swaggerapache/Dockerfile                                                                |   13 +-
+ dockers/apache/Dockerfile => devvpc/dockers/swaggerapache/OIDCDockerfile                               |   19 +-
+ devvpc/dockers/swaggerapache/auth_openidc.conf                                                         |   33 +
+ devvpc/dockers/swaggerapache/swagger_vhost.conf                                                        |    5 +-
+ devvpc/dockers/wso2/Dockerfile                                                                         |    2 +-
+ {dockers => devvpc/dockers}/wso2/deployment.toml                                                       |   38 +-
+ devvpc/k8s/apache/run-httpd.yaml                                                                       |    4 +-
+ devvpc/k8s/autoscaler/cluster-autoscaler-autodiscover.yaml                                             |    2 +-
+ devvpc/k8s/brmsapache/brms-apache-config.yaml                                                          |   10 +
+ devvpc/k8s/brmsapache/brmshttpd-svc.yaml                                                               |   16 +
+ devvpc/k8s/brmsapache/run-brms-httpd.yaml                                                              |   30 +
+ devvpc/k8s/certvpc.bashenv                                                                             |   69 +-
+ devvpc/k8s/cilium/ciliumdebug.txt                                                                      |    3 +
+ devvpc/k8s/cilium/ciliumhelminstall.sh                                                                 |   37 +-
+ devvpc/k8s/cilium/ciliuminstall.txt                                                                    |    2 +-
+ devvpc/k8s/cilium/ciliumlessons.txt                                                                    |   15 +
+ devvpc/k8s/cilium/ciliumrestart.txt                                                                    |    4 +
+ devvpc/k8s/cronjobs/brms_sftp_process_file-cert.yaml                                                   |   55 +
+ devvpc/k8s/cronjobs/brms_sftp_process_file-dev.yaml                                                    |   55 +
+ devvpc/k8s/cronjobs/brms_sftp_process_file-test.yaml                                                   |   55 +
+ devvpc/k8s/cronjobs/brms_sftp_process_file.yaml                                                        |   55 +
+ devvpc/k8s/cronjobs/cert/on_demand_auto_submit.yaml                                                    |   63 +
+ devvpc/k8s/cronjobs/cert/on_demand_automate_ba_calc_checks.yaml                                        |   63 +
+ devvpc/k8s/cronjobs/cert/on_demand_automate_billing_count_checks.yaml                                  |   63 +
+ devvpc/k8s/cronjobs/cert/on_demand_data_integrtity_check.yaml                                          |   63 +
+ devvpc/k8s/cronjobs/cert/on_demand_export_reference_data.yaml                                          |   63 +
+ devvpc/k8s/cronjobs/cert/on_demand_generate_ap_accrual_summary.yaml                                    |   63 +
+ devvpc/k8s/cronjobs/cert/on_demand_nhc_process_price.yaml                                              |   63 +
+ devvpc/k8s/cronjobs/cert/on_demand_order_auto_close.yaml                                               |   63 +
+ devvpc/k8s/cronjobs/cert/on_demand_tax_archive.yaml                                                    |   63 +
+ devvpc/k8s/cronjobs/cert/on_demand_update_atp_amounts.yaml                                             |   63 +
+ devvpc/k8s/cronjobs/cronjob-config.yaml                                                                |    7 +
+ devvpc/k8s/cronjobs/prod/on_demand_auto_submit.yaml                                                    |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_automate_ba_calc_checks.yaml                                        |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_automate_billing_count_checks.yaml                                  |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_data_integrtity_check.yaml.disabled                                 |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_export_dod_data.yaml                                                |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_export_reference_data.yaml                                          |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_generate_ap_accrual_summary.yaml                                    |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_nhc_process_mod.yaml                                                |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_nhc_process_price.yaml                                              |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_order_auto_close.yaml                                               |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_tax_archive.yaml                                                    |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_update_atp_amounts.yaml                                             |   63 +
+ devvpc/k8s/cronjobs/prod/on_demand_vendor_staging_cleanup.yaml                                         |   63 +
+ devvpc/k8s/cronjobs/test/on_demand_automate_ba_calc_checks.yaml                                        |   63 +
+ devvpc/k8s/cronjobs/test/on_demand_automate_billing_count_checks.yaml                                  |   63 +
+ devvpc/k8s/cronjobs/test/on_demand_generate_ap_accrual_summary.yaml                                    |   63 +
+ devvpc/k8s/cronjobs/test/on_demand_order_auto_close.yaml                                               |   63 +
+ devvpc/k8s/cronjobs/test/on_demand_tax_archive.yaml                                                    |   63 +
+ devvpc/k8s/devvpc.bashenv                                                                              |   11 +-
+ devvpc/k8s/envsubstvars.sh                                                                             |  143 +-
+ devvpc/k8s/eso/create-eso-serviceaccount.sh                                                            |   39 +
+ devvpc/k8s/eso/esohelminstall.sh                                                                       |   79 +
+ devvpc/k8s/eso/externalsecret.yaml                                                                     |   22 +
+ devvpc/k8s/eso/secretstore.yaml                                                                        |   41 +
+ devvpc/k8s/eso/serviceaccount-dev.txt                                                                  |   12 +
+ devvpc/k8s/gatewayapi/api-kgateway-trafficpolicy.yaml                                                  |   14 +
+ devvpc/k8s/gatewayapi/gatewayapi-ingress-dev.yaml                                                      |    3 +
+ devvpc/k8s/gatewayapi/{gatewayapi-ingress.yaml => gatewayapi-kingress.yaml}                            |   67 +-
+ devvpc/k8s/gatewayapi/gatewayapi-swaggerbrms.yaml                                                      |   56 +-
+ devvpc/k8s/jboss/brms-svc.yaml                                                                         |    7 +-
+ devvpc/k8s/jboss/jms-svc.yaml                                                                          |    7 +-
+ devvpc/k8s/jboss/portal-svc.yaml                                                                       |    7 +-
+ devvpc/k8s/jboss/reporting-svc.yaml                                                                    |    7 +-
+ devvpc/k8s/jboss/run-brms-cert.yaml                                                                    |   97 ++
+ devvpc/k8s/jboss/run-brms-dev.yaml                                                                     |  103 ++
+ devvpc/k8s/jboss/run-brms-prod.yaml                                                                    |   97 ++
+ devvpc/k8s/jboss/run-brms-test.yaml                                                                    |   97 ++
+ devvpc/k8s/jboss/run-brms.yaml                                                                         |   25 +-
+ devvpc/k8s/jboss/run-jms.yaml                                                                          |   24 +-
+ devvpc/k8s/jboss/run-portal.yaml                                                                       |   21 +-
+ devvpc/k8s/jboss/run-reporting-cert.yaml                                                               |   85 ++
+ devvpc/k8s/jboss/run-reporting-dev.yaml                                                                |   85 ++
+ devvpc/k8s/jboss/run-reporting-prod.yaml                                                               |   85 ++
+ devvpc/k8s/jboss/run-reporting-test.yaml                                                               |   85 ++
+ devvpc/k8s/jboss/run-reporting.yaml                                                                    |   23 +-
+ devvpc/k8s/jboss/run-ws.yaml                                                                           |   23 +-
+ devvpc/k8s/jboss/standalone-full.xml.brms8                                                             |    3 +
+ devvpc/k8s/jboss/standalone-full.xml.jms8                                                              |    3 +
+ devvpc/k8s/jboss/standalone-full.xml.portal8                                                           |    3 +
+ devvpc/k8s/jboss/standalone-full.xml.reporting8                                                        |    3 +
+ devvpc/k8s/jboss/standalone-full.xml.webservice8                                                       |    5 +-
+ devvpc/k8s/jboss/ws-svc.yaml                                                                           |    7 +-
+ devvpc/k8s/jbosscert.bashenv                                                                           |   11 +
+ devvpc/k8s/jbossdev.bashenv                                                                            |   11 +
+ devvpc/k8s/jbossprod.bashenv                                                                           |   11 +
+ devvpc/k8s/jbosstest.bashenv                                                                           |   11 +
+ devvpc/k8s/k8ssteps.txt                                                                                |   13 +-
+ devvpc/k8s/nginx/nginx.conf                                                                            |   47 +
+ devvpc/k8s/nginx/nginxwso2.conf                                                                        |   64 +-
+ devvpc/k8s/nginx/proxy-nginx.yaml                                                                      |    3 +
+ devvpc/k8s/nlb/configure-pod-container/configmap/SVC_GSA_EAS_Conexus_TESTING.crt                       |   39 -
+ devvpc/k8s/nlb/configure-pod-container/configmap/SVC_GSA_EAS_Conexus_TESTING.key                       |   28 -
+ devvpc/k8s/nlb/configure-pod-container/configmap/USDA-api-gateway-bundle.pem                           |  138 --
+ devvpc/k8s/prodvpc.bashenv                                                                             |   71 +-
+ devvpc/k8s/secretsmanager/digestsecretproviderclass.yaml                                               |   18 +-
+ devvpc/k8s/secretsmanager/secretcmds.txt                                                               |    2 +-
+ devvpc/k8s/secretsmanager/secretproviderclass-test.yaml                                                |    4 +
+ devvpc/k8s/secretsmanager/secretproviderclass.yaml                                                     |    4 +
+ devvpc/k8s/sftp/run-sftp.yaml                                                                          |   32 +-
+ devvpc/k8s/swaggerapache/run-swagger-httpd.yaml                                                        |   14 +-
+ devvpc/k8s/swaggerapache/swagger-apache-config-dev.yaml                                                |    2 +-
+ devvpc/k8s/swaggerapache/swagger-apache-config-test.yaml                                               |    2 +-
+ devvpc/k8s/swaggerapache/swagger-apache-config.yaml                                                    |    2 +-
+ devvpc/k8s/testvpc.bashenv                                                                             |   15 +-
+ devvpc/k8s/wso2/run-wso2mi.yaml                                                                        |    4 +-
+ devvpc/terraform/certvpc.tfvars                                                                        |   42 +-
+ devvpc/terraform/devvpc.tfvars                                                                         |   48 +-
+ devvpc/terraform/efs.tf                                                                                |   22 +-
+ devvpc/terraform/eksaddons.tf                                                                          |   18 +-
+ devvpc/terraform/eksself.tf                                                                            |   53 +-
+ devvpc/terraform/launchtemplate.tf                                                                     |  116 +-
+ devvpc/terraform/main.tf                                                                               |    7 +-
+ devvpc/terraform/prodvpc.tfvars                                                                        |   51 +-
+ devvpc/terraform/provider.tf                                                                           |   54 -
+ devvpc/terraform/testvpc.tfvars                                                                        |   20 +-
+ devvpc/terraform/transferfamily/CERT.tfbackend                                                         |    1 +
+ devvpc/terraform/transferfamily/devplanout                                                             |  Bin 70297 -> 77507 bytes
+ devvpc/terraform/transferfamily/dnsnames.tf                                                            |    1 +
+ devvpc/terraform/transferfamily/main.tf                                                                |   35 +-
+ devvpc/terraform/transferfamily/s3logs.tf                                                              |   85 ++
+ devvpc/terraform/transferfamily/transferfamily.tf                                                      |    5 +-
+ devvpc/terraform/transferfamily/uilbs.tf                                                               |   13 +-
+ devvpc/terraform/transferfamily/uiwaf.tf                                                               |  102 +-
+ devvpc/terraform/transferfamily/waf.tf                                                                 |    5 +
+ devvpc/terraform/uidns.tf                                                                              |   17 -
+ devvpc/terraform/variables.tf                                                                          |   27 +-
+ dockers/apache/00-optional.conf                                                                        |   18 -
+ dockers/apache/10-auth_openidc.conf                                                                    |   52 -
+ dockers/apache/apache-config.yaml                                                                      |    8 -
+ dockers/apache/conexus-ui-public/docs/EIS_FAQs_v1_FINAL_05202021.pdf                                   |  Bin 1192210 -> 0 bytes
+ dockers/apache/conexus-ui-public/docs/QSI_FUSF_Allowability_Review_AR-2021-TH0713B.pdf                 |  Bin 345269 -> 0 bytes
+ dockers/apache/conexus-ui-public/get_started/Certificate Expired.png                                   |  Bin 98864 -> 0 bytes
+ dockers/apache/conexus-ui-public/get_started/Conexus Registration and Login User Guide.pdf             |  Bin 847409 -> 0 bytes
+ dockers/apache/conexus-ui-public/get_started/No PIV Cert Provided.jpg                                  |  Bin 59786 -> 0 bytes
+ dockers/apache/conexus-ui-public/get_started/Select Agency.jpg                                         |  Bin 33613 -> 0 bytes
+ dockers/apache/conexus-ui-public/get_started/Welcome Letter for Conexus COs and CORs.pdf               |  Bin 145324 -> 0 bytes
+ dockers/apache/conexus-ui-public/get_started/conexus-logo.png                                          |  Bin 3273 -> 0 bytes
+ dockers/apache/conexus-ui-public/get_started/get_started.html                                          |  305 ----
+ dockers/apache/conexus-ui-public/get_started/gsa_account_form.html                                     |  145 --
+ dockers/apache/conexus-ui-public/img/conexus-logo-w-bg.png                                             |  Bin 2845 -> 0 bytes
+ dockers/apache/conexus-ui-public/img/conexus-logo.svg                                                  |   47 -
+ dockers/apache/conexus-ui-public/img/eAuth.png                                                         |  Bin 169247 -> 0 bytes
+ dockers/apache/conexus-ui-public/img/gsa.png                                                           |  Bin 6463 -> 0 bytes
+ dockers/apache/conexus-ui-public/img/gsaconexus.png                                                    |  Bin 8126 -> 0 bytes
+ dockers/apache/conexus-ui-public/index.html                                                            |  499 -------
+ dockers/apache/conexus-ui-public/referencefiles/index.html                                             |   55 -
+ dockers/apache/conexus-ui-public/splash/css/skeleton.css                                               |  440 ------
+ dockers/apache/conexus-ui-public/splash/css/splash.css                                                 |  125 --
+ dockers/apache/conexus-ui-public/splash/img/1800FArchitecture6.jpg                                     |  Bin 181066 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/img/chevron.svg                                                |   59 -
+ dockers/apache/conexus-ui-public/splash/img/favicon.png                                                |  Bin 953 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/js/components/accordion.js                                     |   25 -
+ dockers/apache/conexus-ui-public/splash/js/helpers.js                                                  |   37 -
+ dockers/apache/conexus-ui-public/splash/js/splash.js                                                   |   79 -
+ dockers/apache/conexus-ui-public/splash/js/src/jquery.js                                               |    2 -
+ dockers/apache/conexus-ui-public/splash/js/src/vue.js                                                  |    6 -
+ dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 1Q19 Final.pdf            |  Bin 524244 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 1Q20 Final.pdf            |  Bin 685883 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 2Q19 Final.pdf            |  Bin 457375 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 2Q20 Final.pdf            |  Bin 743665 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 3Q18 Final.pdf            |  Bin 562214 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 3Q19 Final.pdf            |  Bin 396810 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 3Q20 Final.pdf            |  Bin 596974 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 4Q18 Final.pdf            |  Bin 372809 -> 0 bytes
+ dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 4Q19 Final.pdf            |  Bin 316586 -> 0 bytes
+ dockers/apache/conexus_vhost.conf                                                                      |  174 ---
+ dockers/apache/configmapcreatecmd.txt                                                                  |    2 -
+ dockers/apache/configmaps.yaml                                                                         |   15 -
+ dockers/apache/configure-pod-container/configmap/USDA-api-gateway-bundle.pem                           |  138 --
+ dockers/apache/configure-pod-container/configmap/apache-httpd.properties                               |    1 -
+ dockers/apache/html/.well-known/pki-validation/tkfymiw.txt                                             |    1 -
+ dockers/apache/html/errors/errors/404.html                                                             |   39 -
+ dockers/apache/html/errors/errors/404.map                                                              |    0
+ dockers/apache/html/errors/errors/50x.html                                                             |   39 -
+ dockers/apache/html/errors/errors/denied_file.html                                                     |   39 -
+ dockers/apache/html/errors/errors/empty.html                                                           |    0
+ dockers/apache/html/errors/errors/maintenance.html                                                     |   38 -
+ dockers/apache/html/errors/errors/suspicious.html                                                      |   38 -
+ dockers/apache/html/errors/images/conexus-logo.png                                                     |  Bin 1926 -> 0 bytes
+ dockers/apache/html/errors/oidc_error.html                                                             |    5 -
+ dockers/apache/httpd-ingress.yaml                                                                      |   40 -
+ dockers/apache/httpd-ingress.yaml.old                                                                  |   44 -
+ dockers/apache/httpd-oidc-ingress.yaml                                                                 |   21 -
+ dockers/apache/httpd-svc-fetched-forediting.yaml                                                       |   37 -
+ dockers/apache/httpd.conf                                                                              |  126 --
+ dockers/apache/jboss-ingress.yaml                                                                      |   24 -
+ dockers/apache/libcjose.so.0.0.0                                                                       |  Bin 98632 -> 0 bytes
+ dockers/apache/maintenance.html                                                                        |   39 -
+ dockers/apache/mod_auth_openidc-2.4.14.2-1.tar.gz                                                      |    1 -
+ dockers/apache/mod_auth_openidc.so                                                                     |  Bin 1570328 -> 0 bytes
+ dockers/apache/mod_auth_openidc.tar.gz                                                                 |  Bin 601432 -> 0 bytes
+ dockers/apache/nlb_deploy.yaml                                                                         |  688 ---------
+ dockers/apache/run-httpd.yaml                                                                          |   25 -
+ dockers/apache/ssl.conf                                                                                |    1 -
+ dockers/apache/test.html                                                                               |    8 -
+ dockers/apache/usr/lib64/httpd/modules/mod_auth_openidc.so                                             |  Bin 1570328 -> 0 bytes
+ dockers/apache/usr/share/doc/mod_auth_openidc-2.4.14.2/ChangeLog                                       | 2382 ------------------------------
+ dockers/apache/usr/share/doc/mod_auth_openidc-2.4.14.2/LICENSE.txt                                     |  202 ---
+ dockers/avapache/00-mpm.conf                                                                           |    2 -
+ dockers/avapache/Dockerfile                                                                            |   34 -
+ dockers/avapache/freshclamcron                                                                         |    1 -
+ dockers/avapache/httpd                                                                                 |   10 -
+ dockers/avapache/httpd.conf                                                                            |   92 --
+ dockers/avapache/mod_security.conf                                                                     |   22 -
+ dockers/avapache/proxy.conf                                                                            |   17 -
+ dockers/avapache/scripts/modsec-uvscan.py                                                              |  122 --
+ dockers/certmanager/cert-manager-installoutput.txt                                                     |   55 -
+ dockers/certmanager/cert-manager.yaml                                                                  | 5623 -----------------------------------------------------------------------
+ dockers/certmanager/certtroubleshooting.txt                                                            |   27 -
+ dockers/certmanager/clusterissuer-management.yaml                                                      |   14 -
+ dockers/certmanager/clusterissuer-mi.yaml                                                              |   14 -
+ dockers/certmanager/clusterissuer-sandbox.yaml                                                         |   14 -
+ dockers/jboss/Dockerfile                                                                               |    8 -
+ dockers/jboss/run-brms.yaml                                                                            |   42 -
+ dockers/jboss/run-jms.yaml                                                                             |   42 -
+ dockers/jboss/run-portal.yaml                                                                          |   42 -
+ dockers/jboss/run-reporting.yaml                                                                       |   43 -
+ dockers/jboss/run-ws.yaml                                                                              |   42 -
+ dockers/mi-dashboard/Dockerfile                                                                        |  121 --
+ dockers/mi-dashboard/README.md                                                                         |   73 -
+ dockers/mi-dashboard/deployment.toml                                                                   |   15 -
+ dockers/mi-dashboard/docker-entrypoint.sh                                                              |   35 -
+ dockers/micro-integrator/ATAXCompositeExporter_1.0.0-SNAPSHOT.car                                      |  Bin 12761 -> 0 bytes
+ dockers/micro-integrator/ContractingOfficersCompositeExporter_1.0.0-SNAPSHOT.car                       |  Bin 5882 -> 0 bytes
+ dockers/micro-integrator/ContractsCompositeExporter_1.0.0-SNAPSHOT.car                                 |  Bin 5549 -> 0 bytes
+ dockers/micro-integrator/Dockerfile                                                                    |  122 --
+ dockers/micro-integrator/README.md                                                                     |   71 -
+ dockers/micro-integrator/SOACompositeExporter_1.0.0-SNAPSHOT.car                                       |  Bin 11643 -> 0 bytes
+ dockers/micro-integrator/SOCCompositeExporter_1.0.0-SNAPSHOT.car                                       |  Bin 11896 -> 0 bytes
+ dockers/micro-integrator/SOCNCompositeExporter_1.0.0-SNAPSHOT.car                                      |  Bin 22845 -> 0 bytes
+ dockers/micro-integrator/deployment.toml                                                               |  125 --
+ dockers/micro-integrator/docker-entrypoint.sh                                                          |   33 -
+ dockers/micro-integrator/wso2mi-4.2.0.zip                                                              |  Bin 183521609 -> 0 bytes
+ dockers/wso2/SOCNCompositeExporter_1.0.0-SNAPSHOT.car                                                  |  Bin 22983 -> 0 bytes
+ dockers/wso2/am-svc.yaml                                                                               |   16 -
+ dockers/wso2/certcmds.txt                                                                              |   11 -
+ dockers/wso2/createsecret.txt                                                                          |    3 -
+ dockers/wso2/defineEFS.txt                                                                             |   51 -
+ dockers/wso2/describesubnetIDsAndAZs.txt                                                               |   12 -
+ dockers/wso2/efs-MIvolume.yaml                                                                         |   15 -
+ dockers/wso2/efs-MIvolumeClaim.yaml                                                                    |   11 -
+ dockers/wso2/efsMountTarget.txt                                                                        |   28 -
+ dockers/wso2/nginxcopy.conf                                                                            | 1565 --------------------
+ dockers/wso2/oldhelmpod.txt                                                                            |   57 -
+ dockers/wso2/run-wso2mi.yaml                                                                           |   52 -
+ dockers/wso2/run-wso2mipv.yaml                                                                         |   44 -
+ dockers/wso2/securitygroupid.txt                                                                       |   16 -
+ dockers/wso2/socn-config-map.yaml                                                                      |   10 -
+ dockers/wso2/wso2mi-config.yaml                                                                        |   10 -
+ dockers/wso2/wso2mi-dashboard-ingress.yaml                                                             |   36 -
+ mgmtvpc/terraform/MGMT.tfbackend                                                                       |    3 +-
+ mgmtvpc/terraform/terraform.tfvars                                                                     |   23 +
+ mgmtvpc/terraform/variables.tf                                                                         |   42 +
+ reports/temp                                                                                           |    1 -
+ testperf/k8s/apache/apache-config.yaml                                                                 |   15 +
+ {dockers => testperf/k8s}/apache/httpd-svc.yaml                                                        |    6 +-
+ testperf/k8s/apache/run-httpd.yaml                                                                     |   53 +
+ {dockers => testperf/k8s}/avapache/avapache-config.yaml                                                |    4 +-
+ {dockers => testperf/k8s}/avapache/avapache-svc.yaml                                                   |    2 +-
+ {dockers => testperf/k8s}/avapache/run-avapache.yaml                                                   |   10 +-
+ testperf/k8s/efs_mounts/efs-attachmentsVolumeNClaim.yaml                                               |   38 +
+ testperf/k8s/efs_mounts/efs-billingscriptsVolumeNClaim.yaml                                            |   38 +
+ dockers/jboss/efs-reportsVolumeNClaim.yaml => testperf/k8s/efs_mounts/efs-dataVolumeNClaim.yaml        |   16 +-
+ testperf/k8s/efs_mounts/efs-databaseVolumeNClaim.yaml                                                  |   46 +
+ dockers/jboss/efs-databaseVolumeNClaim.yaml => testperf/k8s/efs_mounts/efs-rejectVolumeNClaim.yaml     |   16 +-
+ dockers/jboss/efs-attachmentsVolumeNClaim.yaml => testperf/k8s/efs_mounts/efs-reportsVolumeNClaim.yaml |   16 +-
+ testperf/k8s/envsubstvars.sh                                                                           |  147 ++
+ {dockers => testperf/k8s}/jboss/brms-svc.yaml                                                          |   11 +-
+ testperf/k8s/jboss/customconfig.properties                                                             |   44 +
+ testperf/k8s/jboss/jboss-config.yaml                                                                   |   12 +
+ testperf/k8s/jboss/jboss-jms-config.yaml                                                               |  419 ++++++
+ testperf/k8s/jboss/jboss-portal-config.yaml                                                            |  408 ++++++
+ {dockers => testperf/k8s}/jboss/jms-svc.yaml                                                           |   11 +-
+ {dockers => testperf/k8s}/jboss/portal-svc.yaml                                                        |   12 +-
+ {dockers => testperf/k8s}/jboss/reporting-svc.yaml                                                     |   11 +-
+ testperf/k8s/jboss/run-brms.yaml                                                                       |   97 ++
+ testperf/k8s/jboss/run-jms.yaml                                                                        |   76 +
+ testperf/k8s/jboss/run-portal.yaml                                                                     |   78 +
+ testperf/k8s/jboss/run-reporting.yaml                                                                  |   79 +
+ testperf/k8s/jboss/run-ws.yaml                                                                         |   78 +
+ testperf/k8s/jboss/standalone-full.xml.brms8                                                           |  651 +++++++++
+ testperf/k8s/jboss/standalone-full.xml.jms8                                                            |  628 ++++++++
+ dockers/jboss/standalone-full.xml => testperf/k8s/jboss/standalone-full.xml.portal8                    |  201 +--
+ testperf/k8s/jboss/standalone-full.xml.reporting8                                                      |  607 ++++++++
+ testperf/k8s/jboss/standalone-full.xml.webservice8                                                     |  624 ++++++++
+ {dockers => testperf/k8s}/jboss/ws-svc.yaml                                                            |   11 +-
+ testperf/k8s/k8ssteps.txt                                                                              |   96 ++
+ testperf/k8s/wso2-nginx-config.yaml                                                                    |    1 +
+ testperf/k8s/wso2/run-wso2mi.yaml                                                                      |   30 +
+ testperf/k8s/wso2/wso2mi-config-test.yaml                                                              |   30 +
+ {dockers => testperf/k8s}/wso2/wso2mi-ingress.yaml                                                     |   23 +-
+ {dockers => testperf/k8s}/wso2/wso2mi-svc.yaml                                                         |    4 +-
+ 329 files changed, 9465 insertions(+), 15799 deletions(-)
+ create mode 100755 devvpc/deploy/jboss_deploy.sh
+ create mode 100755 devvpc/deploy/jboss_updatemanifest.sh
+ create mode 100644 devvpc/dockers/ironbankDockerfileonly/Dockerfile
+ create mode 100644 devvpc/dockers/jboss/brms_contract-mod-war_url_text
+ create mode 100644 devvpc/dockers/jboss/brms_image_name_txt
+ create mode 100644 devvpc/dockers/jboss/brms_reconciliation-war_url_text
+ create mode 100644 devvpc/dockers/jboss/brms_vendor-emulator-war_url_text
+ create mode 100755 devvpc/dockers/jboss/cleanwarear.sh
+ create mode 100755 devvpc/dockers/jboss/deployergitcommit.sh
+ create mode 100644 devvpc/dockers/jboss/ecruploader.sh
+ create mode 100755 devvpc/dockers/jboss/latestdockerimagename.sh
+ create mode 100755 devvpc/dockers/jboss/wareardownloader.sh
+ create mode 100644 devvpc/dockers/sftp/mailrc
+ create mode 100644 devvpc/dockers/sftp/refdatacron
+ create mode 100644 devvpc/dockers/sftp/sftpservercrons
+ rename dockers/apache/Dockerfile => devvpc/dockers/swaggerapache/OIDCDockerfile (54%)
+ create mode 100644 devvpc/dockers/swaggerapache/auth_openidc.conf
+ rename {dockers => devvpc/dockers}/wso2/deployment.toml (70%)
+ create mode 100644 devvpc/k8s/brmsapache/brms-apache-config.yaml
+ create mode 100644 devvpc/k8s/brmsapache/brmshttpd-svc.yaml
+ create mode 100644 devvpc/k8s/brmsapache/run-brms-httpd.yaml
+ create mode 100644 devvpc/k8s/cilium/ciliumdebug.txt
+ create mode 100644 devvpc/k8s/cilium/ciliumlessons.txt
+ create mode 100644 devvpc/k8s/cilium/ciliumrestart.txt
+ create mode 100644 devvpc/k8s/cronjobs/brms_sftp_process_file-cert.yaml
+ create mode 100644 devvpc/k8s/cronjobs/brms_sftp_process_file-dev.yaml
+ create mode 100644 devvpc/k8s/cronjobs/brms_sftp_process_file-test.yaml
+ create mode 100644 devvpc/k8s/cronjobs/brms_sftp_process_file.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_auto_submit.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_automate_ba_calc_checks.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_automate_billing_count_checks.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_data_integrtity_check.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_export_reference_data.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_generate_ap_accrual_summary.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_nhc_process_price.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_order_auto_close.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_tax_archive.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cert/on_demand_update_atp_amounts.yaml
+ create mode 100644 devvpc/k8s/cronjobs/cronjob-config.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_auto_submit.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_automate_ba_calc_checks.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_automate_billing_count_checks.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_data_integrtity_check.yaml.disabled
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_export_dod_data.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_export_reference_data.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_generate_ap_accrual_summary.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_nhc_process_mod.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_nhc_process_price.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_order_auto_close.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_tax_archive.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_update_atp_amounts.yaml
+ create mode 100644 devvpc/k8s/cronjobs/prod/on_demand_vendor_staging_cleanup.yaml
+ create mode 100644 devvpc/k8s/cronjobs/test/on_demand_automate_ba_calc_checks.yaml
+ create mode 100644 devvpc/k8s/cronjobs/test/on_demand_automate_billing_count_checks.yaml
+ create mode 100644 devvpc/k8s/cronjobs/test/on_demand_generate_ap_accrual_summary.yaml
+ create mode 100644 devvpc/k8s/cronjobs/test/on_demand_order_auto_close.yaml
+ create mode 100644 devvpc/k8s/cronjobs/test/on_demand_tax_archive.yaml
+ create mode 100755 devvpc/k8s/eso/create-eso-serviceaccount.sh
+ create mode 100755 devvpc/k8s/eso/esohelminstall.sh
+ create mode 100644 devvpc/k8s/eso/externalsecret.yaml
+ create mode 100644 devvpc/k8s/eso/secretstore.yaml
+ create mode 100644 devvpc/k8s/eso/serviceaccount-dev.txt
+ create mode 100644 devvpc/k8s/gatewayapi/api-kgateway-trafficpolicy.yaml
+ rename devvpc/k8s/gatewayapi/{gatewayapi-ingress.yaml => gatewayapi-kingress.yaml} (50%)
+ create mode 100644 devvpc/k8s/jboss/run-brms-cert.yaml
+ create mode 100644 devvpc/k8s/jboss/run-brms-dev.yaml
+ create mode 100644 devvpc/k8s/jboss/run-brms-prod.yaml
+ create mode 100644 devvpc/k8s/jboss/run-brms-test.yaml
+ create mode 100644 devvpc/k8s/jboss/run-reporting-cert.yaml
+ create mode 100644 devvpc/k8s/jboss/run-reporting-dev.yaml
+ create mode 100644 devvpc/k8s/jboss/run-reporting-prod.yaml
+ create mode 100644 devvpc/k8s/jboss/run-reporting-test.yaml
+ create mode 100644 devvpc/k8s/jbosscert.bashenv
+ create mode 100644 devvpc/k8s/jbossdev.bashenv
+ create mode 100644 devvpc/k8s/jbossprod.bashenv
+ create mode 100644 devvpc/k8s/jbosstest.bashenv
+ mode change 100644 => 100755 devvpc/k8s/k8ssteps.txt
+ create mode 100644 devvpc/k8s/nginx/nginx.conf
+ delete mode 100755 devvpc/k8s/nlb/configure-pod-container/configmap/SVC_GSA_EAS_Conexus_TESTING.crt
+ delete mode 100755 devvpc/k8s/nlb/configure-pod-container/configmap/SVC_GSA_EAS_Conexus_TESTING.key
+ delete mode 100755 devvpc/k8s/nlb/configure-pod-container/configmap/USDA-api-gateway-bundle.pem
+ create mode 120000 devvpc/terraform/transferfamily/CERT.tfbackend
+ create mode 100644 devvpc/terraform/transferfamily/s3logs.tf
+ delete mode 100644 devvpc/terraform/uidns.tf
+ delete mode 100644 dockers/apache/00-optional.conf
+ delete mode 100644 dockers/apache/10-auth_openidc.conf
+ delete mode 100644 dockers/apache/apache-config.yaml
+ delete mode 100644 dockers/apache/conexus-ui-public/docs/EIS_FAQs_v1_FINAL_05202021.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/docs/QSI_FUSF_Allowability_Review_AR-2021-TH0713B.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/get_started/Certificate Expired.png
+ delete mode 100644 dockers/apache/conexus-ui-public/get_started/Conexus Registration and Login User Guide.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/get_started/No PIV Cert Provided.jpg
+ delete mode 100644 dockers/apache/conexus-ui-public/get_started/Select Agency.jpg
+ delete mode 100644 dockers/apache/conexus-ui-public/get_started/Welcome Letter for Conexus COs and CORs.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/get_started/conexus-logo.png
+ delete mode 100644 dockers/apache/conexus-ui-public/get_started/get_started.html
+ delete mode 100644 dockers/apache/conexus-ui-public/get_started/gsa_account_form.html
+ delete mode 100644 dockers/apache/conexus-ui-public/img/conexus-logo-w-bg.png
+ delete mode 100644 dockers/apache/conexus-ui-public/img/conexus-logo.svg
+ delete mode 100644 dockers/apache/conexus-ui-public/img/eAuth.png
+ delete mode 100644 dockers/apache/conexus-ui-public/img/gsa.png
+ delete mode 100644 dockers/apache/conexus-ui-public/img/gsaconexus.png
+ delete mode 100644 dockers/apache/conexus-ui-public/index.html
+ delete mode 100644 dockers/apache/conexus-ui-public/referencefiles/index.html
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/css/skeleton.css
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/css/splash.css
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/img/1800FArchitecture6.jpg
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/img/chevron.svg
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/img/favicon.png
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/js/components/accordion.js
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/js/helpers.js
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/js/splash.js
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/js/src/jquery.js
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/js/src/vue.js
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 1Q19 Final.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 1Q20 Final.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 2Q19 Final.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 2Q20 Final.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 3Q18 Final.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 3Q19 Final.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 3Q20 Final.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 4Q18 Final.pdf
+ delete mode 100644 dockers/apache/conexus-ui-public/splash/newsletters/Conexus Today Newsletter 4Q19 Final.pdf
+ delete mode 100644 dockers/apache/conexus_vhost.conf
+ delete mode 100644 dockers/apache/configmapcreatecmd.txt
+ delete mode 100644 dockers/apache/configmaps.yaml
+ delete mode 100755 dockers/apache/configure-pod-container/configmap/USDA-api-gateway-bundle.pem
+ delete mode 100644 dockers/apache/configure-pod-container/configmap/apache-httpd.properties
+ delete mode 100644 dockers/apache/html/.well-known/pki-validation/tkfymiw.txt
+ delete mode 100644 dockers/apache/html/errors/errors/404.html
+ delete mode 100644 dockers/apache/html/errors/errors/404.map
+ delete mode 100644 dockers/apache/html/errors/errors/50x.html
+ delete mode 100644 dockers/apache/html/errors/errors/denied_file.html
+ delete mode 100644 dockers/apache/html/errors/errors/empty.html
+ delete mode 100644 dockers/apache/html/errors/errors/maintenance.html
+ delete mode 100644 dockers/apache/html/errors/errors/suspicious.html
+ delete mode 100644 dockers/apache/html/errors/images/conexus-logo.png
+ delete mode 100644 dockers/apache/html/errors/oidc_error.html
+ delete mode 100644 dockers/apache/httpd-ingress.yaml
+ delete mode 100644 dockers/apache/httpd-ingress.yaml.old
+ delete mode 100644 dockers/apache/httpd-oidc-ingress.yaml
+ delete mode 100644 dockers/apache/httpd-svc-fetched-forediting.yaml
+ delete mode 100644 dockers/apache/httpd.conf
+ delete mode 100644 dockers/apache/jboss-ingress.yaml
+ delete mode 100755 dockers/apache/libcjose.so.0.0.0
+ delete mode 100644 dockers/apache/maintenance.html
+ delete mode 120000 dockers/apache/mod_auth_openidc-2.4.14.2-1.tar.gz
+ delete mode 100755 dockers/apache/mod_auth_openidc.so
+ delete mode 100644 dockers/apache/mod_auth_openidc.tar.gz
+ delete mode 100644 dockers/apache/nlb_deploy.yaml
+ delete mode 100644 dockers/apache/run-httpd.yaml
+ delete mode 100644 dockers/apache/ssl.conf
+ delete mode 100644 dockers/apache/test.html
+ delete mode 100755 dockers/apache/usr/lib64/httpd/modules/mod_auth_openidc.so
+ delete mode 100644 dockers/apache/usr/share/doc/mod_auth_openidc-2.4.14.2/ChangeLog
+ delete mode 100644 dockers/apache/usr/share/doc/mod_auth_openidc-2.4.14.2/LICENSE.txt
+ delete mode 100644 dockers/avapache/00-mpm.conf
+ delete mode 100644 dockers/avapache/Dockerfile
+ delete mode 100644 dockers/avapache/freshclamcron
+ delete mode 100644 dockers/avapache/httpd
+ delete mode 100644 dockers/avapache/httpd.conf
+ delete mode 100755 dockers/avapache/mod_security.conf
+ delete mode 100644 dockers/avapache/proxy.conf
+ delete mode 100755 dockers/avapache/scripts/modsec-uvscan.py
+ delete mode 100644 dockers/certmanager/cert-manager-installoutput.txt
+ delete mode 100644 dockers/certmanager/cert-manager.yaml
+ delete mode 100644 dockers/certmanager/certtroubleshooting.txt
+ delete mode 100644 dockers/certmanager/clusterissuer-management.yaml
+ delete mode 100644 dockers/certmanager/clusterissuer-mi.yaml
+ delete mode 100644 dockers/certmanager/clusterissuer-sandbox.yaml
+ delete mode 100644 dockers/jboss/Dockerfile
+ delete mode 100644 dockers/jboss/run-brms.yaml
+ delete mode 100644 dockers/jboss/run-jms.yaml
+ delete mode 100644 dockers/jboss/run-portal.yaml
+ delete mode 100644 dockers/jboss/run-reporting.yaml
+ delete mode 100644 dockers/jboss/run-ws.yaml
+ delete mode 100755 dockers/mi-dashboard/Dockerfile
+ delete mode 100644 dockers/mi-dashboard/README.md
+ delete mode 100644 dockers/mi-dashboard/deployment.toml
+ delete mode 100755 dockers/mi-dashboard/docker-entrypoint.sh
+ delete mode 100755 dockers/micro-integrator/ATAXCompositeExporter_1.0.0-SNAPSHOT.car
+ delete mode 100755 dockers/micro-integrator/ContractingOfficersCompositeExporter_1.0.0-SNAPSHOT.car
+ delete mode 100755 dockers/micro-integrator/ContractsCompositeExporter_1.0.0-SNAPSHOT.car
+ delete mode 100755 dockers/micro-integrator/Dockerfile
+ delete mode 100644 dockers/micro-integrator/README.md
+ delete mode 100755 dockers/micro-integrator/SOACompositeExporter_1.0.0-SNAPSHOT.car
+ delete mode 100755 dockers/micro-integrator/SOCCompositeExporter_1.0.0-SNAPSHOT.car
+ delete mode 100755 dockers/micro-integrator/SOCNCompositeExporter_1.0.0-SNAPSHOT.car
+ delete mode 100644 dockers/micro-integrator/deployment.toml
+ delete mode 100755 dockers/micro-integrator/docker-entrypoint.sh
+ delete mode 100644 dockers/micro-integrator/wso2mi-4.2.0.zip
+ delete mode 100755 dockers/wso2/SOCNCompositeExporter_1.0.0-SNAPSHOT.car
+ delete mode 100644 dockers/wso2/am-svc.yaml
+ delete mode 100644 dockers/wso2/certcmds.txt
+ delete mode 100644 dockers/wso2/createsecret.txt
+ delete mode 100644 dockers/wso2/defineEFS.txt
+ delete mode 100644 dockers/wso2/describesubnetIDsAndAZs.txt
+ delete mode 100644 dockers/wso2/efs-MIvolume.yaml
+ delete mode 100644 dockers/wso2/efs-MIvolumeClaim.yaml
+ delete mode 100644 dockers/wso2/efsMountTarget.txt
+ delete mode 100644 dockers/wso2/nginxcopy.conf
+ delete mode 100644 dockers/wso2/oldhelmpod.txt
+ delete mode 100644 dockers/wso2/run-wso2mi.yaml
+ delete mode 100644 dockers/wso2/run-wso2mipv.yaml
+ delete mode 100644 dockers/wso2/securitygroupid.txt
+ delete mode 100755 dockers/wso2/socn-config-map.yaml
+ delete mode 100644 dockers/wso2/wso2mi-config.yaml
+ delete mode 100644 dockers/wso2/wso2mi-dashboard-ingress.yaml
+ delete mode 100644 reports/temp
+ create mode 100644 testperf/k8s/apache/apache-config.yaml
+ rename {dockers => testperf/k8s}/apache/httpd-svc.yaml (74%)
+ create mode 100644 testperf/k8s/apache/run-httpd.yaml
+ rename {dockers => testperf/k8s}/avapache/avapache-config.yaml (50%)
+ rename {dockers => testperf/k8s}/avapache/avapache-svc.yaml (90%)
+ rename {dockers => testperf/k8s}/avapache/run-avapache.yaml (58%)
+ create mode 100644 testperf/k8s/efs_mounts/efs-attachmentsVolumeNClaim.yaml
+ create mode 100644 testperf/k8s/efs_mounts/efs-billingscriptsVolumeNClaim.yaml
+ rename dockers/jboss/efs-reportsVolumeNClaim.yaml => testperf/k8s/efs_mounts/efs-dataVolumeNClaim.yaml (66%)
+ create mode 100644 testperf/k8s/efs_mounts/efs-databaseVolumeNClaim.yaml
+ rename dockers/jboss/efs-databaseVolumeNClaim.yaml => testperf/k8s/efs_mounts/efs-rejectVolumeNClaim.yaml (66%)
+ rename dockers/jboss/efs-attachmentsVolumeNClaim.yaml => testperf/k8s/efs_mounts/efs-reportsVolumeNClaim.yaml (65%)
+ create mode 100755 testperf/k8s/envsubstvars.sh
+ rename {dockers => testperf/k8s}/jboss/brms-svc.yaml (56%)
+ create mode 100644 testperf/k8s/jboss/customconfig.properties
+ create mode 100644 testperf/k8s/jboss/jboss-config.yaml
+ create mode 100644 testperf/k8s/jboss/jboss-jms-config.yaml
+ create mode 100644 testperf/k8s/jboss/jboss-portal-config.yaml
+ rename {dockers => testperf/k8s}/jboss/jms-svc.yaml (56%)
+ rename {dockers => testperf/k8s}/jboss/portal-svc.yaml (57%)
+ rename {dockers => testperf/k8s}/jboss/reporting-svc.yaml (58%)
+ create mode 100644 testperf/k8s/jboss/run-brms.yaml
+ create mode 100644 testperf/k8s/jboss/run-jms.yaml
+ create mode 100644 testperf/k8s/jboss/run-portal.yaml
+ create mode 100644 testperf/k8s/jboss/run-reporting.yaml
+ create mode 100644 testperf/k8s/jboss/run-ws.yaml
+ create mode 100644 testperf/k8s/jboss/standalone-full.xml.brms8
+ create mode 100644 testperf/k8s/jboss/standalone-full.xml.jms8
+ rename dockers/jboss/standalone-full.xml => testperf/k8s/jboss/standalone-full.xml.portal8 (79%)
+ create mode 100644 testperf/k8s/jboss/standalone-full.xml.reporting8
+ create mode 100644 testperf/k8s/jboss/standalone-full.xml.webservice8
+ rename {dockers => testperf/k8s}/jboss/ws-svc.yaml (58%)
+ create mode 100644 testperf/k8s/k8ssteps.txt
+ create mode 100644 testperf/k8s/wso2-nginx-config.yaml
+ create mode 100644 testperf/k8s/wso2/run-wso2mi.yaml
+ create mode 100644 testperf/k8s/wso2/wso2mi-config-test.yaml
+ rename {dockers => testperf/k8s}/wso2/wso2mi-ingress.yaml (79%)
+ rename {dockers => testperf/k8s}/wso2/wso2mi-svc.yaml (89%)
 
+[sikaj01@ip-10-56-112-33 scripts]$ git pull
+Already up to date.
+[sikaj01@ip-10-56-112-33 scripts]$ git status
+On branch develop
+Your branch is ahead of 'origin/develop' by 3 commits.
+  (use "git push" to publish your local commits)
 
-
-Gavin Ecker - QT3CLC-C, 33 min
-Das or Tyler -
-For Jeff's ticket on  JBOSS server logs s3 bucket
-What should he Tag the s3 bucket? What makes sense for lifecycle policies?
-Tyler Goll - QT3CLC-C, 2 min
-Hhhmmm, good questions.
-For tagging I would try and include which vpc the logs are coming from, and what they're related to (jboss).
-I'm not sure about lifecycle policy, 30 days at least feels prudent, I'm not sure the server logs would be of much use to us beyond 30 days.
+nothing to commit, working tree clean
