@@ -73,8 +73,14 @@ echo "[2/5] Artifactory volume backups..."
 mkdir -p "$STAGE/apps"
 
 echo "  - streaming artifactory/var directly to S3 (too large to stage locally)"
-tar -czf - /app/jfrog/artifactory/var | \
-  aws s3 cp - "${BUCKET}/apps/${DATE}/artifactory_var_${TS}.tar.gz"
+# Exclude live log files (change during read, not needed for restore).
+# --part-size 100MB keeps multipart part count well under S3's 10,000 limit
+# for a ~400G compressed stream.
+tar -czf - \
+  --exclude=/app/jfrog/artifactory/var/log \
+  /app/jfrog/artifactory/var | \
+  aws s3 cp - "${BUCKET}/apps/${DATE}/artifactory_var_${TS}.tar.gz" \
+  --expected-size 107374182400 --sse aws:kms
 
 echo "  - tarring artifactory/security"
 tar -czf "$STAGE/apps/artifactory_security_${TS}.tar.gz" \
