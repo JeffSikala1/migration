@@ -1,7 +1,21 @@
-aws efs describe-file-systems --query 'FileSystems[*].{ID:FileSystemId,Name:Name,Throughput:ThroughputMode,Provisioned:ProvisionedThroughputInMibps}' --output table
+Reviewed the throughput settings for all 7 EFS volumes in the prod EKS cluster.
 
+Currently using Elastic:
 
-for fsid in fs-0a848adb9fa9daf67 fs-055bc44723f1a9d74 fs-00b6a469a1d5d43d5 fs-0edc3507fee0b8e7f fs-028d122a8fcb0cdab fs-0d2481c7d812404ba fs-06b99a459338bb9f3; do
-  echo -n "$fsid: "
-  aws efs describe-file-systems --file-system-id $fsid --query 'FileSystems[0].ThroughputMode' --output text
-done
+* Magnolia (efs-sc-data)
+* Acacia (efs-sc-jbosstemp)
+
+Currently using Bursting:
+
+* Maple (efs-sc-database)
+* Alder (efs-sc-attachments)
+* Baobab (efs-sc-reports)
+* Banyan (efs-sc-reject)
+* Ash (efs-sc-billingscripts)
+
+Bursting can throttle if burst credits are depleted, which may have contributed to the 4/1/26 outage. Switching to Elastic removes that limitation but may increase costs.
+
+Need confirmation from Gavin/Das before proceeding:
+
+* Should all 5 Bursting volumes be moved to Elastic, or only specific ones?
+* Are any of these intentionally configured for Bursting?
