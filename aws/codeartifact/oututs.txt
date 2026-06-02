@@ -1,32 +1,105 @@
-[root@ip-10-56-112-243 bin]# /app/artifactorybackup/bin/nightly_backup.sh 
-==== Artifactory nightly backup start: 20260601_193250 host=ip-10-56-112-243.ec2.internal ====
-[1/5] Postgres dumps...
-  - dumping globals (roles/grants)
-  - dumping artifactory
-[2/5] Artifactory volume backups...
-  - streaming artifactory/var directly to S3 (too large to stage locally)
-tar: Removing leading `/' from member names
-tar: /app/jfrog/artifactory/var/log/router-request.log: file changed as we read it
-upload failed: - to s3://cnxs-artifactory-backups/apps/2026-06-01/artifactory_var_20260601_193250.tar.gz An error occurred (InvalidArgument) when calling the UploadPart operation: Part number must be an integer between 1 and 10000, inclusive
-[root@ip-10-56-112-243 bin]# 
-
-Every 30.0s: df -h / && du -sh /app/artifactorybackup/staging/                                                                  ip-10-56-112-243.ec2.internal: Tue Jun  2 12:36:35 2026
-
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/nvme0n1p1  150G   14G  137G  10% /
-257M    /app/artifactorybackup/staging/
-
-Every 30.0s: aws s3 ls s3://cnxs-artifactory-backups/apps/ --recursive --human-readable                                         ip-10-56-112-243.ec2.internal: Tue Jun  2 12:36:21 2026
-
-
-Every 5.0s: cat /proc/net/dev | grep -E "eth0|ens|enp" | awk "{print \$1, \"TX:\", \$10/1024/1024, \"MB\"}"                     ip-10-56-112-243.ec2.internal: Tue Jun  2 12:36:56 2026
-
-ens5: TX: 4.08349e+06 MB
-
-
-Every 30.0s: aws s3 ls s3://cnxs-artifactory-backups/ --recursive --human-readable                                              ip-10-56-112-243.ec2.internal: Tue Jun  2 12:36:55 2026
-
-2026-06-02 01:55:10    2.0 KiB secrets/daily/2026-06-02/secrets_export_ip-10-56-112-243.ec2.internal_20260602_015502.ndjson.gz
-
-
-
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ kubectl get pods -A
+NAMESPACE         NAME                                                     READY   STATUS      RESTARTS      AGE
+ingress-nginx     apicilium-77d479bd5f-qbdmj                               1/1     Running     0             97d
+ingress-nginx     avapache-7b4cf59b45-llgk2                                1/1     Running     0             135d
+ingress-nginx     brms-54bcb6f7f5-cdwsh                                    1/1     Running     0             11d
+ingress-nginx     conexus-brms-httpd-d495c7cd9-fw7pl                       1/1     Running     0             135d
+ingress-nginx     conexus-httpd-854c857f8c-vqdl5                           1/1     Running     0             48d
+ingress-nginx     conexus-nginx-569564bdfb-q4pxw                           1/1     Running     0             91d
+ingress-nginx     conexus-sftp-96bb44b96-kvv57                             1/1     Running     0             61d
+ingress-nginx     conexus-swagger-httpd-6587cc5fd4-c9mcr                   1/1     Running     0             135d
+ingress-nginx     conexus-wso2mi-5dcd489675-h7hnq                          1/1     Running     0             35d
+ingress-nginx     jms-6b46bfc769-pztdk                                     1/1     Running     0             20d
+ingress-nginx     node-debugger-ip-10-56-194-142.ec2.internal-4m47m        0/1     Completed   0             91d
+ingress-nginx     node-debugger-ip-10-56-194-33.ec2.internal-kwb7g         0/1     Completed   0             91d
+ingress-nginx     on-demand-auto-submit-29670000-nwscb                     0/1     Completed   0             2d11h
+ingress-nginx     on-demand-auto-submit-29671440-nh8mc                     0/1     Completed   0             35h
+ingress-nginx     on-demand-auto-submit-29672880-lxm4d                     0/1     Completed   0             11h
+ingress-nginx     on-demand-automate-ba-calc-checks-29670450-zr8l2         0/1     Completed   0             2d3h
+ingress-nginx     on-demand-automate-ba-calc-checks-29671890-7bcf4         0/1     Completed   0             27h
+ingress-nginx     on-demand-automate-ba-calc-checks-29673330-lcz7s         0/1     Completed   0             3h36m
+ingress-nginx     on-demand-automate-billing-count-checks-29670435-rbbc5   0/1     Completed   0             2d3h
+ingress-nginx     on-demand-automate-billing-count-checks-29671875-hnrrm   0/1     Completed   0             27h
+ingress-nginx     on-demand-automate-billing-count-checks-29673315-zjrc8   0/1     Completed   0             3h51m
+ingress-nginx     on-demand-data-integrity-check-29670420-7w79x            0/1     Completed   0             2d4h
+ingress-nginx     on-demand-data-integrity-check-29671860-8rn6n            0/1     Completed   0             28h
+ingress-nginx     on-demand-data-integrity-check-29673300-tr4sq            0/1     Completed   0             4h6m
+ingress-nginx     on-demand-export-dod-data-29583960-4nnlr                 0/1     Completed   0             62d
+ingress-nginx     on-demand-export-dod-data-29627160-rdkx7                 0/1     Completed   0             32d
+ingress-nginx     on-demand-export-dod-data-29671800-mvkr8                 0/1     Completed   0             29h
+ingress-nginx     on-demand-export-reference-data-29669835-c9v28           0/1     Completed   0             2d13h
+ingress-nginx     on-demand-export-reference-data-29671275-j6gf7           0/1     Completed   0             37h
+ingress-nginx     on-demand-export-reference-data-29672715-dk9vv           0/1     Completed   0             13h
+ingress-nginx     on-demand-nhc-process-mod-29670180-zqf8c                 0/1     Completed   0             2d8h
+ingress-nginx     on-demand-nhc-process-mod-29671620-2dqdx                 0/1     Completed   0             32h
+ingress-nginx     on-demand-nhc-process-mod-29673060-dqpvx                 0/1     Completed   0             8h
+ingress-nginx     on-demand-nhc-process-price-29670120-mbtgp               0/1     Completed   0             2d9h
+ingress-nginx     on-demand-nhc-process-price-29671560-qbpd5               0/1     Completed   0             33h
+ingress-nginx     on-demand-nhc-process-price-29673000-bgqbl               0/1     Completed   0             9h
+ingress-nginx     on-demand-order-auto-close-29670120-5jzbb                0/1     Completed   0             2d9h
+ingress-nginx     on-demand-order-auto-close-29671560-66ssr                0/1     Completed   0             33h
+ingress-nginx     on-demand-order-auto-close-29673000-jl5pj                0/1     Completed   0             9h
+ingress-nginx     on-demand-tax-archive-29670300-bd8sp                     0/1     Completed   0             2d6h
+ingress-nginx     on-demand-tax-archive-29671740-tbpjd                     0/1     Completed   0             30h
+ingress-nginx     on-demand-tax-archive-29673180-hph5q                     0/1     Completed   0             6h6m
+ingress-nginx     on-demand-update-atp-amounts-29669820-x478d              0/1     Completed   0             2d14h
+ingress-nginx     on-demand-update-atp-amounts-29671260-p9f4k              0/1     Completed   0             38h
+ingress-nginx     on-demand-update-atp-amounts-29672700-4t6cd              0/1     Completed   0             14h
+ingress-nginx     on-demand-vendor-staging-cleanup-29553360-mmrjx          0/1     Completed   0             83d
+ingress-nginx     on-demand-vendor-staging-cleanup-29598000-kzn7r          0/1     Completed   0             52d
+ingress-nginx     on-demand-vendor-staging-cleanup-29641200-wf9bl          0/1     Completed   0             22d
+ingress-nginx     portal-8c6d454c-ht8xz                                    1/1     Running     0             6d22h
+ingress-nginx     prodvpc-datadog-agent-2vknb                              4/4     Running     0             24d
+ingress-nginx     prodvpc-datadog-agent-cluster-agent-5955669b9c-nrdjk     1/1     Running     0             89d
+ingress-nginx     prodvpc-datadog-agent-operator-5bb85cc8fc-jm2ck          1/1     Running     0             94d
+ingress-nginx     prodvpc-datadog-agent-zk4xv                              4/4     Running     0             89d
+ingress-nginx     reporting-c5c8d8bb-6g7hk                                 1/1     Running     0             20d
+ingress-nginx     webservice-5dd79dbc86-fr4kl                              1/1     Running     0             20d
+kgateway-system   kgateway-7cb546466-2cvsx                                 1/1     Running     0             122d
+kube-system       cilium-envoy-4fbp9                                       1/1     Running     0             135d
+kube-system       cilium-envoy-xhjcs                                       1/1     Running     0             135d
+kube-system       cilium-kpzvc                                             1/1     Running     0             135d
+kube-system       cilium-operator-6ccf7cb885-48vjp                         1/1     Running     0             135d
+kube-system       cilium-operator-6ccf7cb885-8k69s                         1/1     Running     0             135d
+kube-system       cilium-s97x6                                             1/1     Running     0             135d
+kube-system       cluster-autoscaler-5cfdc7cf45-zq8jk                      1/1     Running     0             35d
+kube-system       coredns-6b9575c64c-pr92l                                 1/1     Running     0             135d
+kube-system       coredns-6b9575c64c-txdxx                                 1/1     Running     0             135d
+kube-system       csi-secrets-store-provider-aws-hwd8t                     1/1     Running     0             135d
+kube-system       csi-secrets-store-provider-aws-rkqjk                     1/1     Running     0             135d
+kube-system       csi-secrets-store-secrets-store-csi-driver-bln9d         3/3     Running     0             135d
+kube-system       csi-secrets-store-secrets-store-csi-driver-gzbgs         3/3     Running     0             135d
+kube-system       efs-csi-controller-bfb8f86dd-ccnwg                       3/3     Running     0             122d
+kube-system       efs-csi-controller-bfb8f86dd-t6tqb                       3/3     Running     0             122d
+kube-system       efs-csi-node-797vr                                       3/3     Running     1 (41d ago)   122d
+kube-system       efs-csi-node-svfc8                                       3/3     Running     0             122d
+kube-system       eks-pod-identity-agent-rzwd2                             1/1     Running     0             135d
+kube-system       eks-pod-identity-agent-xw76f                             1/1     Running     0             135d
+kube-system       hubble-relay-697879c474-8fnx8                            1/1     Running     0             135d
+kube-system       hubble-ui-76d4965bb6-nwxp7                               2/2     Running     0             135d
+kube-system       metrics-server-564c78f448-fskjf                          1/1     Running     0             11d
+kube-system       node-local-dns-9zqrk                                     1/1     Running     0             135d
+kube-system       node-local-dns-j78rx                                     1/1     Running     0             135d
+kube-system       s3-csi-controller-59dc9797d4-fd6ct                       1/1     Running     0             122d
+kube-system       s3-csi-node-6sbn5                                        3/3     Running     0             122d
+kube-system       s3-csi-node-hvcsl                                        3/3     Running     1 (41d ago)   122d
+twistlock         twistlock-defender-ds-c4s7x                              1/1     Running     0             69d
+twistlock         twistlock-defender-ds-n7s4r                              1/1     Running     1 (41d ago)   69d
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ kubectl get pvc -A
+NAMESPACE       NAME                              STATUS   VOLUME                      CAPACITY   ACCESS MODES   STORAGECLASS            VOLUMEATTRIBUTESCLASS   AGE
+ingress-nginx   efs-attachments-volume-claim      Bound    efs-attachments-volume      5Gi        RWX            efs-sc-attachments      <unset>                 256d
+ingress-nginx   efs-billingscripts-volume-claim   Bound    efs-billingscripts-volume   5Gi        RWX            efs-sc-billingscripts   <unset>                 159d
+ingress-nginx   efs-data-volume-claim             Bound    efs-data-volume             5Gi        RWX            efs-sc-data             <unset>                 256d
+ingress-nginx   efs-database-volume-claim         Bound    efs-database-volume         5Gi        RWX            efs-sc-database         <unset>                 256d
+ingress-nginx   efs-jbosstemp-volume-claim        Bound    efs-jbosstemp-volume        5Gi        RWX            efs-sc-jbosstemp        <unset>                 109d
+ingress-nginx   efs-reject-volume-claim           Bound    efs-reject-volume           5Gi        RWX            efs-sc-reject           <unset>                 256d
+ingress-nginx   efs-reports-volume-claim          Bound    efs-reports-volume          5Gi        RWX            efs-sc-reports          <unset>                 256d
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ kubectl get pv -A
+NAME                        CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                                           STORAGECLASS            VOLUMEATTRIBUTESCLASS   REASON   AGE
+efs-attachments-volume      5Gi        RWX            Retain           Bound    ingress-nginx/efs-attachments-volume-claim      efs-sc-attachments      <unset>                          256d
+efs-billingscripts-volume   5Gi        RWX            Retain           Bound    ingress-nginx/efs-billingscripts-volume-claim   efs-sc-billingscripts   <unset>                          159d
+efs-data-volume             5Gi        RWX            Retain           Bound    ingress-nginx/efs-data-volume-claim             efs-sc-data             <unset>                          256d
+efs-database-volume         5Gi        RWX            Retain           Bound    ingress-nginx/efs-database-volume-claim         efs-sc-database         <unset>                          256d
+efs-jbosstemp-volume        5Gi        RWX            Retain           Bound    ingress-nginx/efs-jbosstemp-volume-claim        efs-sc-jbosstemp        <unset>                          109d
+efs-reject-volume           5Gi        RWX            Retain           Bound    ingress-nginx/efs-reject-volume-claim           efs-sc-reject           <unset>                          256d
+efs-reports-volume          5Gi        RWX            Retain           Bound    ingress-nginx/efs-reports-volume-claim          efs-sc-reports          <unset>  
