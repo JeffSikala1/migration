@@ -1,9 +1,23 @@
 [root@ip-10-56-112-243 bin]# /app/artifactorybackup/bin/nightly_backup.sh
 ==== Artifactory nightly backup start: 20260602_124508 host=ip-10-56-112-243.ec2.internal ====
 [1/5] Postgres dumps...
-  - dumping globals (roles/grants) 
+  - dumping globals (roles/grants)
   - dumping artifactory
 [2/5] Artifactory volume backups...
   - streaming artifactory/var directly to S3 (too large to stage locally)
 tar: Removing leading `/' from member names
 upload failed: - to s3://cnxs-artifactory-backups/apps/2026-06-02/artifactory_var_20260602_124508.tar.gz An error occurred (InvalidArgument) when calling the UploadPart operation: Part number must be an integer between 1 and 10000, inclusive
+[root@ip-10-56-112-243 bin]# aws configure get default.s3.multipart_chunksize
+[root@ip-10-56-112-243 bin]# aws configure get default.s3.multipart_threshold
+[root@ip-10-56-112-243 bin]# aws configure set default.s3.multipart_chunksize 100MB
+[root@ip-10-56-112-243 bin]# aws configure set default.s3.multipart_threshold 100MB
+[root@ip-10-56-112-243 bin]# aws configure get default.s3.multipart_chunksize
+100MB
+[root@ip-10-56-112-243 bin]# aws configure get default.s3.multipart_threshold
+100MB
+[root@ip-10-56-112-243 bin]# sed -i 's/  --expected-size 107374182400 --sse aws:kms/  --sse aws:kms/' \
+  /app/artifactorybackup/bin/nightly_backup.sh
+[root@ip-10-56-112-243 bin]# grep "aws s3 cp" /app/artifactorybackup/bin/nightly_backup.sh
+  aws s3 cp "$src" "$dest" --recursive
+  aws s3 cp "$src" "$dest"
+  aws s3 cp - "${BUCKET}/apps/${DATE}/artifactory_var_${TS}.tar.gz" \
