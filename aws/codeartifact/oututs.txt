@@ -1,753 +1,416 @@
-subnet-03b2ad70c865c117e
+code scripts/devvpc/terraform/efs.tf 
+
+resource "aws_security_group" "ingresssftpefs" {
+  name   = "ingresssftpefs"
+  vpc_id = data.aws_vpc.vpc.id
+
+  // Let NFS incoming
+  ingress {
+    description = "Security Group for letting in NFS requests"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = ["10.56.0.0/16"]
+  }
+
+  egress {
+    description = "Out from NFS/EFS"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["10.56.0.0/16"]
+  }
+  tags = {
+    Name = "ingress_efs_sftp"
+  }
+
+}
+# KMS Keys with alias
+resource "aws_kms_key" "efskeybilling" {
+  description = "EFS Conexus billing jobs key"
+  //deletion_window_in_days = 10 # Default 30
+  //enable_key_rotation     = true # default false
+  tags = merge(var.tags, var.kmstags, var.kmsbillingtag)
+}
+resource "aws_kms_alias" "kmsaliasbilling" {
+  name          = "alias/efsbilling"
+  target_key_id = aws_kms_key.efskeychroot.key_id
+}
+resource "aws_kms_key" "efskeyjbosstemp" {
+  description = "EFS Jboss temp KMS key"
+  //deletion_window_in_days = 10 # Default 30
+  //enable_key_rotation     = true # default false
+  tags = merge(var.tags, var.kmstags, var.kmsjbosstemptag)
+}
+resource "aws_kms_alias" "kmsaliasjbosstemp" {
+  name          = "alias/efsjbosstemp"
+  target_key_id = aws_kms_key.efskeyjbosstemp.key_id
+}
+resource "aws_kms_key" "efskeychroot" {
+  description = "EFS Chroot SFTP KMS key"
+  //deletion_window_in_days = 10 # Default 30
+  //enable_key_rotation     = true # default false
+  tags = merge(var.tags, var.kmstags, var.kmschroottag)
+}
+resource "aws_kms_alias" "kmsaliaschroot" {
+  name          = "alias/efschroot"
+  target_key_id = aws_kms_key.efskeychroot.key_id
+}
+resource "aws_kms_key" "efskeydatabase" {
+  description = "EFS Database KMS key"
+  //deletion_window_in_days = 10 # Default 30
+  //enable_key_rotation     = true # default false
+  tags = merge(var.tags, var.kmstags, var.kmsdatabasetag)
+}
+resource "aws_kms_alias" "kmsaliasdatabase" {
+  name          = "alias/efsdatabase"
+  target_key_id = aws_kms_key.efskeydatabase.key_id
+}
+# EFS - NFS fileshares
+resource "aws_efs_file_system" "efsbilling" {
+  creation_token = "Conexus Billing Scripts"
+  encrypted      = true
+  kms_key_id     = aws_kms_key.efskeybilling.arn
+  tags           = merge(var.tags, var.efstags, var.efsbillingtag)
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "aws_efs_file_system" "efsjbosstemp" {
+  creation_token = "Conexus Jboss temp"
+  encrypted      = true
+  throughput_mode = "elastic"
+  kms_key_id     = aws_kms_key.efskeyjbosstemp.arn
+  tags           = merge(var.tags, var.efstags, var.efsjbosstemptag)
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "aws_efs_file_system" "efschroot" {
+  creation_token = "Conexus SFTP Data"
+  encrypted      = true
+  throughput_mode = "elastic"
+  kms_key_id     = aws_kms_key.efskeychroot.arn
+  tags           = merge(var.tags, var.efstags, var.efschroottag)
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "aws_efs_file_system" "efsquarantine" {
+  creation_token = "Conexus SFTP reject"
+  encrypted      = true
+  kms_key_id     = aws_kms_key.efskeychroot.arn
+  tags           = merge(var.tags, var.efstags, var.efsquarantinetag)
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "aws_efs_file_system" "efsdatabase" {
+  creation_token = "Conexus SFTP Database"
+  encrypted      = true
+  kms_key_id     = aws_kms_key.efskeydatabase.arn
+  tags           = merge(var.tags, var.efstags, var.efsdatabasetag)
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "aws_efs_file_system" "efsattachments" {
+  creation_token = "Conexus Order attachments"
+  encrypted      = true
+  kms_key_id     = aws_kms_key.efskeydatabase.arn
+  tags           = merge(var.tags, var.efstags, var.efsattachmentstag)
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "aws_efs_file_system" "efsreports" {
+  creation_token = "Conexus UI Reports"
+  encrypted      = true
+  kms_key_id     = aws_kms_key.efskeydatabase.arn
+  tags           = merge(var.tags, var.efstags, var.efsreportstag)
+  lifecycle {
+    prevent_destroy = true
+  }
+}
 
 
-scripts
-├── README
-├── al2githubtfmodule.txt
-├── devvpc
-│   ├── deploy
-│   │   ├── jboss_deploy.sh
-│   │   └── jboss_updatemanifest.sh
-│   ├── dockers
-│   │   ├── apache
-│   │   │   ├── 00-optional.conf
-│   │   │   ├── 10-auth_openidc.conf
-│   │   │   ├── Dockerfile
-│   │   │   ├── conexus-ui-public
-│   │   │   │   ├── docs
-│   │   │   │   │   ├── EIS_FAQs_v1_FINAL_05202021.pdf
-│   │   │   │   │   └── QSI_FUSF_Allowability_Review_AR-2021-TH0713B.pdf
-│   │   │   │   ├── get_started
-│   │   │   │   │   ├── Certificate Expired.png
-│   │   │   │   │   ├── Conexus Registration and Login User Guide.pdf
-│   │   │   │   │   ├── No PIV Cert Provided.jpg
-│   │   │   │   │   ├── Select Agency.jpg
-│   │   │   │   │   ├── Welcome Letter for Conexus COs and CORs.pdf
-│   │   │   │   │   ├── conexus-logo.png
-│   │   │   │   │   ├── get_started.html
-│   │   │   │   │   └── gsa_account_form.html
-│   │   │   │   ├── img
-│   │   │   │   │   ├── conexus-logo-w-bg.png
-│   │   │   │   │   ├── conexus-logo.svg
-│   │   │   │   │   ├── eAuth.png
-│   │   │   │   │   ├── gsa.png
-│   │   │   │   │   └── gsaconexus.png
-│   │   │   │   ├── index.html
-│   │   │   │   ├── referencefiles
-│   │   │   │   │   └── index.html
-│   │   │   │   └── splash
-│   │   │   │       ├── css
-│   │   │   │       │   ├── skeleton.css
-│   │   │   │       │   └── splash.css
-│   │   │   │       ├── img
-│   │   │   │       │   ├── 1800FArchitecture6.jpg
-│   │   │   │       │   ├── chevron.svg
-│   │   │   │       │   └── favicon.png
-│   │   │   │       ├── js
-│   │   │   │       │   ├── components
-│   │   │   │       │   │   └── accordion.js
-│   │   │   │       │   ├── helpers.js
-│   │   │   │       │   ├── splash.js
-│   │   │   │       │   └── src
-│   │   │   │       │       ├── jquery.js
-│   │   │   │       │       └── vue.js
-│   │   │   │       └── newsletters
-│   │   │   │           ├── Conexus Today Newsletter 1Q19 Final.pdf
-│   │   │   │           ├── Conexus Today Newsletter 1Q20 Final.pdf
-│   │   │   │           ├── Conexus Today Newsletter 2Q19 Final.pdf
-│   │   │   │           ├── Conexus Today Newsletter 2Q20 Final.pdf
-│   │   │   │           ├── Conexus Today Newsletter 3Q18 Final.pdf
-│   │   │   │           ├── Conexus Today Newsletter 3Q19 Final.pdf
-│   │   │   │           ├── Conexus Today Newsletter 3Q20 Final.pdf
-│   │   │   │           ├── Conexus Today Newsletter 4Q18 Final.pdf
-│   │   │   │           └── Conexus Today Newsletter 4Q19 Final.pdf
-│   │   │   ├── conexus_vhost.conf
-│   │   │   ├── html
-│   │   │   │   └── errors
-│   │   │   │       ├── errors
-│   │   │   │       │   ├── 404.html
-│   │   │   │       │   ├── 404.map
-│   │   │   │       │   ├── 50x.html
-│   │   │   │       │   ├── denied_file.html
-│   │   │   │       │   ├── empty.html
-│   │   │   │       │   ├── maintenance.html
-│   │   │   │       │   └── suspicious.html
-│   │   │   │       ├── images
-│   │   │   │       │   └── conexus-logo.png
-│   │   │   │       └── oidc_error.html
-│   │   │   ├── httpd.conf
-│   │   │   ├── maintenance.html
-│   │   │   └── ssl.conf
-│   │   ├── avapache
-│   │   │   ├── 00-mpm.conf
-│   │   │   ├── Dockerfile
-│   │   │   ├── freshclamcron
-│   │   │   ├── httpd
-│   │   │   ├── httpd.conf
-│   │   │   ├── mod_security.conf
-│   │   │   ├── proxy.conf
-│   │   │   ├── scripts
-│   │   │   │   └── modsec-uvscan.py
-│   │   │   └── ssl.conf
-│   │   ├── ironbankDockerfileonly
-│   │   │   └── Dockerfile
-│   │   ├── jboss
-│   │   │   ├── BrmsDockerfile
-│   │   │   ├── Dockerfile
-│   │   │   ├── JbossDockerfile
-│   │   │   ├── JmsDockerfile
-│   │   │   ├── PortalDockerfile
-│   │   │   ├── ReportingDockerfile
-│   │   │   ├── WebserviceDockerfile
-│   │   │   ├── brms_contract-mod-war_url_text
-│   │   │   ├── brms_image_name_txt
-│   │   │   ├── brms_reconciliation-war_url_text
-│   │   │   ├── brms_vendor-emulator-war_url_text
-│   │   │   ├── builder.sh
-│   │   │   ├── cleanwarear.sh
-│   │   │   ├── commandsbuild.txt
-│   │   │   ├── deployergitcommit.sh
-│   │   │   ├── ecruploader.sh
-│   │   │   ├── java.security
-│   │   │   ├── latestdockerimagename.sh
-│   │   │   ├── module.xml
-│   │   │   └── wareardownloader.sh
-│   │   ├── sftp
-│   │   │   ├── ConexusSFTP
-│   │   │   │   ├── conf.d
-│   │   │   │   │   ├── scannmove.conf
-│   │   │   │   │   ├── scannmove.conf.CERT
-│   │   │   │   │   ├── scannmove.conf.PROD
-│   │   │   │   │   └── scannmove.conf.TEST
-│   │   │   │   ├── functions
-│   │   │   │   │   ├── scannmovefunc.sh
-│   │   │   │   │   └── threadcontrolfunc.sh
-│   │   │   │   ├── maps
-│   │   │   │   │   ├── copiedtemp
-│   │   │   │   │   ├── fileshare.txt
-│   │   │   │   │   ├── fileshare.txt.mkdir
-│   │   │   │   │   ├── fixforarchivestuck
-│   │   │   │   │   ├── init.sql
-│   │   │   │   │   ├── pathways.db
-│   │   │   │   │   ├── pathways.db.CERT
-│   │   │   │   │   ├── pathways.db.CERT.backup
-│   │   │   │   │   ├── pathways.db.PROD
-│   │   │   │   │   ├── pathways.db.PROD.bak
-│   │   │   │   │   ├── pathways.db.TEST
-│   │   │   │   │   ├── sqlstmts.txt
-│   │   │   │   │   └── test.sh
-│   │   │   │   └── process
-│   │   │   │       ├── avscanfileshare.sh
-│   │   │   │       ├── conexsussftp
-│   │   │   │       ├── conexussftp.service
-│   │   │   │       ├── scannmove.sh
-│   │   │   │       ├── scannmovewrapper
-│   │   │   │       ├── sftp_removeold.sh
-│   │   │   │       ├── sftp_removeold.sh.CERT
-│   │   │   │       ├── sftp_removeold.sh.PROD
-│   │   │   │       ├── sftp_removeold.sh.TEST
-│   │   │   │       └── taxfiles_from_prod.sh
-│   │   │   ├── Dockerfile
-│   │   │   ├── conexusprodsftp.tgz
-│   │   │   ├── dbfolders.txt
-│   │   │   ├── efschrootfolders-cert.txt
-│   │   │   ├── efschrootfolders-certcreate.txt
-│   │   │   ├── efschrootfolders-prod.txt
-│   │   │   ├── efschrootfolders-prodcreate.txt
-│   │   │   ├── freshclamcron
-│   │   │   ├── mailrc
-│   │   │   ├── refdatacron
-│   │   │   ├── sftpservercrons
-│   │   │   └── startup.sh
-│   │   ├── swaggerapache
-│   │   │   ├── 00-optional.conf
-│   │   │   ├── 10-auth_openidc.conf
-│   │   │   ├── Dockerfile
-│   │   │   ├── OIDCDockerfile
-│   │   │   ├── auth_openidc.conf
-│   │   │   ├── html
-│   │   │   │   ├── errors
-│   │   │   │   │   ├── errors
-│   │   │   │   │   │   ├── 404.html
-│   │   │   │   │   │   ├── 404.map
-│   │   │   │   │   │   ├── 50x.html
-│   │   │   │   │   │   ├── denied_file.html
-│   │   │   │   │   │   ├── empty.html
-│   │   │   │   │   │   ├── maintenance.html
-│   │   │   │   │   │   └── suspicious.html
-│   │   │   │   │   ├── images
-│   │   │   │   │   │   └── conexus-logo.png
-│   │   │   │   │   └── oidc_error.html
-│   │   │   │   └── index.html
-│   │   │   ├── httpd.conf
-│   │   │   ├── maintenance.html
-│   │   │   ├── ssl.conf
-│   │   │   └── swagger_vhost.conf
-│   │   └── wso2
-│   │       ├── Dockerfile
-│   │       └── deployment.toml
-│   ├── k8s
-│   │   ├── apache
-│   │   │   ├── apache-config.yaml
-│   │   │   ├── apache-gateway.yaml
-│   │   │   ├── httpd-ingress.yaml
-│   │   │   ├── httpd-svc.yaml
-│   │   │   ├── kubectlhttpdcert.txt
-│   │   │   └── run-httpd.yaml
-│   │   ├── argocd
-│   │   │   ├── argocdhelminstall.sh
-│   │   │   ├── argocdinstall.sh
-│   │   │   └── core-install.yaml
-│   │   ├── autoscaler
-│   │   │   └── cluster-autoscaler-autodiscover.yaml
-│   │   ├── avapache
-│   │   │   ├── avapache-config.yaml
-│   │   │   ├── avapache-svc.yaml
-│   │   │   └── run-avapache.yaml
-│   │   ├── aws_auth
-│   │   │   ├── dev.yaml
-│   │   │   ├── sample.yaml
-│   │   │   └── test.yaml
-│   │   ├── brmsapache
-│   │   │   ├── brms-apache-config.yaml
-│   │   │   ├── brmshttpd-svc.yaml
-│   │   │   └── run-brms-httpd.yaml
-│   │   ├── certmanager
-│   │   │   ├── cert-manager-installoutput.txt
-│   │   │   ├── cert-manager.yaml
-│   │   │   ├── cert-manager.yaml.old
-│   │   │   ├── certificate.yaml
-│   │   │   ├── certtroubleshooting.txt
-│   │   │   ├── clusterissuer-devwildcard.yaml
-│   │   │   ├── clusterissuer-management.yaml
-│   │   │   └── clusterissuer-mi.yaml
-│   │   ├── certvpc.bashenv
-│   │   ├── cilium
-│   │   │   ├── albcommands.txt
-│   │   │   ├── ciliumdebug.txt
-│   │   │   ├── ciliumgatewaycrds.txt
-│   │   │   ├── ciliumhelminstall.sh
-│   │   │   ├── ciliuminstall.txt
-│   │   │   ├── ciliuminstalloutput.txt
-│   │   │   ├── ciliumlessons.txt
-│   │   │   ├── ciliumrestart.txt
-│   │   │   ├── ciliumuninstall.sh
-│   │   │   ├── cni-config-dev.yaml
-│   │   │   ├── cni-config-test.yaml
-│   │   │   ├── cni-config.yaml
-│   │   │   ├── envoy-traffic-management-test.yaml
-│   │   │   ├── k8sinstall.txt
-│   │   │   ├── kubeletconfig.yaml
-│   │   │   ├── kubeletconfigdump.txt
-│   │   │   ├── kubeletcurrentconfig.jq
-│   │   │   ├── log.txt
-│   │   │   ├── node-local-dns-lrp.yaml
-│   │   │   ├── node-local-dns.yaml
-│   │   │   └── node-local-dns.yaml.1
-│   │   ├── cronjobs
-│   │   │   ├── brms_sftp_process_file-cert.yaml
-│   │   │   ├── brms_sftp_process_file-dev.yaml
-│   │   │   ├── brms_sftp_process_file-test.yaml
-│   │   │   ├── brms_sftp_process_file.yaml
-│   │   │   ├── cert
-│   │   │   │   ├── on_demand_auto_submit.yaml
-│   │   │   │   ├── on_demand_automate_ba_calc_checks.yaml
-│   │   │   │   ├── on_demand_automate_billing_count_checks.yaml
-│   │   │   │   ├── on_demand_data_integrtity_check.yaml
-│   │   │   │   ├── on_demand_export_reference_data.yaml
-│   │   │   │   ├── on_demand_generate_ap_accrual_summary.yaml
-│   │   │   │   ├── on_demand_nhc_process_price.yaml
-│   │   │   │   ├── on_demand_order_auto_close.yaml
-│   │   │   │   ├── on_demand_tax_archive.yaml
-│   │   │   │   └── on_demand_update_atp_amounts.yaml
-│   │   │   ├── cronjob-config.yaml
-│   │   │   ├── prod
-│   │   │   │   ├── on_demand_auto_submit.yaml
-│   │   │   │   ├── on_demand_automate_ba_calc_checks.yaml
-│   │   │   │   ├── on_demand_automate_billing_count_checks.yaml
-│   │   │   │   ├── on_demand_data_integrtity_check.yaml.disabled
-│   │   │   │   ├── on_demand_export_dod_data.yaml
-│   │   │   │   ├── on_demand_export_reference_data.yaml
-│   │   │   │   ├── on_demand_generate_ap_accrual_summary.yaml
-│   │   │   │   ├── on_demand_nhc_process_mod.yaml
-│   │   │   │   ├── on_demand_nhc_process_price.yaml
-│   │   │   │   ├── on_demand_order_auto_close.yaml
-│   │   │   │   ├── on_demand_tax_archive.yaml
-│   │   │   │   ├── on_demand_update_atp_amounts.yaml
-│   │   │   │   └── on_demand_vendor_staging_cleanup.yaml
-│   │   │   └── test
-│   │   │       ├── on_demand_automate_ba_calc_checks.yaml
-│   │   │       ├── on_demand_automate_billing_count_checks.yaml
-│   │   │       ├── on_demand_generate_ap_accrual_summary.yaml
-│   │   │       ├── on_demand_order_auto_close.yaml
-│   │   │       └── on_demand_tax_archive.yaml
-│   │   ├── datadog
-│   │   │   ├── README.md
-│   │   │   ├── datadoghelminstall.sh
-│   │   │   ├── devvpc-values.yaml
-│   │   │   └── testvpc-values.yaml
-│   │   ├── devvpc.bashenv
-│   │   ├── ecrpolicy.txt
-│   │   ├── efs_mounts
-│   │   │   ├── efs-attachmentsVolumeNClaim.yaml
-│   │   │   ├── efs-dataVolumeNClaim.yaml
-│   │   │   ├── efs-databaseVolumeNClaim.yaml
-│   │   │   ├── efs-rejectVolumeNClaim.yaml
-│   │   │   └── efs-reportsVolumeNClaim.yaml
-│   │   ├── envsubstvars.sh
-│   │   ├── eso
-│   │   │   ├── create-eso-serviceaccount.sh
-│   │   │   ├── esohelminstall.sh
-│   │   │   ├── externalsecret.yaml
-│   │   │   ├── secretstore.yaml
-│   │   │   └── serviceaccount-dev.txt
-│   │   ├── gatewayapi
-│   │   │   ├── api-kgateway-trafficpolicy.yaml
-│   │   │   ├── gatewayapi-ingress-dev.yaml
-│   │   │   ├── gatewayapi-kingress.yaml
-│   │   │   ├── gatewayapi-swaggerbrms.yaml
-│   │   │   └── gatewayapi-uiingress.yaml
-│   │   ├── jboss
-│   │   │   ├── brms-svc.yaml
-│   │   │   ├── customconfig.properties
-│   │   │   ├── customconfig.properties-cert
-│   │   │   ├── customconfig.properties-dev
-│   │   │   ├── customconfig.properties-prod
-│   │   │   ├── customconfig.properties-test
-│   │   │   ├── jboss-config.yaml
-│   │   │   ├── jboss-jms-config.yaml
-│   │   │   ├── jboss-portal-config.yaml
-│   │   │   ├── jms-svc.yaml
-│   │   │   ├── portal-svc.yaml
-│   │   │   ├── reporting-svc.yaml
-│   │   │   ├── run-brms-cert.yaml
-│   │   │   ├── run-brms-dev.yaml
-│   │   │   ├── run-brms-prod.yaml
-│   │   │   ├── run-brms-test.yaml
-│   │   │   ├── run-brms.yaml
-│   │   │   ├── run-jms.yaml
-│   │   │   ├── run-portal.yaml
-│   │   │   ├── run-reporting-cert.yaml
-│   │   │   ├── run-reporting-dev.yaml
-│   │   │   ├── run-reporting-prod.yaml
-│   │   │   ├── run-reporting-test.yaml
-│   │   │   ├── run-reporting.yaml
-│   │   │   ├── run-ws.yaml
-│   │   │   ├── standalone-full.xml.brms8
-│   │   │   ├── standalone-full.xml.jms8
-│   │   │   ├── standalone-full.xml.portal8
-│   │   │   ├── standalone-full.xml.reporting8
-│   │   │   ├── standalone-full.xml.webservice8
-│   │   │   └── ws-svc.yaml
-│   │   ├── jbosscert.bashenv
-│   │   ├── jbossdev.bashenv
-│   │   ├── jbossprod.bashenv
-│   │   ├── jbosstest.bashenv
-│   │   ├── k8ssteps.txt
-│   │   ├── karpenter
-│   │   │   ├── cloudshellkey.pub
-│   │   │   ├── karpenternodes.yaml
-│   │   │   ├── karpenternodescert.yaml
-│   │   │   └── karpenternodestest.yaml
-│   │   ├── kubctlsdev.sh
-│   │   ├── nginx
-│   │   │   ├── README.txt
-│   │   │   ├── diffie-file-config.yaml
-│   │   │   ├── diffie-hellman.pem
-│   │   │   ├── nginx-ingress-dev.yaml
-│   │   │   ├── nginx-ingress-test.yaml
-│   │   │   ├── nginx-ingress.yaml
-│   │   │   ├── nginx-svc.yaml
-│   │   │   ├── nginx.conf
-│   │   │   ├── nginxwso2.conf
-│   │   │   ├── proxy-nginx.yaml
-│   │   │   └── wso2-nginx-config.yaml
-│   │   ├── nlb
-│   │   │   ├── configmapcreatecmd.txt
-│   │   │   ├── deploy.yaml
-│   │   │   └── deployenvsubsttest.yaml
-│   │   ├── prodvpc.bashenv
-│   │   ├── secretsmanager
-│   │   │   ├── createserviceaccounts.yaml
-│   │   │   ├── digestsecretproviderclass.yaml
-│   │   │   ├── secretcmds.txt
-│   │   │   ├── secretproviderclass-test.yaml
-│   │   │   ├── secretproviderclass.yaml
-│   │   │   └── secretsstorecsidriverhelminstall.sh
-│   │   ├── sftp
-│   │   │   ├── run-sftp.yaml
-│   │   │   └── sftp-config.yaml
-│   │   ├── swaggerapache
-│   │   │   ├── run-swagger-httpd.yaml
-│   │   │   ├── swagger-apache-config-dev.yaml
-│   │   │   ├── swagger-apache-config-test.yaml
-│   │   │   ├── swagger-apache-config.yaml
-│   │   │   └── swaggerhttpd-svc.yaml
-│   │   ├── testvpc.bashenv
-│   │   └── wso2
-│   │       ├── SOCN.xml
-│   │       ├── createcasecret.txt
-│   │       ├── run-stresstest.yaml
-│   │       ├── run-wso2mi.yaml
-│   │       ├── run-wso2midebug.yaml
-│   │       ├── wso2mi-config.yaml
-│   │       ├── wso2mi-ingress.yaml
-│   │       ├── wso2mi-svc.yaml
-│   │       └── wso2mi-svcdebug.yaml
-│   └── terraform
-│       ├── AWSDFD.dot
-│       ├── CERT.tfbackend
-│       ├── DEV.tfbackend
-│       ├── PROD.tfbackend
-│       ├── TEST.tfbackend
-│       ├── aurora-postgres-module
-│       │   ├── TEST.tfbackend
-│       │   ├── certvpc.tfvars
-│       │   ├── devvpc.tfvars
-│       │   ├── main.tf
-│       │   ├── main.tf.notnow
-│       │   ├── outputs.tf
-│       │   ├── outputs.tf.notnow
-│       │   ├── providers.tf.notnow
-│       │   ├── testvpc.tfvars
-│       │   ├── variables.tf
-│       │   └── variables.tf.notnow
-│       ├── aurora.tf
-│       ├── autoscaler.tf
-│       ├── bakta01.pub
-│       ├── barur01.pub
-│       ├── certvpc.tfvars
-│       ├── cloudshellkey.pub
-│       ├── dales01.pub
-│       ├── dbadminec2s
-│       │   ├── DEV.tfbackend -> ../DEV.tfbackend
-│       │   ├── PROD.tfbackend -> ../PROD.tfbackend
-│       │   ├── TEST.tfbackend -> ../TEST.tfbackend
-│       │   ├── acmedns.tf
-│       │   ├── devplanout
-│       │   ├── devplanout.txt
-│       │   ├── devvpc.tfvars -> ../devvpc.tfvars
-│       │   ├── main.tf
-│       │   ├── prodvpc.tfvars -> ../prodvpc.tfvars
-│       │   ├── provider.tf
-│       │   ├── testplanout
-│       │   ├── testplanout.txt
-│       │   ├── testvpc.tfvars -> ../testvpc.tfvars
-│       │   ├── userdataa.sh
-│       │   ├── userdatab.sh
-│       │   ├── userdatadb.sh
-│       │   └── variables.tf -> ../variables.tf
-│       ├── devec2s
-│       │   ├── certvpc.tfvars -> ../certvpc.tfvars
-│       │   ├── dales01.pub
-│       │   ├── devvpc.tfvars -> ../devvpc.tfvars
-│       │   ├── ec2planout
-│       │   ├── kuzms01.pub
-│       │   ├── main.tf
-│       │   ├── main.tf.oldbastionbased
-│       │   ├── provider.tf
-│       │   ├── testvpc.tfvars -> ../testvpc.tfvars
-│       │   ├── variables.tf
-│       │   └── zehej01.pub
-│       ├── devoutput.info
-│       ├── devplanout.txt
-│       ├── devvpc.tfvars
-│       ├── dnsmanagerrole.tf
-│       ├── efs.tf
-│       ├── eksaddons.tf
-│       ├── eksself.tf
-│       ├── fitzk01.pub
-│       ├── hylaj01.pub
-│       ├── jangr01.pub
-│       ├── karpenterinstall.sh
-│       ├── kundm01.pub
-│       ├── launchtemplate.tf
-│       ├── linkerd2install.sh
-│       ├── locals.tf
-│       ├── main.tf
-│       ├── mgmttest.pub
-│       ├── mgmttodev.pub
-│       ├── nelsd01.pub
-│       ├── outputs.tf
-│       ├── pamas01.pub
-│       ├── pgollt01.pub
-│       ├── prodvpc.tfvars
-│       ├── provider.tf
-│       ├── secrets-manager-module
-│       │   ├── TEST.tfbackend
-│       │   ├── certvpc.tfvars
-│       │   ├── devvpc.tfvars
-│       │   ├── main.tf
-│       │   ├── outputs.tf
-│       │   ├── testvpc.tfvars
-│       │   └── variables.tf
-│       ├── surir01.pub
-│       ├── tatre01.pub
-│       ├── testvpc.tfvars
-│       ├── transferfamily
-│       │   ├── CERT.tfbackend -> ../CERT.tfbackend
-│       │   ├── DEV.tfbackend -> ../DEV.tfbackend
-│       │   ├── PROD.tfbackend -> ../PROD.tfbackend
-│       │   ├── TEST.tfbackend -> ../TEST.tfbackend
-│       │   ├── amis.txt
-│       │   ├── devplanout
-│       │   ├── devvpc.tfvars -> ../devvpc.tfvars
-│       │   ├── dnsnames.tf
-│       │   ├── main.tf
-│       │   ├── prodvpc.tfvars -> ../prodvpc.tfvars
-│       │   ├── provider.tf
-│       │   ├── s3logs.tf
-│       │   ├── testvpc.tfvars -> ../testvpc.tfvars
-│       │   ├── transferfamily.tf
-│       │   ├── uilbs.tf
-│       │   ├── uiwaf.tf
-│       │   ├── variables.tf -> ../variables.tf
-│       │   └── waf.tf
-│       ├── userdata.sh
-│       ├── variables.tf
-│       ├── vaswr01.pub
-│       └── wernb01.pub
-├── jsontodot.py
-├── mgmtvpc
-│   ├── splunk_terraform_pre_merge
-│   │   └── splunk_terraform
-│   │       ├── main.tf
-│   │       ├── splunk_userdata.sh
-│   │       ├── values.yaml
-│   │       └── variables.tf
-│   └── terraform
-│       ├── MGMT.tfbackend
-│       ├── barur01.pub
-│       ├── bitbucket.tf
-│       ├── buildagents.tf
-│       ├── cloudshellkey.pub
-│       ├── codeartifact
-│       │   └── codeartifact.tf
-│       ├── ec2users.sh
-│       ├── hiltl01.pub
-│       ├── hylaj01.pub
-│       ├── jangr01.pub
-│       ├── kundm01.pub
-│       ├── main.tf
-│       ├── mgmttest.pub
-│       ├── mgmttodev.pub
-│       ├── nelsd01.pub
-│       ├── odp-tf-modules-dev
-│       │   ├── CHANGELOG.md
-│       │   ├── LICENSE
-│       │   ├── README.md
-│       │   └── modules
-│       │       ├── aws-ec2-instance
-│       │       │   ├── README.md
-│       │       │   ├── main.tf
-│       │       │   ├── outputs.tf
-│       │       │   └── variables.tf
-│       │       ├── aws-gsa-hardened-amis
-│       │       │   ├── Amazon-Linux-2
-│       │       │   │   └── amazon_linux_2_gsa_hardened.tf
-│       │       │   ├── Amazon-Linux-2023
-│       │       │   │   └── amazon_linux_2023_gsa_hardened.tf
-│       │       │   ├── Amazon-Linux-EKS-v1-26
-│       │       │   │   └── amz_linux_eks_v1_26_gsa_hardened.tf
-│       │       │   ├── Amazon-Linux-EKS-v1-27
-│       │       │   │   └── amz_linux_eks_v1_27_gsa_hardened.tf
-│       │       │   ├── Amazon-Linux-EKS-v1-28
-│       │       │   │   └── amz_linux_eks_v1_28_gsa_hardened.tf
-│       │       │   ├── Amazon-Linux-EKS-v1-29
-│       │       │   │   └── amz_linux_eks_v1_29_gsa_hardened.tf
-│       │       │   ├── Amazon-Linux-EKS-v1-30
-│       │       │   │   └── amz_linux_eks_v1_30_gsa_hardened.tf
-│       │       │   ├── README.md
-│       │       │   ├── Redhat-7
-│       │       │   │   └── redhat_7_gsa_hardened.tf
-│       │       │   ├── Redhat-8
-│       │       │   │   └── redhat_8_gsa_hardened.tf
-│       │       │   ├── Redhat-9
-│       │       │   │   └── redhat_9_gsa_hardened.tf
-│       │       │   ├── Ubuntu-20-04
-│       │       │   │   └── ubuntu_20_04_gsa_hardened.tf
-│       │       │   ├── Ubuntu-22-04
-│       │       │   │   └── ubuntu_22_04_gsa_hardened.tf
-│       │       │   ├── Windows-Server-2019
-│       │       │   │   └── windows_2019_gsa_hardened.tf
-│       │       │   └── Windows-Server-2022
-│       │       │       └── windows_2022_gsa_hardened.tf
-│       │       └── aws-ssm-instance-profile
-│       │           ├── README.md
-│       │           ├── main.tf
-│       │           ├── outputs.tf
-│       │           └── variables.tf
-│       ├── pamas01.pub
-│       ├── pgollt01.pub
-│       ├── pqures01.pub
-│       ├── provider.tf
-│       ├── surir01.pub
-│       ├── tatre01.pub
-│       ├── terraform.tfvars
-│       ├── thaip01.pub
-│       ├── userdata.sh
-│       ├── variables.tf
-│       ├── vaswr01.pub
-│       ├── wernb01.pub
-│       └── zehej01.pub
-├── mgmtvpcterraform
-│   └── main.tf
-├── reports
-│   ├── README
-│   ├── curl.php
-│   ├── dev
-│   │   ├── curl.php
-│   │   ├── index.html
-│   │   ├── index.php
-│   │   ├── last30daysreport.php
-│   │   ├── last7daysreport.php
-│   │   ├── last7daysreportskipdetails.php
-│   │   ├── last90daysreport.php
-│   │   ├── last90daysreportskipdetails.php
-│   │   ├── lastmonthreport.php
-│   │   ├── lastmonthreportskipdetails.php
-│   │   ├── lastquaterreport.php
-│   │   ├── lastquaterreportskipdetails.php
-│   │   ├── lastweekreport.php
-│   │   ├── lastweekreportskipdetails.php
-│   │   ├── main.html
-│   │   ├── navbar.html
-│   │   ├── printbar.php
-│   │   ├── renderi.php
-│   │   ├── sample.html
-│   │   ├── sladbconfig.php
-│   │   ├── slareports.php
-│   │   ├── slareports.php~
-│   │   ├── slareports2.php
-│   │   ├── slareportshtml.php
-│   │   ├── slareportspdf.php
-│   │   ├── test.php
-│   │   ├── test2.php
-│   │   ├── testdate.php
-│   │   └── testdate.php~
-│   ├── index.html -> index.php
-│   ├── index.php
-│   ├── last30daysreport.php
-│   ├── last7daysreport.php
-│   ├── last7daysreportskipdetails.php
-│   ├── last90daysreport.php
-│   ├── last90daysreportskipdetails.php
-│   ├── lastmonthreport.php
-│   ├── lastmonthreportskipdetails.php
-│   ├── lastquaterreport.php
-│   ├── lastquaterreportskipdetails.php
-│   ├── lastweekreport.php
-│   ├── lastweekreportskipdetails.php
-│   ├── main.html
-│   ├── navbar.html
-│   ├── navbar.html~
-│   ├── printbar.php
-│   ├── renderi.php
-│   ├── sample.html
-│   ├── sladbconfig.php
-│   ├── sladbconfig.php~
-│   ├── slareports.php
-│   ├── slareports.php.20200115
-│   ├── slareports.php~
-│   ├── slareports2.php
-│   ├── slareportshtml.php
-│   ├── slareportspdf.php
-│   ├── test.php
-│   └── test2.php
-├── terraform
-│   ├── applystdout.txt
-│   ├── aws-bastion
-│   │   ├── LICENSE
-│   │   ├── README.md
-│   │   ├── _docs
-│   │   │   └── terraformawsbastion.png
-│   │   ├── buckets.tf
-│   │   ├── data.tf
-│   │   ├── locals.tf
-│   │   ├── main.tf
-│   │   ├── outputs.tf
-│   │   ├── providers.tf
-│   │   ├── test
-│   │   │   └── test.tf
-│   │   ├── user_data.sh
-│   │   └── variables.tf
-│   ├── book
-│   │   └── main.tf
-│   ├── destroyedsandox.txt
-│   ├── eks.dot
-│   ├── eks.pdf
-│   ├── eks.png
-│   ├── eks.ps
-│   ├── fcs-conexus-mgmt-M
-│   │   └── main.tf
-│   ├── images.txt
-│   ├── kmspolicy.json
-│   ├── kundm01.pub
-│   ├── main.tf
-│   ├── nelsd01.pub
-│   ├── outputs.tf
-│   ├── pamas01.pub
-│   ├── pgollt01.pub
-│   ├── planout
-│   ├── planoutput
-│   ├── planstdout.txt
-│   ├── pqures01.pub
-│   ├── surir01.pub
-│   ├── tatre01.pub
-│   ├── terraform.tf
-│   ├── terraform.tfstate
-│   ├── terraform.tfstate.backup
-│   ├── variables.tf
-│   └── vaswr01.pub
-└── testperf
-    └── k8s
-│   ├── terraform.tfstate.backup
-│   ├── variables.tf
-│   └── vaswr01.pub
-└── testperf
-    └── k8s
-        ├── apache
-        │   ├── apache-config.yaml
-        │   ├── httpd-svc.yaml
-        │   └── run-httpd.yaml
-        ├── avapache
-        │   ├── avapache-config.yaml
-        │   ├── avapache-svc.yaml
-        │   └── run-avapache.yaml
-        ├── efs_mounts
-        │   ├── efs-attachmentsVolumeNClaim.yaml
-        │   ├── efs-billingscriptsVolumeNClaim.yaml
-        │   ├── efs-dataVolumeNClaim.yaml
-        │   ├── efs-databaseVolumeNClaim.yaml
-        │   ├── efs-rejectVolumeNClaim.yaml
-        │   └── efs-reportsVolumeNClaim.yaml
-        ├── envsubstvars.sh
-        ├── jboss
-        │   ├── brms-svc.yaml
-        │   ├── customconfig.properties
-        │   ├── jboss-config.yaml
-        │   ├── jboss-jms-config.yaml
-        │   ├── jboss-portal-config.yaml
-        │   ├── jms-svc.yaml
-        │   ├── portal-svc.yaml
-        │   ├── reporting-svc.yaml
-        │   ├── run-brms.yaml
-        │   ├── run-jms.yaml
-        │   ├── run-portal.yaml
-        │   ├── run-reporting.yaml
-        │   ├── run-ws.yaml
-        │   ├── standalone-full.xml.brms8
-        │   ├── standalone-full.xml.jms8
-        │   ├── standalone-full.xml.portal8
-        │   ├── standalone-full.xml.reporting8
-        │   ├── standalone-full.xml.webservice8
-        │   └── ws-svc.yaml
-        ├── k8ssteps.txt
-        ├── wso2
-        │   ├── run-wso2mi.yaml
-        │   ├── wso2mi-config-test.yaml
-        │   ├── wso2mi-ingress.yaml
-        │   └── wso2mi-svc.yaml
-        └── wso2-nginx-config.yaml
 
-107 directories, 635 files    
+# EFS targets are per az not per subnet; the svcsubnetids variable contains all the azs
+resource "aws_efs_mount_target" "efstargetbilling" {
+  for_each        = var.svcsubnetids
+  file_system_id  = aws_efs_file_system.efsbilling.id
+  subnet_id       = each.value
+  security_groups = [aws_security_group.ingresssftpefs.id]
+}
+resource "aws_efs_mount_target" "efstargetchroot" {
+  for_each        = var.svcsubnetids
+  file_system_id  = aws_efs_file_system.efschroot.id
+  subnet_id       = each.value
+  security_groups = [aws_security_group.ingresssftpefs.id]
+}
+resource "aws_efs_mount_target" "efstargetquarantine" {
+  for_each        = var.svcsubnetids
+  file_system_id  = aws_efs_file_system.efsquarantine.id
+  subnet_id       = each.value
+  security_groups = [aws_security_group.ingresssftpefs.id]
+}
+
+resource "aws_efs_mount_target" "efstargetdatabase" {
+  for_each        = var.svcsubnetids
+  file_system_id  = aws_efs_file_system.efsdatabase.id
+  subnet_id       = each.value
+  security_groups = [aws_security_group.ingresssftpefs.id]
+}
+
+resource "aws_efs_mount_target" "efstargetattachments" {
+  for_each        = var.svcsubnetids
+  file_system_id  = aws_efs_file_system.efsattachments.id
+  subnet_id       = each.value
+  security_groups = [aws_security_group.ingresssftpefs.id]
+}
+
+resource "aws_efs_mount_target" "efstargetreports" {
+  for_each        = var.svcsubnetids
+  file_system_id  = aws_efs_file_system.efsreports.id
+  subnet_id       = each.value
+  security_groups = [aws_security_group.ingresssftpefs.id]
+}
+
+resource "aws_efs_mount_target" "efstargetjbosstemp" {
+  for_each        = var.svcsubnetids
+  file_system_id  = aws_efs_file_system.efsjbosstemp.id
+  subnet_id       = each.value
+  security_groups = [aws_security_group.ingresssftpefs.id]
+}
+
+output "efsdatabasemtid" {
+  description = "Database EFS mount target ids in each zone "
+  value       = { for k, v in aws_efs_mount_target.efstargetdatabase : k => v.id }
+}
+
+output "efschrootmtid" {
+  description = "Chroot Mount Target IDs"
+  value       = { for k, v in aws_efs_mount_target.efstargetchroot : k => v.id }
+}
+
+output "efsdnsnames" {
+  description = "Chroot Mount Target DNS names"
+  value       = { for k, v in aws_efs_mount_target.efstargetchroot : k => v.dns_name }
+}
+
+output "efstargetdnsnames" {
+  description = "Chroot Mount Target names"
+  value       = { for k, v in aws_efs_mount_target.efstargetchroot : k => v.mount_target_dns_name }
+}
+output "efsnetids" {
+  description = "Chroot Mount Target network IDs"
+  value       = { for k, v in aws_efs_mount_target.efstargetchroot : k => v.network_interface_id }
+}
+output "efsazids" {
+  description = "Chroot Mount Target AZs"
+  value       = { for k, v in aws_efs_mount_target.efstargetchroot : k => v.availability_zone_id }
+}
+
+
+[sikaj01@ip-10-56-112-33 ~]$ code scripts/devvpc/k8s/efs_mounts/efs-
+efs-attachmentsVolumeNClaim.yaml  efs-dataVolumeNClaim.yaml         efs-databaseVolumeNClaim.yaml     efs-rejectVolumeNClaim.yaml       efs-reportsVolumeNClaim.yaml
+
+[sikaj01@ip-10-56-112-33 scripts]$ cat devvpc/k8s/efs_mounts/*
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: efs-sc-attachments
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: ${fs_attachments}
+  directoryPerms: "755"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: efs-attachments-volume
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: efs-sc-attachments
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: ${fs_attachments}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-attachments-volume-claim
+  namespace: ingress-nginx
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc-attachments
+  resources:
+    requests:
+      storage: 5Gi
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: efs-sc-data
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: ${fs_data}
+  directoryPerms: "755"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: efs-data-volume
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: efs-sc-data
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: ${fs_data}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-data-volume-claim
+  namespace: ingress-nginx
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc-data
+  resources:
+    requests:
+      storage: 5Gi
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: efs-sc-database
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: ${fs_database}
+  directoryPerms: "755"
+mountOptions:
+  - nfsvers=4.1
+  - rsize=1048576
+  - wsize=1048576
+  - hard 
+  - timeo=600
+  - retrans=2
+#  - soft # Add this option for soft mounting
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: efs-database-volume
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: efs-sc-database
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: ${fs_database}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-database-volume-claim
+  namespace: ingress-nginx
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc-database
+  resources:
+    requests:
+      storage: 5Gi
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: efs-sc-reject
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: ${fs_reject}
+  directoryPerms: "755"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: efs-reject-volume
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: efs-sc-reject
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: ${fs_reject}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-reject-volume-claim
+  namespace: ingress-nginx
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc-reject
+  resources:
+    requests:
+      storage: 5Gi
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: efs-sc-reports
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: ${fs_reports}
+  directoryPerms: "755"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: efs-reports-volume
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: efs-sc-reports
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: ${fs_reports}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-reports-volume-claim
+  namespace: ingress-nginx
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc-reports
+  resources:
+    requests:
+      storage: 5Gi
