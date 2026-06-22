@@ -33,18 +33,18 @@ if [[ "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
         echo "Repo does not exist. Creating Maven repo: ${BranchName}"
         curl -X PUT \
            -H "Content-type: application/json" \
-           -H "X-JFrog-Art-Api:$api_key" \
+           -u "admin:${api_key}" \
            "$artifactoryRepositoryUrl/${BranchName}" \
            -d '{ "key": "'${BranchName}'", "rclass" : "local", "packageType": "maven", "repoLayoutRef" : "maven-2-default", "snapshotVersionBehavior": "unique"}'
         echo "Updating permsissions on new repo"
         # Getting the anon_read_only permission model, add new repo name, and push changes
-        curl -s -X GET -H "X-JFrog-Art-Api:${api_key}" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only \
+        curl -s -X GET -u "admin:${api_key}" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only \
             | jq ".repo.repositories += [\"${BranchName}\"]" \
-            | curl -s -X PUT -H "X-JFrog-Art-Api:${api_key}" -H "Content-Type: application/json" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only -d@-
+            | curl -s -X PUT -u "admin:${api_key}" -H "Content-Type: application/json" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only -d@-
         # Getting the uploadOnly permission model, add new repo name, and push changes
-        curl -s -X GET -H "X-JFrog-Art-Api:${api_key}" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly \
+        curl -s -X GET -u "admin:${api_key}" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly \
             | jq ".repo.repositories += [\"${BranchName}\"]" \
-            | curl -s -X PUT -H "X-JFrog-Art-Api:${api_key}" -H "Content-Type: application/json" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly -d@-
+            | curl -s -X PUT -u "admin:${api_key}" -H "Content-Type: application/json" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly -d@-
     else
         echo "Repo does exist"
     fi
