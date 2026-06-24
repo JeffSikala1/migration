@@ -1,5 +1,9 @@
-sudo grep "Jun 23 11:" /var/log/secure | grep -iE "fail|denied|closed|kex" | tail -50
-sudo journalctl --since "2026-06-23 11:00" --until "2026-06-23 12:00" -u sshd --no-pager
+# Step 1: Login first, let it complete
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
 
+# Step 2: Tag the image correctly if not already tagged
+docker tag <local-image>:<tag> 339713019047.dkr.ecr.us-east-1.amazonaws.com/jboss-local:<tag>
 
-sudo grep "Jun 23 11:" /var/log/messages | grep -iE "nfs|efs|stale|timed out|not responding"
+# Step 3: Then push
+docker push 339713019047.dkr.ecr.us-east-1.amazonaws.com/jboss-local:<tag>
