@@ -1,390 +1,66 @@
-[sikaj01@ip-10-56-112-33 ws-client]$ ll
-total 16
-drwxr-x---. 3 sikaj01 users 6144 Apr 14 18:00 common
-drwxr-x---. 3 sikaj01 users 6144 Apr 14 18:00 health-check
-drwxr-x---. 3 sikaj01 users 6144 Apr 14 18:00 order-services
--rw-r-----. 1 sikaj01 users 3826 Apr 14 18:00 pom.xml
-[sikaj01@ip-10-56-112-33 ws-client]$ cat pom.xml 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>gov.gsa.cnxs.bom</groupId>
-        <artifactId>env</artifactId>
-        <version>02.00.000.167-SNAPSHOT</version>
-        <relativePath />
-    </parent>
+[sikaj01@ip-10-56-112-33 ws-client]$ git pull
+remote: Enumerating objects: 17, done.
+remote: Counting objects: 100% (17/17), done.
+remote: Compressing objects: 100% (9/9), done.
+remote: Total 9 (delta 4), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (9/9), 844 bytes | 2.00 KiB/s, done.
+From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws-client
+   4ded1fd58..ebf5957ef  develop    -> origin/develop
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+[sikaj01@ip-10-56-112-33 ws-client]$ git status
+On branch develop
+Your branch and 'origin/develop' have diverged,
+and have 2 and 16 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
 
-    <groupId>gov.gsa.cnxs.ws-client</groupId>
-    <artifactId>ws-client-aggregator</artifactId>
-    <version>02.00.000.148-SNAPSHOT</version>
-    <packaging>pom</packaging>
-    <name>Conexus Web Services Client</name>
-    <description>Parent POM for the Web Services Client Project</description>
+nothing to commit, working tree clean
+[sikaj01@ip-10-56-112-33 ws-client]$ git pull --no-rebase
+Auto-merging common/pom.xml
+CONFLICT (content): Merge conflict in common/pom.xml
+Auto-merging health-check/pom.xml
+CONFLICT (content): Merge conflict in health-check/pom.xml
+Auto-merging order-services/pom.xml
+CONFLICT (content): Merge conflict in order-services/pom.xml
+Auto-merging pom.xml
+CONFLICT (content): Merge conflict in pom.xml
+Automatic merge failed; fix conflicts and then commit the result.
+[sikaj01@ip-10-56-112-33 ws-client]$ git pull
+error: Pulling is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+[sikaj01@ip-10-56-112-33 ws-client]$ git status
+On branch develop
+Your branch and 'origin/develop' have diverged,
+and have 2 and 16 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
 
-    <modules>
-        <module>common</module>
-        <module>order-services</module>
-        <module>health-check</module>
-    </modules>
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
 
-    <properties>
-        <version.conexus-common>02.00.000.161-SNAPSHOT</version.conexus-common>
-    </properties>
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+        both modified:   common/pom.xml
+        both modified:   health-check/pom.xml
+        both modified:   order-services/pom.xml
+        both modified:   pom.xml
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>gov.gsa.cnxs.common</groupId>
-                <artifactId>common-utils</artifactId>
-                <version>${version.conexus-common}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
-    <dependencies>
-    </dependencies>
-
-    <profiles>
-        <profile>
-            <!-- profile for generating java stubs from WSDL : http://cxf.apache.org/docs/maven-cxf-codegen-plugin-wsdl-to-java.html -->
-            <id>wsdl2java</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.cxf</groupId>
-                        <artifactId>cxf-codegen-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-sources</id>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <sourceRoot>${project.build.directory}/generated/ws/${serviceName}</sourceRoot>
-                                    <disableDirectoryScan>true</disableDirectoryScan>
-                                    <wsdlOptions>
-                                        <wsdlOption>
-                                            <bindingFiles>
-                                                <bindingFile>${basedir}/../order-services/src/main/resources/bindings/jaxb-bindings.xml</bindingFile>
-                                            </bindingFiles>
-                                            <wsdl>${basedir}/src/main/resources/wsdl/${serviceName}.wsdl</wsdl>
-                                            <extraargs>
-                                                <extraarg>-validate</extraarg> <!--  validate the wsdl -->
-                                                <extraarg>-impl</extraarg> <!--  Gen starting point code for impl object -->
-                                                <extraarg>-verbose</extraarg> <!-- display comments during codegen process -->
-                                                <extraarg>-mark-generated</extraarg> <!-- Add the @Generated annotation to indicate that the artifact was generated from a tool -->
-                                            </extraargs>
-                                        </wsdlOption>
-                                    </wsdlOptions>
-                                </configuration>
-                                <goals>
-                                    <goal>wsdl2java</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-</project>
-
-
-[sikaj01@ip-10-56-112-33 ws-client]$ cat pom.xml 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>gov.gsa.cnxs.bom</groupId>
-        <artifactId>env</artifactId>
-        <version>02.00.000.167-SNAPSHOT</version>
-        <relativePath />
-    </parent>
-
-    <groupId>gov.gsa.cnxs.ws-client</groupId>
-    <artifactId>ws-client-aggregator</artifactId>
-    <version>02.00.000.148-SNAPSHOT</version>
-    <packaging>pom</packaging>
-    <name>Conexus Web Services Client</name>
-    <description>Parent POM for the Web Services Client Project</description>
-
-    <modules>
-        <module>common</module>
-        <module>order-services</module>
-        <module>health-check</module>
-    </modules>
-
-    <properties>
-        <version.conexus-common>02.00.000.161-SNAPSHOT</version.conexus-common>
-    </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>gov.gsa.cnxs.common</groupId>
-                <artifactId>common-utils</artifactId>
-                <version>${version.conexus-common}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
-    <dependencies>
-    </dependencies>
-
-    <profiles>
-        <profile>
-            <!-- profile for generating java stubs from WSDL : http://cxf.apache.org/docs/maven-cxf-codegen-plugin-wsdl-to-java.html -->
-            <id>wsdl2java</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.cxf</groupId>
-                        <artifactId>cxf-codegen-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>generate-sources</id>
-                                <phase>generate-sources</phase>
-                                <configuration>
-                                    <sourceRoot>${project.build.directory}/generated/ws/${serviceName}</sourceRoot>
-                                    <disableDirectoryScan>true</disableDirectoryScan>
-                                    <wsdlOptions>
-                                        <wsdlOption>
-                                            <bindingFiles>
-                                                <bindingFile>${basedir}/../order-services/src/main/resources/bindings/jaxb-bindings.xml</bindingFile>
-                                            </bindingFiles>
-                                            <wsdl>${basedir}/src/main/resources/wsdl/${serviceName}.wsdl</wsdl>
-                                            <extraargs>
-                                                <extraarg>-validate</extraarg> <!--  validate the wsdl -->
-                                                <extraarg>-impl</extraarg> <!--  Gen starting point code for impl object -->
-                                                <extraarg>-verbose</extraarg> <!-- display comments during codegen process -->
-                                                <extraarg>-mark-generated</extraarg> <!-- Add the @Generated annotation to indicate that the artifact was generated from a tool -->
-                                            </extraargs>
-                                        </wsdlOption>
-                                    </wsdlOptions>
-                                </configuration>
-                                <goals>
-                                    <goal>wsdl2java</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-</project>
-[sikaj01@ip-10-56-112-33 ws-client]$ ll common/
-total 8
--rw-r-----. 1 sikaj01 users  706 Apr 14 18:00 pom.xml
-drwxr-x---. 4 sikaj01 users 6144 Apr  2 19:18 src
-[sikaj01@ip-10-56-112-33 ws-client]$ tree
-.
-├── common
-│   ├── pom.xml
-│   └── src
-│       ├── main
-│       │   └── java
-│       │       └── gov
-│       │           └── usda
-│       │               └── gsa
-│       │                   └── nsfs
-│       │                       └── ws
-│       │                           ├── WebServiceConstants.java
-│       │                           ├── common
-│       │                           │   ├── ServiceClient.java
-│       │                           │   └── TestConstants.java
-│       │                           ├── messages
-│       │                           │   └── WebServiceMessages.java
-│       │                           ├── utils
-│       │                           │   ├── AgencyServiceRequestNumberUtils.java
-│       │                           │   └── DataTransactionSequenceNumberGenerator.java
-│       │                           └── xml
-│       │                               ├── JaxbToStringProvider.java
-│       │                               └── adapter
-│       │                                   ├── DateTimeAdapterBase.java
-│       │                                   ├── LocalDateAdapter.java
-│       │                                   ├── LocalDateTimeAdapter.java
-│       │                                   └── LocalTimeAdapter.java
-│       └── test
-│           └── java
-│               ├── WebServiceConstantsTest.java
-│               └── gov
-│                   └── usda
-│                       └── gsa
-│                           └── nsfs
-│                               └── ws
-│                                   ├── messages
-│                                   │   └── WebServiceMessagesTest.java
-│                                   ├── utils
-│                                   │   ├── AgencyServiceRequestNumberUtilsTest.java
-│                                   │   └── DataTransactionSequenceNumberGeneratorTest.java
-│                                   └── xml
-│                                       └── adapter
-│                                           ├── AdapterTestBase.java
-│                                           ├── LocalDateAdapterTest.java
-│                                           ├── LocalDateTimeAdapterTest.java
-│                                           └── LocalTimeAdapterTest.java
-├── health-check
-│   ├── pom.xml
-│   └── src
-│       ├── main
-│       │   ├── java
-│       │   │   └── gov
-│       │   │       └── usda
-│       │   │           └── gsa
-│       │   │               └── nsfs
-│       │   │                   └── ws
-│       │   │                       └── healthcheck
-│       │   │                           ├── Component.java
-│       │   │                           ├── HealthCheckClient.java
-│       │   │                           ├── HealthCheckPortType.java
-│       │   │                           ├── HealthCheckRequest.java
-│       │   │                           ├── HealthCheckResponse.java
-│       │   │                           ├── HealthCheckServiceImpl.java
-│       │   │                           ├── StatusCode.java
-│       │   │                           └── package-info.java
-│       │   └── resources
-│       │       └── wsdl
-│       │           └── WS-HealthCheck.wsdl
-│       └── test
-│           └── java
-│               └── gov
-│                   └── usda
-│                       └── gsa
-│                           └── nsfs
-│                               └── ws
-│                                   └── healthcheck
-│                                       ├── HealthCheckRequestTest.java
-│                                       ├── HealthCheckResponseFactory.java
-│                                       ├── HealthCheckResponseTest.java
-│                                       └── StatusCodeTest.java
-├── order-services
-│   ├── pom.xml
-│   └── src
-│       ├── main
-│       │   ├── java
-│       │   │   └── gov
-│       │   │       └── usda
-│       │   │           └── gsa
-│       │   │               └── nsfs
-│       │   │                   └── ws
-│       │   │                       └── orderservices
-│       │   │                           ├── common
-│       │   │                           │   ├── ConexusResponse.java
-│       │   │                           │   ├── ConexusResponseStatus.java
-│       │   │                           │   ├── LevelType.java
-│       │   │                           │   └── ResponseType.java
-│       │   │                           ├── focn
-│       │   │                           │   ├── FOCNConexusResponse.java
-│       │   │                           │   ├── FOCNPortType.java
-│       │   │                           │   ├── FOCNRequest.java
-│       │   │                           │   ├── FOCNService.java
-│       │   │                           │   ├── FOCNServiceClient.java
-│       │   │                           │   └── package-info.java
-│       │   │                           ├── so
-│       │   │                           │   ├── SOConexusResponse.java
-│       │   │                           │   ├── SOPortType.java
-│       │   │                           │   ├── SORequest.java
-│       │   │                           │   ├── SOService.java
-│       │   │                           │   ├── SOServiceClient.java
-│       │   │                           │   └── package-info.java
-│       │   │                           ├── soa
-│       │   │                           │   ├── SOAConexusResponse.java
-│       │   │                           │   ├── SOAPortType.java
-│       │   │                           │   ├── SOARequest.java
-│       │   │                           │   ├── SOAService.java
-│       │   │                           │   ├── SOAServiceClient.java
-│       │   │                           │   └── package-info.java
-│       │   │                           ├── soac
-│       │   │                           │   ├── SOACConexusResponse.java
-│       │   │                           │   ├── SOACPortType.java
-│       │   │                           │   ├── SOACRequest.java
-│       │   │                           │   ├── SOACService.java
-│       │   │                           │   ├── SOACServiceClient.java
-│       │   │                           │   └── package-info.java
-│       │   │                           ├── soc
-│       │   │                           │   ├── SOCConexusResponse.java
-│       │   │                           │   ├── SOCPortType.java
-│       │   │                           │   ├── SOCRequest.java
-│       │   │                           │   ├── SOCService.java
-│       │   │                           │   ├── SOCServiceClient.java
-│       │   │                           │   └── package-info.java
-│       │   │                           ├── socn
-│       │   │                           │   ├── SOCNConexusResponse.java
-│       │   │                           │   ├── SOCNPortType.java
-│       │   │                           │   ├── SOCNRequest.java
-│       │   │                           │   ├── SOCNService.java
-│       │   │                           │   ├── SOCNServiceClient.java
-│       │   │                           │   └── package-info.java
-│       │   │                           ├── sorn
-│       │   │                           │   ├── SORNConexusResponse.java
-│       │   │                           │   ├── SORNPortType.java
-│       │   │                           │   ├── SORNRequest.java
-│       │   │                           │   ├── SORNService.java
-│       │   │                           │   ├── SORNServiceClient.java
-│       │   │                           │   └── package-info.java
-│       │   │                           └── sscn
-│       │   │                               ├── SSCNConexusResponse.java
-│       │   │                               ├── SSCNPortType.java
-│       │   │                               ├── SSCNRequest.java
-│       │   │                               ├── SSCNService.java
-│       │   │                               ├── SSCNServiceClient.java
-│       │   │                               └── package-info.java
-│       │   └── resources
-│       │       ├── bindings
-│       │       │   └── jaxb-bindings.xml
-│       │       └── wsdl
-│       │           ├── FOCN.wsdl
-│       │           ├── SO.wsdl
-│       │           ├── SOA.wsdl
-│       │           ├── SOAC.wsdl
-│       │           ├── SOC.wsdl
-│       │           ├── SOCN.wsdl
-│       │           ├── SORN.wsdl
-│       │           ├── SSCN.wsdl
-│       │           └── SplitSO.wsdl
-│       └── test
-│           └── java
-│               └── gov
-│                   └── usda
-│                       └── gsa
-│                           └── nsfs
-│                               └── ws
-│                                   └── orderservices
-│                                       ├── RequestTestBase.java
-│                                       ├── common
-│                                       │   ├── ConexusResponseStatusTest.java
-│                                       │   ├── ConexusResponseTestBase.java
-│                                       │   └── TestBase.java
-│                                       ├── focn
-│                                       │   ├── FOCNConexusResponseTest.java
-│                                       │   ├── FOCNRequestFactory.java
-│                                       │   └── FOCNRequestTest.java
-│                                       ├── so
-│                                       │   ├── SOConexusResponseTest.java
-│                                       │   ├── SORequestFactory.java
-│                                       │   └── SORequestTest.java
-│                                       ├── soa
-│                                       │   ├── SOAConexusResponseTest.java
-│                                       │   ├── SOARequestFactory.java
-│                                       │   └── SOARequestTest.java
-│                                       ├── soac
-│                                       │   ├── SOACConexusResponseTest.java
-│                                       │   ├── SOACRequestFactory.java
-│                                       │   └── SOACRequestTest.java
-│                                       ├── soc
-│                                       │   ├── SOCConexusResponseTest.java
-│                                       │   ├── SOCRequestFactory.java
-│                                       │   └── SOCRequestTest.java
-│                                       ├── socn
-│                                       │   ├── SOCNConexusResponseTest.java
-│                                       │   ├── SOCNRequestFactory.java
-│                                       │   └── SOCNRequestTest.java
-│                                       ├── sorn
-│                                       │   ├── SORNConexusResponseTest.java
-│                                       │   ├── SORNRequestFactory.java
-│                                       │   └── SORNRequestTest.java
-│                                       └── sscn
-│                                           ├── SSCNConexusResponseTest.java
-│                                           ├── SSCNRequestFactory.java
-│                                           └── SSCNRequestTest.java
-└── pom.xml
-
-84 directories, 126 files
+no changes added to commit (use "git add" and/or "git commit -a")
+[sikaj01@ip-10-56-112-33 ws-client]$ git pull --no-rebase
+error: Pulling is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
