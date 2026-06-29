@@ -1,270 +1,390 @@
----
-version: 2
-plan:
-  project-key: SR
-  key: WSCLSR
-  name: (04b) WS-Client - Start Release
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Gitflow release start
-- Deploy RC:
-    manual: false
-    final: false
-    jobs:
-    - Deploy RC
-- Snapshot Maven Deploy:
-    manual: false
-    final: false
-    jobs:
-    - Snapshot Maven Deploy
-- Check build plan result:
-    manual: false
-    final: true
-    jobs:
-    - Delete release branch if failed
-Gitflow release start:
-  key: JOB1
-  tasks:
-  - clean
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+[sikaj01@ip-10-56-112-33 ws-client]$ ll
+total 16
+drwxr-x---. 3 sikaj01 users 6144 Apr 14 18:00 common
+drwxr-x---. 3 sikaj01 users 6144 Apr 14 18:00 health-check
+drwxr-x---. 3 sikaj01 users 6144 Apr 14 18:00 order-services
+-rw-r-----. 1 sikaj01 users 3826 Apr 14 18:00 pom.xml
+[sikaj01@ip-10-56-112-33 ws-client]$ cat pom.xml 
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>gov.gsa.cnxs.bom</groupId>
+        <artifactId>env</artifactId>
+        <version>02.00.000.167-SNAPSHOT</version>
+        <relativePath />
+    </parent>
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        chmod 400 ~/.ssh/id_rsa
+    <groupId>gov.gsa.cnxs.ws-client</groupId>
+    <artifactId>ws-client-aggregator</artifactId>
+    <version>02.00.000.148-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Conexus Web Services Client</name>
+    <description>Parent POM for the Web Services Client Project</description>
 
-        # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-      description: Install SSH key
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: currentVersion
-        removeSnapshot: 'true'
-        variableScope: JOB
-      description: Get current version
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-        echo "Checking for tag version ${bamboo_currentVersion}"
+    <modules>
+        <module>common</module>
+        <module>order-services</module>
+        <module>health-check</module>
+    </modules>
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+    <properties>
+        <version.conexus-common>02.00.000.161-SNAPSHOT</version.conexus-common>
+    </properties>
 
-        # If the currentVersionm, from the previous Maven version variable
-        # extractor, is also a tag version, then the tag version/name will be in
-        # the variable $does_tag_exist
-        # Else $does_tag_exist will be a null string
-        does_tag_exist=$(git tag -l ${bamboo.currentVersion})
-        echo $does_tag_exist
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>gov.gsa.cnxs.common</groupId>
+                <artifactId>common-utils</artifactId>
+                <version>${version.conexus-common}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
-        if [ $does_tag_exist ]; then
-          echo "Deleting the tag $does_tag_exist"
-          echo "git tag -d $does_tag_exist"
-          git tag -d $does_tag_exist
-          echo "git push --delete origin $does_tag_exist"
-          git push --delete origin $does_tag_exist
-        else
-            echo "No tag found"
-        fi
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Delete tag, if it already exists
-  - script:
-      interpreter: SHELL
-      scripts:
-      - "#!/usr/bin/env bash\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\ngit pull\nrelease_branch=$(git branch -r | grep -oP '(?<=origin\\/)release\\/.*')\n\n# Handle the case of more than one release branch\nif [ -n \"${release_branch}\" ]; then\n  for i in \"${release_branch[@]}\"; do\n    echo \"Deleting the release branch $i\"\n        git push origin --delete $i\n        git branch -D $i\n        git fetch\n  done\nelse\n        echo \"No release branch\"\n        exit 0 \nfi"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Delete Release Branch
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U -B external.atlassian.jgitflow:jgitflow-maven-plugin:release-start -DpushReleases=true -DallowSnapshots=true -DenableSshAgent=true -DdefaultOriginUrl=${bamboo.planRepository.repositoryUrl} -s /usr/share/maven/conf/settings-release.xml
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: GitFlow Release Start
-  - script:
-      interpreter: SHELL
-      scripts:
-      - "#!/usr/bin/env bash\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\ngit pull \n\ngit branch \n\nfind . -type f -name pom.xml -exec sed -i 's/SNAPSHOT/RC/g' {} +\ngit commit -a -m \"Updated versions from SNAPSHOT to RC\"\ngit config --global push.default simple\ngit push\n#git push --set-upstream origin $BRANCH_NAME"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Update SNAPSHOT with RC
-  artifact-subscriptions: []
-Deploy RC:
-  key: DR
-  tasks:
-  - checkout:
-      force-clean-build: true
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    <dependencies>
+    </dependencies>
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        chmod 400 ~/.ssh/id_rsa
+    <profiles>
+        <profile>
+            <!-- profile for generating java stubs from WSDL : http://cxf.apache.org/docs/maven-cxf-codegen-plugin-wsdl-to-java.html -->
+            <id>wsdl2java</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.cxf</groupId>
+                        <artifactId>cxf-codegen-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>generate-sources</id>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <sourceRoot>${project.build.directory}/generated/ws/${serviceName}</sourceRoot>
+                                    <disableDirectoryScan>true</disableDirectoryScan>
+                                    <wsdlOptions>
+                                        <wsdlOption>
+                                            <bindingFiles>
+                                                <bindingFile>${basedir}/../order-services/src/main/resources/bindings/jaxb-bindings.xml</bindingFile>
+                                            </bindingFiles>
+                                            <wsdl>${basedir}/src/main/resources/wsdl/${serviceName}.wsdl</wsdl>
+                                            <extraargs>
+                                                <extraarg>-validate</extraarg> <!--  validate the wsdl -->
+                                                <extraarg>-impl</extraarg> <!--  Gen starting point code for impl object -->
+                                                <extraarg>-verbose</extraarg> <!-- display comments during codegen process -->
+                                                <extraarg>-mark-generated</extraarg> <!-- Add the @Generated annotation to indicate that the artifact was generated from a tool -->
+                                            </extraargs>
+                                        </wsdlOption>
+                                    </wsdlOptions>
+                                </configuration>
+                                <goals>
+                                    <goal>wsdl2java</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
 
-        # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-      description: Obtain SSH Key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
+[sikaj01@ip-10-56-112-33 ws-client]$ cat pom.xml 
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>gov.gsa.cnxs.bom</groupId>
+        <artifactId>env</artifactId>
+        <version>02.00.000.167-SNAPSHOT</version>
+        <relativePath />
+    </parent>
 
-        release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
+    <groupId>gov.gsa.cnxs.ws-client</groupId>
+    <artifactId>ws-client-aggregator</artifactId>
+    <version>02.00.000.148-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Conexus Web Services Client</name>
+    <description>Parent POM for the Web Services Client Project</description>
 
-        echo "Release branch is set from grep above is $release_branch"
+    <modules>
+        <module>common</module>
+        <module>order-services</module>
+        <module>health-check</module>
+    </modules>
 
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            #exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Checkout release branch
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Deploy RC to RC repo
-  artifact-subscriptions: []
-Snapshot Maven Deploy:
-  key: SMD
-  tasks:
-  - checkout:
-      force-clean-build: true
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    <properties>
+        <version.conexus-common>02.00.000.161-SNAPSHOT</version.conexus-common>
+    </properties>
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        chmod 400 ~/.ssh/id_rsa
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>gov.gsa.cnxs.common</groupId>
+                <artifactId>common-utils</artifactId>
+                <version>${version.conexus-common}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
-        # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-      description: Obtain SSH Key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    <dependencies>
+    </dependencies>
 
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull origin develop
-        git fetch
-        git checkout develop
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Pull Latest Develop branch
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U versions:update-parent versions:update-properties -DpushChanges=true -DincludeProperties=version.conexus-common -DallowSnapshots=true -DgenerateBackupPoms=false
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
-      description: update-parent update-properties
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: org.apache.maven.plugins:maven-scm-plugin:checkin -Dmessage=updated-parent-and-properties -DpushChanges=true -DdeveloperConnectionUrl=scm:git:${bamboo.planRepository.repositoryUrl}
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
-      description: Checkin changes
-  - maven:
-      executable: Maven 3
-      jdk: JDK 17
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      description: Maven Deploy to Artifactory
-  artifact-subscriptions: []
-Delete release branch if failed:
-  key: DRBIF
-  tasks:
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
-      configuration: {}
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+    <profiles>
+        <profile>
+            <!-- profile for generating java stubs from WSDL : http://cxf.apache.org/docs/maven-cxf-codegen-plugin-wsdl-to-java.html -->
+            <id>wsdl2java</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.cxf</groupId>
+                        <artifactId>cxf-codegen-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>generate-sources</id>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <sourceRoot>${project.build.directory}/generated/ws/${serviceName}</sourceRoot>
+                                    <disableDirectoryScan>true</disableDirectoryScan>
+                                    <wsdlOptions>
+                                        <wsdlOption>
+                                            <bindingFiles>
+                                                <bindingFile>${basedir}/../order-services/src/main/resources/bindings/jaxb-bindings.xml</bindingFile>
+                                            </bindingFiles>
+                                            <wsdl>${basedir}/src/main/resources/wsdl/${serviceName}.wsdl</wsdl>
+                                            <extraargs>
+                                                <extraarg>-validate</extraarg> <!--  validate the wsdl -->
+                                                <extraarg>-impl</extraarg> <!--  Gen starting point code for impl object -->
+                                                <extraarg>-verbose</extraarg> <!-- display comments during codegen process -->
+                                                <extraarg>-mark-generated</extraarg> <!-- Add the @Generated annotation to indicate that the artifact was generated from a tool -->
+                                            </extraargs>
+                                        </wsdlOption>
+                                    </wsdlOptions>
+                                </configuration>
+                                <goals>
+                                    <goal>wsdl2java</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
+[sikaj01@ip-10-56-112-33 ws-client]$ ll common/
+total 8
+-rw-r-----. 1 sikaj01 users  706 Apr 14 18:00 pom.xml
+drwxr-x---. 4 sikaj01 users 6144 Apr  2 19:18 src
+[sikaj01@ip-10-56-112-33 ws-client]$ tree
+.
+├── common
+│   ├── pom.xml
+│   └── src
+│       ├── main
+│       │   └── java
+│       │       └── gov
+│       │           └── usda
+│       │               └── gsa
+│       │                   └── nsfs
+│       │                       └── ws
+│       │                           ├── WebServiceConstants.java
+│       │                           ├── common
+│       │                           │   ├── ServiceClient.java
+│       │                           │   └── TestConstants.java
+│       │                           ├── messages
+│       │                           │   └── WebServiceMessages.java
+│       │                           ├── utils
+│       │                           │   ├── AgencyServiceRequestNumberUtils.java
+│       │                           │   └── DataTransactionSequenceNumberGenerator.java
+│       │                           └── xml
+│       │                               ├── JaxbToStringProvider.java
+│       │                               └── adapter
+│       │                                   ├── DateTimeAdapterBase.java
+│       │                                   ├── LocalDateAdapter.java
+│       │                                   ├── LocalDateTimeAdapter.java
+│       │                                   └── LocalTimeAdapter.java
+│       └── test
+│           └── java
+│               ├── WebServiceConstantsTest.java
+│               └── gov
+│                   └── usda
+│                       └── gsa
+│                           └── nsfs
+│                               └── ws
+│                                   ├── messages
+│                                   │   └── WebServiceMessagesTest.java
+│                                   ├── utils
+│                                   │   ├── AgencyServiceRequestNumberUtilsTest.java
+│                                   │   └── DataTransactionSequenceNumberGeneratorTest.java
+│                                   └── xml
+│                                       └── adapter
+│                                           ├── AdapterTestBase.java
+│                                           ├── LocalDateAdapterTest.java
+│                                           ├── LocalDateTimeAdapterTest.java
+│                                           └── LocalTimeAdapterTest.java
+├── health-check
+│   ├── pom.xml
+│   └── src
+│       ├── main
+│       │   ├── java
+│       │   │   └── gov
+│       │   │       └── usda
+│       │   │           └── gsa
+│       │   │               └── nsfs
+│       │   │                   └── ws
+│       │   │                       └── healthcheck
+│       │   │                           ├── Component.java
+│       │   │                           ├── HealthCheckClient.java
+│       │   │                           ├── HealthCheckPortType.java
+│       │   │                           ├── HealthCheckRequest.java
+│       │   │                           ├── HealthCheckResponse.java
+│       │   │                           ├── HealthCheckServiceImpl.java
+│       │   │                           ├── StatusCode.java
+│       │   │                           └── package-info.java
+│       │   └── resources
+│       │       └── wsdl
+│       │           └── WS-HealthCheck.wsdl
+│       └── test
+│           └── java
+│               └── gov
+│                   └── usda
+│                       └── gsa
+│                           └── nsfs
+│                               └── ws
+│                                   └── healthcheck
+│                                       ├── HealthCheckRequestTest.java
+│                                       ├── HealthCheckResponseFactory.java
+│                                       ├── HealthCheckResponseTest.java
+│                                       └── StatusCodeTest.java
+├── order-services
+│   ├── pom.xml
+│   └── src
+│       ├── main
+│       │   ├── java
+│       │   │   └── gov
+│       │   │       └── usda
+│       │   │           └── gsa
+│       │   │               └── nsfs
+│       │   │                   └── ws
+│       │   │                       └── orderservices
+│       │   │                           ├── common
+│       │   │                           │   ├── ConexusResponse.java
+│       │   │                           │   ├── ConexusResponseStatus.java
+│       │   │                           │   ├── LevelType.java
+│       │   │                           │   └── ResponseType.java
+│       │   │                           ├── focn
+│       │   │                           │   ├── FOCNConexusResponse.java
+│       │   │                           │   ├── FOCNPortType.java
+│       │   │                           │   ├── FOCNRequest.java
+│       │   │                           │   ├── FOCNService.java
+│       │   │                           │   ├── FOCNServiceClient.java
+│       │   │                           │   └── package-info.java
+│       │   │                           ├── so
+│       │   │                           │   ├── SOConexusResponse.java
+│       │   │                           │   ├── SOPortType.java
+│       │   │                           │   ├── SORequest.java
+│       │   │                           │   ├── SOService.java
+│       │   │                           │   ├── SOServiceClient.java
+│       │   │                           │   └── package-info.java
+│       │   │                           ├── soa
+│       │   │                           │   ├── SOAConexusResponse.java
+│       │   │                           │   ├── SOAPortType.java
+│       │   │                           │   ├── SOARequest.java
+│       │   │                           │   ├── SOAService.java
+│       │   │                           │   ├── SOAServiceClient.java
+│       │   │                           │   └── package-info.java
+│       │   │                           ├── soac
+│       │   │                           │   ├── SOACConexusResponse.java
+│       │   │                           │   ├── SOACPortType.java
+│       │   │                           │   ├── SOACRequest.java
+│       │   │                           │   ├── SOACService.java
+│       │   │                           │   ├── SOACServiceClient.java
+│       │   │                           │   └── package-info.java
+│       │   │                           ├── soc
+│       │   │                           │   ├── SOCConexusResponse.java
+│       │   │                           │   ├── SOCPortType.java
+│       │   │                           │   ├── SOCRequest.java
+│       │   │                           │   ├── SOCService.java
+│       │   │                           │   ├── SOCServiceClient.java
+│       │   │                           │   └── package-info.java
+│       │   │                           ├── socn
+│       │   │                           │   ├── SOCNConexusResponse.java
+│       │   │                           │   ├── SOCNPortType.java
+│       │   │                           │   ├── SOCNRequest.java
+│       │   │                           │   ├── SOCNService.java
+│       │   │                           │   ├── SOCNServiceClient.java
+│       │   │                           │   └── package-info.java
+│       │   │                           ├── sorn
+│       │   │                           │   ├── SORNConexusResponse.java
+│       │   │                           │   ├── SORNPortType.java
+│       │   │                           │   ├── SORNRequest.java
+│       │   │                           │   ├── SORNService.java
+│       │   │                           │   ├── SORNServiceClient.java
+│       │   │                           │   └── package-info.java
+│       │   │                           └── sscn
+│       │   │                               ├── SSCNConexusResponse.java
+│       │   │                               ├── SSCNPortType.java
+│       │   │                               ├── SSCNRequest.java
+│       │   │                               ├── SSCNService.java
+│       │   │                               ├── SSCNServiceClient.java
+│       │   │                               └── package-info.java
+│       │   └── resources
+│       │       ├── bindings
+│       │       │   └── jaxb-bindings.xml
+│       │       └── wsdl
+│       │           ├── FOCN.wsdl
+│       │           ├── SO.wsdl
+│       │           ├── SOA.wsdl
+│       │           ├── SOAC.wsdl
+│       │           ├── SOC.wsdl
+│       │           ├── SOCN.wsdl
+│       │           ├── SORN.wsdl
+│       │           ├── SSCN.wsdl
+│       │           └── SplitSO.wsdl
+│       └── test
+│           └── java
+│               └── gov
+│                   └── usda
+│                       └── gsa
+│                           └── nsfs
+│                               └── ws
+│                                   └── orderservices
+│                                       ├── RequestTestBase.java
+│                                       ├── common
+│                                       │   ├── ConexusResponseStatusTest.java
+│                                       │   ├── ConexusResponseTestBase.java
+│                                       │   └── TestBase.java
+│                                       ├── focn
+│                                       │   ├── FOCNConexusResponseTest.java
+│                                       │   ├── FOCNRequestFactory.java
+│                                       │   └── FOCNRequestTest.java
+│                                       ├── so
+│                                       │   ├── SOConexusResponseTest.java
+│                                       │   ├── SORequestFactory.java
+│                                       │   └── SORequestTest.java
+│                                       ├── soa
+│                                       │   ├── SOAConexusResponseTest.java
+│                                       │   ├── SOARequestFactory.java
+│                                       │   └── SOARequestTest.java
+│                                       ├── soac
+│                                       │   ├── SOACConexusResponseTest.java
+│                                       │   ├── SOACRequestFactory.java
+│                                       │   └── SOACRequestTest.java
+│                                       ├── soc
+│                                       │   ├── SOCConexusResponseTest.java
+│                                       │   ├── SOCRequestFactory.java
+│                                       │   └── SOCRequestTest.java
+│                                       ├── socn
+│                                       │   ├── SOCNConexusResponseTest.java
+│                                       │   ├── SOCNRequestFactory.java
+│                                       │   └── SOCNRequestTest.java
+│                                       ├── sorn
+│                                       │   ├── SORNConexusResponseTest.java
+│                                       │   ├── SORNRequestFactory.java
+│                                       │   └── SORNRequestTest.java
+│                                       └── sscn
+│                                           ├── SSCNConexusResponseTest.java
+│                                           ├── SSCNRequestFactory.java
+│                                           └── SSCNRequestTest.java
+└── pom.xml
 
-        if [ ${bamboo.buildFailed} == "true" ]; then
-          echo "Build failed"
-          # Delete the release branch
-          git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-          git pull
-          release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
-          echo "Deleting $release_branch"
-          git push origin --delete $release_branch
-          exit 1
-        fi
-      description: Delete release branch if previous stages failed
-  artifact-subscriptions: []
-repositories:
-- WS-Client:
-    scope: global
-triggers: []
-branches:
-  create: manually
-  delete: never
-  link-to-jira: true
-notifications: []
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: []
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
-  force-stop-build: true
----
-version: 2
-plan:
-  key: SR-WSCLSR
-plan-permissions:
-- users:
-  - jeff.sikala
-  groups:
-  - bamboo-admin
-  permissions:
-  - view
-  - edit
-  - build
-  - clone
-  - admin
-  - view-configuration
-  - create-plan-branch
-...
+84 directories, 126 files
