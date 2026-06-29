@@ -1,66 +1,82 @@
-[sikaj01@ip-10-56-112-33 ws-client]$ git pull
-remote: Enumerating objects: 17, done.
-remote: Counting objects: 100% (17/17), done.
-remote: Compressing objects: 100% (9/9), done.
-remote: Total 9 (delta 4), reused 0 (delta 0), pack-reused 0 (from 0)
-Unpacking objects: 100% (9/9), 844 bytes | 2.00 KiB/s, done.
-From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws-client
-   4ded1fd58..ebf5957ef  develop    -> origin/develop
-hint: You have divergent branches and need to specify how to reconcile them.
-hint: You can do so by running one of the following commands sometime before
-hint: your next pull:
-hint:
-hint:   git config pull.rebase false  # merge
-hint:   git config pull.rebase true   # rebase
-hint:   git config pull.ff only       # fast-forward only
-hint:
-hint: You can replace "git config" with "git config --global" to set a default
-hint: preference for all repositories. You can also pass --rebase, --no-rebase,
-hint: or --ff-only on the command line to override the configured default per
-hint: invocation.
-fatal: Need to specify how to reconcile divergent branches.
-[sikaj01@ip-10-56-112-33 ws-client]$ git status
-On branch develop
-Your branch and 'origin/develop' have diverged,
-and have 2 and 16 different commits each, respectively.
-  (use "git pull" if you want to integrate the remote branch with yours)
+[sikaj01@ip-10-56-112-33 ws-client]$ cat pom.xml 
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>gov.gsa.cnxs.bom</groupId>
+        <artifactId>env</artifactId>
+        <version>02.00.000.172-SNAPSHOT</version>
+        <relativePath />
+    </parent>
 
-nothing to commit, working tree clean
-[sikaj01@ip-10-56-112-33 ws-client]$ git pull --no-rebase
-Auto-merging common/pom.xml
-CONFLICT (content): Merge conflict in common/pom.xml
-Auto-merging health-check/pom.xml
-CONFLICT (content): Merge conflict in health-check/pom.xml
-Auto-merging order-services/pom.xml
-CONFLICT (content): Merge conflict in order-services/pom.xml
-Auto-merging pom.xml
-CONFLICT (content): Merge conflict in pom.xml
-Automatic merge failed; fix conflicts and then commit the result.
-[sikaj01@ip-10-56-112-33 ws-client]$ git pull
-error: Pulling is not possible because you have unmerged files.
-hint: Fix them up in the work tree, and then use 'git add/rm <file>'
-hint: as appropriate to mark resolution and make a commit.
-fatal: Exiting because of an unresolved conflict.
-[sikaj01@ip-10-56-112-33 ws-client]$ git status
-On branch develop
-Your branch and 'origin/develop' have diverged,
-and have 2 and 16 different commits each, respectively.
-  (use "git pull" if you want to integrate the remote branch with yours)
+    <groupId>gov.gsa.cnxs.ws-client</groupId>
+    <artifactId>ws-client-aggregator</artifactId>
+    <version>02.00.000.153-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Conexus Web Services Client</name>
+    <description>Parent POM for the Web Services Client Project</description>
 
-You have unmerged paths.
-  (fix conflicts and run "git commit")
-  (use "git merge --abort" to abort the merge)
+    <modules>
+        <module>common</module>
+        <module>order-services</module>
+        <module>health-check</module>
+    </modules>
 
-Unmerged paths:
-  (use "git add <file>..." to mark resolution)
-        both modified:   common/pom.xml
-        both modified:   health-check/pom.xml
-        both modified:   order-services/pom.xml
-        both modified:   pom.xml
+    <properties>
+        <version.conexus-common>02.00.000.165-SNAPSHOT</version.conexus-common>
+    </properties>
 
-no changes added to commit (use "git add" and/or "git commit -a")
-[sikaj01@ip-10-56-112-33 ws-client]$ git pull --no-rebase
-error: Pulling is not possible because you have unmerged files.
-hint: Fix them up in the work tree, and then use 'git add/rm <file>'
-hint: as appropriate to mark resolution and make a commit.
-fatal: Exiting because of an unresolved conflict.
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>gov.gsa.cnxs.common</groupId>
+                <artifactId>common-utils</artifactId>
+                <version>${version.conexus-common}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <!-- profile for generating java stubs from WSDL : http://cxf.apache.org/docs/maven-cxf-codegen-plugin-wsdl-to-java.html -->
+            <id>wsdl2java</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.cxf</groupId>
+                        <artifactId>cxf-codegen-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>generate-sources</id>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <sourceRoot>${project.build.directory}/generated/ws/${serviceName}</sourceRoot>
+                                    <disableDirectoryScan>true</disableDirectoryScan>
+                                    <wsdlOptions>
+                                        <wsdlOption>
+                                            <bindingFiles>
+                                                <bindingFile>${basedir}/../order-services/src/main/resources/bindings/jaxb-bindings.xml</bindingFile>
+                                            </bindingFiles>
+                                            <wsdl>${basedir}/src/main/resources/wsdl/${serviceName}.wsdl</wsdl>
+                                            <extraargs>
+                                                <extraarg>-validate</extraarg> <!--  validate the wsdl -->
+                                                <extraarg>-impl</extraarg> <!--  Gen starting point code for impl object -->
+                                                <extraarg>-verbose</extraarg> <!-- display comments during codegen process -->
+                                                <extraarg>-mark-generated</extraarg> <!-- Add the @Generated annotation to indicate that the artifact was generated from a tool -->
+                                            </extraargs>
+                                        </wsdlOption>
+                                    </wsdlOptions>
+                                </configuration>
+                                <goals>
+                                    <goal>wsdl2java</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
