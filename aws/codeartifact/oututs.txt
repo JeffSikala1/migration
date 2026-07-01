@@ -1,147 +1,27 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo mkdir -p /app/datadog_backup_scripts/secrets
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ echo "api key" | sudo tee /app/datadog_backup_scripts/secrets/backup-apikey.txt
-api key
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ echo "app key" | sudo tee /app/datadog_backup_scripts/secrets/backup-appkey.txt
-app key
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cat /app/datadog_backup_scripts/secrets/backup-appkey.txt
-cat: /app/datadog_backup_scripts/secrets/backup-appkey.txt: Permission denied
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo !!
-sudo cat /app/datadog_backup_scripts/secrets/backup-appkey.txt
-app key
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo chmod 600 /app/datadog_backup_scripts/secrets/backup-apikey.txt
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo chmod 600 /app/datadog_backup_scripts/secrets/backup-appkey.txt
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo chmod 700 /app/datadog_backup_scripts/secrets/
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ ls -la /app/datadog_backup_scripts/secrets/
-ls: cannot access '/app/datadog_backup_scripts/secrets/': Permission denied
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo ls -la /app/datadog_backup_scripts/secrets/
-total 8
-drwx------. 2 root root 56 Jun 30 20:36 .
-drwxr-x---. 3 root root 21 Jun 30 20:36 ..
--rw-------. 1 root root 33 Jun 30 20:36 backup-apikey.txt
--rw-------. 1 root root 41 Jun 30 20:36 backup-appkey.txt
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo mkdir -p /app/datadog_backup_scripts
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo chmod 750 /app/datadog_backup_scripts/datadog_backup.py
-chmod: cannot access '/app/datadog_backup_scripts/datadog_backup.py': No such file or directory
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo vim /app/datadog_backup_scripts/datadog_backup.py
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo cat /app/datadog_backup_scripts/datadog_backup.py
-#!/usr/bin/env python3
-"""
 
-Exports Datadog configuration objects (dashboards, monitors, SLOs,
-synthetic tests, notebooks) and uploads them as timestamped JSON to
-S3 for backup/recovery purposes.
+JeffSSikala@FCOH2W-BGBV614 MINGW64 ~
+$ curl -v 'https://gw.apie.gsa.gov/prod/conexus/outbound/att/so/ext/' -H "Content-Type: text/xml;charset=utf-8" -H "SOAPAction: http://www.usda.gov/gsa/nsfs/ws/OrderServices/SO/sendSO" -d @testsopayload3.xml -X POST -H 'ApiKey: '
+curl: Failed to open testsopayload3.xml
+curl: option -d: error encountered when reading a file
+curl: try 'curl --help' or 'curl --manual' for more information
 
-Usage:
-    python3 datadog_backup.py
+JeffSSikala@FCOH2W-BGBV614 MINGW64 ~
+$ openssl s_client -connect gw.staging.apie.gsa.gov:443 -servername gw.staging.apie.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -dates
+notBefore=Jun  4 00:00:00 2026 GMT
+notAfter=Dec 18 23:59:59 2026 GMT
 
-Expects secrets at:
-    /app/datadog_backup_scripts/secrets/backup-apikey.txt
-    /app/datadog_backup_scripts/secrets/backup-appkey.txt
-"""
+JeffSSikala@FCOH2W-BGBV614 MINGW64 ~
+$ openssl s_client -connect gw.staging.apie.gsa.gov:443 -servername gw.staging.apie.gsa.gov </dev/null 2>/dev/null | openssl x509 -noout -dates
+notBefore=Jun  4 00:00:00 2026 GMT
+notAfter=Dec 18 23:59:59 2026 GMT
 
-import json
-import sys
-from datetime import datetime, timezone
+JeffSSikala@FCOH2W-BGBV614 MINGW64 ~
+$ openssl pkcs12 -in ATT_GSA_cone...env.p12 -nocerts -clcerts -nodes 2>/dev/null | openssl x509 -noout -enddate
+Could not find certificate from <stdin>
 
-import boto3
-import requests
-
-DD_SITE = "ddog-gov.com"
-DD_API_BASE = f"https://api.{DD_SITE}"
-
-S3_BUCKET = "cnxs-datadog-backups"
-SECRETS_DIR = "/app/datadog_backup_scripts/secrets"
-
-# (resource name, API path, response key holding the list of items)
-RESOURCES = [
-    ("dashboards", "/api/v1/dashboard", "dashboards"),
-    ("monitors", "/api/v1/monitor", None),  # returns a bare list
-    ("slos", "/api/v1/slo", "data"),
-    ("synthetics", "/api/v1/synthetics/tests", "tests"),
-    ("notebooks", "/api/v1/notebooks", "data"),
-]
+JeffSSikala@FCOH2W-BGBV614 MINGW64 ~
+$
 
 
-def load_keys():
-    try:
-        with open(f"{SECRETS_DIR}/backup-apikey.txt") as f:
-            api_key = f.read().strip()
-        with open(f"{SECRETS_DIR}/backup-appkey.txt") as f:
-            app_key = f.read().strip()
-    except FileNotFoundError as e:
-        print(f"ERROR: missing key file - {e}", file=sys.stderr)
-        sys.exit(1)
-    return api_key, app_key
 
 
-def dd_headers(api_key, app_key):
-    return {
-        "DD-API-KEY": api_key,
-        "DD-APPLICATION-KEY": app_key,
-        "Content-Type": "application/json",
-    }
-
-
-def fetch_list(path, headers):
-    resp = requests.get(f"{DD_API_BASE}{path}", headers=headers, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
-
-
-def run_backup(s3_client, timestamp):
-    print("starting Datadog config backup")
-    api_key, app_key = load_keys()
-    headers = dd_headers(api_key, app_key)
-
-    for resource_name, path, list_key in RESOURCES:
-        try:
-            data = fetch_list(path, headers)
-        except requests.exceptions.RequestException as e:
-            print(f"WARN: failed to fetch {resource_name}: {e}", file=sys.stderr)
-            continue
-
-        items = data if list_key is None else data.get(list_key, [])
-        s3_key = f"{resource_name}/{resource_name}-{timestamp}.json"
-
-        s3_client.put_object(
-            Bucket=S3_BUCKET,
-            Key=s3_key,
-            Body=json.dumps(items, indent=2).encode("utf-8"),
-            ContentType="application/json",
-        )
-        print(f"{resource_name}: {len(items)} items -> s3://{S3_BUCKET}/{s3_key}")
-
-    print("backup complete")
-
-
-def main():
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    s3_client = boto3.client("s3")
-    run_backup(s3_client, timestamp)
-
-
-if __name__ == "__main__":
-    main()
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo su -
-Last login: Tue Jun 30 15:42:12 UTC 2026 on pts/1
-[root@ip-10-56-112-33 ~]# python3 /app/datadog_backup_scripts/datadog_backup.py 
-starting Datadog config backup
-dashboards: 58 items -> s3://cnxs-datadog-backups/dashboards/dashboards-20260630T204049Z.json
-monitors: 117 items -> s3://cnxs-datadog-backups/monitors/monitors-20260630T204049Z.json
-slos: 20 items -> s3://cnxs-datadog-backups/slos/slos-20260630T204049Z.json
-synthetics: 30 items -> s3://cnxs-datadog-backups/synthetics/synthetics-20260630T204049Z.json
-notebooks: 6 items -> s3://cnxs-datadog-backups/notebooks/notebooks-20260630T204049Z.json
-backup complete
-[root@ip-10-56-112-33 ~]# crontab -e
-crontab: installing new crontab
-[root@ip-10-56-112-33 ~]# crontab -l
-0 5 * * * /usr/sbin/aide --check
-0 8 * * * su - pgollt01 bash -c 'source /home/pgollt01/.bashrc; bash /home/pgollt01/scripts/DAILY_jq_extract_test.sh' 2>&1
-
-# Vendor Certificate Expiration Checks
-0 6 * * * /usr/bin/python3 /app/certificates_exp_checking_scripts/check_vendor_certificates_15-days_notice.py && /usr/bin/python3 /app/certificates_exp_checking_scripts/send_vendor_15-day_cert_expiration_list.py
-5 6 * * * /usr/bin/python3 /app/certificates_exp_checking_scripts/check_vendor_certificates_90-60-30-days_notice.py && /usr/bin/python3 /app/certificates_exp_checking_scripts/send_vendor_90-60-30-day_cert_expiration_list.py
-0 8 1 * * /usr/bin/python3 /app/certificates_exp_checking_scripts/send_monthly_ordered_vendor_cert_expiration_list.py
-
-# Datadog Dashboards and Data Backup
-0 2 * * * /usr/bin/python3 /app/datadog_backup_scripts/datadog_backup.py >> /var/log/datadog_backup.log 2>&1
