@@ -1927,3 +1927,46 @@ d81e4102f500   prod-net   bridge    local
         "Labels": {}
     }
 ]
+
+# NGINX
+docker run -d \
+  --name nginx \
+  --network vpcaas-net \
+  --network-alias nginx \
+  --network-alias bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  --network-alias bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -p 80:80 -p 443:443 \
+  -v nginxVolume:/etc/nginx \
+  --restart unless-stopped \
+  nginx:1.26-alpine
+
+
+# Bitbucket
+docker run -d \
+  --name ctnx-mgrt-bitbucket \
+  --network vpcaas-net \
+  --network-alias bitbucket \
+  --hostname bitbucket \
+  -e ATL_PROXY_NAME=bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e ATL_TOMCAT_SCHEME=https \
+  -p 7990:7990 -p 7999:7999 \
+  --mount source=bitbucketVolume,target=/var/atlassian/application-data/bitbucket \
+  --restart unless-stopped \
+  atlassian/bitbucket:10.2.5
+
+
+
+# Bamboo
+docker run -d \
+  --name prod-bamboo \
+  --network prod-net \
+  --network-alias bamboo \
+  --hostname bamboo \
+  -e ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e ATL_TOMCAT_SCHEME=https \
+  -p 8085:8085 -p 8443:8443 \
+  --mount source=bambooVolume,target=/var/atlassian/application-data/bamboo \
+  --restart unless-stopped \
+  atlassian/bamboo:10.2.11
