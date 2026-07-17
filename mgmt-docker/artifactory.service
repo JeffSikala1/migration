@@ -1,0 +1,30 @@
+# Install to /etc/systemd/system/artifactory.service on ip-10-56-112-243
+#   sudo mkdir -p /app/artifactory-startup
+#   sudo cp start-artifactory.sh lib-common.sh /app/artifactory-startup/
+#   sudo chmod +x /app/artifactory-startup/start-artifactory.sh
+#   sudo cp artifactory.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable artifactory.service
+#
+# `systemctl restart artifactory.service` only re-runs start-artifactory.sh, it does
+# NOT touch bamboo.service or bitbucket.service, and does not restart prod-postgres if it's
+# already running.
+
+[Unit]
+Description=Artifactory startup (postgres + artifactory + nginx)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+# If /app on this host is confirmed to be its own mount (see TODO in
+# start-artifactory.sh), add "app.mount" to the After= line above, same as
+# the other host's units.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/app/artifactory-startup
+ExecStart=/app/artifactory-startup/start-artifactory.sh
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

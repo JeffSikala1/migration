@@ -1,0 +1,28 @@
+# Install to /etc/systemd/system/bitbucket.service on ip-10-56-112-34
+#   sudo cp start-bitbucket.sh lib-common.sh /app/atlassian-startup/
+#   sudo chmod +x /app/atlassian-startup/start-bitbucket.sh
+#   sudo cp bitbucket.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable bitbucket.service
+#
+# `systemctl restart bitbucket.service` only re-runs start-bitbucket.sh -
+# it does NOT touch bamboo.service, and does not restart prod-postgres if
+# it's already running.
+
+[Unit]
+Description=Bitbucket startup (postgres + bitbucket + nginx)
+Requires=docker.service
+After=docker.service network-online.target app.mount
+Wants=network-online.target
+# Confirm "app.mount" matches this host's actual mount unit name:
+#   systemctl list-units -t mount | grep app
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/app/atlassian-startup
+ExecStart=/app/atlassian-startup/start-bitbucket.sh
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target
