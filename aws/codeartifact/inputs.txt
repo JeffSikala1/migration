@@ -1,2 +1,16 @@
-aws route53 list-resource-record-sets --hosted-zone-id <public-zone-id> \
-  --query "ResourceRecordSets[?Name=='_acme-challenge.mgmt.cnxs.vpcaas.fcs.gsa.gov.']"
+# from .33
+scp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem sikaj01@10.56.112.34:/tmp/mgmt_wildcard.pem
+scp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem   sikaj01@10.56.112.34:/tmp/privatekey.key
+
+
+
+# on .34
+sudo cp /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem.bak-$(date +%F)
+sudo cp /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key    /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key.bak-$(date +%F)
+
+sudo cp /tmp/mgmt_wildcard.pem /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
+sudo cp /tmp/privatekey.key    /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key
+
+sudo openssl x509 -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -dates
+
+docker exec nginx nginx -t && docker exec -it nginx nginx -s reload
