@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 LOG_TAG="${LOG_TAG:-atlassian-startup}"
 
 log() {
