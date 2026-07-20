@@ -1,6 +1,71 @@
-sudo mkdir -p /usr/local/lib/docker/cli-plugins
-sudo curl -sL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" \
-  -o /usr/local/lib/docker/cli-plugins/docker-compose
-sudo chown root:root /usr/local/lib/docker/cli-plugins/docker-compose
-sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-docker compose version
+sudo certbot certificates
+sudo cat /etc/letrypt... 
+sudo ls -la /etc/letsencrypt/renewal/
+sudo cat /etc/letsencrypt/renewal/<your-domain>.conf
+
+
+sudo certbot renew --cert-name <your-domain> --webroot -w /path/to/webroot
+
+
+
+sudo systemctl stop nginx   # only if nginx runs on .33 itself
+sudo certbot renew --cert-name <your-domain>
+sudo systemctl start nginx
+
+
+
+sudo certbot renew --cert-name <your-domain>
+
+
+sudo certbot renew --cert-name <your-domain> --force-renewal
+
+
+
+sudo certbot certificates
+openssl x509 -enddate -noout -in /etc/letsencrypt/live/<your-domain>/fullchain.pem
+
+
+
+
+sudo scp /etc/letsencrypt/live/<your-domain>/fullchain.pem user@10.x.x.34:/tmp/
+sudo scp /etc/letsencrypt/live/<your-domain>/privkey.pem   user@10.x.x.34:/tmp/
+
+
+sudo mv /tmp/fullchain.pem /etc/nginx/ssl/<your-domain>/fullchain.pem
+sudo mv /tmp/privkey.pem   /etc/nginx/ssl/<your-domain>/privkey.pem
+sudo chown root:root /etc/nginx/ssl/<your-domain>/*.pem
+sudo chmod 600 /etc/nginx/ssl/<your-domain>/privkey.pem
+sudo nginx -t && sudo systemctl reload nginx
+
+
+
+ps aux | grep bamboo-agent   # confirm the running JVM
+sudo find / -name "*.jks" -o -name "cacerts" 2>/dev/null | grep -i bamboo
+
+
+
+
+scp /etc/letsencrypt/live/<your-domain>/fullchain.pem user@10.x.x.35:/tmp/
+
+
+
+
+
+# on .35
+openssl pkcs12 -export -in /tmp/fullchain.pem -inkey /tmp/privkey.pem \
+  -out /tmp/cert.p12 -name bamboo-agent -password pass:changeit
+
+sudo keytool -importkeystore \
+  -deststorepass changeit -destkeypass changeit -destkeystore /path/to/agent-keystore.jks \
+  -srckeystore /tmp/cert.p12 -srcstoretype PKCS12 -srcstorepass changeit \
+  -alias bamboo-agent
+
+sudo systemctl restart bamboo-agent   # or whatever your service/init name is
+
+
+
+
+
+
+curl -vI https://<your-domain>/          # check cert dates from client side
+sudo systemctl status bamboo-agent       # confirm agent came back healthy and reconnected
