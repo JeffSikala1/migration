@@ -1,15 +1,21 @@
-# from .33
-scp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem sikaj01@10.56.112.34:/tmp/mgmt_wildcard.pem
-scp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem   sikaj01@10.56.112.34:/tmp/privatekey.key
+# on .33, as sikaj01 (with sudo)
+sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem /tmp/mgmt_wildcard.pem
+sudo cp /etc/letsencrypt/live/mgmt.cnxs.vpcaas.fcs.gsa.gov/privkey.pem   /tmp/privatekey.key
+sudo chown sikaj01:sikaj01 /tmp/mgmt_wildcard.pem /tmp/privatekey.key
+
+scp -i ~/.ssh/id_rsa /tmp/mgmt_wildcard.pem sikaj01@10.56.112.34:/tmp/mgmt_wildcard.pem
+scp -i ~/.ssh/id_rsa /tmp/privatekey.key    sikaj01@10.56.112.34:/tmp/privatekey.key
+
+# cleanup — /tmp/privatekey.key on .33 now holds your private key in plaintext, don't leave it lying around
+rm /tmp/mgmt_wildcard.pem /tmp/privatekey.key
 
 
 
-# on .34
 sudo cp /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem.bak-$(date +%F)
 sudo cp /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key    /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key.bak-$(date +%F)
 
-sudo cp /tmp/mgmt_wildcard.pem /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
-sudo cp /tmp/privatekey.key    /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key
+sudo mv /tmp/mgmt_wildcard.pem /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
+sudo mv /tmp/privatekey.key    /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key
 
 sudo openssl x509 -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -dates
 
