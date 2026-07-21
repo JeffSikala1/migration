@@ -1,39 +1,47 @@
-[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ sudo !!
-sudo crontab -l
-0 5 * * * /usr/sbin/aide --check
-0 8 * * * su - pgollt01 bash -c 'source /home/pgollt01/.bashrc; bash /home/pgollt01/scripts/DAILY_jq_extract_test.sh' 2>&1
+[root@ip-10-56-112-243 jfrog]# find /app/jfrog -iname "binarystore.xml" 2>/dev/null
+/app/jfrog/artifactory/var/etc/artifactory/binarystore.xml
+[root@ip-10-56-112-243 jfrog]# cat /app/jfrog/artifactory/var/etc/artifactory/binarystore.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Artifactory is a binaries repository manager.
+  ~ Copyright (C) 2019 JFrog Ltd.
+  ~
+  ~ Artifactory is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU Affero General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ Artifactory is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU Affero General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Affero General Public License
+  ~ along with Artifactory.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+<!--
+    This file configures Artifactory's binary provider
+-->
 
-# Vendor Certificate Expiration Checks
-0 6 * * * /usr/bin/python3 /app/certificates_exp_checking_scripts/check_vendor_certificates_15-days_notice.py && /usr/bin/python3 /app/certificates_exp_checking_scripts/send_vendor_15-day_cert_expiration_list.py
-5 6 * * * /usr/bin/python3 /app/certificates_exp_checking_scripts/check_vendor_certificates_90-60-30-days_notice.py && /usr/bin/python3 /app/certificates_exp_checking_scripts/send_vendor_90-60-30-day_cert_expiration_list.py
-0 8 1 * * /usr/bin/python3 /app/certificates_exp_checking_scripts/send_monthly_ordered_vendor_cert_expiration_list.py
+<!--
+  ~ TAKE CARE! Making changes to this file may result in losing binaries stored in Artifactory!
+  ~ If you are not sure of what you are doing, please contact JFrog Support for assistance.
+  -->
 
-# Datadog Dashboards and Data Backup
-0 2 * * * /usr/bin/python3 /app/datadog_backup_scripts/datadog_backup.py >> /var/log/datadog_backup.log 2>&1
-[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ sudo su -
-Last login: Mon Jul 20 15:00:39 UTC 2026 on pts/7
-[root@ip-10-56-112-33 ~]# ll
-total 362952
--rw-r-----. 1 root root         0 Apr 27 22:12 2026-04-26-to-2026-04-27_webservice_xml_1.txt
--rw-r-----. 1 root root     21473 Jun 23 16:39 backuph
--rw-r-----. 1 root root 121800877 Oct 20  2025 code-server-4.105.1-amd64.rpm
--rwxr-x---. 1 root root       319 Apr  1  2025 ec2users.sh
--rw-r-----. 1 root root       401 Apr  1  2025 fitzk01.pub
--rwx------. 1 root root     11903 Jan 28  2025 get_helm.sh
--rw-r-----. 1 root root     35822 Oct  8  2025 hist.txt
--rw-r-----. 1 root root      1814 Mar  3  2025 mgmt_wildcard.pem.20250303
--rw-r-----. 1 root root  92342055 Mar 24  2025 nginxlog.txt
--rw-r-----. 1 root root         0 Sep 22  2025 rsync.err
-drwxr-x---. 2 root root     16384 Jun 17 13:58 selinux_backup
--rw-r-----. 1 root root      1599 Jun 29 15:23 temp.pem
--rwxr-x--x. 1 root root 157403432 Mar 10 16:48 twistcli
--rw-r-----. 1 root root        27 Apr 27 22:12 xml_logs_json.json_1
-[root@ip-10-56-112-33 ~]# pwd
-/root
-[root@ip-10-56-112-33 ~]# cd /home/sikaj01/certificates_exp_checking_scripts/
-[root@ip-10-56-112-33 certificates_exp_checking_scripts]# cp certificates/SERVERCERTS.csv /app/certificates_exp_checking_scripts/certificates/
-cp: overwrite '/app/certificates_exp_checking_scripts/certificates/SERVERCERTS.csv'? y 
-[root@ip-10-56-112-33 certificates_exp_checking_scripts]# cat /app/certificates_exp_checking_scripts/certificates/SERVERCERTS.csv 
-Service Account Name,ShortPersonGUID (same as CN),Certificate Expiration
-gsansfs0050.edc.ds1.usda.gov, conexus.gsa.gov,01/04/2027
-mgmt.cnxs.vpcaas.fcs.gsa.gov,ATLASSIAN_MGMT_WILDCARD,10/18/2026[root@ip-10-56-112-33 certificates_exp_checking_scripts]# 
+<config version="2">
+    <chain template="s3-storage-v3-direct"/>
+    <provider id="s3-storage-v3" type="s3-storage-v3">
+        <bucketName>conexus-artifactory-filestore</bucketName>
+        <path>artifactory-prod-filestore</path>
+        <region>us-east-1</region>
+        <useInstanceCredentials>true</useInstanceCredentials>
+        <testConnection>true</testConnection>
+    </provider>
+</config>
+
+
+[root@ip-10-56-112-243 jfrog]# find /app/jfrog -type d -iname "cache"
+/app/jfrog/artifactory/var/data/artifactory/cache
+[root@ip-10-56-112-243 jfrog]# du -sh /app/jfrog/artifactory/var/data/artifactory/cache
+4.7G    /app/jfrog/artifactory/var/data/artifactory/cache
+[root@ip-10-56-112-243 jfrog]# 
