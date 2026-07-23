@@ -1,8 +1,8 @@
 version: 2
 plan:
   project-key: SR
-  key: ISR
-  name: Iconnectiv - Start Release
+  key: ESR
+  name: (02) Env - Start Release
 stages:
 - Default Stage:
     manual: false
@@ -19,6 +19,11 @@ stages:
     final: false
     jobs:
     - Snapshot Maven Deploy
+- Check build plan result:
+    manual: false
+    final: true
+    jobs:
+    - Delete release branch if failed
 Gitflow release start:
   key: JOB1
   tasks:
@@ -34,14 +39,13 @@ Gitflow release start:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        mkdir -p ~/.ssh
-        cp /opt/bamboo-keys/bitbucket_ci_jgit ~/.ssh/id_rsa
+        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 600 ~/.ssh
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
         echo "Host *" > ~/.ssh/config
         echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
       description: Install SSH key
   - any-task:
       plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
@@ -85,7 +89,7 @@ Gitflow release start:
       description: Delete Release Branch
   - maven:
       executable: Maven 3
-      jdk: JDK 17
+      jdk: JDK 21
       goal: -U -B external.atlassian.jgitflow:jgitflow-maven-plugin:release-start -DpushReleases=true -DallowSnapshots=true -DenableSshAgent=true -DdefaultOriginUrl=${bamboo.planRepository.repositoryUrl} -s /usr/share/maven/conf/settings-release.xml
       environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
       description: GitFlow Release Start
@@ -121,14 +125,13 @@ Deploy RC:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        mkdir -p ~/.ssh
-        cp /opt/bamboo-keys/bitbucket_ci_jgit ~/.ssh/id_rsa
+        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 600 ~/.ssh
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
         echo "Host *" > ~/.ssh/config
         echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
       description: Obtain SSH Key
   - script:
       interpreter: SHELL
@@ -155,7 +158,7 @@ Deploy RC:
       description: Checkout release branch
   - maven:
       executable: Maven 3
-      jdk: JDK 17
+      jdk: JDK 21
       goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
       environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
       description: Deploy RC to RC repo
@@ -163,6 +166,7 @@ Deploy RC:
 Snapshot Maven Deploy:
   key: SMD
   tasks:
+  - clean
   - checkout:
       force-clean-build: true
   - script:
@@ -173,14 +177,13 @@ Snapshot Maven Deploy:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        mkdir -p ~/.ssh
-        cp /opt/bamboo-keys/bitbucket_ci_jgit ~/.ssh/id_rsa
+        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 600 ~/.ssh
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
         echo "Host *" > ~/.ssh/config
         echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
       description: Obtain SSH Key
   - script:
       interpreter: SHELL
@@ -191,18 +194,45 @@ Snapshot Maven Deploy:
         git remote set-url origin ${bamboo.planRepository.repositoryUrl}
         git pull origin develop
         git fetch
+        git checkout develop
       environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
       description: Pull Latest Develop branch
   - maven:
       executable: Maven 3
-      jdk: JDK 17
+      jdk: JDK 21
       goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
       description: Maven Deploy to Artifactory
+  artifact-subscriptions: []
+Delete release branch if failed:
+  key: DRBIF
+  tasks:
+  - checkout:
+      force-clean-build: true
+      description: Checkout Default Repository
+  - any-task:
+      plugin-key: com.atlassian.bamboo.plugins.bamboo-variable-inject-plugin:dump
+      configuration: {}
+  - script:
+      interpreter: SHELL
+      scripts:
+      - |-
+        #!/usr/bin/env bash
+
+        if [ ${bamboo.buildFailed} == "true" ]; then
+          echo "Build failed"
+          # Delete the release branch
+          git remote set-url origin ${bamboo.planRepository.repositoryUrl}
+          git pull
+          release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
+          echo "Deleting $release_branch"
+          git push origin --delete $release_branch
+          exit 1
+        fi
+      description: Delete release branch if previous stages failed
   artifact-subscriptions: []
 variables: {}
 repositories:
-- iconectiv:
+- Env:
       scope: global
 triggers: []
 branches:
