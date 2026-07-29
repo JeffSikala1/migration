@@ -1,4 +1,50 @@
-sudo find /app/jfrog -iname "system.yaml"
+configVersion: 1
+
+shared:
+    security:
+    database:
+        type: postgresql
+        driver: org.postgresql.Driver
+        url: jdbc:postgresql://dev-postgres:5432/artifactory
+        username: artifactory
+        password: B/4$2Aamgrg69R,6
+router:
+    entrypoints:
+        externalPort: 8082
+
+
+
+docker stop dev-artifactory
+docker rm dev-artifactory
+sudo ls -la /app/jfrog/
+
+
+
+sudo mkdir -p /app/jfrog/artifactory/var/etc
+
+sudo tee /app/jfrog/artifactory/var/etc/system.yaml > /dev/null << 'EOF'
+configVersion: 1
+
+shared:
+    security:
+    database:
+        type: postgresql
+        driver: org.postgresql.Driver
+        url: jdbc:postgresql://dev-postgres:5432/artifactory
+        username: artifactory
+        password: B/4$2Aamgrg69R,6
+router:
+    entrypoints:
+        externalPort: 8082
+EOF
+
 sudo cat /app/jfrog/artifactory/var/etc/system.yaml
 
+sudo docker run -d --name dev-artifactory \
+  --network dev-net \
+  -v /app/jfrog:/var/opt/jfrog/artifactory \
+  -p 8081:8081 -p 8082:8082 \
+  releases-docker.jfrog.io/jfrog/artifactory-oss:7.104.14
+
+sudo docker logs -f dev-artifactory
 
