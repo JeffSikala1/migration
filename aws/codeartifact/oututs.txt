@@ -1,16 +1,52 @@
-timed out waiting for input: auto-logout
-[sikaj01@ip-10-56-128-233 ~]$ docker stop dev-artifactory
-permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Post "http://%2Fvar%2Frun%2Fdocker.sock/v1.44/containers/dev-artifactory/stop": dial unix /var/run/docker.sock: connect: permission denied
-[sikaj01@ip-10-56-128-233 ~]$ sudo !!
-sudo docker stop dev-artifactory
+[sikaj01@ip-10-56-128-233 ~]$ sudo mkdir -p /app/jfrog/artifactory/var/etc
 [sudo] password for sikaj01: 
 Sorry, try again.
 [sudo] password for sikaj01: 
-dev-artifactory
-[sikaj01@ip-10-56-128-233 ~]$ sudo docker rm dev-artifactory
-dev-artifactory
-[sikaj01@ip-10-56-128-233 ~]$ sudo ls -alh /app/jfrog/
-total 0
-drwxr-xr-x. 2 root root  6 Jul 29 14:07 .
-drwxr-x---. 4 root root 35 Jul 29 14:08 ..
-[sikaj01@ip-10-56-128-233 ~]$ 
+Sorry, try again.
+[sudo] password for sikaj01: 
+sudo: 3 incorrect password attempts
+[sikaj01@ip-10-56-128-233 ~]$ sudo mkdir -p /app/jfrog/artifactory/var/etc
+[sudo] password for sikaj01: 
+[sikaj01@ip-10-56-128-233 ~]$ sudo tee /app/jfrog/artifactory/var/etc/system.yaml > /dev/null << 'EOF'
+configVersion: 1
+
+shared:
+    security:
+    database:
+        type: postgresql
+        driver: org.postgresql.Driver
+        url: jdbc:postgresql://dev-postgres:5432/artifactory
+        username: artifactory
+        password: B/4$2Aamgrg69R,6
+router:
+    entrypoints:
+        externalPort: 8082
+EOF
+[sikaj01@ip-10-56-128-233 ~]$ sudo cat /app/jfrog/artifactory/var/etc/system.yaml
+configVersion: 1
+
+shared:
+    security:
+    database:
+        type: postgresql
+        driver: org.postgresql.Driver
+        url: jdbc:postgresql://dev-postgres:5432/artifactory
+        username: artifactory
+        password: B/4$2Aamgrg69R,6
+router:
+    entrypoints:
+        externalPort: 8082
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker run -d --name dev-artifactory \
+  --network dev-net \
+  -v /app/jfrog:/var/opt/jfrog/artifactory \
+  -p 8081:8081 -p 8082:8082 \
+  releases-docker.jfrog.io/jfrog/artifactory-oss:7.104.14
+99b0a465b61bbdd9709fa163374972548bc81cad8fece6b801578d36a7f9e2b8
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker logs -f dev-artifactory
+Preparing to run Artifactory in Docker
+Running as uid=1030(artifactory) gid=1030(artifactory) groups=1030(artifactory)
+Dockerfile for this image can found inside the container.
+To view the Dockerfile: 'cat /docker/artifactory-oss/Dockerfile.artifactory'.
+Copying Artifactory bootstrap files
+mkdir: cannot create directory ‘/opt/jfrog/artifactory/var/work’: Permission denied
+[ERROR] Could not create dir for /opt/jfrog/artifactory/var/work/run/artifactory.pid
