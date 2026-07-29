@@ -1,46 +1,6 @@
-sudo docker stop dev-artifactory
-sudo docker rm dev-artifactory
-
-# Wipe clean — multiple failed init attempts have left Derby DBs and partial state we don't want
-sudo rm -rf /app/jfrog/*
-
-# Recreate just the correct config path this time: etc/system.yaml directly under the mount root
-sudo mkdir -p /app/jfrog/etc
-sudo tee /app/jfrog/etc/system.yaml > /dev/null << 'EOF'
-configVersion: 1
-
-shared:
-    security:
-    database:
-        type: postgresql
-        driver: org.postgresql.Driver
-        url: jdbc:postgresql://dev-postgres:5432/artifactory
-        username: artifactory
-        password: B/4$2Aamgrg69R,6
-router:
-    entrypoints:
-        externalPort: 8082
-EOF
-
-sudo chown -R 1030:1030 /app/jfrog
-sudo cat /app/jfrog/etc/system.yaml
+the var segment in /opt/jfrog/artifactory/var/... is a symlink to the mount root itself (/var/opt/jfrog/artifactory), not a subdirectory under it. So any config path referenced as .../var/etc/system.yaml inside the container actually lands at <mount-root>/etc/system.yaml on the host, not <mount-root>/var/etc/system.yaml.
 
 
 
-
-sudo docker run -d --name dev-artifactory \
-  --network dev-net \
-  -v /app/jfrog:/var/opt/jfrog/artifactory \
-  -p 8081:8081 -p 8082:8082 \
-  releases-docker.jfrog.io/jfrog/artifactory-oss:7.104.14
-
-
-
-
-sleep 5
-sudo docker exec dev-artifactory cat /opt/jfrog/artifactory/var/etc/system.yaml
-
-
-
-
-sudo docker logs -f dev-artifactory
+sudo docker ps
+curl -sI http://localhost:8081/artifactory/api/system/ping
