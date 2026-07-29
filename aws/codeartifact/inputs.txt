@@ -1,5 +1,35 @@
-sudo ls -la /app/jfrog
-sudo du -sh /app/jfrog/* 2>/dev/null
+sudo dnf install -y docker
+sudo systemctl enable --now docker
+sudo usermod -aG docker sikaj01
+sudo newgrp docker
 
 
 
+
+docker network create dev-net
+
+docker run -d --name dev-postgres \
+  --network dev-net \
+  -v /app/postgres:/var/lib/postgresql/data \
+  -e POSTGRES_DB=artifactory \
+  -e POSTGRES_USER=artifactory \
+  -e POSTGRES_PASSWORD=<set via secret, not inline> \
+  postgres:15-alpine
+
+
+
+docker run -d --name dev-artifactory \
+  --network dev-net \
+  -v /app/jfrog:/var/opt/jfrog/artifactory \
+  -p 8081:8081 -p 8082:8082 \
+  releases-docker.jfrog.io/jfrog/artifactory-oss:<version>
+
+
+docker logs dev-artifactory | grep -i -E "postgres|derby|database"
+
+
+docker pull releases-docker.jfrog.io/jfrog/artifactory-oss:7.104.14
+
+
+
+curl -s https://releases-docker.jfrog.io/v2/jfrog/artifactory-oss/tags/list | tr ',' '\n' | grep -i 104
