@@ -23,3 +23,45 @@ server {
     proxy_set_header X-Forwarded-Port  443;
   }
 }
+
+
+
+
+
+
+
+
+
+[root@ip-10-56-112-34 ~]# sudo docker exec nginx cat /etc/nginx/conf.d/artifactory.conf
+server {
+  listen 80;
+  server_name artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+  return 301 https://$host$request_uri;
+}
+
+server {
+  listen 443 ssl;
+  server_name artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+
+  ssl_certificate     /etc/nginx/certificates/mgmt_wildcard.pem;
+  ssl_certificate_key /etc/nginx/certificates/privatekey.key;
+
+  client_max_body_size 0;
+
+  proxy_read_timeout 900;
+  proxy_send_timeout 900;
+  proxy_connect_timeout 60;
+
+  location / {
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    # Added for OIDC
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Port  443;
+
+    proxy_pass http://10.56.112.243:80;
+  }
+}
