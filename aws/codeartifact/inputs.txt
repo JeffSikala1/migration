@@ -1,3 +1,42 @@
-sudo ls -alh /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/
-sudo cat /etc/letsencrypt/renewal/dev.cnxs.vpcaas.fcs.gsa.gov.conf
-sudo openssl x509 -noout -subject -issuer -enddate -in /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/cert.pem
+sudo scp /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem sikaj01@10.56.128.233:/tmp/dev_wildcard.pem
+sudo scp /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/privkey.pem sikaj01@10.56.128.233:/tmp/dev_privatekey.key
+
+
+sudo mkdir -p /app/nginx/certificates
+sudo mv /tmp/dev_wildcard.pem /app/nginx/certificates/dev_wildcard.pem
+sudo mv /tmp/dev_privatekey.key /app/nginx/certificates/dev_privatekey.key
+sudo chmod 600 /app/nginx/certificates/dev_privatekey.key
+rm -f /tmp/dev_wildcard.pem /tmp/dev_privatekey.key   # don't leave a copy in /tmp
+
+
+
+server {
+  listen 80;
+  server_name artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov;
+  return 301 https://$host$request_uri;
+}
+
+server {
+  listen 443 ssl;
+  server_name artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov;
+
+  ssl_certificate     /etc/nginx/certificates/dev_wildcard.pem;
+  ssl_certificate_key /etc/nginx/certificates/dev_privatekey.key;
+
+  client_max_body_size 0;
+
+  proxy_read_timeout 900;
+  proxy_send_timeout 900;
+  proxy_connect_timeout 60;
+
+  location / {
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Port  443;
+
+    proxy_pass http://dev-artifactory:8082;
+  }
+}
