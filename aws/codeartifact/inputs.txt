@@ -1,58 +1,25 @@
-sudo mkdir -p /app/nginx/conf.d
-sudo tee /app/nginx/conf.d/artifactory.conf > /dev/null << 'EOF'
-server {
-  listen 80;
-  server_name artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov;
-  return 301 https://$host$request_uri;
-}
-
-server {
-  listen 443 ssl;
-  server_name artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov;
-
-  ssl_certificate     /etc/nginx/certificates/dev_wildcard.pem;
-  ssl_certificate_key /etc/nginx/certificates/dev_privatekey.key;
-
-  client_max_body_size 0;
-
-  proxy_read_timeout 900;
-  proxy_send_timeout 900;
-  proxy_connect_timeout 60;
-
-  location / {
-    proxy_set_header Host              $host;
-    proxy_set_header X-Real-IP         $remote_addr;
-    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto https;
-    proxy_set_header X-Forwarded-Host  $host;
-    proxy_set_header X-Forwarded-Port  443;
-
-    proxy_pass http://dev-artifactory:8082;
-  }
-}
-EOF
+curl --fail -s -H "Authorization: Bearer <PROD_ADMIN_TOKEN>" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories \
+  | tee prod_repos.json | jq '.'
 
 
 
 
-sudo cat /app/nginx/conf.d/artifactory.conf
+curl --fail -s -H "Authorization: Bearer <PROD_ADMIN_TOKEN>" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users \
+  | tee prod_users.json | jq '.'
 
 
 
-
-sudo docker run -d --name dev-nginx \
-  --network dev-net \
-  -p 80:80 -p 443:443 \
-  -v /app/nginx/conf.d:/etc/nginx/conf.d:ro \
-  -v /app/nginx/certificates:/etc/nginx/certificates:ro \
-  nginx:1.29.3
+curl --fail -s -H "Authorization: Bearer <PROD_ADMIN_TOKEN>" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups \
+  | tee prod_groups.json | jq '.'
 
 
 
-sudo docker logs dev-nginx
-sudo docker exec dev-nginx nginx -t
+curl --fail -s -H "Authorization: Bearer <PROD_ADMIN_TOKEN>" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions \
+  | tee prod_permissions.json | jq '.'
 
 
 
-curl -sI -H "Host: artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov" http://localhost
-curl -skI https://localhost -H "Host: artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov"
