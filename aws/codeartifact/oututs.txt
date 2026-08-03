@@ -1,16 +1,16 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
-SELECT 'access_users_groups' AS tbl, count(*) FROM access_users_groups WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
-UNION ALL
-SELECT 'access_permissions_actions_v2', count(*) FROM access_permissions_actions_v2 WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
-UNION ALL
-SELECT 'access_project_users', count(*) FROM access_project_users WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
-UNION ALL
-SELECT 'access_users_custom_data', count(*) FROM access_users_custom_data WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin');
-"
-              tbl              | count 
--------------------------------+-------
- access_users_groups           |     0
- access_permissions_actions_v2 |     0
- access_project_users          |     0
- access_users_custom_data      |     3
-(4 rows)
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U artifactory -d artifactory <<'EOF'
+BEGIN;
+
+DELETE FROM access_users_custom_data
+WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin');
+
+DELETE FROM access_users
+WHERE username='admin';
+
+-- sanity check before committing
+SELECT count(*) AS remaining_admin_rows FROM access_users WHERE username='admin';
+
+COMMIT;
+EOF
+the input device is not a TTY
+[sikaj01@ip-10-56-128-233 ~]$ 
