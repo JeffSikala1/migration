@@ -1,929 +1,436 @@
-[sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ cat prod_groups.json 
-[ {
-  "name" : "nsfs_qa",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/nsfs_qa"
-}, {
-  "name" : "avupload",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/avupload"
-}, {
-  "name" : "nsfs_administrators",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/nsfs_administrators"
-}, {
-  "name" : "anon_read_only",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/anon_read_only"
-}, {
-  "name" : "nsfs_devops",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/nsfs_devops"
-}, {
-  "name" : "nsfs_users",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/nsfs_users"
-}, {
-  "name" : "conexus_release_local_create",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/conexus_release_local_create"
-}, {
-  "name" : "keys",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/keys"
-}, {
-  "name" : "uploadOnly",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/uploadOnly"
-}, {
-  "name" : "nsfs_security",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/nsfs_security"
-}, {
-  "name" : "docker_push_group",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/docker_push_group"
-}, {
-  "name" : "nsfs_developers",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/nsfs_developers"
-}, {
-  "name" : "admins",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/admins"
-}, {
-  "name" : "readers",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/readers"
-} ][sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ 
-
-
-[sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ cat prod_permissions.json 
-[ {
-  "name" : "docker-wso2mi",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/docker-wso2mi"
-}, {
+[sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ mkdir -p prod_permissions_detail
+jq -r '.[].name' prod_permissions.json | while IFS= read -r name; do
+  encoded=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$name")
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/${encoded}" \
+    -o "prod_permissions_detail/${name// /_}.json"
+done
+[sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ ll prod_permissions_detail/
+total 72
+-rw-r-----. 1 sikaj01 users  254 Aug  3 15:23 Any_Remote.json
+-rw-r-----. 1 sikaj01 users  315 Aug  3 15:23 Anything.json
+-rw-r-----. 1 sikaj01 users  307 Aug  3 15:23 ForOracle19cDev.json
+-rw-r-----. 1 sikaj01 users  264 Aug  3 15:23 OWASP_Report_Upload.json
+-rw-r-----. 1 sikaj01 users  359 Aug  3 15:23 allow_deletion_from_conexus_builds.json
+-rw-r-----. 1 sikaj01 users 1021 Aug  3 15:23 anon_read_only.json
+-rw-r-----. 1 sikaj01 users  278 Aug  3 15:23 ansible-vault-password-files-readonly.json
+-rw-r-----. 1 sikaj01 users  285 Aug  3 15:23 antivirus_read_annotate_deploy_delete.json
+-rw-r-----. 1 sikaj01 users  529 Aug  3 15:23 conexus-deploy.json
+-rw-r-----. 1 sikaj01 users  802 Aug  3 15:23 conexus-read-only.json
+-rw-r-----. 1 sikaj01 users  313 Aug  3 15:23 conexus_release_local_create_permission.json
+-rw-r-----. 1 sikaj01 users  362 Aug  3 15:23 create_long_lived_repo.json
+-rw-r-----. 1 sikaj01 users  517 Aug  3 15:23 docker-push.json
+-rw-r-----. 1 sikaj01 users  345 Aug  3 15:23 docker-wso2mi.json
+-rw-r-----. 1 sikaj01 users  285 Aug  3 15:23 file-upload_readonly.json
+-rw-r-----. 1 sikaj01 users  225 Aug  3 15:23 keys_readonly.json
+-rw-r-----. 1 sikaj01 users  879 Aug  3 15:23 publish_conexus_build_info.json
+-rw-r-----. 1 sikaj01 users  795 Aug  3 15:23 uploadOnly.json
+[sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ cat prod_permissions_detail/*
+{
   "name" : "Any Remote",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/Any%20Remote"
-}, {
-  "name" : "anon_read_only",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only"
-}, {
-  "name" : "conexus-read-only",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/conexus-read-only"
-}, {
-  "name" : "antivirus_read_annotate_deploy_delete",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/antivirus_read_annotate_deploy_delete"
-}, {
-  "name" : "keys_readonly",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/keys_readonly"
-}, {
-  "name" : "allow deletion from conexus builds",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/allow%20deletion%20from%20conexus%20builds"
-}, {
-  "name" : "conexus_release_local_create_permission",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/conexus_release_local_create_permission"
-}, {
-  "name" : "create long lived repo",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/create%20long%20lived%20repo"
-}, {
-  "name" : "ForOracle19cDev",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/ForOracle19cDev"
-}, {
-  "name" : "OWASP Report Upload",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/OWASP%20Report%20Upload"
-}, {
-  "name" : "conexus-deploy",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/conexus-deploy"
-}, {
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "anonymous" : [ "read", "write" ]
+      }
+    },
+    "repositories" : [ "ANY REMOTE", "yum-local" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
   "name" : "Anything",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/Anything"
-}, {
-  "name" : "file-upload_readonly",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/file-upload_readonly"
-}, {
+  "repo" : {
+    "actions" : { },
+    "repositories" : [ "ANY" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  },
+  "build" : {
+    "actions" : { },
+    "repositories" : [ "artifactory-build-info" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "ForOracle19cDev",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "kristian.fitzgerald@usda.gov" : [ "read", "annotate", "write" ]
+      }
+    },
+    "repositories" : [ "conexus-release-local", "ll-modelchanges" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "OWASP Report Upload",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "owasp_report_upload" : [ "read", "annotate", "write", "delete" ]
+      }
+    },
+    "repositories" : [ ],
+    "include-patterns" : [ ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "allow deletion from conexus builds",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "robert.wernsman@usda.gov" : [ "read", "annotate", "write", "delete" ]
+      }
+    },
+    "repositories" : [ "conexus-rc-local", "conexus-release-local", "conexus-snapshot-local" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "anon_read_only",
+  "repo" : {
+    "actions" : {
+      "groups" : {
+        "anon_read_only" : [ "read" ],
+        "nsfs_developers" : [ "read" ],
+        "nsfs_users" : [ "read" ]
+      }
+    },
+    "repositories" : [ "centos", "conexus-maven-local", "conexus-plugins-backup", "conexus-rc-local", "conexus-release-local", "conexus-snapshot-local", "docker-local", "docker-remote", "file-local", "fusesource", "hibernate", "jaspersoft-thirdpart", "jboss.org-ea", "jboss.org_releases", "jcenter", "ll-2025-jboss-8", "ll-CNXS-68737-newer-versions", "ll-dev-cutover-test-01", "ll-dev-cutover-test-02", "ll-jboss8", "ll-modelchanges", "ll-postgres", "ll-tops-task-order-ahcs", "ll-unified-automation", "ll-upgrades", "maven-central", "mcafee", "mulesoft", "nodesource12x", "nodesource8x", "npm-local", "npm-remote", "pypi-local", "redhat-earlyaccess", "redhat-ga", "redhat-techpreview", "rpm-local", "rpm-remote", "sonatype", "wso2-remote" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
   "name" : "ansible-vault-password-files-readonly",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/ansible-vault-password-files-readonly"
-}, {
-  "name" : "publish conexus build info",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/publish%20conexus%20build%20info"
-}, {
-  "name" : "uploadOnly",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly"
-}, {
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "sa_conexus" : [ "read" ]
+      }
+    },
+    "repositories" : [ "ansible-vault-password-files" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "antivirus_read_annotate_deploy_delete",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "avupload" : [ "read", "annotate", "write", "delete" ]
+      }
+    },
+    "repositories" : [ "mcafee" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "conexus-deploy",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "sa_bamboo" : [ "read", "annotate", "write" ],
+        "robert.wernsman@usda.gov" : [ "read", "annotate", "write", "delete" ]
+      },
+      "groups" : {
+        "nsfs_devops" : [ "read", "annotate", "write", "delete" ]
+      }
+    },
+    "repositories" : [ "conexus-rc-local", "conexus-release-local", "conexus-snapshot-local", "file-local", "ll-modelchanges" ],
+    "include-patterns" : [ "**", "ll-*" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "conexus-read-only",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "sa_bamboo" : [ "read" ]
+      },
+      "groups" : {
+        "nsfs_developers" : [ "read" ],
+        "nsfs_users" : [ "read" ]
+      }
+    },
+    "repositories" : [ "conexus-maven-local", "conexus-plugins-backup", "conexus-rc-local", "conexus-release-local", "conexus-snapshot-local", "jaspersoft-thirdpart", "jaspersoft.jfrog.io", "ll-modelchanges", "wso2-remote" ],
+    "include-patterns" : [ "conexus*", "ll-*" ],
+    "exclude-patterns" : [ ]
+  },
+  "build" : {
+    "actions" : {
+      "groups" : {
+        "nsfs_developers" : [ "read" ],
+        "nsfs_users" : [ "read" ]
+      }
+    },
+    "repositories" : [ "artifactory-build-info" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "conexus_release_local_create_permission",
+  "repo" : {
+    "actions" : {
+      "groups" : {
+        "conexus_release_local_create" : [ "read", "annotate", "write" ]
+      }
+    },
+    "repositories" : [ "conexus-release-local" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "create long lived repo",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "sa_bamboo" : [ "read", "annotate", "write", "delete", "manage" ],
+        "sa_conexus" : [ "read", "annotate", "write", "delete", "manage" ]
+      }
+    },
+    "repositories" : [ "ANY LOCAL" ],
+    "include-patterns" : [ "ll-*" ],
+    "exclude-patterns" : [ ]
+  }
+}{
   "name" : "docker-push",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/docker-push"
-} ][sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ 
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "docker-uploader" : [ "read", "annotate", "write" ]
+      },
+      "groups" : {
+        "docker_push_group" : [ "read", "annotate", "write", "delete" ]
+      }
+    },
+    "repositories" : [ "docker-local" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  },
+  "build" : {
+    "actions" : { },
+    "repositories" : [ "artifactory-build-info" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "docker-wso2mi",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "sasikanth.dale@usda.gov" : [ "read", "annotate", "write", "delete" ]
+      },
+      "groups" : {
+        "nsfs_users" : [ "read" ]
+      }
+    },
+    "repositories" : [ "docker-wso2mi" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "file-upload_readonly",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "avupload" : [ "read" ],
+        "owasp_report_upload" : [ "read" ]
+      }
+    },
+    "repositories" : [ "file-local" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "keys_readonly",
+  "repo" : {
+    "actions" : {
+      "groups" : {
+        "keys" : [ "read" ]
+      }
+    },
+    "repositories" : [ "keys" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "publish conexus build info",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "sa_bamboo" : [ "read", "annotate", "write" ],
+        "sasikanth.dale" : [ "read", "annotate", "write" ]
+      },
+      "groups" : {
+        "nsfs_developers" : [ "read", "annotate", "write" ]
+      }
+    },
+    "repositories" : [ "conexus-plugins-backup", "conexus-rc-local", "conexus-release-local", "conexus-snapshot-local", "jaspersoft.jfrog.io", "npm-remote", "wso2-remote" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  },
+  "build" : {
+    "actions" : {
+      "users" : {
+        "sa_bamboo" : [ "read", "annotate", "write" ]
+      },
+      "groups" : {
+        "nsfs_developers" : [ "read", "annotate", "write" ]
+      }
+    },
+    "repositories" : [ "artifactory-build-info" ],
+    "include-patterns" : [ "**" ],
+    "exclude-patterns" : [ ]
+  }
+}{
+  "name" : "uploadOnly",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "sa_bamboo" : [ "read", "annotate", "write", "delete" ],
+        "uploader" : [ "read", "annotate", "write", "delete" ],
+        "sa_conexus" : [ "read", "annotate", "write", "delete" ]
+      },
+      "groups" : {
+        "uploadOnly" : [ "read", "annotate", "write", "delete" ]
+      }
+    },
+    "repositories" : [ "conexus-rc-local", "conexus-release-local", "conexus-snapshot-local", "file-local", "ll-2025-jboss-8", "ll-CNXS-68737-newer-versions", "ll-dev-cutover-test-01", "ll-dev-cutover-test-02", "ll-jboss8", "ll-modelchanges", "ll-postgres", "ll-tops-task-order-ahcs", "ll-unified-automation", "ll-upgrades", "rpm-local" ],
+    "include-patterns" : [ "**", "ll-*" ],
+    "exclude-patterns" : [ ]
+  }
+}[sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ 
 
 
-
-[sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ cat prod_repos.json 
-[ {
-  "key" : "ansible-vault-password-files",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ansible-vault-password-files",
-  "packageType" : "Generic"
-}, {
-  "key" : "conexus-maven-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-maven-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-plugins-backup",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugins-backup",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-rc-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-release-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-snapshot-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "docker-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/docker-local",
-  "packageType" : "Docker"
-}, {
-  "key" : "docker-wso2mi",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/docker-wso2mi",
-  "packageType" : "Docker"
-}, {
-  "key" : "file-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local",
-  "packageType" : "Generic"
-}, {
-  "key" : "generic-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/generic-local",
-  "packageType" : "Generic"
-}, {
-  "key" : "keys",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys",
-  "packageType" : "Generic"
-}, {
-  "key" : "libs-release-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/libs-release-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "libs-snapshot-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/libs-snapshot-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-2025-jboss-8",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-2025-jboss-8",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-CNXS-68737-newer-versions",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-CNXS-68737-newer-versions",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-dev-cutover-test-01",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-dev-cutover-test-01",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-dev-cutover-test-02",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-dev-cutover-test-02",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-jboss8",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-jboss8",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-modelchanges",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-postgres",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-postgres",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-tops-task-order-ahcs",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-tops-task-order-ahcs",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-unified-automation",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-unified-automation",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-upgrades",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-upgrades",
-  "packageType" : "Maven"
-}, {
-  "key" : "mcafee",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/mcafee",
-  "packageType" : "Generic"
-}, {
-  "key" : "npm-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/npm-local",
-  "packageType" : "Npm"
-}, {
-  "key" : "pypi-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/pypi-local",
-  "packageType" : "Pypi"
-}, {
-  "key" : "rpm-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/rpm-local",
-  "packageType" : "YUM"
-}, {
-  "key" : "yum-local",
-  "description" : "Self compiled",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/yum-local",
-  "packageType" : "YUM"
-}, {
-  "key" : "bintray-docker-remote",
-  "type" : "REMOTE",
-  "url" : "https://docker.bintray.io",
-  "packageType" : "Docker"
-}, {
-  "key" : "centos",
-  "type" : "REMOTE",
-  "url" : "http://mirror.centos.org/centos/",
-  "packageType" : "YUM"
-}, {
-  "key" : "docker-remote",
-  "type" : "REMOTE",
-  "url" : "https://registry-1.docker.io/",
-  "packageType" : "Docker"
-}, {
-  "key" : "fusesource",
-  "type" : "REMOTE",
-  "url" : "https://repo.fusesource.com/nexus/content/groups/public/",
-  "packageType" : "Maven"
-}, {
-  "key" : "hibernate",
-  "type" : "REMOTE",
-  "url" : "https://dl.bintray.com/hibernate/artifacts",
-  "packageType" : "Maven"
-}, {
-  "key" : "jaspersoft-thirdpart",
-  "description" : "",
-  "type" : "REMOTE",
-  "url" : "https://jaspersoft.jfrog.io/jaspersoft/list/third-party-ce-artifacts/",
-  "packageType" : "Maven"
-}, {
-  "key" : "jaspersoft.jfrog.io",
-  "description" : "",
-  "type" : "REMOTE",
-  "url" : "https://jaspersoft.jfrog.io/jaspersoft/third-party-ce-artifacts/",
-  "packageType" : "Maven"
-}, {
-  "key" : "jboss.org-ea",
-  "type" : "REMOTE",
-  "url" : "https://repository.jboss.org/nexus/content/repositories/ea/",
-  "packageType" : "Maven"
-}, {
-  "key" : "jboss.org_releases",
-  "type" : "REMOTE",
-  "url" : "https://repository.jboss.org/nexus/content/repositories/releases/",
-  "packageType" : "Maven"
-}, {
-  "key" : "jcenter",
-  "type" : "REMOTE",
-  "url" : "https://jcenter.bintray.com",
-  "packageType" : "Maven"
-}, {
-  "key" : "maven-central",
-  "type" : "REMOTE",
-  "url" : "http://insecure.repo1.maven.org/maven2/",
-  "packageType" : "Maven"
-}, {
-  "key" : "mulesoft",
-  "type" : "REMOTE",
-  "url" : "https://repository.mulesoft.org/nexus/content/repositories/public/",
-  "packageType" : "Maven"
-}, {
-  "key" : "nodesource12x",
-  "type" : "REMOTE",
-  "url" : "https://rpm.nodesource.com/pub_12.x/",
-  "packageType" : "YUM"
-}, {
-  "key" : "nodesource8x",
-  "type" : "REMOTE",
-  "url" : "https://rpm.nodesource.com/pub_8.x/",
-  "packageType" : "YUM"
-}, {
-  "key" : "npm-remote",
-  "type" : "REMOTE",
-  "url" : "https://registry.npmjs.org",
-  "packageType" : "Npm"
-}, {
-  "key" : "redhat-earlyaccess",
-  "type" : "REMOTE",
-  "url" : "https://maven.repository.redhat.com/earlyaccess/all/",
-  "packageType" : "Maven"
-}, {
-  "key" : "redhat-ga",
-  "type" : "REMOTE",
-  "url" : "https://maven.repository.redhat.com/ga",
-  "packageType" : "Maven"
-}, {
-  "key" : "redhat-techpreview",
-  "type" : "REMOTE",
-  "url" : "https://maven.repository.redhat.com/techpreview/all/",
-  "packageType" : "Maven"
-}, {
-  "key" : "rpm-remote",
-  "type" : "REMOTE",
-  "url" : "http://mirror.centos.org/centos/",
-  "packageType" : "YUM"
-}, {
-  "key" : "sonatype",
-  "type" : "REMOTE",
-  "url" : "http://oss.sonatype.org/content/repositories/releases/",
-  "packageType" : "Maven"
-}, {
-  "key" : "wso2-remote",
-  "description" : "",
-  "type" : "REMOTE",
-  "url" : "https://maven.wso2.org/nexus/content/groups/wso2-public/",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-ll-plugin-repository",
-  "description" : "",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-plugin-repository",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-unified-builds",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-unified-builds",
-  "packageType" : "Maven"
-}, {
-  "key" : "docker",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/docker",
-  "packageType" : "Docker"
-}, {
-  "key" : "libs-release",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/libs-release",
-  "packageType" : "Maven"
-}, {
-  "key" : "libs-snapshot",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/libs-snapshot",
-  "packageType" : "Maven"
-}, {
-  "key" : "npm",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/npm",
-  "packageType" : "Npm"
-}, {
-  "key" : "rpm",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/rpm",
-  "packageType" : "YUM"
-} ][sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ 
-
-
-
-[sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ cat prod_repos.json 
-[ {
-  "key" : "ansible-vault-password-files",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ansible-vault-password-files",
-  "packageType" : "Generic"
-}, {
-  "key" : "conexus-maven-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-maven-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-plugins-backup",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugins-backup",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-rc-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-release-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-snapshot-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "docker-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/docker-local",
-  "packageType" : "Docker"
-}, {
-  "key" : "docker-wso2mi",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/docker-wso2mi",
-  "packageType" : "Docker"
-}, {
-  "key" : "file-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local",
-  "packageType" : "Generic"
-}, {
-  "key" : "generic-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/generic-local",
-  "packageType" : "Generic"
-}, {
-  "key" : "keys",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys",
-  "packageType" : "Generic"
-}, {
-  "key" : "libs-release-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/libs-release-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "libs-snapshot-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/libs-snapshot-local",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-2025-jboss-8",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-2025-jboss-8",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-CNXS-68737-newer-versions",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-CNXS-68737-newer-versions",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-dev-cutover-test-01",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-dev-cutover-test-01",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-dev-cutover-test-02",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-dev-cutover-test-02",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-jboss8",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-jboss8",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-modelchanges",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-modelchanges",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-postgres",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-postgres",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-tops-task-order-ahcs",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-tops-task-order-ahcs",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-unified-automation",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-unified-automation",
-  "packageType" : "Maven"
-}, {
-  "key" : "ll-upgrades",
-  "description" : "",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/ll-upgrades",
-  "packageType" : "Maven"
-}, {
-  "key" : "mcafee",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/mcafee",
-  "packageType" : "Generic"
-}, {
-  "key" : "npm-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/npm-local",
-  "packageType" : "Npm"
-}, {
-  "key" : "pypi-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/pypi-local",
-  "packageType" : "Pypi"
-}, {
-  "key" : "rpm-local",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/rpm-local",
-  "packageType" : "YUM"
-}, {
-  "key" : "yum-local",
-  "description" : "Self compiled",
-  "type" : "LOCAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/yum-local",
-  "packageType" : "YUM"
-}, {
-  "key" : "bintray-docker-remote",
-  "type" : "REMOTE",
-  "url" : "https://docker.bintray.io",
-  "packageType" : "Docker"
-}, {
-  "key" : "centos",
-  "type" : "REMOTE",
-  "url" : "http://mirror.centos.org/centos/",
-  "packageType" : "YUM"
-}, {
-  "key" : "docker-remote",
-  "type" : "REMOTE",
-  "url" : "https://registry-1.docker.io/",
-  "packageType" : "Docker"
-}, {
-  "key" : "fusesource",
-  "type" : "REMOTE",
-  "url" : "https://repo.fusesource.com/nexus/content/groups/public/",
-  "packageType" : "Maven"
-}, {
-  "key" : "hibernate",
-  "type" : "REMOTE",
-  "url" : "https://dl.bintray.com/hibernate/artifacts",
-  "packageType" : "Maven"
-}, {
-  "key" : "jaspersoft-thirdpart",
-  "description" : "",
-  "type" : "REMOTE",
-  "url" : "https://jaspersoft.jfrog.io/jaspersoft/list/third-party-ce-artifacts/",
-  "packageType" : "Maven"
-}, {
-  "key" : "jaspersoft.jfrog.io",
-  "description" : "",
-  "type" : "REMOTE",
-  "url" : "https://jaspersoft.jfrog.io/jaspersoft/third-party-ce-artifacts/",
-  "packageType" : "Maven"
-}, {
-  "key" : "jboss.org-ea",
-  "type" : "REMOTE",
-  "url" : "https://repository.jboss.org/nexus/content/repositories/ea/",
-  "packageType" : "Maven"
-}, {
-  "key" : "jboss.org_releases",
-  "type" : "REMOTE",
-  "url" : "https://repository.jboss.org/nexus/content/repositories/releases/",
-  "packageType" : "Maven"
-}, {
-  "key" : "jcenter",
-  "type" : "REMOTE",
-  "url" : "https://jcenter.bintray.com",
-  "packageType" : "Maven"
-}, {
-  "key" : "maven-central",
-  "type" : "REMOTE",
-  "url" : "http://insecure.repo1.maven.org/maven2/",
-  "packageType" : "Maven"
-}, {
-  "key" : "mulesoft",
-  "type" : "REMOTE",
-  "url" : "https://repository.mulesoft.org/nexus/content/repositories/public/",
-  "packageType" : "Maven"
-}, {
-  "key" : "nodesource12x",
-  "type" : "REMOTE",
-  "url" : "https://rpm.nodesource.com/pub_12.x/",
-  "packageType" : "YUM"
-}, {
-  "key" : "nodesource8x",
-  "type" : "REMOTE",
-  "url" : "https://rpm.nodesource.com/pub_8.x/",
-  "packageType" : "YUM"
-}, {
-  "key" : "npm-remote",
-  "type" : "REMOTE",
-  "url" : "https://registry.npmjs.org",
-  "packageType" : "Npm"
-}, {
-  "key" : "redhat-earlyaccess",
-  "type" : "REMOTE",
-  "url" : "https://maven.repository.redhat.com/earlyaccess/all/",
-  "packageType" : "Maven"
-}, {
-  "key" : "redhat-ga",
-  "type" : "REMOTE",
-  "url" : "https://maven.repository.redhat.com/ga",
-  "packageType" : "Maven"
-}, {
-  "key" : "redhat-techpreview",
-  "type" : "REMOTE",
-  "url" : "https://maven.repository.redhat.com/techpreview/all/",
-  "packageType" : "Maven"
-}, {
-  "key" : "rpm-remote",
-  "type" : "REMOTE",
-  "url" : "http://mirror.centos.org/centos/",
-  "packageType" : "YUM"
-}, {
-  "key" : "sonatype",
-  "type" : "REMOTE",
-  "url" : "http://oss.sonatype.org/content/repositories/releases/",
-  "packageType" : "Maven"
-}, {
-  "key" : "wso2-remote",
-  "description" : "",
-  "type" : "REMOTE",
-  "url" : "https://maven.wso2.org/nexus/content/groups/wso2-public/",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-ll-plugin-repository",
-  "description" : "",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-ll-plugin-repository",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-plugin-repository",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository",
-  "packageType" : "Maven"
-}, {
-  "key" : "conexus-unified-builds",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-unified-builds",
-  "packageType" : "Maven"
-}, {
-  "key" : "docker",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/docker",
-  "packageType" : "Docker"
-}, {
-  "key" : "libs-release",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/libs-release",
-  "packageType" : "Maven"
-}, {
-  "key" : "libs-snapshot",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/libs-snapshot",
-  "packageType" : "Maven"
-}, {
-  "key" : "npm",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/npm",
-  "packageType" : "Npm"
-}, {
-  "key" : "rpm",
-  "type" : "VIRTUAL",
-  "url" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/rpm",
-  "packageType" : "YUM"
-} ][sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ cat prod_users.json 
-[ {
-  "name" : "kristian.fitzgerald@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/kristian.fitzgerald@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "stephen.tefft@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/stephen.tefft@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "kristian.fitzgerald",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/kristian.fitzgerald",
-  "realm" : "saml"
-}, {
-  "name" : "jared.curtis@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/jared.curtis@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "robert.torrey@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/robert.torrey@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "avupload",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/avupload",
-  "realm" : "internal"
-}, {
-  "name" : "robert.wernsman",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/robert.wernsman",
-  "realm" : "saml"
-}, {
-  "name" : "rupak.barua@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/rupak.barua@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "john.zehetner@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/john.zehetner@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "robert.wernsman@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/robert.wernsman@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "sa_snyk",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sa_snyk",
-  "realm" : "internal"
-}, {
-  "name" : "sa_bamboo",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sa_bamboo",
-  "realm" : "internal"
-}, {
-  "name" : "madhav.kundala@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/madhav.kundala@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "anonymous",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/anonymous",
-  "realm" : "internal"
-}, {
-  "name" : "steven.kuzmich@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/steven.kuzmich@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "kristian.fitzgerald@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/kristian.fitzgerald@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "shahbaz.qureshi@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/shahbaz.qureshi@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "uploader",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/uploader",
-  "realm" : "internal"
-}, {
-  "name" : "steven.kuzmich@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/steven.kuzmich@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "tyler.goll@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/tyler.goll@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "mark.hotra",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/mark.hotra",
-  "realm" : "saml"
-}, {
-  "name" : "sucharita.conjeevaram@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sucharita.conjeevaram@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "sasikanth.dale",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sasikanth.dale",
-  "realm" : "saml"
-}, {
-  "name" : "sasikanth.dale@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sasikanth.dale@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "gavin.ecker@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/gavin.ecker@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "madhav.kundala",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/madhav.kundala",
-  "realm" : "saml"
-}, {
-  "name" : "james.hyland@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/james.hyland@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "admin",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/admin",
-  "realm" : "internal"
-}, {
-  "name" : "eli.tatro@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/eli.tatro@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "robert.wernsman@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/robert.wernsman@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "shilpika.pamarthi@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/shilpika.pamarthi@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "mark.hotra@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/mark.hotra@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "jeff.sikala@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/jeff.sikala@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "nathan.kim@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/nathan.kim@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "shilpika.pamarthi@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/shilpika.pamarthi@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "madhav.kundala@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/madhav.kundala@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "nathan.kim",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/nathan.kim",
-  "realm" : "saml"
-}, {
-  "name" : "eli.tatro@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/eli.tatro@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "abitha.bakthavachalam@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/abitha.bakthavachalam@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "john.zehetner@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/john.zehetner@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "gavin.ecker@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/gavin.ecker@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "abitha.bakthavachalam@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/abitha.bakthavachalam@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "james.hyland@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/james.hyland@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "philippe.thai@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/philippe.thai@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "docker-uploader",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/docker-uploader",
-  "realm" : "internal"
-}, {
-  "name" : "rohith.janga@usda.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/rohith.janga@usda.gov",
-  "realm" : "internal"
-}, {
-  "name" : "jeff.sikala",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/jeff.sikala",
-  "realm" : "saml"
-}, {
-  "name" : "sasikanth.dale@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sasikanth.dale@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "tyler.goll@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/tyler.goll@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "mark.hotra@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/mark.hotra@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "jeff.sikala@gsa.gov",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/jeff.sikala@gsa.gov",
-  "realm" : "saml"
-}, {
-  "name" : "owasp_report_upload",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/owasp_report_upload",
-  "realm" : "internal"
-}, {
-  "name" : "abitha.bakthavachalam",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/abitha.bakthavachalam",
-  "realm" : "saml"
-}, {
-  "name" : "sa_conexus",
-  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sa_conexus",
-  "realm" : "internal"
-} ][sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ 
+[sikaj01@ip-10-56-112-33 docker-mgmt-startup]$ for repo in ansible-vault-password-files conexus-maven-local conexus-plugins-backup conexus-rc-local conexus-release-local conexus-snapshot-local docker-local docker-wso2mi file-local generic-local keys libs-release-local libs-snapshot-local ll-2025-jboss-8 ll-CNXS-68737-newer-versions ll-dev-cutover-test-01 ll-dev-cutover-test-02 ll-jboss8 ll-modelchanges ll-postgres ll-tops-task-order-ahcs ll-unified-automation ll-upgrades mcafee npm-local pypi-local rpm-local yum-local; do
+  echo "=== $repo ==="
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    -H "Content-Type: text/plain" \
+    -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+    -d "items.find({\"repo\":\"$repo\"}).include(\"name\",\"size\").sort({\"\$asc\":[\"name\"]})" \
+    | jq '[.results[].size] | {count: length, total_mb: (add/1048576)}'
+done
+=== ansible-vault-password-files ===
+{
+  "count": 3,
+  "total_mb": 9.441375732421875e-05
+}
+=== conexus-maven-local ===
+{
+  "count": 9057,
+  "total_mb": 846.6860246658325
+}
+=== conexus-plugins-backup ===
+{
+  "count": 2195,
+  "total_mb": 411.14088344573975
+}
+=== conexus-rc-local ===
+{
+  "count": 2277,
+  "total_mb": 3834.907241821289
+}
+=== conexus-release-local ===
+{
+  "count": 2922,
+  "total_mb": 26283.723797798157
+}
+=== conexus-snapshot-local ===
+{
+  "count": 40833,
+  "total_mb": 85988.25849342346
+}
+=== docker-local ===
+{
+  "count": 822,
+  "total_mb": 40395.46877002716
+}
+=== docker-wso2mi ===
+jq: error (at <stdin>:9): null (null) and number (1048576) cannot be divided
+=== file-local ===
+{
+  "count": 90,
+  "total_mb": 26215.23526763916
+}
+=== generic-local ===
+jq: error (at <stdin>:9): null (null) and number (1048576) cannot be divided
+=== keys ===
+{
+  "count": 12,
+  "total_mb": 0.022619247436523438
+}
+=== libs-release-local ===
+jq: error (at <stdin>:9): null (null) and number (1048576) cannot be divided
+=== libs-snapshot-local ===
+jq: error (at <stdin>:9): null (null) and number (1048576) cannot be divided
+=== ll-2025-jboss-8 ===
+{
+  "count": 3262,
+  "total_mb": 5617.407316207886
+}
+=== ll-CNXS-68737-newer-versions ===
+{
+  "count": 7077,
+  "total_mb": 11548.371934890747
+}
+=== ll-dev-cutover-test-01 ===
+{
+  "count": 16,
+  "total_mb": 0.08287811279296875
+}
+=== ll-dev-cutover-test-02 ===
+{
+  "count": 32,
+  "total_mb": 0.23973941802978516
+}
+=== ll-jboss8 ===
+jq: error (at <stdin>:9): null (null) and number (1048576) cannot be divided
+=== ll-modelchanges ===
+{
+  "count": 4877,
+  "total_mb": 15825.542756080627
+}
+=== ll-postgres ===
+{
+  "count": 26299,
+  "total_mb": 46687.40860939026
+}
+=== ll-tops-task-order-ahcs ===
+{
+  "count": 252,
+  "total_mb": 522.896369934082
+}
+=== ll-unified-automation ===
+{
+  "count": 16,
+  "total_mb": 24.847715377807617
+}
+=== ll-upgrades ===
+{
+  "count": 1187,
+  "total_mb": 1962.3874006271362
+}
+=== mcafee ===
+{
+  "count": 360,
+  "total_mb": 68310.61912155151
+}
+=== npm-local ===
+jq: error (at <stdin>:9): null (null) and number (1048576) cannot be divided
+=== pypi-local ===
+{
+  "count": 3,
+  "total_mb": 0.004878997802734375
+}
+=== rpm-local ===
+{
+  "count": 83,
+  "total_mb": 58.00788879394531
+}
+=== yum-local ===
+{
+  "count": 11,
+  "total_mb": 0.02790355682373047
+}
