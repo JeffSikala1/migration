@@ -1,36 +1,16 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\d access_users"
-                           Table "public.access_users"
-         Column         |          Type          | Collation | Nullable | Default 
-------------------------+------------------------+-----------+----------+---------
- user_id                | bigint                 |           | not null | 
- username               | character varying(255) |           | not null | 
- password               | character varying(500) |           |          | 
- allowed_ips            | character varying(255) |           |          | 
- created                | bigint                 |           | not null | 
- modified               | bigint                 |           | not null | 
- firstname              | character varying(35)  |           |          | 
- lastname               | character varying(35)  |           |          | 
- email                  | character varying(255) |           |          | 
- realm                  | character varying(255) |           |          | 
- status                 | character varying(32)  |           | not null | 
- last_login_time        | bigint                 |           | not null | 
- last_login_ip          | character varying(42)  |           |          | 
- failed_attempts        | bigint                 |           | not null | 
- status_last_modified   | bigint                 |           | not null | 
- password_last_modified | bigint                 |           | not null | 
-Indexes:
-    "access_users_pk" PRIMARY KEY, btree (user_id)
-    "access_users_username_idx" UNIQUE, btree (username)
-    "access_users_username_varchar_idx" UNIQUE, btree (username varchar_pattern_ops)
-Referenced by:
-    TABLE "access_permission_action" CONSTRAINT "access_perm_action_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id) ON DELETE CASCADE
-    TABLE "access_permissions_actions_v2" CONSTRAINT "access_perm_action_v2_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
-    TABLE "access_project_users" CONSTRAINT "access_project_users_user_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
-    TABLE "access_users_custom_data" CONSTRAINT "access_users_data_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
-    TABLE "access_users_groups" CONSTRAINT "access_users_groups_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "SELECT username, realm, status FROM access_users WHERE username='admin';"
- username |  realm   | status  
-----------+----------+---------
- admin    | internal | enabled
-(1 row)
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
+SELECT 'access_users_groups' AS tbl, count(*) FROM access_users_groups WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
+UNION ALL
+SELECT 'access_permissions_actions_v2', count(*) FROM access_permissions_actions_v2 WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
+UNION ALL
+SELECT 'access_project_users', count(*) FROM access_project_users WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
+UNION ALL
+SELECT 'access_users_custom_data', count(*) FROM access_users_custom_data WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin');
+"
+              tbl              | count 
+-------------------------------+-------
+ access_users_groups           |     0
+ access_permissions_actions_v2 |     0
+ access_project_users          |     0
+ access_users_custom_data      |     3
+(4 rows)
