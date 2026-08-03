@@ -26,3 +26,27 @@ curl --fail -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
 curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
   -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
   https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories
+
+
+mkdir -p prod_permissions_detail
+jq -r '.[].name' prod_permissions.json | while IFS= read -r name; do
+  encoded=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$name")
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/${encoded}" \
+    -o "prod_permissions_detail/${name// /_}.json"
+done
+
+
+
+for repo in ansible-vault-password-files conexus-maven-local conexus-plugins-backup conexus-rc-local conexus-release-local conexus-snapshot-local docker-local docker-wso2mi file-local generic-local keys libs-release-local libs-snapshot-local ll-2025-jboss-8 ll-CNXS-68737-newer-versions ll-dev-cutover-test-01 ll-dev-cutover-test-02 ll-jboss8 ll-modelchanges ll-postgres ll-tops-task-order-ahcs ll-unified-automation ll-upgrades mcafee npm-local pypi-local rpm-local yum-local; do
+  echo "=== $repo ==="
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    -H "Content-Type: text/plain" \
+    -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+    -d "items.find({\"repo\":\"$repo\"}).include(\"name\",\"size\").sort({\"\$asc\":[\"name\"]})" \
+    | jq '[.results[].size] | {count: length, total_mb: (add/1048576)}'
+done
+
+
+
+
