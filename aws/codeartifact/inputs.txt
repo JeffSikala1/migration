@@ -28,3 +28,16 @@ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\dn"
 docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\d access_users"
 
 docker exec -it dev-postgres psql -U artifactory -d artifactory -c "SELECT username, realm, status FROM access_users WHERE username='admin';"
+
+
+docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
+SELECT 'access_users_groups' AS tbl, count(*) FROM access_users_groups WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
+UNION ALL
+SELECT 'access_permissions_actions_v2', count(*) FROM access_permissions_actions_v2 WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
+UNION ALL
+SELECT 'access_project_users', count(*) FROM access_project_users WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
+UNION ALL
+SELECT 'access_users_custom_data', count(*) FROM access_users_custom_data WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin');
+"
+
+
