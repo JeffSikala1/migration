@@ -1,805 +1,195 @@
-[root@ip-10-56-112-159 postgres]# docker rm -f artifactory-postgres
-artifactory-postgres
-[root@ip-10-56-112-159 postgres]# sudo find /app/postgres/data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
-[root@ip-10-56-112-159 postgres]# sudo chown -R 70:70 /app/postgres/data && sudo chmod 700 /app/postgres/data
-[root@ip-10-56-112-159 postgres]# docker run -d --name artifactory-postgres --network artifactory-restore-net \
-  -e POSTGRES_PASSWORD=ConexusDev2026! \
-  -v /app/postgres/data:/var/lib/postgresql/data postgres:15-alpine
-898f91cdf73732844a62c115cf8fe34675d3ea37b0ff74f6e4549aed6872dbc2
-[root@ip-10-56-112-159 postgres]# docker exec -it artifactory-postgres psql -U postgres -c "CREATE ROLE artifactory WITH LOGIN PASSWORD 'temp';"
-CREATE ROLE
-[root@ip-10-56-112-159 postgres]# docker exec -it artifactory-postgres psql -U postgres -c "CREATE DATABASE artifactory OWNER artifactory;"
-CREATE DATABASE
-[root@ip-10-56-112-159 postgres]# ll
-total 134840
--rw-r--r--. 1 ec2-user ec2-user 138069541 Aug  3 05:35 artifactory_20260803_021501.dump
--rw-r--r--. 1 ec2-user ec2-user      1024 Aug  3 05:35 globals_20260803_021501.sql
-[root@ip-10-56-112-159 postgres]# docker cp globals_20260803_021501.sql artifactory-postgres:/tmp/globals.sql
-Successfully copied 2.56kB to artifactory-postgres:/tmp/globals.sql
-[root@ip-10-56-112-159 postgres]# docker cp artifactory_20260803_021501.dump artifactory-postgres:/tmp/artifactory.dump
-Successfully copied 138MB to artifactory-postgres:/tmp/artifactory.dump
-[root@ip-10-56-112-159 postgres]# docker exec -i artifactory-postgres psql -U postgres -d artifactory -f /tmp/globals.sql
-SET
-SET
-SET
-psql:/tmp/globals.sql:16: ERROR:  role "artifactory" already exists
-ALTER ROLE
-psql:/tmp/globals.sql:18: ERROR:  role "postgres" already exists
-ALTER ROLE
-GRANT ROLE
-[root@ip-10-56-112-159 postgres]# docker exec -i artifactory-postgres pg_restore -U postgres -d artifactory --no-owner --no-privileges --exit-on-error --verbose /tmp/artifactory.dump
-pg_restore: connecting to database for restore
-pg_restore: creating EXTENSION "pg_trgm"
-pg_restore: creating COMMENT "EXTENSION pg_trgm"
-pg_restore: creating FUNCTION "public.access_fnc_allow_read_only()"
-pg_restore: creating TABLE "public.access_configs"
-pg_restore: creating TABLE "public.access_db_check"
-pg_restore: creating TABLE "public.access_distributed_lock"
-pg_restore: creating TABLE "public.access_emails_log"
-pg_restore: creating TABLE "public.access_environments"
-pg_restore: creating TABLE "public.access_federation_log"
-pg_restore: creating TABLE "public.access_federation_servers"
-pg_restore: creating TABLE "public.access_groups"
-pg_restore: creating TABLE "public.access_groups_custom_data"
-pg_restore: creating TABLE "public.access_master_key_status"
-pg_restore: creating TABLE "public.access_nodes"
-pg_restore: creating TABLE "public.access_permission_action"
-pg_restore: creating TABLE "public.access_permission_names_mapper"
-pg_restore: creating TABLE "public.access_permissions"
-pg_restore: creating TABLE "public.access_permissions_actions_v2"
-pg_restore: creating TABLE "public.access_permissions_custom_data"
-pg_restore: creating TABLE "public.access_permissions_targets_v2"
-pg_restore: creating TABLE "public.access_permissions_v2"
-pg_restore: creating TABLE "public.access_permissions_v2_ref"
-pg_restore: creating TABLE "public.access_platform_config"
-pg_restore: creating TABLE "public.access_project_groups"
-pg_restore: creating TABLE "public.access_project_resource_environments"
-pg_restore: creating TABLE "public.access_project_resources"
-pg_restore: creating TABLE "public.access_project_shared_resources"
-pg_restore: creating TABLE "public.access_project_users"
-pg_restore: creating TABLE "public.access_projects"
-pg_restore: creating TABLE "public.access_role_environment_actions"
-pg_restore: creating TABLE "public.access_roles"
-pg_restore: creating TABLE "public.access_schema_version"
-pg_restore: creating TABLE "public.access_servers"
-pg_restore: creating TABLE "public.access_tasks"
-pg_restore: creating TABLE "public.access_tokens"
-pg_restore: creating TABLE "public.access_topology"
-pg_restore: creating TABLE "public.access_unique_ids"
-pg_restore: creating TABLE "public.access_users"
-pg_restore: creating TABLE "public.access_users_custom_data"
-pg_restore: creating TABLE "public.access_users_groups"
-pg_restore: creating TABLE "public.archive_names"
-pg_restore: creating TABLE "public.archive_paths"
-pg_restore: creating TABLE "public.artifact_bundles"
-pg_restore: creating TABLE "public.artifactory_servers"
-pg_restore: creating TABLE "public.binaries"
-pg_restore: creating TABLE "public.binaries_tasks"
-pg_restore: creating TABLE "public.binary_blobs"
-pg_restore: creating TABLE "public.blob_infos"
-pg_restore: creating TABLE "public.build_artifacts"
-pg_restore: creating TABLE "public.build_dependencies"
-pg_restore: creating TABLE "public.build_modules"
-pg_restore: creating TABLE "public.build_promotions"
-pg_restore: creating TABLE "public.build_props"
-pg_restore: creating TABLE "public.build_release_bundles"
-pg_restore: creating TABLE "public.builds"
-pg_restore: creating TABLE "public.bundle_blobs"
-pg_restore: creating TABLE "public.bundle_files"
-pg_restore: creating TABLE "public.cleanup_run_summary"
-pg_restore: creating TABLE "public.config_history"
-pg_restore: creating SEQUENCE "public.config_history_id_seq"
-pg_restore: creating SEQUENCE OWNED BY "public.config_history_id_seq"
-pg_restore: creating TABLE "public.configs"
-pg_restore: creating TABLE "public.db_properties"
-pg_restore: creating TABLE "public.distributed_locks"
-pg_restore: creating TABLE "public.file_list_tasks"
-pg_restore: creating TABLE "public.heavy_query_cache"
-pg_restore: creating TABLE "public.indexed_archives"
-pg_restore: creating TABLE "public.indexed_archives_entries"
-pg_restore: creating TABLE "public.jobs"
-pg_restore: creating TABLE "public.master_key_status"
-pg_restore: creating TABLE "public.md_configs"
-pg_restore: creating TABLE "public.md_contributors"
-pg_restore: creating TABLE "public.md_database_migrations"
-pg_restore: creating TABLE "public.md_fil_qualifiers"
-pg_restore: creating TABLE "public.md_fil_targets"
-pg_restore: creating TABLE "public.md_files"
-pg_restore: creating TABLE "public.md_files_versions"
-pg_restore: creating TABLE "public.md_licenses"
-pg_restore: creating TABLE "public.md_lock"
-pg_restore: creating TABLE "public.md_packages"
-pg_restore: creating TABLE "public.md_pkg_descriptions"
-pg_restore: creating TABLE "public.md_pkg_info_sources"
-pg_restore: creating TABLE "public.md_pkg_licenses"
-pg_restore: creating TABLE "public.md_pkg_op_risk"
-pg_restore: creating TABLE "public.md_pkg_qualifiers"
-pg_restore: creating TABLE "public.md_pkg_stats"
-pg_restore: creating TABLE "public.md_pkg_tags"
-pg_restore: creating TABLE "public.md_pkg_user_properties"
-pg_restore: creating TABLE "public.md_pkg_vulns_sum"
-pg_restore: creating TABLE "public.md_repos"
-pg_restore: creating TABLE "public.md_servers"
-pg_restore: creating TABLE "public.md_sources"
-pg_restore: creating TABLE "public.md_task_batches"
-pg_restore: creating TABLE "public.md_tasks"
-pg_restore: creating TABLE "public.md_ver_contributors"
-pg_restore: creating TABLE "public.md_ver_licenses"
-pg_restore: creating TABLE "public.md_ver_op_risk"
-pg_restore: creating TABLE "public.md_ver_qualifiers"
-pg_restore: creating TABLE "public.md_ver_repos"
-pg_restore: creating TABLE "public.md_ver_stats"
-pg_restore: creating TABLE "public.md_ver_tags"
-pg_restore: creating TABLE "public.md_ver_user_properties"
-pg_restore: creating TABLE "public.md_ver_vulns_sum"
-pg_restore: creating TABLE "public.md_version_repo_stats"
-pg_restore: creating TABLE "public.md_versions"
-pg_restore: creating TABLE "public.migration_status"
-pg_restore: creating TABLE "public.mirrors_metadata"
-pg_restore: creating TABLE "public.module_props"
-pg_restore: creating TABLE "public.node_event_cursor"
-pg_restore: creating TABLE "public.node_event_priorities"
-pg_restore: creating TABLE "public.node_events"
-pg_restore: creating TABLE "public.node_events_errors"
-pg_restore: creating SEQUENCE "public.node_events_event_id_seq"
-pg_restore: creating TABLE "public.node_events_tmp"
-pg_restore: creating TABLE "public.node_events_tmp_p0_5"
-pg_restore: creating TABLE "public.node_events_tmp_p12_17"
-pg_restore: creating TABLE "public.node_events_tmp_p18_23"
-pg_restore: creating TABLE "public.node_events_tmp_p6_11"
-pg_restore: creating TABLE "public.node_meta_infos"
-pg_restore: creating TABLE "public.node_props"
-pg_restore: creating TABLE "public.nodes"
-pg_restore: creating TABLE "public.nodes_cleaned"
-pg_restore: creating SEQUENCE "public.nodes_cleaned_id_seq"
-pg_restore: creating SEQUENCE OWNED BY "public.nodes_cleaned_id_seq"
-pg_restore: creating TABLE "public.policy"
-pg_restore: creating TABLE "public.quartz_task_history"
-pg_restore: creating SEQUENCE "public.quartz_task_history_run_id_seq"
-pg_restore: creating SEQUENCE OWNED BY "public.quartz_task_history_run_id_seq"
-pg_restore: creating TABLE "public.release_bundle"
-pg_restore: creating TABLE "public.release_bundle_action_message"
-pg_restore: creating TABLE "public.release_bundle_audit"
-pg_restore: creating TABLE "public.release_bundle_item"
-pg_restore: creating TABLE "public.release_bundle_promotion"
-pg_restore: creating TABLE "public.release_bundle_promotion_item"
-pg_restore: creating TABLE "public.release_bundle_received"
-pg_restore: creating TABLE "public.repository_config"
-pg_restore: creating TABLE "public.retention_run_summary"
-pg_restore: creating SEQUENCE "public.retention_run_summary_id_seq"
-pg_restore: creating SEQUENCE OWNED BY "public.retention_run_summary_id_seq"
-pg_restore: creating TABLE "public.schema_change_log"
-pg_restore: creating TABLE "public.stats"
-pg_restore: creating TABLE "public.stats_remote"
-pg_restore: creating TABLE "public.storage_events"
-pg_restore: creating SEQUENCE "public.storage_events_event_id_seq"
-pg_restore: creating TABLE "public.storage_multipart_uploads"
-pg_restore: creating TABLE "public.tasks"
-pg_restore: creating SEQUENCE "public.tasks_task_id_seq"
-pg_restore: creating SEQUENCE OWNED BY "public.tasks_task_id_seq"
-pg_restore: creating TABLE "public.tb_actions"
-pg_restore: creating TABLE "public.tb_retention_audit"
-pg_restore: creating TABLE "public.tpl_configuration"
-pg_restore: creating TABLE "public.tpl_schema_version"
-pg_restore: creating TABLE "public.tpl_topology"
-pg_restore: creating TABLE "public.trusted_keys"
-pg_restore: creating TABLE "public.ui_session"
-pg_restore: creating TABLE "public.ui_session_attributes"
-pg_restore: creating TABLE "public.ui_session_v2"
-pg_restore: creating TABLE "public.ui_session_v2_attributes"
-pg_restore: creating TABLE "public.unique_ids"
-pg_restore: creating TABLE "public.version_history"
-pg_restore: creating SEQUENCE "public.version_history_id_seq"
-pg_restore: creating SEQUENCE OWNED BY "public.version_history_id_seq"
-pg_restore: creating TABLE "public.watches"
-pg_restore: creating TABLE ATTACH "public.node_events_tmp_p0_5"
-pg_restore: creating TABLE ATTACH "public.node_events_tmp_p12_17"
-pg_restore: creating TABLE ATTACH "public.node_events_tmp_p18_23"
-pg_restore: creating TABLE ATTACH "public.node_events_tmp_p6_11"
-pg_restore: creating DEFAULT "public.config_history id"
-pg_restore: creating DEFAULT "public.nodes_cleaned id"
-pg_restore: creating DEFAULT "public.quartz_task_history run_id"
-pg_restore: creating DEFAULT "public.retention_run_summary id"
-pg_restore: creating DEFAULT "public.tasks task_id"
-pg_restore: creating DEFAULT "public.version_history id"
-pg_restore: processing data for table "public.access_configs"
-pg_restore: processing data for table "public.access_db_check"
-pg_restore: processing data for table "public.access_distributed_lock"
-pg_restore: processing data for table "public.access_emails_log"
-pg_restore: processing data for table "public.access_environments"
-pg_restore: processing data for table "public.access_federation_log"
-pg_restore: processing data for table "public.access_federation_servers"
-pg_restore: processing data for table "public.access_groups"
-pg_restore: processing data for table "public.access_groups_custom_data"
-pg_restore: processing data for table "public.access_master_key_status"
-pg_restore: processing data for table "public.access_nodes"
-pg_restore: processing data for table "public.access_permission_action"
-pg_restore: processing data for table "public.access_permission_names_mapper"
-pg_restore: processing data for table "public.access_permissions"
-pg_restore: processing data for table "public.access_permissions_actions_v2"
-pg_restore: processing data for table "public.access_permissions_custom_data"
-pg_restore: processing data for table "public.access_permissions_targets_v2"
-pg_restore: processing data for table "public.access_permissions_v2"
-pg_restore: processing data for table "public.access_permissions_v2_ref"
-pg_restore: processing data for table "public.access_platform_config"
-pg_restore: processing data for table "public.access_project_groups"
-pg_restore: processing data for table "public.access_project_resource_environments"
-pg_restore: processing data for table "public.access_project_resources"
-pg_restore: processing data for table "public.access_project_shared_resources"
-pg_restore: processing data for table "public.access_project_users"
-pg_restore: processing data for table "public.access_projects"
-pg_restore: processing data for table "public.access_role_environment_actions"
-pg_restore: processing data for table "public.access_roles"
-pg_restore: processing data for table "public.access_schema_version"
-pg_restore: processing data for table "public.access_servers"
-pg_restore: processing data for table "public.access_tasks"
-pg_restore: processing data for table "public.access_tokens"
-pg_restore: processing data for table "public.access_topology"
-pg_restore: processing data for table "public.access_unique_ids"
-pg_restore: processing data for table "public.access_users"
-pg_restore: processing data for table "public.access_users_custom_data"
-pg_restore: processing data for table "public.access_users_groups"
-pg_restore: processing data for table "public.archive_names"
-pg_restore: processing data for table "public.archive_paths"
-pg_restore: processing data for table "public.artifact_bundles"
-pg_restore: processing data for table "public.artifactory_servers"
-pg_restore: processing data for table "public.binaries"
-pg_restore: processing data for table "public.binaries_tasks"
-pg_restore: processing data for table "public.binary_blobs"
-pg_restore: processing data for table "public.blob_infos"
-pg_restore: processing data for table "public.build_artifacts"
-pg_restore: processing data for table "public.build_dependencies"
-pg_restore: processing data for table "public.build_modules"
-pg_restore: processing data for table "public.build_promotions"
-pg_restore: processing data for table "public.build_props"
-pg_restore: processing data for table "public.build_release_bundles"
-pg_restore: processing data for table "public.builds"
-pg_restore: processing data for table "public.bundle_blobs"
-pg_restore: processing data for table "public.bundle_files"
-pg_restore: processing data for table "public.cleanup_run_summary"
-pg_restore: processing data for table "public.config_history"
-pg_restore: processing data for table "public.configs"
-pg_restore: processing data for table "public.db_properties"
-pg_restore: processing data for table "public.distributed_locks"
-pg_restore: processing data for table "public.file_list_tasks"
-pg_restore: processing data for table "public.heavy_query_cache"
-pg_restore: processing data for table "public.indexed_archives"
-pg_restore: processing data for table "public.indexed_archives_entries"
-pg_restore: processing data for table "public.jobs"
-pg_restore: processing data for table "public.master_key_status"
-pg_restore: processing data for table "public.md_configs"
-pg_restore: processing data for table "public.md_contributors"
-pg_restore: processing data for table "public.md_database_migrations"
-pg_restore: processing data for table "public.md_fil_qualifiers"
-pg_restore: processing data for table "public.md_fil_targets"
-pg_restore: processing data for table "public.md_files"
-pg_restore: processing data for table "public.md_files_versions"
-pg_restore: processing data for table "public.md_licenses"
-pg_restore: processing data for table "public.md_lock"
-pg_restore: processing data for table "public.md_packages"
-pg_restore: processing data for table "public.md_pkg_descriptions"
-pg_restore: processing data for table "public.md_pkg_info_sources"
-pg_restore: processing data for table "public.md_pkg_licenses"
-pg_restore: processing data for table "public.md_pkg_op_risk"
-pg_restore: processing data for table "public.md_pkg_qualifiers"
-pg_restore: processing data for table "public.md_pkg_stats"
-pg_restore: processing data for table "public.md_pkg_tags"
-pg_restore: processing data for table "public.md_pkg_user_properties"
-pg_restore: processing data for table "public.md_pkg_vulns_sum"
-pg_restore: processing data for table "public.md_repos"
-pg_restore: processing data for table "public.md_servers"
-pg_restore: processing data for table "public.md_sources"
-pg_restore: processing data for table "public.md_task_batches"
-pg_restore: processing data for table "public.md_tasks"
-pg_restore: processing data for table "public.md_ver_contributors"
-pg_restore: processing data for table "public.md_ver_licenses"
-pg_restore: processing data for table "public.md_ver_op_risk"
-pg_restore: processing data for table "public.md_ver_qualifiers"
-pg_restore: processing data for table "public.md_ver_repos"
-pg_restore: processing data for table "public.md_ver_stats"
-pg_restore: processing data for table "public.md_ver_tags"
-pg_restore: processing data for table "public.md_ver_user_properties"
-pg_restore: processing data for table "public.md_ver_vulns_sum"
-pg_restore: processing data for table "public.md_version_repo_stats"
-pg_restore: processing data for table "public.md_versions"
-pg_restore: processing data for table "public.migration_status"
-pg_restore: processing data for table "public.mirrors_metadata"
-pg_restore: processing data for table "public.module_props"
-pg_restore: processing data for table "public.node_event_cursor"
-pg_restore: processing data for table "public.node_event_priorities"
-pg_restore: processing data for table "public.node_events"
-pg_restore: processing data for table "public.node_events_errors"
-pg_restore: processing data for table "public.node_events_tmp_p0_5"
-pg_restore: processing data for table "public.node_events_tmp_p12_17"
-pg_restore: processing data for table "public.node_events_tmp_p18_23"
-pg_restore: processing data for table "public.node_events_tmp_p6_11"
-pg_restore: processing data for table "public.node_meta_infos"
-pg_restore: processing data for table "public.node_props"
-pg_restore: processing data for table "public.nodes"
-pg_restore: processing data for table "public.nodes_cleaned"
-pg_restore: processing data for table "public.policy"
-pg_restore: processing data for table "public.quartz_task_history"
-pg_restore: processing data for table "public.release_bundle"
-pg_restore: processing data for table "public.release_bundle_action_message"
-pg_restore: processing data for table "public.release_bundle_audit"
-pg_restore: processing data for table "public.release_bundle_item"
-pg_restore: processing data for table "public.release_bundle_promotion"
-pg_restore: processing data for table "public.release_bundle_promotion_item"
-pg_restore: processing data for table "public.release_bundle_received"
-pg_restore: processing data for table "public.repository_config"
-pg_restore: processing data for table "public.retention_run_summary"
-pg_restore: processing data for table "public.schema_change_log"
-pg_restore: processing data for table "public.stats"
-pg_restore: processing data for table "public.stats_remote"
-pg_restore: processing data for table "public.storage_events"
-pg_restore: processing data for table "public.storage_multipart_uploads"
-pg_restore: processing data for table "public.tasks"
-pg_restore: processing data for table "public.tb_actions"
-pg_restore: processing data for table "public.tb_retention_audit"
-pg_restore: processing data for table "public.tpl_configuration"
-pg_restore: processing data for table "public.tpl_schema_version"
-pg_restore: processing data for table "public.tpl_topology"
-pg_restore: processing data for table "public.trusted_keys"
-pg_restore: processing data for table "public.ui_session"
-pg_restore: processing data for table "public.ui_session_attributes"
-pg_restore: processing data for table "public.ui_session_v2"
-pg_restore: processing data for table "public.ui_session_v2_attributes"
-pg_restore: processing data for table "public.unique_ids"
-pg_restore: processing data for table "public.version_history"
-pg_restore: processing data for table "public.watches"
-pg_restore: executing SEQUENCE SET config_history_id_seq
-pg_restore: executing SEQUENCE SET node_events_event_id_seq
-pg_restore: executing SEQUENCE SET nodes_cleaned_id_seq
-pg_restore: executing SEQUENCE SET quartz_task_history_run_id_seq
-pg_restore: executing SEQUENCE SET retention_run_summary_id_seq
-pg_restore: executing SEQUENCE SET storage_events_event_id_seq
-pg_restore: executing SEQUENCE SET tasks_task_id_seq
-pg_restore: executing SEQUENCE SET version_history_id_seq
-pg_restore: creating CONSTRAINT "public.access_platform_config access_config_key_pk"
-pg_restore: creating CONSTRAINT "public.access_configs access_configs_pk"
-pg_restore: creating CONSTRAINT "public.access_db_check access_db_check_pk"
-pg_restore: creating CONSTRAINT "public.access_distributed_lock access_distributed_lock_key_pk"
-pg_restore: creating CONSTRAINT "public.access_emails_log access_emails_log_pk"
-pg_restore: creating CONSTRAINT "public.access_environments access_environments_pk"
-pg_restore: creating CONSTRAINT "public.access_federation_log access_fed_log_pk"
-pg_restore: creating CONSTRAINT "public.access_federation_servers access_fed_ser_pk"
-pg_restore: creating CONSTRAINT "public.access_groups_custom_data access_groups_data_pk"
-pg_restore: creating CONSTRAINT "public.access_groups access_groups_pk"
-pg_restore: creating CONSTRAINT "public.access_master_key_status access_kid_pk"
-pg_restore: creating CONSTRAINT "public.access_master_key_status access_master_key"
-pg_restore: creating CONSTRAINT "public.access_nodes access_nodes_pk"
-pg_restore: creating CONSTRAINT "public.access_permission_action access_perm_action_pk"
-pg_restore: creating CONSTRAINT "public.access_permissions_custom_data access_perm_data_pk"
-pg_restore: creating CONSTRAINT "public.access_permission_names_mapper access_permission_names_mapper_pk"
-pg_restore: creating CONSTRAINT "public.access_permissions_actions_v2 access_permissions_actions_pk"
-pg_restore: creating CONSTRAINT "public.access_permissions access_permissions_pk"
-pg_restore: creating CONSTRAINT "public.access_permissions_targets_v2 access_permissions_targets_pk"
-pg_restore: creating CONSTRAINT "public.access_permissions_v2 access_permissions_v2_pk"
-pg_restore: creating CONSTRAINT "public.access_permissions_v2_ref access_permissions_v2_ref_pk"
-pg_restore: creating CONSTRAINT "public.access_project_groups access_project_groups_pk"
-pg_restore: creating CONSTRAINT "public.access_project_resource_environments access_project_resource_env_pk"
-pg_restore: creating CONSTRAINT "public.access_project_resources access_project_resources_pk"
-pg_restore: creating CONSTRAINT "public.access_project_resources access_project_resources_unq"
-pg_restore: creating CONSTRAINT "public.access_roles access_project_roles_pk"
-pg_restore: creating CONSTRAINT "public.access_project_shared_resources access_project_shared_resources_pk"
-pg_restore: creating CONSTRAINT "public.access_project_users access_project_users_pk"
-pg_restore: creating CONSTRAINT "public.access_projects access_projects_pk"
-pg_restore: creating CONSTRAINT "public.access_role_environment_actions access_role_environment_actions_pk"
-pg_restore: creating CONSTRAINT "public.access_schema_version access_schema_version_pk"
-pg_restore: creating CONSTRAINT "public.access_servers access_servers_pk"
-pg_restore: creating CONSTRAINT "public.access_tasks access_tasks_pk"
-pg_restore: creating CONSTRAINT "public.access_tokens access_tokens_pk"
-pg_restore: creating CONSTRAINT "public.access_topology access_topology_pk"
-pg_restore: creating CONSTRAINT "public.access_unique_ids access_unique_ids_pk"
-pg_restore: creating CONSTRAINT "public.access_users_custom_data access_users_data_pk"
-pg_restore: creating CONSTRAINT "public.access_users_groups access_users_groups_pk"
-pg_restore: creating CONSTRAINT "public.access_users access_users_pk"
-pg_restore: creating CONSTRAINT "public.tb_actions action_pk"
-pg_restore: creating CONSTRAINT "public.archive_names archive_names_pk"
-pg_restore: creating CONSTRAINT "public.archive_paths archive_paths_pk"
-pg_restore: creating CONSTRAINT "public.artifactory_servers artifactory_servers_pk"
-pg_restore: creating CONSTRAINT "public.binaries binaries_pk"
-pg_restore: creating CONSTRAINT "public.binaries_tasks binaries_tasks_pk"
-pg_restore: creating CONSTRAINT "public.binary_blobs binary_blobs_pk"
-pg_restore: creating CONSTRAINT "public.blob_infos blob_infos_checksum"
-pg_restore: creating CONSTRAINT "public.build_artifacts build_artifacts_pk"
-pg_restore: creating CONSTRAINT "public.build_dependencies build_dependencies_pk"
-pg_restore: creating CONSTRAINT "public.build_modules build_modules_pk"
-pg_restore: creating CONSTRAINT "public.build_promotions build_promotions_pk"
-pg_restore: creating CONSTRAINT "public.build_props build_props_pk"
-pg_restore: creating CONSTRAINT "public.build_release_bundles build_rb_pk"
-pg_restore: creating CONSTRAINT "public.builds builds_pk"
-pg_restore: creating CONSTRAINT "public.bundle_blobs bundle_blobs_pk"
-pg_restore: creating CONSTRAINT "public.bundle_files bundle_node_pk"
-pg_restore: creating CONSTRAINT "public.artifact_bundles bundle_pk"
-pg_restore: creating CONSTRAINT "public.cleanup_run_summary cleanup_run_summary_pk"
-pg_restore: creating CONSTRAINT "public.config_history config_history_pk"
-pg_restore: creating CONSTRAINT "public.configs configs_pk"
-pg_restore: creating CONSTRAINT "public.db_properties db_properties_pk"
-pg_restore: creating CONSTRAINT "public.file_list_tasks file_list_tasks_pk"
-pg_restore: creating CONSTRAINT "public.heavy_query_cache hqc_pk"
-pg_restore: creating CONSTRAINT "public.migration_status identifier_pk"
-pg_restore: creating CONSTRAINT "public.indexed_archives_entries indexed_archives_entries_pk"
-pg_restore: creating CONSTRAINT "public.indexed_archives indexed_archives_id_uq"
-pg_restore: creating CONSTRAINT "public.indexed_archives indexed_archives_pk"
-pg_restore: creating CONSTRAINT "public.jobs jobs_pk"
-pg_restore: creating CONSTRAINT "public.master_key_status kid_pk"
-pg_restore: creating CONSTRAINT "public.distributed_locks locks_pk"
-pg_restore: creating CONSTRAINT "public.md_configs md_configs_pkey"
-pg_restore: creating CONSTRAINT "public.md_contributors md_contributors_pkey"
-pg_restore: creating CONSTRAINT "public.md_database_migrations md_database_migrations_pkey"
-pg_restore: creating CONSTRAINT "public.md_fil_qualifiers md_fil_qualifiers_pkey"
-pg_restore: creating CONSTRAINT "public.md_fil_targets md_fil_targets_pkey"
-pg_restore: creating CONSTRAINT "public.md_files md_files_pkey"
-pg_restore: creating CONSTRAINT "public.md_files_versions md_files_versions_pkey"
-pg_restore: creating CONSTRAINT "public.md_licenses md_licenses_pkey"
-pg_restore: creating CONSTRAINT "public.md_lock md_lock_pkey"
-pg_restore: creating CONSTRAINT "public.md_packages md_packages_pkey"
-pg_restore: creating CONSTRAINT "public.md_pkg_descriptions md_pkg_descriptions_pkey"
-pg_restore: creating CONSTRAINT "public.md_pkg_info_sources md_pkg_info_sources_pkey"
-pg_restore: creating CONSTRAINT "public.md_pkg_licenses md_pkg_licenses_pkey"
-pg_restore: creating CONSTRAINT "public.md_pkg_op_risk md_pkg_op_risk_pkey"
-pg_restore: creating CONSTRAINT "public.md_pkg_qualifiers md_pkg_qualifiers_pkey"
-pg_restore: creating CONSTRAINT "public.md_pkg_stats md_pkg_stats_pkey"
-pg_restore: creating CONSTRAINT "public.md_pkg_tags md_pkg_tags_pkey"
-pg_restore: creating CONSTRAINT "public.md_pkg_user_properties md_pkg_user_properties_pkey"
-pg_restore: creating CONSTRAINT "public.md_pkg_vulns_sum md_pkg_vulns_sum_pkey"
-pg_restore: creating CONSTRAINT "public.md_repos md_repos_pkey"
-pg_restore: creating CONSTRAINT "public.md_servers md_servers_pkey"
-pg_restore: creating CONSTRAINT "public.md_sources md_sources_pkey"
-pg_restore: creating CONSTRAINT "public.md_task_batches md_task_batches_pkey"
-pg_restore: creating CONSTRAINT "public.md_tasks md_tasks_pkey"
-pg_restore: creating CONSTRAINT "public.md_ver_contributors md_ver_contributors_pkey"
-pg_restore: creating CONSTRAINT "public.md_ver_licenses md_ver_licenses_pkey"
-pg_restore: creating CONSTRAINT "public.md_ver_op_risk md_ver_op_risk_pkey"
-pg_restore: creating CONSTRAINT "public.md_ver_qualifiers md_ver_qualifiers_pkey"
-pg_restore: creating CONSTRAINT "public.md_ver_repos md_ver_repos_pkey"
-pg_restore: creating CONSTRAINT "public.md_ver_stats md_ver_stats_pkey"
-pg_restore: creating CONSTRAINT "public.md_ver_tags md_ver_tags_pkey"
-pg_restore: creating CONSTRAINT "public.md_ver_user_properties md_ver_user_properties_pkey"
-pg_restore: creating CONSTRAINT "public.md_ver_vulns_sum md_ver_vulns_sum_pkey"
-pg_restore: creating CONSTRAINT "public.md_version_repo_stats md_version_repo_stats_pkey"
-pg_restore: creating CONSTRAINT "public.md_versions md_versions_pkey"
-pg_restore: creating CONSTRAINT "public.mirrors_metadata mirrors_remote_pk"
-pg_restore: creating CONSTRAINT "public.module_props module_props_pk"
-pg_restore: creating CONSTRAINT "public.node_events_errors node_events_errors_pk"
-pg_restore: creating CONSTRAINT "public.node_events node_events_pk"
-pg_restore: creating CONSTRAINT "public.node_events_tmp_p0_5 node_events_tmp_partition_0_5_pk"
-pg_restore: creating CONSTRAINT "public.node_events_tmp_p12_17 node_events_tmp_partition_12_17_pk"
-pg_restore: creating CONSTRAINT "public.node_events_tmp_p18_23 node_events_tmp_partition_18_23_pk"
-pg_restore: creating CONSTRAINT "public.node_events_tmp_p6_11 node_events_tmp_partition_6_11_pk"
-pg_restore: creating CONSTRAINT "public.node_meta_infos node_meta_infos_pk"
-pg_restore: creating CONSTRAINT "public.node_props node_props_pk"
-pg_restore: creating CONSTRAINT "public.nodes_cleaned nodes_cleaned_pk"
-pg_restore: creating CONSTRAINT "public.nodes nodes_pk"
-pg_restore: creating CONSTRAINT "public.node_event_cursor operator_id_pk"
-pg_restore: creating CONSTRAINT "public.policy policy_pk"
-pg_restore: creating CONSTRAINT "public.node_event_priorities priority_id_pk"
-pg_restore: creating CONSTRAINT "public.quartz_task_history quartz_task_history_pk"
-pg_restore: creating CONSTRAINT "public.release_bundle_action_message rb_action_message_pk"
-pg_restore: creating CONSTRAINT "public.release_bundle_audit rb_audit_pk"
-pg_restore: creating CONSTRAINT "public.release_bundle_item rb_item_pk"
-pg_restore: creating CONSTRAINT "public.release_bundle rb_pk"
-pg_restore: creating CONSTRAINT "public.release_bundle_promotion_item rb_promotion_item_pk"
-pg_restore: creating CONSTRAINT "public.release_bundle_promotion rb_promotion_pk"
-pg_restore: creating CONSTRAINT "public.release_bundle_received rb_received_pk"
-pg_restore: creating CONSTRAINT "public.repository_config repo_key_pk"
-pg_restore: creating CONSTRAINT "public.retention_run_summary retention_run_summary_pk"
-pg_restore: creating CONSTRAINT "public.schema_change_log schema_change_log_pkey"
-pg_restore: creating CONSTRAINT "public.stats stats_pk"
-pg_restore: creating CONSTRAINT "public.stats_remote stats_remote_pk"
-pg_restore: creating CONSTRAINT "public.storage_events storage_events_pk"
-pg_restore: creating CONSTRAINT "public.storage_multipart_uploads storage_multipart_uploads_pk"
-pg_restore: creating CONSTRAINT "public.tasks tasks_pk"
-pg_restore: creating CONSTRAINT "public.tb_retention_audit tb_retention_audit_pk"
-pg_restore: creating CONSTRAINT "public.tpl_configuration tpl_configuration_pk"
-pg_restore: creating CONSTRAINT "public.tpl_schema_version tpl_schema_version_pk"
-pg_restore: creating CONSTRAINT "public.tpl_topology tpl_topology_pk"
-pg_restore: creating CONSTRAINT "public.trusted_keys trusted_keys_pk"
-pg_restore: creating CONSTRAINT "public.ui_session_attributes ui_session_attributes_pk"
-pg_restore: creating CONSTRAINT "public.ui_session ui_session_pk"
-pg_restore: creating CONSTRAINT "public.ui_session_v2_attributes ui_session_v2_attributes_pk"
-pg_restore: creating CONSTRAINT "public.ui_session_v2 ui_session_v2_pk"
-pg_restore: creating CONSTRAINT "public.unique_ids unique_ids_pk"
-pg_restore: creating CONSTRAINT "public.master_key_status unique_key"
-pg_restore: creating CONSTRAINT "public.version_history version_history_pk"
-pg_restore: creating CONSTRAINT "public.watches watches_pk"
-pg_restore: creating INDEX "public.access_emails_log_last_sent"
-pg_restore: creating INDEX "public.access_environments_key_unique_idx"
-pg_restore: creating INDEX "public.access_environments_unique_idx"
-pg_restore: creating INDEX "public.access_fed_log_created_idx"
-pg_restore: creating INDEX "public.access_group_lower_name_idx"
-pg_restore: creating INDEX "public.access_groups_data_key_idx"
-pg_restore: creating INDEX "public.access_groups_data_value_idx"
-pg_restore: creating INDEX "public.access_groups_name_idx"
-pg_restore: creating INDEX "public.access_perm_act_group_id_idx"
-pg_restore: creating INDEX "public.access_perm_act_group_rsc_idx"
-pg_restore: creating INDEX "public.access_perm_act_permid_rsc_idx"
-pg_restore: creating INDEX "public.access_perm_act_user_id_idx"
-pg_restore: creating INDEX "public.access_perm_act_user_rsc_idx"
-pg_restore: creating INDEX "public.access_perm_action_perm_id_idx"
-pg_restore: creating INDEX "public.access_perm_disp_name_constr"
-pg_restore: creating INDEX "public.access_perm_lower_display_idx"
-pg_restore: creating INDEX "public.access_perm_lwr_name_idx"
-pg_restore: creating INDEX "public.access_perm_map_nmv2_type_idx"
-pg_restore: creating INDEX "public.access_perm_name_unq_idx"
-pg_restore: creating INDEX "public.access_perm_perm_id_unique_idx"
-pg_restore: creating INDEX "public.access_perm_trg_composite_idx"
-pg_restore: creating INDEX "public.access_perm_trg_rsc_antptn_idx"
-pg_restore: creating INDEX "public.access_perm_trg_trgnme_rsc_idx"
-pg_restore: creating INDEX "public.access_permissions_v2_name"
-pg_restore: creating INDEX "public.access_project_groups_grp_idx"
-pg_restore: creating INDEX "public.access_project_name_project_idx"
-pg_restore: creating INDEX "public.access_project_resources_type_idx"
-pg_restore: creating INDEX "public.access_projects_name_idx"
-pg_restore: creating INDEX "public.access_projects_project_key_idx"
-pg_restore: creating INDEX "public.access_schema_version_s_idx"
-pg_restore: creating INDEX "public.access_servers_name_unique_idx"
-pg_restore: creating INDEX "public.access_tasks_exec_time_idx"
-pg_restore: creating INDEX "public.access_tasks_heartbeat_idx"
-pg_restore: creating INDEX "public.access_tasks_priority_exec_time_idx"
-pg_restore: creating INDEX "public.access_tokens_hashed_ref_idx"
-pg_restore: creating INDEX "public.access_tokens_project_key_idx"
-pg_restore: creating INDEX "public.access_tokens_rfrsh_tkn_idx"
-pg_restore: creating INDEX "public.access_tplgy_router_id_idx"
-pg_restore: creating INDEX "public.access_username_type_idx"
-pg_restore: creating INDEX "public.access_users_data_key_idx"
-pg_restore: creating INDEX "public.access_users_data_value_idx"
-pg_restore: creating INDEX "public.access_users_username_idx"
-pg_restore: creating INDEX "public.access_users_username_varchar_idx"
-pg_restore: creating INDEX "public.archive_names_name_idx"
-pg_restore: creating INDEX "public.archive_paths_path_idx"
-pg_restore: creating INDEX "public.binaries_md5_idx"
-pg_restore: creating INDEX "public.binaries_sha256_idx"
-pg_restore: creating INDEX "public.binaries_tasks_count_idx"
-pg_restore: creating INDEX "public.binaries_tasks_repo_key_idx"
-pg_restore: creating INDEX "public.binaries_tasks_server_id_idx"
-pg_restore: creating INDEX "public.binaries_tasks_start_time_idx"
-pg_restore: creating INDEX "public.binaries_tasks_time_idx"
-pg_restore: creating INDEX "public.build_artifacts_md5_idx"
-pg_restore: creating INDEX "public.build_artifacts_module_id_idx"
-pg_restore: creating INDEX "public.build_artifacts_sha1_idx"
-pg_restore: creating INDEX "public.build_dependencies_md5_idx"
-pg_restore: creating INDEX "public.build_dependencies_module_idx"
-pg_restore: creating INDEX "public.build_dependencies_sha1_idx"
-pg_restore: creating INDEX "public.build_modules_build_id_idx"
-pg_restore: creating INDEX "public.build_promotions_status_idx"
-pg_restore: creating INDEX "public.build_props_build_id_idx"
-pg_restore: creating INDEX "public.build_props_prop_key_idx"
-pg_restore: creating INDEX "public.build_props_prop_value_idx"
-pg_restore: creating INDEX "public.build_rb_build_id_idx"
-pg_restore: creating INDEX "public.build_rb_bundle_name_idx"
-pg_restore: creating INDEX "public.build_rb_bundle_repository_idx"
-pg_restore: creating INDEX "public.build_rb_bundle_version_idx"
-pg_restore: creating INDEX "public.builds_name_num_date_repo_idx"
-pg_restore: creating INDEX "public.bundle_files_node_id_idx"
-pg_restore: creating INDEX "public.bundle_id_bundle_files_idx"
-pg_restore: creating INDEX "public.bundle_id_idx"
-pg_restore: creating INDEX "public.cache_time_idx"
-pg_restore: creating INDEX "public.cleanup_run_summary_estimated_deleted_binary_size_idx"
-pg_restore: creating INDEX "public.cleanup_run_summary_prun_policy_run_id_idx"
-pg_restore: creating INDEX "public.cleanup_run_summary_status_idx"
-pg_restore: creating INDEX "public.cleanup_run_summary_type_idx"
-pg_restore: creating INDEX "public.distributed_locks_owner"
-pg_restore: creating INDEX "public.distributed_locks_owner_thread"
-pg_restore: creating INDEX "public.external_id_idx"
-pg_restore: creating INDEX "public.hqc_expiry_time_idx"
-pg_restore: creating INDEX "public.hqc_key_idx"
-pg_restore: creating INDEX "public.idx_gin_md_packages_lowercase_name"
-pg_restore: creating INDEX "public.indexed_entries_name_idx"
-pg_restore: creating INDEX "public.indexed_entries_path_idx"
-pg_restore: creating INDEX "public.jobs_index"
-pg_restore: creating INDEX "public.lock_key_idx"
-pg_restore: creating INDEX "public.md_cnt_name_idx"
-pg_restore: creating INDEX "public.md_configs_config_name_idx"
-pg_restore: creating INDEX "public.md_fil_unique_idx"
-pg_restore: creating INDEX "public.md_file_target_unique_idx"
-pg_restore: creating INDEX "public.md_files_md5_idx"
-pg_restore: creating INDEX "public.md_files_name_idx"
-pg_restore: creating INDEX "public.md_files_sha1_idx"
-pg_restore: creating INDEX "public.md_files_sha256_idx"
-pg_restore: creating INDEX "public.md_files_sha256_name_idx"
-pg_restore: creating INDEX "public.md_flv_file_id_idx"
-pg_restore: creating INDEX "public.md_flv_version_id_idx"
-pg_restore: creating INDEX "public.md_licenses_name_idx"
-pg_restore: creating INDEX "public.md_packages_name_idx"
-pg_restore: creating INDEX "public.md_packages_pkgid_idx"
-pg_restore: creating INDEX "public.md_pkg_ins_package_id_idx"
-pg_restore: creating INDEX "public.md_pkg_ins_source_id_idx"
-pg_restore: creating INDEX "public.md_pkg_licenses_name_idx"
-pg_restore: creating INDEX "public.md_pkg_licenses_package_id_idx"
-pg_restore: creating INDEX "public.md_pkg_qlf_package_id_idx"
-pg_restore: creating INDEX "public.md_pkg_tags_package_id_idx"
-pg_restore: creating INDEX "public.md_pkg_usp_name_idx"
-pg_restore: creating INDEX "public.md_pkg_usp_package_id_idx"
-pg_restore: creating INDEX "public.md_repos_name_idx"
-pg_restore: creating INDEX "public.md_servers_node_unique_id_idx"
-pg_restore: creating INDEX "public.md_sources_name_idx"
-pg_restore: creating INDEX "public.md_task_batches_progress_idx"
-pg_restore: creating INDEX "public.md_ver_cnt_contributor_id_idx"
-pg_restore: creating INDEX "public.md_ver_cnt_version_id_idx"
-pg_restore: creating INDEX "public.md_ver_licenses_name_idx"
-pg_restore: creating INDEX "public.md_ver_licenses_version_id_idx"
-pg_restore: creating INDEX "public.md_ver_qlf_name_idx"
-pg_restore: creating INDEX "public.md_ver_qlf_version_id_idx"
-pg_restore: creating INDEX "public.md_ver_repos_lead_file_pth_idx"
-pg_restore: creating INDEX "public.md_ver_repos_lead_hash_idx"
-pg_restore: creating INDEX "public.md_ver_repos_repo_id_idx"
-pg_restore: creating INDEX "public.md_ver_repos_version_id_idx"
-pg_restore: creating INDEX "public.md_ver_tags_value_idx"
-pg_restore: creating INDEX "public.md_ver_tags_version_id_idx"
-pg_restore: creating INDEX "public.md_ver_usp_name_idx"
-pg_restore: creating INDEX "public.md_ver_usp_version_id_idx"
-pg_restore: creating INDEX "public.md_versions_base_model_idx"
-pg_restore: creating INDEX "public.md_versions_id_created_idx"
-pg_restore: creating INDEX "public.md_versions_id_deletion_idx"
-pg_restore: creating INDEX "public.md_versions_lowercase_name_idx"
-pg_restore: creating INDEX "public.md_versions_name_idx"
-pg_restore: creating INDEX "public.md_versions_pkg_id_name_idx"
-pg_restore: creating INDEX "public.md_versions_pkgid_ordinal_idx"
-pg_restore: creating INDEX "public.member_url_idx"
-pg_restore: creating INDEX "public.module_props_module_id_idx"
-pg_restore: creating INDEX "public.module_props_prop_key_idx"
-pg_restore: creating INDEX "public.module_props_prop_value_idx"
-pg_restore: creating INDEX "public.name_ver_sta_date_typ_repo_idx"
-pg_restore: creating INDEX "public.name_version_idx"
-pg_restore: creating INDEX "public.node_events_errors_idx"
-pg_restore: creating INDEX "public.node_events_full_idx"
-pg_restore: creating INDEX "public.node_events_repo_event_id"
-pg_restore: creating INDEX "public.node_events_tmp_p0_5_idx_time_id"
-pg_restore: creating INDEX "public.node_events_tmp_p12_17_idx_time_id"
-pg_restore: creating INDEX "public.node_events_tmp_p18_23_idx_time_id"
-pg_restore: creating INDEX "public.node_events_tmp_p6_11_idx_time_id"
-pg_restore: creating INDEX "public.node_prop_nuget_partial_idx"
-pg_restore: creating INDEX "public.node_props_node_prop_value_idx"
-pg_restore: creating INDEX "public.node_props_prop_key_value_idx"
-pg_restore: creating INDEX "public.node_props_prop_value_key_idx"
-pg_restore: creating INDEX "public.nodes_cleaned_pkey_prun_status_sha1_idx"
-pg_restore: creating INDEX "public.nodes_cleaned_policy_key_policy_run_id_idx"
-pg_restore: creating INDEX "public.nodes_lower_node_name_gin_idx"
-pg_restore: creating INDEX "public.nodes_md5_actual_idx"
-pg_restore: creating INDEX "public.nodes_name_path_idx"
-pg_restore: creating INDEX "public.nodes_node_path_idx"
-pg_restore: creating INDEX "public.nodes_repo_created_idx"
-pg_restore: creating INDEX "public.nodes_repo_path_name_idx"
-pg_restore: creating INDEX "public.nodes_sha1_actual_idx"
-pg_restore: creating INDEX "public.nodes_sha256_idx"
-pg_restore: creating INDEX "public.pattern_bundle_files_repo_path_idx"
-pg_restore: creating INDEX "public.rb_action_message_subject_idx"
-pg_restore: creating INDEX "public.rb_audit_created_idx"
-pg_restore: creating INDEX "public.rb_audit_release_bundle_id_idx"
-pg_restore: creating INDEX "public.rb_audit_unique_composite_idx"
-pg_restore: creating INDEX "public.rb_composite_idx"
-pg_restore: creating INDEX "public.rb_created_by_idx"
-pg_restore: creating INDEX "public.rb_created_idx"
-pg_restore: creating INDEX "public.rb_item_bundle_id_idx"
-pg_restore: creating INDEX "public.rb_item_promotion_id_idx"
-pg_restore: creating INDEX "public.rb_name_idx"
-pg_restore: creating INDEX "public.rb_promotion_bundle_id_idx"
-pg_restore: creating INDEX "public.rb_promotion_created_by_idx"
-pg_restore: creating INDEX "public.rb_promotion_created_idx"
-pg_restore: creating INDEX "public.rb_promotion_environment_idx"
-pg_restore: creating INDEX "public.rb_promotion_item_path_idx"
-pg_restore: creating INDEX "public.rb_promotion_item_sha256_idx"
-pg_restore: creating INDEX "public.rb_promotion_schema_idx"
-pg_restore: creating INDEX "public.rb_promotion_status_idx"
-pg_restore: creating INDEX "public.rb_received_composite_idx"
-pg_restore: creating INDEX "public.rb_received_created_idx"
-pg_restore: creating INDEX "public.rb_received_name_idx"
-pg_restore: creating INDEX "public.rb_received_promotion_idx"
-pg_restore: creating INDEX "public.rb_received_version_idx"
-pg_restore: creating INDEX "public.rb_schema_idx"
-pg_restore: creating INDEX "public.rb_source_project_key_idx"
-pg_restore: creating INDEX "public.rb_status_idx"
-pg_restore: creating INDEX "public.rb_version_idx"
-pg_restore: creating INDEX "public.rb_xray_retrieval_status_idx"
-pg_restore: creating INDEX "public.rb_xray_triggering_status_idx"
-pg_restore: creating INDEX "public.retention_run_summary_processed_virtual_binary_size_idx"
-pg_restore: creating INDEX "public.retention_run_summary_retention_type_idx"
-pg_restore: creating INDEX "public.retention_run_summary_rkey_run_id_idx"
-pg_restore: creating INDEX "public.retention_run_summary_status_idx"
-pg_restore: creating INDEX "public.storage_events_bin_size_idx"
-pg_restore: creating INDEX "public.storage_events_sha1_type_idx"
-pg_restore: creating INDEX "public.storage_mpu_created_date_idx"
-pg_restore: creating INDEX "public.storage_mpu_status_idx"
-pg_restore: creating INDEX "public.tasks_type_context_idx"
-pg_restore: creating INDEX "public.tb_signature_checksum_idx"
-pg_restore: creating INDEX "public.tb_source_service_id_idx"
-pg_restore: creating INDEX "public.tpl_schema_version_s_idx"
-pg_restore: creating INDEX "public.tpl_topology_router_id_idx"
-pg_restore: creating INDEX "public.trusted_keys_alias"
-pg_restore: creating INDEX "public.ui_session_attributes_ix1"
-pg_restore: creating INDEX "public.ui_session_ix1"
-pg_restore: creating INDEX "public.ui_session_v2_ix1"
-pg_restore: creating INDEX "public.uui_session_v2_attributes_ix1"
-pg_restore: creating INDEX "public.watches_node_id_idx"
-pg_restore: creating TRIGGER "public.access_permission_action access_trg_perm_actions"
-pg_restore: creating TRIGGER "public.access_permissions access_trg_perm_table"
-pg_restore: creating TRIGGER "public.access_permissions_v2_ref access_trg_perm_v2_ref"
-pg_restore: creating TRIGGER "public.access_permissions_custom_data access_trg_perms_custom_data"
-pg_restore: creating FK CONSTRAINT "public.access_groups_custom_data access_groups_data_users_fk"
-pg_restore: creating FK CONSTRAINT "public.access_permissions_actions_v2 access_perm_act_v2_groups_fk"
-pg_restore: creating FK CONSTRAINT "public.access_permission_action access_perm_action_groups_fk"
-pg_restore: creating FK CONSTRAINT "public.access_permission_action access_perm_action_perms_fk"
-pg_restore: creating FK CONSTRAINT "public.access_permission_action access_perm_action_users_fk"
-pg_restore: creating FK CONSTRAINT "public.access_permissions_actions_v2 access_perm_action_v2_perms_fk"
-pg_restore: creating FK CONSTRAINT "public.access_permissions_actions_v2 access_perm_action_v2_users_fk"
-pg_restore: creating FK CONSTRAINT "public.access_permissions_custom_data access_perm_data_perms_fk"
-pg_restore: creating FK CONSTRAINT "public.access_permissions_targets_v2 access_permissions_trg_prms_fk"
-pg_restore: creating FK CONSTRAINT "public.access_permissions_v2_ref access_permissions_v2_ref_fk"
-pg_restore: creating FK CONSTRAINT "public.access_environments access_project_environments_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_groups access_project_groups_group_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_groups access_project_groups_project_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_groups access_project_groups_role_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_resource_environments access_project_resource_env_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_resource_environments access_project_resource_env_rsc_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_resources access_project_resources_project_fk"
-pg_restore: creating FK CONSTRAINT "public.access_roles access_project_roles_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_shared_resources access_project_shared_resources_project_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_shared_resources access_project_shared_resources_rsc_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_users access_project_users_project_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_users access_project_users_role_fk"
-pg_restore: creating FK CONSTRAINT "public.access_project_users access_project_users_user_fk"
-pg_restore: creating FK CONSTRAINT "public.access_role_environment_actions access_role_environment_actions_env_fk"
-pg_restore: creating FK CONSTRAINT "public.access_role_environment_actions access_role_environment_actions_role_fk"
-pg_restore: creating FK CONSTRAINT "public.access_users_custom_data access_users_data_users_fk"
-pg_restore: creating FK CONSTRAINT "public.access_users_groups access_users_groups_groups_fk"
-pg_restore: creating FK CONSTRAINT "public.access_users_groups access_users_groups_users_fk"
-pg_restore: creating FK CONSTRAINT "public.build_artifacts build_artifacts_modules_fk"
-pg_restore: creating FK CONSTRAINT "public.build_dependencies build_dependencies_modules_fk"
-pg_restore: creating FK CONSTRAINT "public.build_modules build_modules_builds_fk"
-pg_restore: creating FK CONSTRAINT "public.build_promotions build_promotions_builds_fk"
-pg_restore: creating FK CONSTRAINT "public.build_props build_props_builds_fk"
-pg_restore: creating FK CONSTRAINT "public.build_release_bundles build_rb_build_id_fk"
-pg_restore: creating FK CONSTRAINT "public.bundle_blobs bundle_id_bundle_blobs_fk"
-pg_restore: creating FK CONSTRAINT "public.bundle_files bundle_id_bundle_files_fk"
-pg_restore: creating FK CONSTRAINT "public.indexed_archives_entries entry_name_id_fk"
-pg_restore: creating FK CONSTRAINT "public.indexed_archives_entries entry_path_id_fk"
-pg_restore: creating FK CONSTRAINT "public.md_files fk_file_targets"
-pg_restore: creating FK CONSTRAINT "public.indexed_archives indexed_archives_binaries_fk"
-pg_restore: creating FK CONSTRAINT "public.indexed_archives_entries indexed_archives_id_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_descriptions md_descriptions_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.md_fil_qualifiers md_fil_qlf_files_fk"
-pg_restore: creating FK CONSTRAINT "public.md_files_versions md_flv_files_fk"
-pg_restore: creating FK CONSTRAINT "public.md_files_versions md_flv_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_info_sources md_ins_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_info_sources md_ins_sources_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_licenses md_licenses_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_op_risk md_pgk_op_risk_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_qualifiers md_qlf_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_stats md_stats_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_tags md_tags_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_user_properties md_usp_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_contributors md_ver_cnt_cnt_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_contributors md_ver_cnt_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_licenses md_ver_licenses_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_op_risk md_ver_op_risk_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_qualifiers md_ver_qlf_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_repos md_ver_repos_repos_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_repos md_ver_repos_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_stats md_ver_stats_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_tags md_ver_tags_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_user_properties md_ver_usp_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_ver_vulns_sum md_ver_vulns_sum_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_version_repo_stats md_version_repo_stats_repos_fk"
-pg_restore: creating FK CONSTRAINT "public.md_version_repo_stats md_version_repo_stats_versions_fk"
-pg_restore: creating FK CONSTRAINT "public.md_versions md_versions_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.md_pkg_vulns_sum md_vulns_sum_packages_fk"
-pg_restore: creating FK CONSTRAINT "public.module_props module_props_modules_fk"
-pg_restore: creating FK CONSTRAINT "public.node_events_errors node_events_errors_event_id_fk"
-pg_restore: creating FK CONSTRAINT "public.bundle_files node_id_nodes_fk"
-pg_restore: creating FK CONSTRAINT "public.node_meta_infos node_meta_infos_nodes_fk"
-pg_restore: creating FK CONSTRAINT "public.node_props node_props_nodes_fk"
-pg_restore: creating FK CONSTRAINT "public.nodes nodes_binaries_fk"
-pg_restore: creating FK CONSTRAINT "public.release_bundle_audit rb_audit_release_bundle_fk"
-pg_restore: creating FK CONSTRAINT "public.release_bundle_item rb_item_bundle_fk"
-pg_restore: creating FK CONSTRAINT "public.release_bundle_promotion rb_promotion_bundle_fk"
-pg_restore: creating FK CONSTRAINT "public.release_bundle_promotion_item rb_promotion_item_promotion_fk"
-pg_restore: creating FK CONSTRAINT "public.release_bundle_received rb_received_release_bundle_fk"
-pg_restore: creating FK CONSTRAINT "public.stats stats_nodes_fk"
-pg_restore: creating FK CONSTRAINT "public.stats_remote stats_remote_nodes_fk"
-pg_restore: creating FK CONSTRAINT "public.ui_session_attributes ui_session_attributes_fk"
-pg_restore: creating FK CONSTRAINT "public.ui_session_v2_attributes ui_session_v2_attributes_fk"
-pg_restore: creating FK CONSTRAINT "public.version_history version_history_config_fk"
-pg_restore: creating FK CONSTRAINT "public.watches watches_nodes_fk"
-[root@ip-10-56-112-159 postgres]# 
+[root@ip-10-56-112-159 artifactory-restore-staging]# docker exec -e PGPASSWORD='temp' artifactory-postgres \
+  psql -h 127.0.0.1 -U artifactory -d artifactory -c "SELECT current_user;"
+ current_user 
+--------------
+ artifactory
+(1 row)
+
+[root@ip-10-56-112-159 artifactory-restore-staging]# cat /app/jfrog/artifactory/var/etc/s
+security/                       system.basic-template.yaml      system.full-template.yaml       system.yaml                     system.yaml.before-clean-retry  system.yaml.pre-restore
+[root@ip-10-56-112-159 artifactory-restore-staging]# cat /app/jfrog/artifactory/var/etc/s
+security/                       system.basic-template.yaml      system.full-template.yaml       system.yaml                     system.yaml.before-clean-retry  system.yaml.pre-restore
+[root@ip-10-56-112-159 artifactory-restore-staging]# cat /app/jfrog/artifactory/var/etc/system.yaml
+## @formatter:off
+## JFROG ARTIFACTORY SYSTEM CONFIGURATION FILE
+## HOW TO USE: comment-out any field and keep the correct yaml indentation by deleting only the leading '#' character.
+configVersion: 1
+## NOTE: JFROG_HOME is a place holder for the JFrog root directory containing the deployed product, the home directory for all JFrog products.
+## Replace JFROG_HOME with the real path! For example, in RPM install, JFROG_HOME=/opt/jfrog
+
+## NOTE: Sensitive information such as passwords and join key are encrypted on first read.
+## NOTE: The provided commented key and value is the default.
+
+## SHARED CONFIGURATIONS
+## A shared section for keys across all services in this config
+shared:
+    ## Security Configuration
+    security:
+    ## Join key value for joining the cluster (takes precedence over 'joinKeyFile')
+    #joinKey: "<Your joinKey>"
+
+    ## Join key file location
+    #joinKeyFile: "<For example: JFROG_HOME/artifactory/var/etc/security/join.key>"
+
+    ## Master key file location
+    ## Generated by the product on first startup if not provided
+    #masterKeyFile: "<For example: JFROG_HOME/artifactory/var/etc/security/master.key>"
+
+    ## Maximum time to wait for key files (master.key and join.key)
+    #bootstrapKeysReadTimeoutSecs: 120
+
+    ## Node Settings
+
+    #    node:
+    #        ip: 10.102.71.13
+    #        id: gsansfs0063
+    #        name: gsansfs0063
+    ## A unique id to identify this node.
+    ## Default: auto generated at startup.
+    #id: "art1"
+    ## Default: auto resolved by startup script
+    #ip:
+
+    ## Sets this node as primary in HA installation
+    #primary: true
+
+    ## Sets this node as part of HA installation
+    #haEnabled: true
+
+    ## Database Configuration
+    database:
+        #       type: derby
+        ## One of: mysql, oracle, mssql, postgresql, mariadb
+        ## Default: Embedded derby
+        type: postgresql
+        driver: org.postgresql.Driver
+        url: jdbc:postgresql://artifactory-postgres:5432/artifactory
+        username: artifactory
+        password: 54f13b.aesgcm128.NLdFTINJThQov72hXj5DnbVtLFo8vNvE4P6zMCd8e-Re74x45-rEBA
+router:
+    entrypoints:
+        externalPort: 8082
+[root@ip-10-56-112-159 artifactory-restore-staging]# cat /app/jfrog/artifactory/var/etc/system.yaml
+system.yaml                     system.yaml.before-clean-retry  system.yaml.pre-restore         
+[root@ip-10-56-112-159 artifactory-restore-staging]# cat /app/jfrog/artifactory/var/etc/system.yaml.pre-restore 
+## @formatter:off
+## JFROG ARTIFACTORY SYSTEM CONFIGURATION FILE
+## HOW TO USE: comment-out any field and keep the correct yaml indentation by deleting only the leading '#' character.
+configVersion: 1
+## NOTE: JFROG_HOME is a place holder for the JFrog root directory containing the deployed product, the home directory for all JFrog products.
+## Replace JFROG_HOME with the real path! For example, in RPM install, JFROG_HOME=/opt/jfrog
+
+## NOTE: Sensitive information such as passwords and join key are encrypted on first read.
+## NOTE: The provided commented key and value is the default.
+
+## SHARED CONFIGURATIONS
+## A shared section for keys across all services in this config
+shared:
+    ## Security Configuration
+    security:
+    ## Join key value for joining the cluster (takes precedence over 'joinKeyFile')
+    #joinKey: "<Your joinKey>"
+
+    ## Join key file location
+    #joinKeyFile: "<For example: JFROG_HOME/artifactory/var/etc/security/join.key>"
+
+    ## Master key file location
+    ## Generated by the product on first startup if not provided
+    #masterKeyFile: "<For example: JFROG_HOME/artifactory/var/etc/security/master.key>"
+
+    ## Maximum time to wait for key files (master.key and join.key)
+    #bootstrapKeysReadTimeoutSecs: 120
+
+    ## Node Settings
+
+    #    node:
+    #        ip: 10.102.71.13
+    #        id: gsansfs0063
+    #        name: gsansfs0063
+    ## A unique id to identify this node.
+    ## Default: auto generated at startup.
+    #id: "art1"
+    ## Default: auto resolved by startup script
+    #ip:
+
+    ## Sets this node as primary in HA installation
+    #primary: true
+
+    ## Sets this node as part of HA installation
+    #haEnabled: true
+
+    ## Database Configuration
+    database:
+        #       type: derby
+        ## One of: mysql, oracle, mssql, postgresql, mariadb
+        ## Default: Embedded derby
+        type: postgresql
+        driver: org.postgresql.Driver
+        url: jdbc:postgresql://artifactory-postgres:5432/artifactory
+        username: artifactory
+        password: 54f13b.aesgcm128.NLdFTINJThQov72hXj5DnbVtLFo8vNvE4P6zMCd8e-Re74x45-rEBA
+router:
+    entrypoints:
+        externalPort: 8082
+[root@ip-10-56-112-159 artifactory-restore-staging]# cat /app/jfrog/artifactory/var/etc/system.yaml
+system.yaml                     system.yaml.before-clean-retry  system.yaml.pre-restore         
+[root@ip-10-56-112-159 artifactory-restore-staging]# cat /app/jfrog/artifactory/var/etc/system.yaml.before-clean-retry 
+## @formatter:off
+## JFROG ARTIFACTORY SYSTEM CONFIGURATION FILE
+## HOW TO USE: comment-out any field and keep the correct yaml indentation by deleting only the leading '#' character.
+configVersion: 1
+## NOTE: JFROG_HOME is a place holder for the JFrog root directory containing the deployed product, the home directory for all JFrog products.
+## Replace JFROG_HOME with the real path! For example, in RPM install, JFROG_HOME=/opt/jfrog
+
+## NOTE: Sensitive information such as passwords and join key are encrypted on first read.
+## NOTE: The provided commented key and value is the default.
+
+## SHARED CONFIGURATIONS
+## A shared section for keys across all services in this config
+shared:
+    ## Security Configuration
+    security:
+    ## Join key value for joining the cluster (takes precedence over 'joinKeyFile')
+    #joinKey: "<Your joinKey>"
+
+    ## Join key file location
+    #joinKeyFile: "<For example: JFROG_HOME/artifactory/var/etc/security/join.key>"
+
+    ## Master key file location
+    ## Generated by the product on first startup if not provided
+    #masterKeyFile: "<For example: JFROG_HOME/artifactory/var/etc/security/master.key>"
+
+    ## Maximum time to wait for key files (master.key and join.key)
+    #bootstrapKeysReadTimeoutSecs: 120
+
+    ## Node Settings
+
+    #    node:
+    #        ip: 10.102.71.13
+    #        id: gsansfs0063
+    #        name: gsansfs0063
+    ## A unique id to identify this node.
+    ## Default: auto generated at startup.
+    #id: "art1"
+    ## Default: auto resolved by startup script
+    #ip:
+
+    ## Sets this node as primary in HA installation
+    #primary: true
+
+    ## Sets this node as part of HA installation
+    #haEnabled: true
+
+    ## Database Configuration
+    database:
+        #       type: derby
+        ## One of: mysql, oracle, mssql, postgresql, mariadb
+        ## Default: Embedded derby
+        type: postgresql
+        driver: org.postgresql.Driver
+        url: jdbc:postgresql://artifactory-postgres:5432/artifactory
+        username: artifactory
+        password: 54f13b.aesgcm128.NLdFTINJThQov72hXj5DnbVtLFo8vNvE4P6zMCd8e-Re74x45-rEBA
+router:
+    entrypoints:
+        externalPort: 8082
