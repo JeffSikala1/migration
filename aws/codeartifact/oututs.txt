@@ -1,29 +1,10 @@
-[root@ip-10-56-112-159 ~]# cd /app/artifactory-restore-staging/postgres/
-[root@ip-10-56-112-159 postgres]# docker cp globals_20260803_021501.sql artifactory-postgres:/tmp/globals.sql
-Successfully copied 2.56kB to artifactory-postgres:/tmp/globals.sql
-[root@ip-10-56-112-159 postgres]# docker cp artifactory_20260803_021501.dump artifactory-postgres:/tmp/artifactory.dump
-Successfully copied 138MB to artifactory-postgres:/tmp/artifactory.dump
-[root@ip-10-56-112-159 postgres]# docker exec -i artifactory-postgres psql -U artifactory -d artifactory -f /tmp/globals.sql
-SET
-SET
-SET
-psql:/tmp/globals.sql:16: ERROR:  role "artifactory" already exists
-ALTER ROLE
-psql:/tmp/globals.sql:18: ERROR:  permission denied to create role
-psql:/tmp/globals.sql:19: ERROR:  role "postgres" does not exist
-psql:/tmp/globals.sql:30: ERROR:  role "postgres" does not exist
-[root@ip-10-56-112-159 postgres]# docker exec -i artifactory-postgres pg_restore -U artifactory -d artifactory --no-owner --no-privileges --exit-on-error --verbose /tmp/artifactory.dump
-pg_restore: connecting to database for restore
-pg_restore: creating EXTENSION "pg_trgm"
-pg_restore: while PROCESSING TOC:
-pg_restore: from TOC entry 2; 3079 20619 EXTENSION pg_trgm (no owner)
-pg_restore: error: could not execute query: ERROR:  permission denied for language c
-Command was: CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
-
-
-[root@ip-10-56-112-159 postgres]# docker exec -e PGPASSWORD='ConexusDev2026!' artifactory-postgres \
-  psql -h 127.0.0.1 -U artifactory -d artifactory -c "SELECT current_user;"
- current_user 
---------------
- artifactory
+[root@ip-10-56-112-159 postgres]# docker exec -it artifactory-postgres psql -U artifactory -d artifactory -c "SELECT rolsuper FROM pg_roles WHERE rolname='artifactory';"
+ rolsuper 
+----------
+ f
 (1 row)
+
+[root@ip-10-56-112-159 postgres]# grep -i "PASSWORD" /app/artifactory-restore-staging/postgres/globals_20260803_021501.sql
+ALTER ROLE artifactory WITH NOSUPERUSER INHERIT NOCREATEROLE NOCREATEDB LOGIN NOREPLICATION NOBYPASSRLS PASSWORD 'SCRAM-SHA-256$4096:6rL6+oMihZLg4nef2/19Tw==$zR6EAMG2OULm9HB8vl8/MtYFLndDbOioHgmSTss2dIw=:27GJH3JTv8J70QLL2ChwnhUZR7i68/9Qbq1L6Q3BT70=';
+ALTER ROLE postgres WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN REPLICATION BYPASSRLS PASSWORD 'SCRAM-SHA-256$4096:69PrVOXOaM3oqSYf0qFJ6w==$LjHtIn7SmtwSdeD4I5IlcznsgD71oMbO1ZIH9CmcPIw=:wL2zSyQ3kWhfNHNHrRBps+nWS62HJNQPjRZV5jZJgeU=';
+[root@ip-10-56-112-159 postgres]# 
