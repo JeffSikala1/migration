@@ -85,3 +85,32 @@ docker exec -it artifactory-postgres psql -U artifactory -d artifactory -h local
 
 
 docker exec -it artifactory-postgres psql -U postgres -c "ALTER USER artifactory WITH PASSWORD 'the-known-good-password';"
+
+
+
+
+---------
+
+docker rm -f artifactory-postgres
+sudo find /app/postgres/data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+sudo chown -R 70:70 /app/postgres/data && sudo chmod 700 /app/postgres/data
+
+# 1) bring up fresh, password here is throwaway - it gets overwritten in step 3
+docker run -d --name artifactory-postgres --network artifactory-restore-net \
+  -e POSTGRES_DB=artifactory -e POSTGRES_USER=artifactory -e POSTGRES_PASSWORD=temp123 \
+  -v /app/postgres/data:/var/lib/postgresql/data postgres:15-alpine
+
+# 2) copy dump + globals in
+docker cp globals_<ts>.sql artifactory-postgres:/tmp/globals.sql
+docker cp artifactory_<ts>.dump artifactory-postgres:/tmp/artifactory.dump
+
+# 3) restore globals FIRST - this sets the real password hash
+docker exec -i artifactory-postgres psql -U artifactory -d artifactory -f /tmp/globals.sql
+
+# 4) THEN restore the schema/data dump
+docker exec -i artifactory-postgres pg_restore -U artifactory -d artifactory --no-owner --no-privileges --exit-on-error --verbose /tmp/artifactory.dump
+
+# 5) verify what password is actually live, before touching system.yaml
+#    (no way to read it back in plaintext - instead just test the known original prod password)
+docker exec -e PGPASSWORD='<known original prod password>' artifactory-postgres \
+  psql -h 127.0.0.1 -U artifactory -d artifactory -c "SELECT current_user;"
