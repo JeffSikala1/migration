@@ -91,35 +91,27 @@ docker exec -it artifactory-postgres psql -U postgres -c "ALTER USER artifactory
 
 ---------
 
+docker ps -a
+
+
+# 1) tear down again, we need a real postgres superuser role this time
 docker rm -f artifactory-postgres
 sudo find /app/postgres/data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 sudo chown -R 70:70 /app/postgres/data && sudo chmod 700 /app/postgres/data
 
-# 1) bring up fresh, password here is throwaway - it gets overwritten in step 3
+# 2) bring up with default POSTGRES_USER (postgres), not artifactory
 docker run -d --name artifactory-postgres --network artifactory-restore-net \
-  -e POSTGRES_DB=artifactory -e POSTGRES_USER=artifactory -e POSTGRES_PASSWORD=ConexusDev2026! \
+  -e POSTGRES_PASSWORD=TempBootstrap123 \
   -v /app/postgres/data:/var/lib/postgresql/data postgres:15-alpine
 
-# 2) copy dump + globals in
+# 3) create the artifactory role + db as the real superuser
+docker exec -it artifactory-postgres psql -U postgres -c "CREATE ROLE artifactory WITH LOGIN PASSWORD 'temp';"
+docker exec -it artifactory-postgres psql -U postgres -c "CREATE DATABASE artifactory OWNER artifactory;"
+
+# 4) copy files back in and restore globals as postgres (superuser) this time
 docker cp globals_20260803_021501.sql artifactory-postgres:/tmp/globals.sql
 docker cp artifactory_20260803_021501.dump artifactory-postgres:/tmp/artifactory.dump
+docker exec -i artifactory-postgres psql -U postgres -d artifactory -f /tmp/globals.sql
 
-# 3) restore globals FIRST - this sets the real password hash
-docker exec -i artifactory-postgres psql -U artifactory -d artifactory -f /tmp/globals.sql
-
-# 4) THEN restore the schema/data dump
-docker exec -i artifactory-postgres pg_restore -U artifactory -d artifactory --no-owner --no-privileges --exit-on-error --verbose /tmp/artifactory.dump
-
-# 5) verify what password is actually live, before touching system.yaml
-#    (no way to read it back in plaintext - instead just test the known original prod password)
-docker exec -e PGPASSWORD='ConexusDev2026!' artifactory-postgres \
-  psql -h 127.0.0.1 -U artifactory -d artifactory -c "SELECT current_user;"
-
-
-docker exec -it artifactory-postgres psql -U artifactory -d artifactory -c "SELECT rolsuper FROM pg_roles WHERE rolname='artifactory';"
-
-
-
-grep -i "PASSWORD" /app/artifactory-restore-staging/postgres/globals_20260803_021501.sql
-
-docker exec -it artifactory-postgres psql -U artifactory -d artifactory -c "ALTER ROLE artifactory WITH SUPERUSER;"
+# 5) restore the dump as postgres (superuser) so pg_trgm etc. can install
+docker exec -i artifactory-postgres pg_restore -U postgres -d artifactory --no-owner --no-privileges --exit-on-error --verbose /tmp/artifactory.dump
