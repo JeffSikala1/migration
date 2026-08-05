@@ -1,82 +1,12 @@
-scp -r prod_repos_detail prod_groups_detail prod_permissions_detail prod_repos.json prod_groups.json prod_permissions.json prod_users.json \
-  sikaj01@10.56.128.233:~/artifactory-migration/
+docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\d repository_config"
+docker exec -it dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM repository_config;"
 
 
-cd ~/artifactory-migration
-
-# Pass 1: LOCAL repos
-jq -r '.[] | select(.type=="LOCAL") | .key' prod_repos.json | while IFS= read -r key; do
-  echo "=== creating local: $key ==="
-  curl --fail -s -u admin:$artifactory_dev_admin_token \
-    -H "Content-Type: application/json" \
-    -X PUT "http://localhost:8082/artifactory/api/repositories/${key}" \
-    -d @"prod_repos_detail/${key}.json" || echo "FAILED: $key"
-done
-
-# Pass 2: REMOTE repos
-jq -r '.[] | select(.type=="REMOTE") | .key' prod_repos.json | while IFS= read -r key; do
-  echo "=== creating remote: $key ==="
-  curl --fail -s -u admin:$artifactory_dev_admin_token \
-    -H "Content-Type: application/json" \
-    -X PUT "http://localhost:8082/artifactory/api/repositories/${key}" \
-    -d @"prod_repos_detail/${key}.json" || echo "FAILED: $key"
-done
-
-# Pass 3: VIRTUAL repos
-jq -r '.[] | select(.type=="VIRTUAL") | .key' prod_repos.json | while IFS= read -r key; do
-  echo "=== creating virtual: $key ==="
-  curl --fail -s -u admin:$artifactory_dev_admin_token \
-    -H "Content-Type: application/json" \
-    -X PUT "http://localhost:8082/artifactory/api/repositories/${key}" \
-    -d @"prod_repos_detail/${key}.json" || echo "FAILED: $key"
-done
-
-
-curl -s -u admin:$artifactory_dev_admin_token "http://localhost:8082/artifactory/api/repositories" | jq 'length'
+docker exec -it dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM repository_config WHERE repo_name = 'example-repo-local';"
 
 
 
---------
-
-echo "${artifactory_dev_admin_token:0:8}..."
-
-curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
-  -u admin:$artifactory_dev_admin_token \
-  -H "Content-Type: application/json" \
-  -X PUT "http://localhost:8082/artifactory/api/repositories/ansible-vault-password-files" \
-  -d @"prod_repos_detail/ansible-vault-password-files.json"
+docker exec -i dev-postgres psql -U artifactory -d artifactory -t -A -c "SELECT config_blob FROM repository_config WHERE repo_name = 'example-repo-local';" > /tmp/example_repo_config.txt 2>&1
+cat /tmp/example_repo_config.txt
 
 
-
-cat prod_repos_detail/ansible-vault-password-files.json
-
-jq 'del(.propertySets)' prod_repos_detail/ansible-vault-password-files.json > /tmp/test_repo.json
-
-curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
-  -u admin:$artifactory_dev_admin_token \
-  -H "Content-Type: application/json" \
-  -X PUT "http://localhost:8082/artifactory/api/repositories/ansible-vault-password-files" \
-  -d @/tmp/test_repo.json
-
-
-
-
-
-
-cat <<'EOF' > /tmp/minimal_repo.json
-{
-  "key" : "ansible-vault-password-files",
-  "rclass" : "local",
-  "packageType" : "generic"
-}
-EOF
-
-curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
-  -u admin:$artifactory_dev_admin_token \
-  -H "Content-Type: application/json" \
-  -X PUT "http://localhost:8082/artifactory/api/repositories/ansible-vault-password-files" \
-  -d @/tmp/minimal_repo.json
-
-
-curl -s -u admin:$artifactory_dev_admin_token "http://localhost:8082/artifactory/api/repositories" | jq '.'
-curl -s -u admin:$artifactory_dev_admin_token "http://localhost:8082/artifactory/api/system/license"
