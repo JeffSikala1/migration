@@ -1,16 +1,44 @@
-[sikaj01@ip-10-56-112-33 ~]$ code ~/.bashrc
-[sikaj01@ip-10-56-112-33 ~]$ mkdir -p prod_repos_detail
-[sikaj01@ip-10-56-112-33 ~]$ jq -r '.[].key' prod_repos.json | while IFS= read -r key; do
-  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secre" \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/${key}" \
-    -o "prod_repos_detail/${key}.json"
-done
-jq: error: Could not open file prod_repos.json: No such file or directory
-[sikaj01@ip-10-56-112-33 ~]$ mkdir -p prod_repos_detail
+[sikaj01@ip-10-56-112-33 ~]$ mkdir -p ~/artifactory-migration
+[sikaj01@ip-10-56-112-33 ~]$ cd ~/artifactory-migration
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ echo "${artifactory_admin_api_key_secret:0:8}..."
+eyJ2ZXIi...
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ curl --fail -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories \
+  -o prod_repos.json
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ curl --fail -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups \
+  -o prod_groups.json
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ curl --fail -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions \
+  -o prod_permissions.json
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ curl --fail -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users \
+  -o prod_users.json
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ echo "repos: $(jq length prod_repos.json), groups: $(jq length prod_groups.json), perms: $(jq length prod_permissions.json), users: $(jq length prod_users.json)"
+repos: 57, groups: 14, perms: 18, users: 54
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ mkdir -p prod_repos_detail
 jq -r '.[].key' prod_repos.json | while IFS= read -r key; do
-  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secre" \
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
     "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/${key}" \
     -o "prod_repos_detail/${key}.json"
 done
-jq: error: Could not open file prod_repos.json: No such file or directory
-[sikaj01@ip-10-56-112-33 ~]$ 
+echo "repo details: $(ls prod_repos_detail | wc -l)"
+repo details: 57
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ mkdir -p prod_groups_detail
+jq -r '.[].name' prod_groups.json | while IFS= read -r name; do
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/${name}" \
+    -o "prod_groups_detail/${name}.json"
+done
+echo "group details: $(ls prod_groups_detail | wc -l)"
+group details: 14
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ mkdir -p prod_permissions_detail
+jq -r '.[].name' prod_permissions.json | while IFS= read -r name; do
+  encoded=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$name")
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/${encoded}" \
+    -o "prod_permissions_detail/${name// /_}.json"
+done
+echo "permission details: $(ls prod_permissions_detail | wc -l)"
+permission details: 18
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ 
