@@ -60,6 +60,25 @@ curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
 
 
 
+
+
+
+cat <<'EOF' > /tmp/minimal_repo.json
+{
+  "key" : "ansible-vault-password-files",
+  "rclass" : "local",
+  "packageType" : "generic"
+}
+EOF
+
+curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
+  -u admin:$artifactory_dev_admin_token \
+  -H "Content-Type: application/json" \
+  -X PUT "http://localhost:8082/artifactory/api/repositories/ansible-vault-password-files" \
+  -d @/tmp/minimal_repo.json
+
+
+
 for f in prod_repos_detail/*.json; do
   jq 'del(.propertySets)' "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
 done
