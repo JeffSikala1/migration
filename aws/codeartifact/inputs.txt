@@ -7,7 +7,7 @@ cd ~/artifactory-migration
 # Pass 1: LOCAL repos
 jq -r '.[] | select(.type=="LOCAL") | .key' prod_repos.json | while IFS= read -r key; do
   echo "=== creating local: $key ==="
-  curl --fail -s -u admin:<DEV_ADMIN_TOKEN> \
+  curl --fail -s -u admin:$artifactory_dev_admin_token \
     -H "Content-Type: application/json" \
     -X PUT "http://localhost:8082/artifactory/api/repositories/${key}" \
     -d @"prod_repos_detail/${key}.json" || echo "FAILED: $key"
@@ -16,7 +16,7 @@ done
 # Pass 2: REMOTE repos
 jq -r '.[] | select(.type=="REMOTE") | .key' prod_repos.json | while IFS= read -r key; do
   echo "=== creating remote: $key ==="
-  curl --fail -s -u admin:<DEV_ADMIN_TOKEN> \
+  curl --fail -s -u admin:$artifactory_dev_admin_token \
     -H "Content-Type: application/json" \
     -X PUT "http://localhost:8082/artifactory/api/repositories/${key}" \
     -d @"prod_repos_detail/${key}.json" || echo "FAILED: $key"
@@ -25,11 +25,11 @@ done
 # Pass 3: VIRTUAL repos
 jq -r '.[] | select(.type=="VIRTUAL") | .key' prod_repos.json | while IFS= read -r key; do
   echo "=== creating virtual: $key ==="
-  curl --fail -s -u admin:<DEV_ADMIN_TOKEN> \
+  curl --fail -s -u admin:$artifactory_dev_admin_token \
     -H "Content-Type: application/json" \
     -X PUT "http://localhost:8082/artifactory/api/repositories/${key}" \
     -d @"prod_repos_detail/${key}.json" || echo "FAILED: $key"
 done
 
 
-curl -s -u admin:<DEV_ADMIN_TOKEN> "http://localhost:8082/artifactory/api/repositories" | jq 'length'
+curl -s -u admin:$artifactory_dev_admin_token "http://localhost:8082/artifactory/api/repositories" | jq 'length'
