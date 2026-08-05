@@ -1,26 +1,19 @@
-[sikaj01@ip-10-56-128-233 ~]$ ll
-total 284
-drwxr-x---. 5 sikaj01 users    187 Aug  5 15:36 artifactory-migration
--rw-r--r--. 1 sikaj01 users 290502 Aug  3 17:17 artifactory_pre_admin_reset_20260803.dump
-[sikaj01@ip-10-56-128-233 ~]$ cd artifactory-migration/
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ ll
-total 80
--rw-r-----. 1 sikaj01 users  1936 Aug  5 15:36 prod_groups.json
-drwxr-x---. 2 sikaj01 users 16384 Aug  5 15:36 prod_groups_detail
--rw-r-----. 1 sikaj01 users  2942 Aug  5 15:36 prod_permissions.json
-drwxr-x---. 2 sikaj01 users 16384 Aug  5 15:36 prod_permissions_detail
--rw-r-----. 1 sikaj01 users  9392 Aug  5 15:36 prod_repos.json
-drwxr-x---. 2 sikaj01 users 16384 Aug  5 15:36 prod_repos_detail
--rw-r-----. 1 sikaj01 users  9346 Aug  5 15:36 prod_users.json
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ jq 'del(.propertySets)' prod_repos_detail/ansible-vault-password-files.json > /tmp/test_repo.json
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ cat <<'EOF' > /tmp/minimal_repo.json
+{
+  "key" : "ansible-vault-password-files",
+  "rclass" : "local",
+  "packageType" : "generic"
+}
+EOF
+
+curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
   -u admin:$artifactory_dev_admin_token \
   -H "Content-Type: application/json" \
   -X PUT "http://localhost:8082/artifactory/api/repositories/ansible-vault-password-files" \
-  -d @/tmp/test_repo.json
+  -d @/tmp/minimal_repo.json
 HTTP/1.1 400 Bad Request
 Content-Type: application/json
-Date: Wed, 05 Aug 2026 16:18:11 GMT
+Date: Wed, 05 Aug 2026 16:22:02 GMT
 X-Artifactory-Id: 43ea9ee6da9c4137:14439da9:19fc8b298c2:-8000
 X-Artifactory-Node-Id: bbe9824ab941
 X-Jfrog-Version: Artifactory/7.104.14 80414900
