@@ -1,12 +1,12 @@
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\d repository_config"
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM repository_config;"
-
-
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM repository_config WHERE repo_name = 'example-repo-local';"
+cd ~/artifactory-migration
+jq -r '.[] | "\(.type)\t\(.packageType)"' prod_repos.json | sort -u
 
 
 
-docker exec -i dev-postgres psql -U artifactory -d artifactory -t -A -c "SELECT config_blob FROM repository_config WHERE repo_name = 'example-repo-local';" > /tmp/example_repo_config.txt 2>&1
-cat /tmp/example_repo_config.txt
 
 
+docker exec -i dev-postgres psql -U artifactory -d artifactory -t -A -F'|' \
+  -c "SELECT repository_key, type, package_type, config_blob FROM repository_config;" \
+  > /tmp/all_repo_configs_raw.txt
+
+wc -l /tmp/all_repo_configs_raw.txt
