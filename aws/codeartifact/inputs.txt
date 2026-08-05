@@ -41,3 +41,71 @@ done
 
 
 curl -s -u admin:<DEV_ADMIN_TOKEN> "http://localhost:8082/artifactory/api/repositories" | jq 'length'
+
+
+---------
+
+mkdir -p ~/artifactory-migration
+cd ~/artifactory-migration
+
+# confirm token var is set correctly first
+echo "${artifactory_admin_api_key_secret:0:8}..."   # should print first 8 chars, not blank
+
+# 1. repo list
+curl --fail -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories \
+  -o prod_repos.json
+
+# 2. group list
+curl --fail -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups \
+  -o prod_groups.json
+
+# 3. permission target list
+curl --fail -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions \
+  -o prod_permissions.json
+
+# 4. user list
+curl --fail -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users \
+  -o prod_users.json
+
+echo "repos: $(jq length prod_repos.json), groups: $(jq length prod_groups.json), perms: $(jq length prod_permissions.json), users: $(jq length prod_users.json)"
+
+
+
+
+
+
+
+
+
+
+# repo detail
+mkdir -p prod_repos_detail
+jq -r '.[].key' prod_repos.json | while IFS= read -r key; do
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/${key}" \
+    -o "prod_repos_detail/${key}.json"
+done
+echo "repo details: $(ls prod_repos_detail | wc -l)"
+
+# group detail
+mkdir -p prod_groups_detail
+jq -r '.[].name' prod_groups.json | while IFS= read -r name; do
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/groups/${name}" \
+    -o "prod_groups_detail/${name}.json"
+done
+echo "group details: $(ls prod_groups_detail | wc -l)"
+
+# permission target detail
+mkdir -p prod_permissions_detail
+jq -r '.[].name' prod_permissions.json | while IFS= read -r name; do
+  encoded=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$name")
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/${encoded}" \
+    -o "prod_permissions_detail/${name// /_}.json"
+done
+echo "permission details: $(ls prod_permissions_detail | wc -l)"
