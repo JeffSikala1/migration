@@ -12,152 +12,32 @@ done
 
 
 
-docker exec dev-artifactory find / -iname "bootstrap.creds" 2>/dev/null
-
-
-docker exec dev-artifactory cat <path-found-above>
-
-
-docker exec dev-postgres pg_dump -U artifactory -d artifactory -F c -f /tmp/artifactory_pre_admin_reset.dump
-docker cp dev-postgres:/tmp/artifactory_pre_admin_reset.dump ~/artifactory_pre_admin_reset_$(date +%Y%m%d).dump
-
-
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\dn"
-
-
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\d access_users"
-
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "SELECT username, realm, status FROM access_users WHERE username='admin';"
-
-
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
-SELECT 'access_users_groups' AS tbl, count(*) FROM access_users_groups WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
-UNION ALL
-SELECT 'access_permissions_actions_v2', count(*) FROM access_permissions_actions_v2 WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
-UNION ALL
-SELECT 'access_project_users', count(*) FROM access_project_users WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin')
-UNION ALL
-SELECT 'access_users_custom_data', count(*) FROM access_users_custom_data WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin');
-"
-
-
-docker exec -i dev-postgres psql -U artifactory -d artifactory <<'EOF'
-BEGIN;
-
-DELETE FROM access_users_custom_data
-WHERE user_id = (SELECT user_id FROM access_users WHERE username='admin');
-
-DELETE FROM access_users
-WHERE username='admin';
-
--- sanity check before committing
-SELECT count(*) AS remaining_admin_rows FROM access_users WHERE username='admin';
-
-COMMIT;
-EOF
-
-
-
-
-docker restart dev-artifactory
-docker logs -f dev-artifactory
-
-
-
-docker logs dev-artifactory --since 2m | grep -iE "started|running|context.*loaded|access.*admin"
-
-docker logs dev-artifactory --since 2m | grep -iE "started|running|context.*loaded|access.*admin"
-
-
------------
-
-docker logs artifactory-postgres --tail 200 | grep -i error
-
-docker exec -i artifactory-postgres psql -U postgres -c "\du" | grep artifactory
-
-grep -A3 "username:\|password:" /app/jfrog/artifactory/var/etc/artifactory/access/access.config.yaml 2>/dev/null
-grep -i password /app/jfrog/artifactory/var/etc/access/*.yaml 2>/dev/null
-
-
-
-docker exec -it artifactory-postgres psql -U artifactory -d artifactory -h localhost
-
-
-
-docker exec -it artifactory-postgres psql -U postgres -c "ALTER USER artifactory WITH PASSWORD 'the-known-good-password';"
-
-
-
-
----------
-
-docker ps -a
-
-
-# 1) tear down again, we need a real postgres superuser role this time
-docker rm -f artifactory-postgres
-sudo find /app/postgres/data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
-sudo chown -R 70:70 /app/postgres/data && sudo chmod 700 /app/postgres/data
-
-# 2) bring up with default POSTGRES_USER (postgres), not artifactory
-docker run -d --name artifactory-postgres --network artifactory-restore-net \
-  -e POSTGRES_PASSWORD=ConexusDev2026! \
-  -v /app/postgres/data:/var/lib/postgresql/data postgres:15-alpine
-
-# 3) create the artifactory role + db as the real superuser
-docker exec -it artifactory-postgres psql -U postgres -c "CREATE ROLE artifactory WITH LOGIN PASSWORD 'temp';"
-docker exec -it artifactory-postgres psql -U postgres -c "CREATE DATABASE artifactory OWNER artifactory;"
-
-# 4) copy files back in and restore globals as postgres (superuser) this time
-docker cp globals_20260803_021501.sql artifactory-postgres:/tmp/globals.sql
-docker cp artifactory_20260803_021501.dump artifactory-postgres:/tmp/artifactory.dump
-docker exec -i artifactory-postgres psql -U postgres -d artifactory -f /tmp/globals.sql
-
-# 5) restore the dump as postgres (superuser) so pg_trgm etc. can install
-docker exec -i artifactory-postgres pg_restore -U postgres -d artifactory --no-owner --no-privileges --exit-on-error --verbose /tmp/artifactory.dump
-
-
-------
-
-
-docker exec -e PGPASSWORD='temp' artifactory-postgres \
-  psql -h 127.0.0.1 -U artifactory -d artifactory -c "SELECT current_user;"
-
-
-sudo grep -A5 "database:" /app/jfrog/artifactory/var/etc/system.yaml
-
-
-sudo grep -A5 "database:" /app/jfrog/artifactory/var/etc/system.yaml.pre-restore
-
-
-docker exec -e PGPASSWORD='temp' artifactory-postgres \
-  psql -h 127.0.0.1 -U artifactory -d artifactory -c "SELECT current_user;"
-
-
-
-docker exec -it artifactory-postgres psql -U postgres -c "SELECT rolname, rolpassword FROM pg_authid WHERE rolname='artifactory';"
-
-
-grep "ALTER ROLE artifactory" /app/artifactory-restore-staging/postgres/globals_20260803_021501.sql
-
-
-ls -Z ~/.ssh/authorized_keys
-
-sudo ls -Z /home/coxp01/.ssh/authorized_keys
-
-
-restorecon -Rv ~/.ssh
-
-cat ~/.ssh/authorized_keys
-
-
-ssh-keygen -y -f <path to her private key>
-
-
-
---------
-
-cd outbound/ATT/prod/
-
-openssl x509 -noout -modulus -in Certificate_X509_PEM_316FC44227003B6F740D909AA714F3DE1B012B25.pem | openssl md5
-openssl rsa -noout -modulus -in att_prod_2026_outbound.key | openssl md5
+# Pass 1: LOCAL repos
+jq -r '.[] | select(.type=="LOCAL") | .key' prod_repos.json | while IFS= read -r key; do
+  echo "=== creating local: $key ==="
+  curl --fail -s -u admin:<DEV_ADMIN_TOKEN> \
+    -H "Content-Type: application/json" \
+    -X PUT "http://localhost:8082/artifactory/api/repositories/${key}" \
+    -d @"prod_repos_detail/${key}.json" || echo "FAILED: $key"
+done
+
+# Pass 2: REMOTE repos
+jq -r '.[] | select(.type=="REMOTE") | .key' prod_repos.json | while IFS= read -r key; do
+  echo "=== creating remote: $key ==="
+  curl --fail -s -u admin:<DEV_ADMIN_TOKEN> \
+    -H "Content-Type: application/json" \
+    -X PUT "http://localhost:8082/artifactory/api/repositories/${key}" \
+    -d @"prod_repos_detail/${key}.json" || echo "FAILED: $key"
+done
+
+# Pass 3: VIRTUAL repos (member repos must exist by now)
+jq -r '.[] | select(.type=="VIRTUAL") | .key' prod_repos.json | while IFS= read -r key; do
+  echo "=== creating virtual: $key ==="
+  curl --fail -s -u admin:<DEV_ADMIN_TOKEN> \
+    -H "Content-Type: application/json" \
+    -X PUT "http://localhost:8082/artifactory/api/repositories/${key}" \
+    -d @"prod_repos_detail/${key}.json" || echo "FAILED: $key"
+done
+
+
+curl -s -u admin:<DEV_ADMIN_TOKEN> "http://localhost:8082/artifactory/api/repositories" | jq 'length'
