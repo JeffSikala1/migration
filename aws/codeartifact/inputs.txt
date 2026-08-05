@@ -45,3 +45,21 @@ curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
   -H "Content-Type: application/json" \
   -X PUT "http://localhost:8082/artifactory/api/repositories/ansible-vault-password-files" \
   -d @"prod_repos_detail/ansible-vault-password-files.json"
+
+
+
+cat prod_repos_detail/ansible-vault-password-files.json
+
+jq 'del(.propertySets)' prod_repos_detail/ansible-vault-password-files.json > /tmp/test_repo.json
+
+curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
+  -u admin:$artifactory_dev_admin_token \
+  -H "Content-Type: application/json" \
+  -X PUT "http://localhost:8082/artifactory/api/repositories/ansible-vault-password-files" \
+  -d @/tmp/test_repo.json
+
+
+
+for f in prod_repos_detail/*.json; do
+  jq 'del(.propertySets)' "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+done
