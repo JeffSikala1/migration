@@ -16,6 +16,9 @@ wc -l /tmp/all_repo_configs_raw.txt
 
 
 curl -sS --fail \
-  -u ${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN} \
+  -H "Authorization: Bearer ${artifactory_admin_api_key_secret}" \
   https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/access/api/v1/tokens \
-  | python3 -m json.tool | grep -A5 "gsa-maven-client-04262026"
+  -o /tmp/tokens.json
+
+python3 -m json.tool /tmp/tokens.json | wc -l
+python3 -c "import json; d=json.load(open('/tmp/tokens.json')); print(len(d.get('tokens', d if isinstance(d,list) else [])))"
