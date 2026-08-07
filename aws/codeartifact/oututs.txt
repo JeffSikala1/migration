@@ -1,26 +1,150 @@
-[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ for repo in conexus-release-local conexus-snapshot-local conexus-rc-local; do
-  echo "=== $repo ==="
-  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
-    -H "Content-Type: text/plain" \
-    -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-    -d "items.find({\"repo\":\"$repo\"}).include(\"name\",\"stat.downloads\",\"stat.downloaded\")" \
-    | jq '[.results[] | select(.stat.downloads != null and .stat.downloads > 0)] | {items_with_downloads: length, most_recent: (map(.stat.downloaded) | max)}'
-done
-=== conexus-release-local ===
+[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  -H "Content-Type: text/plain" \
+  -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -d 'items.find({"repo":"conexus-release-local"}).include("name","stat.downloads","stat.downloaded").limit(5)' \
+  | jq '.'
 {
-  "items_with_downloads": 0,
-  "most_recent": null
+  "results": [
+    {
+      "name": "gitflow-root-04.11-RC.jar",
+      "stats": [
+        {
+          "downloads": 0
+        }
+      ]
+    },
+    {
+      "name": "gitflow-root-04.11-RC.pom",
+      "stats": [
+        {
+          "downloads": 0
+        }
+      ]
+    },
+    {
+      "name": "index.html",
+      "stats": [
+        {
+          "downloads": 0
+        }
+      ]
+    },
+    {
+      "name": "gitflow-root-04.10-RC.pom",
+      "stats": [
+        {
+          "downloads": 0
+        }
+      ]
+    },
+    {
+      "name": "gitflow-root-04.10-RC.jar",
+      "stats": [
+        {
+          "downloads": 0
+        }
+      ]
+    }
+  ],
+  "range": {
+    "start_pos": 0,
+    "end_pos": 5,
+    "total": 5,
+    "limit": 5
+  }
 }
-=== conexus-snapshot-local ===
-{
-  "items_with_downloads": 0,
-  "most_recent": null
-}
-=== conexus-rc-local ===
-{
-  "items_with_downloads": 0,
-  "most_recent": null
-}
-[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ 
+[sikaj01@ip-10-5
 
 
+
+
+
+
+
+
+
+[sikaj01@ip-10-56-112-243 ~]$ docker ps
+permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.44/containers/json": dial unix /var/run/docker.sock: connect: permission denied
+[sikaj01@ip-10-56-112-243 ~]$ sudo su -
+[sudo] password for sikaj01: 
+Last login: Fri Aug  7 03:38:11 UTC 2026 on pts/1
+[root@ip-10-56-112-243 ~]# docker ps
+CONTAINER ID   IMAGE                                                         COMMAND                  CREATED        STATUS      PORTS                                                                      NAMES
+7c25ec7ae10e   releases-docker.jfrog.io/jfrog/nginx-artifactory-pro:7.68.7   "/entrypoint-nginx.sh"   6 months ago   Up 9 days   0.0.0.0:80->80/tcp, :::80->80/tcp, 0.0.0.0:443->443/tcp, :::443->443/tcp   artifactory-nginx
+dc00bfc2ebf3   releases-docker.jfrog.io/jfrog/artifactory-pro:7.104.14       "/entrypoint-artifac…"   6 months ago   Up 9 days   8081/tcp                                                                   artifactory
+6b40766d0dc5   postgres:15-alpine                                            "docker-entrypoint.s…"   6 months ago   Up 9 days   5432/tcp                                                                   artifactory-postgres
+[root@ip-10-56-112-243 ~]# docker exec artifactory-postgres find / -iname "request.log*" 2>/dev/null
+[root@ip-10-56-112-243 ~]# docker exec artifactory-postgres find / -iname "request.log*"
+find: /proc/1/task/1/fdinfo: Permission denied
+find: /proc/1/fdinfo: Permission denied
+find: /proc/27/task/27/fdinfo: Permission denied
+find: /proc/27/fdinfo: Permission denied
+find: /proc/28/task/28/fdinfo: Permission denied
+find: /proc/28/fdinfo: Permission denied
+find: /proc/30/task/30/fdinfo: Permission denied
+find: /proc/30/fdinfo: Permission denied
+find: /proc/31/task/31/fdinfo: Permission denied
+find: /proc/31/fdinfo: Permission denied
+find: /proc/32/task/32/fdinfo: Permission denied
+find: /proc/32/fdinfo: Permission denied
+find: /proc/58/task/58/fdinfo: Permission denied
+find: /proc/58/fdinfo: Permission denied
+find: /proc/59/task/59/fdinfo: Permission denied
+find: /proc/59/fdinfo: Permission denied
+find: /proc/60/task/60/fdinfo: Permission denied
+find: /proc/60/fdinfo: Permission denied
+find: /proc/46939/task/46939/fdinfo: Permission denied
+find: /proc/46939/fdinfo: Permission denied
+find: /proc/46946/task/46946/fdinfo: Permission denied
+find: /proc/46946/fdinfo: Permission denied
+find: /proc/46951/task/46951/fdinfo: Permission denied
+find: /proc/46951/fdinfo: Permission denied
+find: /proc/47010/task/47010/fdinfo: Permission denied
+find: /proc/47010/fdinfo: Permission denied
+find: /proc/47013/task/47013/fdinfo: Permission denied
+find: /proc/47013/fdinfo: Permission denied
+find: /proc/47019/task/47019/fdinfo: Permission denied
+find: /proc/47019/fdinfo: Permission denied
+find: /proc/47020/task/47020/fdinfo: Permission denied
+find: /proc/47020/fdinfo: Permission denied
+find: /proc/47029/task/47029/fdinfo: Permission denied
+find: /proc/47029/fdinfo: Permission denied
+find: /proc/47032/task/47032/fdinfo: Permission denied
+find: /proc/47032/fdinfo: Permission denied
+[root@ip-10-56-112-243 ~]# sudo docker exec artifactory-postgres find / -iname "request.log*"
+find: /proc/1/task/1/fdinfo: Permission denied
+find: /proc/1/fdinfo: Permission denied
+find: /proc/27/task/27/fdinfo: Permission denied
+find: /proc/27/fdinfo: Permission denied
+find: /proc/28/task/28/fdinfo: Permission denied
+find: /proc/28/fdinfo: Permission denied
+find: /proc/30/task/30/fdinfo: Permission denied
+find: /proc/30/fdinfo: Permission denied
+find: /proc/31/task/31/fdinfo: Permission denied
+find: /proc/31/fdinfo: Permission denied
+find: /proc/32/task/32/fdinfo: Permission denied
+find: /proc/32/fdinfo: Permission denied
+find: /proc/58/task/58/fdinfo: Permission denied
+find: /proc/58/fdinfo: Permission denied
+find: /proc/59/task/59/fdinfo: Permission denied
+find: /proc/59/fdinfo: Permission denied
+find: /proc/60/task/60/fdinfo: Permission denied
+find: /proc/60/fdinfo: Permission denied
+find: /proc/46939/task/46939/fdinfo: Permission denied
+find: /proc/46939/fdinfo: Permission denied
+find: /proc/46946/task/46946/fdinfo: Permission denied
+find: /proc/46946/fdinfo: Permission denied
+find: /proc/46951/task/46951/fdinfo: Permission denied
+find: /proc/46951/fdinfo: Permission denied
+find: /proc/47010/task/47010/fdinfo: Permission denied
+find: /proc/47010/fdinfo: Permission denied
+find: /proc/47013/task/47013/fdinfo: Permission denied
+find: /proc/47013/fdinfo: Permission denied
+find: /proc/47019/task/47019/fdinfo: Permission denied
+find: /proc/47019/fdinfo: Permission denied
+find: /proc/47020/task/47020/fdinfo: Permission denied
+find: /proc/47020/fdinfo: Permission denied
+find: /proc/47029/task/47029/fdinfo: Permission denied
+find: /proc/47029/fdinfo: Permission denied
+find: /proc/47032/task/47032/fdinfo: Permission denied
+find: /proc/47032/fdinfo: Permission denied
