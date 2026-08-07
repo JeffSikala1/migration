@@ -1,36 +1,14 @@
-[root@ip-10-56-112-243 ~]# tail -5 /opt/jfrog/artifactory/var/log/artifactory-request.log
-tail: cannot open '/opt/jfrog/artifactory/var/log/artifactory-request.log' for reading: No such file or directory
 [root@ip-10-56-112-243 ~]# docker exec artifactory bash -c '
-for repo in docker-local docker-wso2mi npm-local pypi-local rpm-local yum-local docker-remote bintray-docker-remote npm-remote centos rpm-remote nodesource12x nodesource8x; do
-  live=$(grep -c "/artifactory/${repo}/" /opt/jfrog/artifactory/var/log/artifactory-request.log 2>/dev/null || echo 0)
-  archived=$(zgrep -c "/artifactory/${repo}/" /opt/jfrog/artifactory/var/log/archived/artifactory-request.*.log.gz 2>/dev/null | awk -F: "{sum+=\$2} END {print sum+0}")
-  echo "$repo: live=$live archived=$archived"
+for repo in conexus-release-local conexus-snapshot-local; do
+  live=$(grep -c "/artifactory/${repo}/" /opt/jfrog/artifactory/var/log/artifactory-request.log 2>/dev/null)
+  archived=$(zgrep -h "/artifactory/${repo}/" /opt/jfrog/artifactory/var/log/archived/artifactory-request.*.log.gz 2>/dev/null | wc -l)
+  echo "$repo: live=${live:-0} archived=$archived"
 done
 '
-docker-local: live=0
-0 archived=0
-docker-wso2mi: live=0
-0 archived=0
-npm-local: live=0
-0 archived=0
-pypi-local: live=0
-0 archived=0
-rpm-local: live=0
-0 archived=0
-yum-local: live=0
-0 archived=0
-docker-remote: live=0
-0 archived=0
-bintray-docker-remote: live=0
-0 archived=0
-npm-remote: live=0
-0 archived=0
-centos: live=0
-0 archived=0
-rpm-remote: live=0
-0 archived=0
-nodesource12x: live=0
-0 archived=0
-nodesource8x: live=0
-0 archived=0
+conexus-release-local: live=0 archived=0
+conexus-snapshot-local: live=0 archived=0
+[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c 'head -3 /opt/jfrog/artifactory/var/log/artifactory-request.log'
+2026-08-07T03:40:15.431Z|7e742880d5533471|127.0.0.1|non_authenticated_user|GET|/api/v1/system/readiness|200|-1|0|0|JFrog-Router/7.149.1-1
+2026-08-07T03:40:20.432Z|6d33791fdb4ddfec|127.0.0.1|non_authenticated_user|GET|/api/v1/system/readiness|200|-1|0|0|JFrog-Router/7.149.1-1
+2026-08-07T03:40:25.432Z|128d3344f6e6019b|127.0.0.1|non_authenticated_user|GET|/api/v1/system/readiness|200|-1|0|0|JFrog-Router/7.149.1-1
 [root@ip-10-56-112-243 ~]# 
