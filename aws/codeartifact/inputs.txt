@@ -1,16 +1,19 @@
-docker exec artifactory bash -c 'grep -c "conexus-release-local" /opt/jfrog/artifactory/var/log/artifactory-request.log'
-docker exec artifactory bash -c 'grep "conexus-release-local" /opt/jfrog/artifactory/var/log/artifactory-request.log | head -3'
+docker exec artifactory bash -c '
+for repo in docker-local docker-wso2mi npm-local pypi-local rpm-local yum-local docker-remote bintray-docker-remote npm-remote centos rpm-remote nodesource12x nodesource8x; do
+  live=$(grep -c "/${repo}/" /opt/jfrog/artifactory/var/log/artifactory-request.log)
+  archived=$(zgrep -h "/${repo}/" /opt/jfrog/artifactory/var/log/archived/artifactory-request.*.log.gz 2>/dev/null | wc -l)
+  echo "$repo: live=$live archived=$archived"
+done
+'
 
 
-
-
-docker exec artifactory bash -c 'head -5 /opt/jfrog/artifactory/var/log/access-request.log'
-docker exec artifactory bash -c 'grep -c "conexus-release-local" /opt/jfrog/artifactory/var/log/access-request.log'
-
-
-
-docker exec artifactory bash -c 'grep "conexus-release-local" /opt/jfrog/artifactory/var/log/access-request.log | head -3'
-
+docker exec artifactory bash -c '
+for repo in conexus-release-local conexus-snapshot-local conexus-rc-local ll-modelchanges; do
+  live=$(grep -c "/${repo}/" /opt/jfrog/artifactory/var/log/artifactory-request.log)
+  archived=$(zgrep -h "/${repo}/" /opt/jfrog/artifactory/var/log/archived/artifactory-request.*.log.gz 2>/dev/null | wc -l)
+  echo "$repo: live=$live archived=$archived"
+done
+'
 
 
 
