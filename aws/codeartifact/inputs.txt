@@ -60,3 +60,17 @@ for repo in conexus-release-local conexus-snapshot-local conexus-rc-local; do
     -d "items.find({\"repo\":\"$repo\"}).include(\"name\",\"stat.downloads\",\"stat.downloaded\")" \
     | jq '[.results[] | select(.stat.downloads != null and .stat.downloads > 0)] | {items_with_downloads: length, most_recent: (map(.stat.downloaded) | max)}'
 done
+
+
+
+
+curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+  -H "Content-Type: text/plain" \
+  -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+  -d 'items.find({"repo":"conexus-release-local"}).include("name","stat.downloads","stat.downloaded").limit(5)' \
+  | jq '.'
+
+
+
+
+docker exec dev-artifactory find / -iname "request.log*" 2>/dev/null
