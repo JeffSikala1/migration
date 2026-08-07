@@ -1,75 +1,13 @@
-cd ~/artifactory-migration
-jq -r '.[] | "\(.type)\t\(.packageType)"' prod_repos.json | sort -u
+tail -5 /opt/jfrog/artifactory/var/log/artifactory-request.log
 
 
-
-
-
-docker exec -i dev-postgres psql -U artifactory -d artifactory -t -A -F'|' \
-  -c "SELECT repository_key, type, package_type, config_blob FROM repository_config;" \
-  > /tmp/all_repo_configs_raw.txt
-
-wc -l /tmp/all_repo_configs_raw.txt
-
-
--------
-
-jq -r '.[] | select(.type=="REMOTE") | "\(.packageType)\t\(.url)"' prod_repos.json | sort -u -k1,1
-
-
-
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "SELECT repository_key, type, package_type FROM repository_config WHERE repository_key = 'schema-test-local-docker';"
-
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "DELETE FROM repository_config WHERE repository_key = 'schema-test-local-docker';"
-
-
-schema-test-local-docker, schema-test-local-maven, schema-test-local-npm, schema-test-local-pypi, schema-test-local-yum, schema-test-remote-docker, schema-test-remote-maven, schema-test-remote-npm, schema-test-remote-yum, schema-test-virtual-docker, schema-test-virtual-maven, schema-test-virtual-npm, schema-test-virtual-yum
-
-
-for repo in docker-local docker-wso2mi npm-local pypi-local rpm-local yum-local; do
-  echo "=== $repo ==="
-  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
-    -H "Content-Type: text/plain" \
-    -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-    -d "items.find({\"repo\":\"$repo\"}).include(\"name\",\"stat.downloads\",\"stat.downloaded\")" \
-    | jq '[.results[] | select(.stat.downloads != null and .stat.downloads > 0)] | {items_with_downloads: length, most_recent: (map(.stat.downloaded) | max)}'
+docker exec artifactory bash -c '
+for repo in docker-local docker-wso2mi npm-local pypi-local rpm-local yum-local docker-remote bintray-docker-remote npm-remote centos rpm-remote nodesource12x nodesource8x; do
+  live=$(grep -c "/artifactory/${repo}/" /opt/jfrog/artifactory/var/log/artifactory-request.log 2>/dev/null || echo 0)
+  archived=$(zgrep -c "/artifactory/${repo}/" /opt/jfrog/artifactory/var/log/archived/artifactory-request.*.log.gz 2>/dev/null | awk -F: "{sum+=\$2} END {print sum+0}")
+  echo "$repo: live=$live archived=$archived"
 done
+'
 
 
 
-
-
-for repo in bintray-docker-remote docker-remote npm-remote centos rpm-remote nodesource12x nodesource8x; do
-  echo "=== $repo ==="
-  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
-    -H "Content-Type: text/plain" \
-    -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-    -d "items.find({\"repo\":\"$repo\"}).include(\"name\",\"stat.downloads\",\"stat.downloaded\")" \
-    | jq '[.results[] | select(.stat.downloads != null and .stat.downloads > 0)] | {items_with_downloads: length, most_recent: (map(.stat.downloaded) | max)}'
-done
-
-
-
-
-
-for repo in conexus-release-local conexus-snapshot-local conexus-rc-local; do
-  echo "=== $repo ==="
-  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
-    -H "Content-Type: text/plain" \
-    -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-    -d "items.find({\"repo\":\"$repo\"}).include(\"name\",\"stat.downloads\",\"stat.downloaded\")" \
-    | jq '[.results[] | select(.stat.downloads != null and .stat.downloads > 0)] | {items_with_downloads: length, most_recent: (map(.stat.downloaded) | max)}'
-done
-
-
-
-
-curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
-  -H "Content-Type: text/plain" \
-  -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  -d 'items.find({"repo":"conexus-release-local"}).include("name","stat.downloads","stat.downloaded").limit(5)' \
-  | jq '.'
-
-
-
-sudo docker exec artifactory find /opt/jfrog/artifactory/var/log -iname "*request*" 2>/dev/null
