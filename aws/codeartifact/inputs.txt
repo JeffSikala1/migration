@@ -24,3 +24,26 @@ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "DELETE FROM 
 
 
 schema-test-local-docker, schema-test-local-maven, schema-test-local-npm, schema-test-local-pypi, schema-test-local-yum, schema-test-remote-docker, schema-test-remote-maven, schema-test-remote-npm, schema-test-remote-yum, schema-test-virtual-docker, schema-test-virtual-maven, schema-test-virtual-npm, schema-test-virtual-yum
+
+
+for repo in docker-local docker-wso2mi npm-local pypi-local rpm-local yum-local; do
+  echo "=== $repo ==="
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    -H "Content-Type: text/plain" \
+    -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+    -d "items.find({\"repo\":\"$repo\"}).include(\"name\",\"stat.downloads\",\"stat.downloaded\")" \
+    | jq '[.results[] | select(.stat.downloads != null and .stat.downloads > 0)] | {items_with_downloads: length, most_recent: (map(.stat.downloaded) | max)}'
+done
+
+
+
+
+
+for repo in bintray-docker-remote docker-remote npm-remote centos rpm-remote nodesource12x nodesource8x; do
+  echo "=== $repo ==="
+  curl -s -H "Authorization: Bearer $artifactory_admin_api_key_secret" \
+    -H "Content-Type: text/plain" \
+    -X POST "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+    -d "items.find({\"repo\":\"$repo\"}).include(\"name\",\"stat.downloads\",\"stat.downloaded\")" \
+    | jq '[.results[] | select(.stat.downloads != null and .stat.downloads > 0)] | {items_with_downloads: length, most_recent: (map(.stat.downloaded) | max)}'
+done
