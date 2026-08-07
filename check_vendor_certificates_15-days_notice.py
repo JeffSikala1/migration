@@ -34,12 +34,9 @@ column_headers_output_files = ("Environment", ",", "Service Account Name", ",", 
 output_file2.writelines(column_headers_output_files)
 output_file2.write(" \n")
 
-# Write Column Headers to CERT_ordered.csv and PROD_ordered.csv
-#column_headers_output_files = ("Certificate Expiration", ",", "Service Account Name", ",", "ShortPersonGUID (same as CN)")
-#output_file3.writelines(column_headers_output_files)
-#output_file3.write(" \n")
-#output_file4.writelines(column_headers_output_files)
-#output_file4.write(" \n")
+# Collect all certs expiring within the 15-day window here, across ALL input files,
+# so we can sort them together (soonest-to-expire first) before writing any output.
+expiring_rows = []
 
 for i in input_files:
 
@@ -61,12 +58,13 @@ for i in input_files:
 
     if delta.days <= 15:
       logger.warning('Conexus_CERTIFICATE-EXPIRING: Check by cron found Certificate(s) that are EXPIRING')
-      text_line = ('{0:16} {1:36} {2:36} {3:24} {4:1}'.format(env, row['Service Account Name'],row['ShortPersonGUID (same as CN)'],str(row['Certificate Expiration'].strftime('%m/%d/%Y')), delta.days))
-      csv_line = (env,",", row['Service Account Name'],",", row['ShortPersonGUID (same as CN)'],",", str(row['Certificate Expiration'].strftime('%m/%d/%Y')),",", str(delta.days))
-      output_file1.writelines(text_line)
-      output_file1.write("\n")
-      output_file2.writelines(csv_line)
-      output_file2.write("\n")
+      expiring_rows.append({
+        'env': env,
+        'name': row['Service Account Name'],
+        'guid': row['ShortPersonGUID (same as CN)'],
+        'exp_date': cert_exp_datetime,
+        'days': delta.days
+      })
       expired = 1 #Set cert exipration flag to true
 
     # Writing to SERVERCERTS_ordered.csv
@@ -85,7 +83,18 @@ for i in input_files:
       output_file5.writelines(L)
       output_file5.write("\n")
 
-  #output_file1.write("\n")
+# Sort the combined list of expiring certs across ALL environments by expiration date,
+# soonest first, then write it out to the report files.
+expiring_rows.sort(key=lambda r: r['exp_date'])
+
+for r in expiring_rows:
+  exp_str = str(r['exp_date'].strftime('%m/%d/%Y'))
+  text_line = ('{0:16} {1:36} {2:36} {3:24} {4:1}'.format(r['env'], r['name'], r['guid'], exp_str, r['days']))
+  csv_line = (r['env'], ",", r['name'], ",", r['guid'], ",", exp_str, ",", str(r['days']))
+  output_file1.writelines(text_line)
+  output_file1.write("\n")
+  output_file2.writelines(csv_line)
+  output_file2.write("\n")
 
 output_file1.close()
 output_file2.close()
