@@ -1,18 +1,32 @@
-[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c 'grep -c "conexus-release-local" /opt/jfrog/artifactory/var/log/artifactory-request.log'
-144
-[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c 'grep "conexus-release-local" /opt/jfrog/artifactory/var/log/artifactory-request.log | head -3'
-2026-08-07T13:54:51.885Z|205772a3f7f28056|10.56.128.81|sasikanth.dale|PUT|/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.56/pg-datafile-02.00.000.56-postgres-data.tar.gz|201|19204109|0|675|Apache-Maven/3.8.4 (Java 17.0.19; Linux 6.1.175-219.357.amzn2023.x86_64)
-2026-08-07T13:54:52.013Z|74975d019c8bb705|10.56.128.81|sasikanth.dale|PUT|/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.56/pg-datafile-02.00.000.56-postgres-data.tar.gz.sha1|201|40|0|7|Apache-Maven/3.8.4 (Java 17.0.19; Linux 6.1.175-219.357.amzn2023.x86_64)
-2026-08-07T13:54:52.025Z|474486ae93ad4100|10.56.128.81|sasikanth.dale|PUT|/conexus-release-local/gov/gsa/cnxs/db/pg-datafile/02.00.000.56/pg-datafile-02.00.000.56-postgres-data.tar.gz.md5|201|32|0|3|Apache-Maven/3.8.4 (Java 17.0.19; Linux 6.1.175-219.357.amzn2023.x86_64)
-[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c 'head -5 /opt/jfrog/artifactory/var/log/access-request.log'
-2026-08-07T15:34:13.441Z|ecc49cee0859e510|127.0.0.1|anonymous|GET|/access/api/v1/system/readiness|200|19|-1|1|JFrog Access Java Client/7.133.1 83301900  Artifactory/7.104.22 80422900
-2026-08-07T15:34:15.254Z|2f095fdd238ed3b7|127.0.0.1|anonymous|GET|/access/api/v1/system/readiness|200|19|-1|1|JFrog-Router/7.149.1-1
-2026-08-07T15:34:18.866Z|7e905c340b6108d0|127.0.0.1|jfrt@01edq5j0vmt7qq0ajg8ds610ez|GET|/access/api/v1/permissions/last_updated|200|13|-1|0|JFrog Access Java Client/7.133.1 83301900  Artifactory/7.104.22 80422900
-2026-08-07T15:34:20.255Z|3932cd8a4068fd73|127.0.0.1|anonymous|GET|/access/api/v1/system/readiness|200|19|-1|0|JFrog-Router/7.149.1-1
-2026-08-07T15:34:25.256Z|4f062b0d5307394e|127.0.0.1|anonymous|GET|/access/api/v1/system/readiness|200|19|-1|1|JFrog-Router/7.149.1-1
-[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c 'grep -c "conexus-release-local" /opt/jfrog/artifactory/var/log/access-request.log'
-0
-[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c 'grep "conexus-release-local" /opt/jfrog/artifactory/var/log/access-request.log | head -3'
+[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c '
+for repo in docker-local docker-wso2mi npm-local pypi-local rpm-local yum-local docker-remote bintray-docker-remote npm-remote centos rpm-remote nodesource12x nodesource8x; do
+  live=$(grep -c "/${repo}/" /opt/jfrog/artifactory/var/log/artifactory-request.log)
+  archived=$(zgrep -h "/${repo}/" /opt/jfrog/artifactory/var/log/archived/artifactory-request.*.log.gz 2>/dev/null | wc -l)
+  echo "$repo: live=$live archived=$archived"
+done
+'
+docker-local: live=0 archived=0
+docker-wso2mi: live=0 archived=0
+npm-local: live=0 archived=0
+pypi-local: live=0 archived=0
+rpm-local: live=0 archived=0
+yum-local: live=0 archived=0
+docker-remote: live=0 archived=0
+bintray-docker-remote: live=0 archived=0
+npm-remote: live=0 archived=0
+centos: live=0 archived=0
+rpm-remote: live=0 archived=0
+nodesource12x: live=0 archived=0
+nodesource8x: live=0 archived=0
+[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c '
+for repo in conexus-release-local conexus-snapshot-local conexus-rc-local ll-modelchanges; do
+  live=$(grep -c "/${repo}/" /opt/jfrog/artifactory/var/log/artifactory-request.log)
+  archived=$(zgrep -h "/${repo}/" /opt/jfrog/artifactory/var/log/archived/artifactory-request.*.log.gz 2>/dev/null | wc -l)
+  echo "$repo: live=$live archived=$archived"
+done
+'
+conexus-release-local: live=113 archived=798
+conexus-snapshot-local: live=84 archived=51
+conexus-rc-local: live=0 archived=559
+ll-modelchanges: live=0 archived=0
 [root@ip-10-56-112-243 ~]# 
-
-
