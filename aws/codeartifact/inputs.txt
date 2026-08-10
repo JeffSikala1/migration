@@ -1,12 +1,8 @@
-docker exec dev-postgres pg_dump -U artifactory -d artifactory -F c -f /tmp/artifactory_pre_repo_insert.dump
-docker cp dev-postgres:/tmp/artifactory_pre_repo_insert.dump ~/artifactory_pre_repo_insert_$(date +%Y%m%d).dump
+for repo in example-repo-local schema-test-local-maven schema-test-remote-maven schema-test-virtual-maven schema-test-virtual-maven-populated; do
+  echo "=== deleting $repo ==="
+  curl --fail -s -u admin:$artifactory_dev_admin_token -X DELETE "http://localhost:8082/artifactory/api/repositories/${repo}" || echo "FAILED: $repo"
+done
 
-
-
-docker exec -i dev-postgres psql -U artifactory -d artifactory < ~/artifactory-migration/repo_inserts.sql
-
-
-
-docker restart dev-artifactory
-sleep 15
 curl -s -u admin:$artifactory_dev_admin_token "http://localhost:8082/artifactory/api/repositories" | jq 'length'
+
+
