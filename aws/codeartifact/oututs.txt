@@ -1,32 +1,20 @@
-[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c '
-for repo in docker-local docker-wso2mi npm-local pypi-local rpm-local yum-local docker-remote bintray-docker-remote npm-remote centos rpm-remote nodesource12x nodesource8x; do
-  live=$(grep -c "/${repo}/" /opt/jfrog/artifactory/var/log/artifactory-request.log)
-  archived=$(zgrep -h "/${repo}/" /opt/jfrog/artifactory/var/log/archived/artifactory-request.*.log.gz 2>/dev/null | wc -l)
-  echo "$repo: live=$live archived=$archived"
-done
-'
-docker-local: live=0 archived=0
-docker-wso2mi: live=0 archived=0
-npm-local: live=0 archived=0
-pypi-local: live=0 archived=0
-rpm-local: live=0 archived=0
-yum-local: live=0 archived=0
-docker-remote: live=0 archived=0
-bintray-docker-remote: live=0 archived=0
-npm-remote: live=0 archived=0
-centos: live=0 archived=0
-rpm-remote: live=0 archived=0
-nodesource12x: live=0 archived=0
-nodesource8x: live=0 archived=0
-[root@ip-10-56-112-243 ~]# docker exec artifactory bash -c '
-for repo in conexus-release-local conexus-snapshot-local conexus-rc-local ll-modelchanges; do
-  live=$(grep -c "/${repo}/" /opt/jfrog/artifactory/var/log/artifactory-request.log)
-  archived=$(zgrep -h "/${repo}/" /opt/jfrog/artifactory/var/log/archived/artifactory-request.*.log.gz 2>/dev/null | wc -l)
-  echo "$repo: live=$live archived=$archived"
-done
-'
-conexus-release-local: live=113 archived=798
-conexus-snapshot-local: live=84 archived=51
-conexus-rc-local: live=0 archived=559
-ll-modelchanges: live=0 archived=0
-[root@ip-10-56-112-243 ~]# 
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ jq -r '.[] | select(.packageType=="Generic") | .type' prod_repos.json | sort -u
+LOCAL
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ jq -r '.[] | select(.type=="REMOTE" and .packageType=="Maven") | .url' prod_repos.json | head -1
+https://repo.fusesource.com/nexus/content/groups/public/
+[sikaj01@ip-10-56-112-33 artifactory-migration]$ 
+
+[root@ip-10-56-112-243 artifactory]# docker exec -i dev-postgres psql -U artifactory -d artifactory -t -A -F'|' \
+  -c "SELECT repository_key, type, package_type, config_blob FROM repository_config WHERE repository_key LIKE 'schema-test-%' OR repository_key = 'example-repo-local';" \
+  > /tmp/schema_examples_raw.txt
+Error response from daemon: No such container: dev-postgres
+[root@ip-10-56-112-243 artifactory]# docker ps
+CONTAINER ID   IMAGE                                                         COMMAND                  CREATED        STATUS       PORTS                                                                      NAMES
+7c25ec7ae10e   releases-docker.jfrog.io/jfrog/nginx-artifactory-pro:7.68.7   "/entrypoint-nginx.sh"   6 months ago   Up 12 days   0.0.0.0:80->80/tcp, :::80->80/tcp, 0.0.0.0:443->443/tcp, :::443->443/tcp   artifactory-nginx
+dc00bfc2ebf3   releases-docker.jfrog.io/jfrog/artifactory-pro:7.104.14       "/entrypoint-artifac…"   6 months ago   Up 12 days   8081/tcp                                                                   artifactory
+6b40766d0dc5   postgres:15-alpine                                            "docker-entrypoint.s…"   6 months ago   Up 12 days   5432/tcp                                                                   artifactory-postgres
+[root@ip-10-56-112-243 artifactory]# docker exec -i artifactory-postgres psql -U artifactory -d artifactory -t -A -F'|' \
+  -c "SELECT repository_key, type, package_type, config_blob FROM repository_config WHERE repository_key LIKE 'schema-test-%' OR repository_key = 'example-repo-local';" \
+  > /tmp/schema_examples_raw.txt
+[root@ip-10-56-112-243 artifactory]# cat /tmp/schema_examples_raw.txt
+[root@ip-10-56-112-243 artifactory]# 
