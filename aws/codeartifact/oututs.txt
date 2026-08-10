@@ -1,39 +1,13 @@
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ curl -s -u admin:$artifactory_dev_admin_token "http://localhost:8082/artifactory/api/security/groups" | jq '.'
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ cat prod_groups_detail/nsfs_qa.json
 {
-  "errors": [
-    {
-      "status": 400,
-      "message": "This REST API is available only in Artifactory Pro (see: jfrog.com/artifactory/features). If you are already running Artifactory Pro please make sure your server is activated with a valid license key.\n"
-    }
-  ]
-}
-
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\d access_groups"
-                        Table "public.access_groups"
-      Column      |          Type           | Collation | Nullable | Default 
-------------------+-------------------------+-----------+----------+---------
- group_id         | bigint                  |           | not null | 
- group_name       | character varying(64)   |           | not null | 
- description      | character varying(1024) |           |          | 
- auto_join        | smallint                |           | not null | 
- realm            | character varying(255)  |           |          | 
- realm_attributes | character varying(512)  |           |          | 
- created          | bigint                  |           | not null | 
- modified         | bigint                  |           | not null | 
- lowercase_name   | character varying(64)   |           | not null | 
- external_id      | character varying(64)   |           |          | 
-Indexes:
-    "access_groups_pk" PRIMARY KEY, btree (group_id)
-    "access_group_lower_name_idx" btree (lowercase_name)
-    "access_groups_name_idx" UNIQUE, btree (group_name)
-Referenced by:
-    TABLE "access_groups_custom_data" CONSTRAINT "access_groups_data_users_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-    TABLE "access_permissions_actions_v2" CONSTRAINT "access_perm_act_v2_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-    TABLE "access_permission_action" CONSTRAINT "access_perm_action_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id) ON DELETE CASCADE
-    TABLE "access_project_groups" CONSTRAINT "access_project_groups_group_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-    TABLE "access_users_groups" CONSTRAINT "access_users_groups_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -t -A -F'|' \
-  -c "SELECT * FROM access_groups;"
-1|readers|A group for read-only users|1|internal||1785353204540|1785353204540|readers|
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ 
+  "name" : "nsfs_qa",
+  "description" : "NSFS_QA",
+  "autoJoin" : false,
+  "realm" : "crowd",
+  "adminPrivileges" : false,
+  "policyViewer" : false,
+  "policyManager" : false,
+  "watchManager" : false,
+  "reportsManager" : false
+}[sikaj01@ip-10-56-128-233 artifactory-migration]$docker exec -i dev-postgres psql -U artifactory -d artifactory -t -A -c "SELECT max(group_id) FROM access_groups;""
+1
