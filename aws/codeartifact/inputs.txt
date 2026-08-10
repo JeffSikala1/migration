@@ -1,1 +1,12 @@
-Quick update — pulled 90 days of prod Artifactory logs and only the Maven repos are actually seeing traffic, Docker/NPM/PyPI/YUM haven't had a single build hit that whole time. Combined with the fact that those package types aren't even supported in OSS anyway, I think we're good to scope dev to Maven-only. Only caveat is if something runs less often than every 90 days we wouldn't have caught it, but feels like solid enough evidence to move forward.
+cd ~/artifactory-migration
+jq -r '.[] | select(.packageType=="Generic") | .type' prod_repos.json | sort -u
+
+
+jq -r '.[] | select(.type=="REMOTE" and .packageType=="Maven") | .url' prod_repos.json | head -1
+
+
+docker exec -i dev-postgres psql -U artifactory -d artifactory -t -A -F'|' \
+  -c "SELECT repository_key, type, package_type, config_blob FROM repository_config WHERE repository_key LIKE 'schema-test-%' OR repository_key = 'example-repo-local';" \
+  > /tmp/schema_examples_raw.txt
+
+cat /tmp/schema_examples_raw.txt
