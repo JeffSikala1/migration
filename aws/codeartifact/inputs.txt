@@ -1,2 +1,12 @@
-cd ~/artifactory-migration
-python3 build_repo_inserts.py
+docker exec dev-postgres pg_dump -U artifactory -d artifactory -F c -f /tmp/artifactory_pre_repo_insert.dump
+docker cp dev-postgres:/tmp/artifactory_pre_repo_insert.dump ~/artifactory_pre_repo_insert_$(date +%Y%m%d).dump
+
+
+
+docker exec -i dev-postgres psql -U artifactory -d artifactory < ~/artifactory-migration/repo_inserts.sql
+
+
+
+docker restart dev-artifactory
+sleep 15
+curl -s -u admin:$artifactory_dev_admin_token "http://localhost:8082/artifactory/api/repositories" | jq 'length'
