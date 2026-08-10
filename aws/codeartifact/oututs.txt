@@ -1,18 +1,16 @@
-[sikaj01@ip-10-56-128-233 ~]$ curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
-  -u admin:$artifactory_dev_admin_token \
-  -X DELETE "http://localhost:8082/artifactory/api/repositories/example-repo-local"
-HTTP/1.1 400 Bad Request
-Content-Type: application/json
-Date: Mon, 10 Aug 2026 15:32:08 GMT
-X-Artifactory-Id: 092ea6065b1aa819:-363114d5:19fec3bfec3:-8000
-X-Artifactory-Node-Id: bbe9824ab941
-X-Jfrog-Version: Artifactory/7.104.14 80414900
-Transfer-Encoding: chunked
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
+SELECT conrelid::regclass AS table, conname
+FROM pg_constraint
+WHERE confrelid = 'repository_config'::regclass;
+"
+ table | conname 
+-------+---------
+(0 rows)
 
-{
-  "errors" : [ {
-    "status" : 400,
-    "message" : "This REST API is available only in Artifactory Pro (see: jfrog.com/artifactory/features). If you are already running Artifactory Pro please make sure your server is activated with a valid license key.\n"
-  } ]
-}
-HTTP_STATUS:400
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
+SELECT * FROM md_repos WHERE repo IN ('example-repo-local','schema-test-local-maven','schema-test-remote-maven','schema-test-virtual-maven','schema-test-virtual-maven-populated');
+"
+ERROR:  column "repo" does not exist
+LINE 2: SELECT * FROM md_repos WHERE repo IN ('example-repo-local','...
+                                     ^
+[sikaj01@ip-10-56-128-233 ~]$ 
