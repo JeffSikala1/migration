@@ -1,58 +1,24 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\d md_repos"
-                     Table "public.md_repos"
- Column |          Type          | Collation | Nullable | Default 
---------+------------------------+-----------+----------+---------
- id     | bigint                 |           | not null | 
- name   | character varying(255) |           | not null | 
- url    | character varying(255) |           |          | 
- type   | character varying(20)  |           | not null | 
-Indexes:
-    "md_repos_pkey" PRIMARY KEY, btree (id)
-    "md_repos_name_idx" UNIQUE, btree (name)
-Referenced by:
-    TABLE "md_ver_repos" CONSTRAINT "md_ver_repos_repos_fk" FOREIGN KEY (repo_id) REFERENCES md_repos(id)
-    TABLE "md_version_repo_stats" CONSTRAINT "md_version_repo_stats_repos_fk" FOREIGN KEY (repo_id) REFERENCES md_repos(id)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory <<'EOF'
-BEGIN;
-
-DELETE FROM repository_config
-WHERE repository_key IN (
-  'example-repo-local',
-  'schema-test-local-maven',
-  'schema-test-remote-maven',
-  'schema-test-virtual-maven',
-  'schema-test-virtual-maven-populated'
-);
-
-SELECT count(*) AS remaining FROM repository_config
-WHERE repository_key IN (
-  'example-repo-local',
-  'schema-test-local-maven',
-  'schema-test-remote-maven',
-  'schema-test-virtual-maven',
-  'schema-test-virtual-maven-populated'
-);
-
-COMMIT;
-EOF
-BEGIN
-DELETE 5
- remaining 
------------
-         0
-(1 row)
-
-COMMIT
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
-SELECT name FROM md_repos WHERE name IN ('example-repo-local','schema-test-local-maven','schema-test-remote-maven','schema-test-virtual-maven','schema-test-virtual-maven-populated');
-"
- name 
-------
-(0 rows)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker restart dev-artifactory
-dev-artifactory
-[sikaj01@ip-10-56-128-233 ~]$ sleep 30
 [sikaj01@ip-10-56-128-233 ~]$ curl -s -u admin:$artifactory_dev_admin_token "http://localhost:8082/artifactory/api/repositories" | jq 'length'
 41
+[sikaj01@ip-10-56-128-233 ~]$ cd ~/artifactory-migration
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
+  -u admin:$artifactory_dev_admin_token \
+  -H "Content-Type: application/json" \
+  -X PUT "http://localhost:8082/artifactory/api/security/groups/nsfs_qa" \
+  -d @prod_groups_detail/nsfs_qa.json
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Date: Mon, 10 Aug 2026 19:33:24 GMT
+X-Artifactory-Id: fd1bbb680381f639:-75432dd6:19fec8f906b:-8000
+X-Artifactory-Node-Id: bbe9824ab941
+X-Jfrog-Version: Artifactory/7.104.14 80414900
+Transfer-Encoding: chunked
+
+{
+  "errors" : [ {
+    "status" : 400,
+    "message" : "This REST API is available only in Artifactory Pro (see: jfrog.com/artifactory/features). If you are already running Artifactory Pro please make sure your server is activated with a valid license key.\n"
+  } ]
+}
+HTTP_STATUS:400
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ 
