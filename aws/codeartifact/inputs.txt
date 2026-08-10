@@ -1,12 +1,26 @@
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
-SELECT conrelid::regclass AS table, conname
-FROM pg_constraint
-WHERE confrelid = 'repository_config'::regclass;
-"
+docker exec -it dev-postgres psql -U artifactory -d artifactory -c "\d md_repos"
 
+docker exec -i dev-postgres psql -U artifactory -d artifactory <<'EOF'
+BEGIN;
 
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
-SELECT * FROM md_repos WHERE repo IN ('example-repo-local','schema-test-local-maven','schema-test-remote-maven','schema-test-virtual-maven','schema-test-virtual-maven-populated');
-"
+DELETE FROM repository_config
+WHERE repository_key IN (
+  'example-repo-local',
+  'schema-test-local-maven',
+  'schema-test-remote-maven',
+  'schema-test-virtual-maven',
+  'schema-test-virtual-maven-populated'
+);
 
+SELECT count(*) AS remaining FROM repository_config
+WHERE repository_key IN (
+  'example-repo-local',
+  'schema-test-local-maven',
+  'schema-test-remote-maven',
+  'schema-test-virtual-maven',
+  'schema-test-virtual-maven-populated'
+);
+
+COMMIT;
+EOF
 
