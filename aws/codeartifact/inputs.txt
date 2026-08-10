@@ -1,9 +1,6 @@
-docker exec -it dev-postgres psql -U artifactory -d artifactory -c "
-SELECT name FROM md_repos WHERE name IN ('example-repo-local','schema-test-local-maven','schema-test-remote-maven','schema-test-virtual-maven','schema-test-virtual-maven-populated');
-"
-
-
-docker restart dev-artifactory
-sleep 15
-curl -s -u admin:$artifactory_dev_admin_token "http://localhost:8082/artifactory/api/repositories" | jq 'length'
-
+cd ~/artifactory-migration
+curl -s -i -w "\nHTTP_STATUS:%{http_code}\n" \
+  -u admin:$artifactory_dev_admin_token \
+  -H "Content-Type: application/json" \
+  -X PUT "http://localhost:8082/artifactory/api/security/groups/nsfs_qa" \
+  -d @prod_groups_detail/nsfs_qa.json
