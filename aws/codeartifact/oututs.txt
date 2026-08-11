@@ -1,24 +1,52 @@
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres pg_dump -U artifactory -d artifactory -t access_groups -t access_groups_custom_data > group_tables_backup_$(date +%Y%m%d_%H%M%S).sql
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory < group_inserts.sql
-BEGIN
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 0
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-COMMIT
-[sikaj01
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker restart dev-artifactory
+dev-artifactory
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_groups;"
+ count 
+-------
+    14
+(1 row)
+
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_groups_custom_data;"
+ count 
+-------
+     5
+(1 row)
+
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups;"
+ group_id |          group_name          |                 description                 | auto_join |  realm   | realm_attributes |    created    |   modified    |        lowercase_name        | external_id 
+----------+------------------------------+---------------------------------------------+-----------+----------+------------------+---------------+---------------+------------------------------+-------------
+        1 | readers                      | A group for read-only users                 |         1 | internal |                  | 1785353204540 | 1785353204540 | readers                      | 
+        2 | admins                       |                                             |         0 | internal |                  | 1735689600000 | 1735689600000 | admins                       | 
+        3 | anon_read_only               |                                             |         0 | internal |                  | 1735689600000 | 1735689600000 | anon_read_only               | 
+        4 | avupload                     |                                             |         0 | internal |                  | 1735689600000 | 1735689600000 | avupload                     | 
+        5 | conexus_release_local_create | Create access in conexus-release-local repo |         0 | internal |                  | 1735689600000 | 1735689600000 | conexus_release_local_create | 
+        6 | docker_push_group            |                                             |         0 | internal |                  | 1735689600000 | 1735689600000 | docker_push_group            | 
+        7 | keys                         |                                             |         0 | internal |                  | 1735689600000 | 1735689600000 | keys                         | 
+        8 | nsfs_administrators          | NSFS_Administrators                         |         0 | internal |                  | 1735689600000 | 1735689600000 | nsfs_administrators          | 
+        9 | nsfs_developers              | NSFS_Developers                             |         0 | internal |                  | 1735689600000 | 1735689600000 | nsfs_developers              | 
+       10 | nsfs_devops                  | NSFS_DevOps                                 |         0 | internal |                  | 1735689600000 | 1735689600000 | nsfs_devops                  | 
+       11 | nsfs_qa                      | NSFS_QA                                     |         0 | internal |                  | 1735689600000 | 1735689600000 | nsfs_qa                      | 
+       12 | nsfs_security                | NSFS_Security                               |         0 | internal |                  | 1735689600000 | 1735689600000 | nsfs_security                | 
+       13 | nsfs_users                   | NSFS_Users                                  |         1 | internal |                  | 1735689600000 | 1735689600000 | nsfs_users                   | 
+       14 | uploadOnly                   |                                             |         0 | internal |                  | 1735689600000 | 1735689600000 | uploadonly                   | 
+(14 rows)
+
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups_custom_data;"
+ group_id |     prop_key      | prop_value 
+----------+-------------------+------------
+        2 | artifactory_admin | true
+        2 | policy_manager    | true
+        2 | watch_manager     | true
+        2 | reports_manager   | true
+        8 | artifactory_admin | true
+(5 rows)
+
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups WHERE group_name = 'schema-test-admin-group';"
+ group_id | group_name | description | auto_join | realm | realm_attributes | created | modified | lowercase_name | external_id 
+----------+------------+-------------+-----------+-------+------------------+---------+----------+----------------+-------------
+(0 rows)
+
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups_custom_data WHERE group_id = (SELECT group_id FROM access_groups WHERE group_name = 'schema-test-admin-group');"
+ group_id | prop_key | prop_value 
+----------+----------+------------
+(0 rows)
