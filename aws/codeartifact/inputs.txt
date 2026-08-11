@@ -1,5 +1,8 @@
-cd ~/artifactory-migration
-docker exec -i dev-postgres pg_dump -U artifactory -d artifactory -t access_groups -t access_groups_custom_data > group_tables_backup_$(date +%Y%m%d_%H%M%S).sql
+docker restart dev-artifactory
 
-
-docker exec -i dev-postgres psql -U artifactory -d artifactory < group_inserts.sql
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_groups;"
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_groups_custom_data;"
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups;"
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups_custom_data;"
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups WHERE group_name = 'schema-test-admin-group';"
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups_custom_data WHERE group_id = (SELECT group_id FROM access_groups WHERE group_name = 'schema-test-admin-group');"
