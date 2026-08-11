@@ -1,64 +1,24 @@
-sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT group_id FROM access_groups WHERE group_name = 'schema-test-admin-group';"
- group_id 
-----------
-     1001
-(1 row)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups_custom_data WHERE group_id = 1001;"
- group_id |     prop_key      | prop_value 
-----------+-------------------+------------
-     1001 | artifactory_admin | true
-     1001 | policy_manager    | true
-     1001 | reports_manager   | true
-     1001 | watch_manager     | true
-(4 rows)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_project_groups WHERE group_id = 1001;"
- project_id | group_id | role_id 
-------------+----------+---------
-          1 |     1001 |       6
-(1 row)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_users_groups WHERE group_id = 1001;"
- user_id | group_id | realm 
----------+----------+-------
-(0 rows)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "DELETE FROM access_groups_custom_data WHERE group_id = 1001;"
-DELETE 4
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "DELETE FROM access_project_groups WHERE group_id = 1001;"
-DELETE 1
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "DELETE FROM access_groups WHERE group_id = 1001;"
-DELETE 1
-[sikaj01@ip-10-56-128-233 ~]$ cd ~/artifactory-migration
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ vim build_group_inserts.py
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ python3 build_group_inserts.py 
-Wrote 14 group INSERTs and 5 custom_data INSERTs to /home/sikaj01/artifactory-migration/group_inserts.sql
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ cat /home/sikaj01/artifactory-migration/group_inserts.sql
-BEGIN;
-
--- access_groups
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'admins', '', 0, 'internal', NULL, 1735689600000, 1735689600000, 'admins', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'admins');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'anon_read_only', '', 0, 'internal', NULL, 1735689600000, 1735689600000, 'anon_read_only', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'anon_read_only');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'avupload', '', 0, 'internal', NULL, 1735689600000, 1735689600000, 'avupload', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'avupload');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'conexus_release_local_create', 'Create access in conexus-release-local repo', 0, 'internal', NULL, 1735689600000, 1735689600000, 'conexus_release_local_create', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'conexus_release_local_create');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'docker_push_group', '', 0, 'internal', NULL, 1735689600000, 1735689600000, 'docker_push_group', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'docker_push_group');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'keys', '', 0, 'internal', NULL, 1735689600000, 1735689600000, 'keys', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'keys');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'nsfs_administrators', 'NSFS_Administrators', 0, 'internal', NULL, 1735689600000, 1735689600000, 'nsfs_administrators', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'nsfs_administrators');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'nsfs_developers', 'NSFS_Developers', 0, 'internal', NULL, 1735689600000, 1735689600000, 'nsfs_developers', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'nsfs_developers');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'nsfs_devops', 'NSFS_DevOps', 0, 'internal', NULL, 1735689600000, 1735689600000, 'nsfs_devops', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'nsfs_devops');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'nsfs_qa', 'NSFS_QA', 0, 'internal', NULL, 1735689600000, 1735689600000, 'nsfs_qa', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'nsfs_qa');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'nsfs_security', 'NSFS_Security', 0, 'internal', NULL, 1735689600000, 1735689600000, 'nsfs_security', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'nsfs_security');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'nsfs_users', 'NSFS_Users', 1, 'internal', NULL, 1735689600000, 1735689600000, 'nsfs_users', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'nsfs_users');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'readers', 'A group for read-only users', 0, 'internal', NULL, 1735689600000, 1735689600000, 'readers', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'readers');
-INSERT INTO access_groups (group_id, group_name, description, auto_join, realm, realm_attributes, created, modified, lowercase_name, external_id) SELECT (SELECT COALESCE(MAX(group_id),0)+1 FROM access_groups), 'uploadOnly', '', 0, 'internal', NULL, 1735689600000, 1735689600000, 'uploadonly', NULL WHERE NOT EXISTS (SELECT 1 FROM access_groups WHERE group_name = 'uploadOnly');
-
--- access_groups_custom_data (admin/policy/watch/reports manager flags)
-INSERT INTO access_groups_custom_data (group_id, prop_key, prop_value) SELECT group_id, 'artifactory_admin', 'true' FROM access_groups WHERE group_name = 'admins' AND NOT EXISTS (SELECT 1 FROM access_groups_custom_data WHERE group_id = (SELECT group_id FROM access_groups WHERE group_name = 'admins') AND prop_key = 'artifactory_admin');
-INSERT INTO access_groups_custom_data (group_id, prop_key, prop_value) SELECT group_id, 'policy_manager', 'true' FROM access_groups WHERE group_name = 'admins' AND NOT EXISTS (SELECT 1 FROM access_groups_custom_data WHERE group_id = (SELECT group_id FROM access_groups WHERE group_name = 'admins') AND prop_key = 'policy_manager');
-INSERT INTO access_groups_custom_data (group_id, prop_key, prop_value) SELECT group_id, 'watch_manager', 'true' FROM access_groups WHERE group_name = 'admins' AND NOT EXISTS (SELECT 1 FROM access_groups_custom_data WHERE group_id = (SELECT group_id FROM access_groups WHERE group_name = 'admins') AND prop_key = 'watch_manager');
-INSERT INTO access_groups_custom_data (group_id, prop_key, prop_value) SELECT group_id, 'reports_manager', 'true' FROM access_groups WHERE group_name = 'admins' AND NOT EXISTS (SELECT 1 FROM access_groups_custom_data WHERE group_id = (SELECT group_id FROM access_groups WHERE group_name = 'admins') AND prop_key = 'reports_manager');
-INSERT INTO access_groups_custom_data (group_id, prop_key, prop_value) SELECT group_id, 'artifactory_admin', 'true' FROM access_groups WHERE group_name = 'nsfs_administrators' AND NOT EXISTS (SELECT 1 FROM access_groups_custom_data WHERE group_id = (SELECT group_id FROM access_groups WHERE group_name = 'nsfs_administrators') AND prop_key = 'artifactory_admin');
-
-COMMIT;
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ 
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres pg_dump -U artifactory -d artifactory -t access_groups -t access_groups_custom_data > group_tables_backup_$(date +%Y%m%d_%H%M%S).sql
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory < group_inserts.sql
+BEGIN
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 0
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+COMMIT
+[sikaj01
