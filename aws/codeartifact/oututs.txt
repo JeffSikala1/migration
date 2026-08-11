@@ -1,9 +1,27 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "\dt" | grep -i role
- public | access_role_environment_actions      | table             | artifactory
- public | access_roles                         | table             | artifactory
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "\dt" | grep -i group
- public | access_groups                        | table             | artifactory
- public | access_groups_custom_data            | table             | artifactory
- public | access_project_groups                | table             | artifactory
- public | access_users_groups                  | table             | artifactory
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT group_id FROM access_groups WHERE group_name = 'schema-test-admin-group';"
+ group_id 
+----------
+     1001
+(1 row)
+
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_groups_custom_data WHERE group_id = 1001;"
+ group_id |     prop_key      | prop_value 
+----------+-------------------+------------
+     1001 | artifactory_admin | true
+     1001 | policy_manager    | true
+     1001 | reports_manager   | true
+     1001 | watch_manager     | true
+(4 rows)
+
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_project_groups WHERE group_id = 1001;"
+ project_id | group_id | role_id 
+------------+----------+---------
+          1 |     1001 |       6
+(1 row)
+
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_users_groups WHERE group_id = 1001;"
+ user_id | group_id | realm 
+---------+----------+-------
+(0 rows)
+
 [sikaj01@ip-10-56-128-233 ~]$ 
