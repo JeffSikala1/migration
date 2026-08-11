@@ -1,17 +1,251 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_users WHERE user_id = 2002;"
- user_id |     username     |                                                password                                                | allowed_ips |    created    |   modified    | firstname | lastname |        email         |  realm   | status  | last_login_time | last_login_ip | failed_attempts | status_last_modified | password_last_modified 
----------+------------------+--------------------------------------------------------------------------------------------------------+-------------+---------------+---------------+-----------+----------+----------------------+----------+---------+-----------------+---------------+-----------------+----------------------+------------------------
-    2002 | schema-test-user | argon$$argon2id$v=19$m=512,t=16,p=1$39SrdDBXSL2ll8E4Wc9urA$CiKi+cDqVrFQou0Ha24Y84iMCm3dtFsTLkXITvoyH6I | *           | 1786476350584 | 1786476350584 |           |          | jeff.sikala@usda.gov | internal | enabled |               0 |               |               0 |        1786476350584 |          1786476350584
-(1 row)
-
 [sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_users_custom_data WHERE user_id = 2002;"
  user_id |     prop_key      | prop_value | prop_sensitive | prop_cluster_local 
 ---------+-------------------+------------+----------------+--------------------
-    2002 | blockUiView       | false      |              0 |                  0
-    2002 | disabled_password | false      |              0 |                  0
     2002 | policy_manager    | false      |              0 |                  0
+    2002 | disabled_password | true       |              0 |                  0
     2002 | policy_viewer     | false      |              0 |                  0
-    2002 | reports_manager   | false      |              0 |                  0
     2002 | updatable_profile | true       |              0 |                  0
+    2002 | reports_manager   | false      |              0 |                  0
     2002 | watch_manager     | false      |              0 |                  0
-(7 rows)
+    2002 | blockUiView       | false      |              0 |                  0
+    2002 | artifactory_admin | false      |              0 |                  0
+(8 rows)
+
+[sikaj01@ip-10-56-128-233 ~]$ ll
+total 588
+drwxr-x---. 5 sikaj01 users  16384 Aug 11 14:54 artifactory-migration
+-rw-r--r--. 1 sikaj01 users 290502 Aug  3 17:17 artifactory_pre_admin_reset_20260803.dump
+-rw-r--r--. 1 sikaj01 users 293881 Aug 10 15:11 artifactory_pre_repo_insert_20260810.dump
+[sikaj01@ip-10-56-128-233 ~]$ cd artifactory-migration/
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ ll
+total 204
+-rw-r-----. 1 sikaj01 users  5315 Aug 11 14:50 build_group_inserts.py
+-rw-r-----. 1 sikaj01 users 10749 Aug 10 15:06 build_repo_inserts.py
+-rw-r-----. 1 sikaj01 users  7329 Aug 11 14:50 group_inserts.sql
+-rw-r-----. 1 sikaj01 users  3640 Aug 11 14:54 group_tables_backup_20260811_145416.sql
+-rw-r-----. 1 sikaj01 users  1936 Aug  5 15:36 prod_groups.json
+drwxr-x---. 2 sikaj01 users 16384 Aug  5 15:36 prod_groups_detail
+-rw-r-----. 1 sikaj01 users  2942 Aug  5 15:36 prod_permissions.json
+drwxr-x---. 2 sikaj01 users 16384 Aug  5 15:36 prod_permissions_detail
+-rw-r-----. 1 sikaj01 users  9392 Aug  5 15:36 prod_repos.json
+drwxr-x---. 2 sikaj01 users 16384 Aug  5 15:36 prod_repos_detail
+-rw-r-----. 1 sikaj01 users  9346 Aug  5 15:36 prod_users.json
+-rw-r-----. 1 sikaj01 users 90953 Aug 10 15:06 repo_inserts.sql
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ cat prod_users.json 
+[ {
+  "name" : "kristian.fitzgerald@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/kristian.fitzgerald@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "stephen.tefft@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/stephen.tefft@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "kristian.fitzgerald",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/kristian.fitzgerald",
+  "realm" : "saml"
+}, {
+  "name" : "jared.curtis@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/jared.curtis@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "robert.torrey@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/robert.torrey@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "avupload",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/avupload",
+  "realm" : "internal"
+}, {
+  "name" : "robert.wernsman",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/robert.wernsman",
+  "realm" : "saml"
+}, {
+  "name" : "rupak.barua@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/rupak.barua@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "john.zehetner@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/john.zehetner@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "robert.wernsman@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/robert.wernsman@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "sa_snyk",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sa_snyk",
+  "realm" : "internal"
+}, {
+  "name" : "sa_bamboo",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sa_bamboo",
+  "realm" : "internal"
+}, {
+  "name" : "madhav.kundala@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/madhav.kundala@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "anonymous",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/anonymous",
+  "realm" : "internal"
+}, {
+  "name" : "steven.kuzmich@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/steven.kuzmich@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "kristian.fitzgerald@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/kristian.fitzgerald@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "shahbaz.qureshi@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/shahbaz.qureshi@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "uploader",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/uploader",
+  "realm" : "internal"
+}, {
+  "name" : "steven.kuzmich@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/steven.kuzmich@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "tyler.goll@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/tyler.goll@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "mark.hotra",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/mark.hotra",
+  "realm" : "saml"
+}, {
+  "name" : "sucharita.conjeevaram@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sucharita.conjeevaram@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "sasikanth.dale",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sasikanth.dale",
+  "realm" : "saml"
+}, {
+  "name" : "sasikanth.dale@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sasikanth.dale@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "gavin.ecker@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/gavin.ecker@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "madhav.kundala",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/madhav.kundala",
+  "realm" : "saml"
+}, {
+  "name" : "james.hyland@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/james.hyland@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "admin",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/admin",
+  "realm" : "internal"
+}, {
+  "name" : "eli.tatro@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/eli.tatro@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "robert.wernsman@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/robert.wernsman@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "shilpika.pamarthi@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/shilpika.pamarthi@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "mark.hotra@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/mark.hotra@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "jeff.sikala@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/jeff.sikala@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "nathan.kim@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/nathan.kim@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "shilpika.pamarthi@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/shilpika.pamarthi@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "madhav.kundala@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/madhav.kundala@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "nathan.kim",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/nathan.kim",
+  "realm" : "saml"
+}, {
+  "name" : "eli.tatro@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/eli.tatro@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "abitha.bakthavachalam@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/abitha.bakthavachalam@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "john.zehetner@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/john.zehetner@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "gavin.ecker@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/gavin.ecker@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "abitha.bakthavachalam@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/abitha.bakthavachalam@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "james.hyland@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/james.hyland@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "philippe.thai@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/philippe.thai@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "docker-uploader",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/docker-uploader",
+  "realm" : "internal"
+}, {
+  "name" : "rohith.janga@usda.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/rohith.janga@usda.gov",
+  "realm" : "internal"
+}, {
+  "name" : "jeff.sikala",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/jeff.sikala",
+  "realm" : "saml"
+}, {
+  "name" : "sasikanth.dale@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sasikanth.dale@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "tyler.goll@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/tyler.goll@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "mark.hotra@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/mark.hotra@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "jeff.sikala@gsa.gov",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/jeff.sikala@gsa.gov",
+  "realm" : "saml"
+}, {
+  "name" : "owasp_report_upload",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/owasp_report_upload",
+  "realm" : "internal"
+}, {
+  "name" : "abitha.bakthavachalam",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/abitha.bakthavachalam",
+  "realm" : "saml"
+}, {
+  "name" : "sa_conexus",
+  "uri" : "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/sa_conexus",
+  "realm" : "internal"
+} ][sikaj01@ip-10-56-128-233 artifactory-migration]$ 
