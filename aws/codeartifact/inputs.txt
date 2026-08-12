@@ -1,3 +1,6 @@
 cd ~/artifactory-migration
-pip install argon2-cffi --break-system-packages
-python3 build_user_inserts.py
+docker exec -i dev-postgres pg_dump -U artifactory -d artifactory -t access_users -t access_users_custom_data -t access_users_groups > user_tables_backup_$(date +%Y%m%d_%H%M%S).sql
+docker exec -i dev-postgres psql -U artifactory -d artifactory < user_inserts.sql
+
+docker restart dev-artifactory
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_users;"
