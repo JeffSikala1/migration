@@ -1,25 +1,3 @@
 cd ~/artifactory-migration
-mkdir -p prod_users_detail
-python3 -c "
-import json, urllib.request, urllib.parse, os
-
-with open('prod_users.json') as f:
-    users = json.load(f)
-
-token = os.environ['artifactory_admin_api_key_secret']
-base = 'https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users'
-
-for u in users:
-    name = u['name']
-    encoded = urllib.parse.quote(name, safe='')
-    req = urllib.request.Request(f'{base}/{encoded}', headers={'Authorization': f'Bearer {token}'})
-    try:
-        with urllib.request.urlopen(req) as resp:
-            data = resp.read()
-        with open(f'prod_users_detail/{name}.json', 'wb') as out:
-            out.write(data)
-        print(f'OK: {name}')
-    except Exception as e:
-        print(f'FAILED: {name} - {e}')
-"
-ls prod_users_detail | wc -l
+pip install argon2-cffi --break-system-packages
+python3 build_user_inserts.py
