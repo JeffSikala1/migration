@@ -6,142 +6,41 @@
       1002 |    1001 | artifact      | ANY REMOTE       |                     0 | \x5b222a2a225d   | \x5b5d
 (3 rows)
 
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_permissions_actions_v2 WHERE perm_id = 1001;"
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_permissions_actions_v2 WHERE perm_id = 1001 AND group_id IS NOT NULL;"
+ action_id | perm_id | resource_type | user_id | group_id | actions 
+-----------+---------+---------------+---------+----------+---------
+(0 rows)
+
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_permissions_actions_v2 WHERE perm_id = 1001 AND group_id IS NULL;"
  action_id | perm_id | resource_type | user_id | group_id | actions 
 -----------+---------+---------------+---------+----------+---------
       1001 |    1001 | artifact      |    2002 |          |      95
 (1 row)
 
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "\d access_permissions"
-                      Table "public.access_permissions"
-       Column       |          Type          | Collation | Nullable | Default 
---------------------+------------------------+-----------+----------+---------
- perm_id            | bigint                 |           | not null | 
- perm_name          | character varying(255) |           | not null | 
- display_name       | character varying(255) |           | not null | 
- service_id         | character varying(255) |           | not null | 
- resource_type      | character varying(255) |           | not null | 
- created            | bigint                 |           | not null | 
- modified           | bigint                 |           | not null | 
- lower_display_name | character varying(255) |           | not null | 
-Indexes:
-    "access_permissions_pk" PRIMARY KEY, btree (perm_id)
-    "access_perm_disp_name_constr" UNIQUE, btree (display_name, resource_type)
-    "access_perm_lower_display_idx" btree (lower_display_name)
-    "access_perm_perm_id_unique_idx" UNIQUE, btree (perm_name)
-Referenced by:
-    TABLE "access_permission_action" CONSTRAINT "access_perm_action_perms_fk" FOREIGN KEY (perm_id) REFERENCES access_permissions(perm_id)
-    TABLE "access_permissions_custom_data" CONSTRAINT "access_perm_data_perms_fk" FOREIGN KEY (perm_id) REFERENCES access_permissions(perm_id)
-    TABLE "access_permissions_v2_ref" CONSTRAINT "access_permissions_v2_ref_fk" FOREIGN KEY (v1_id) REFERENCES access_permissions(perm_id)
-Triggers:
-    access_trg_perm_table BEFORE INSERT OR DELETE OR UPDATE ON access_permissions FOR EACH STATEMENT EXECUTE FUNCTION access_fnc_allow_read_only()
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_permissions;"
- count 
--------
-     0
-(1 row)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_permission_action;"
- count 
--------
-     0
-(1 row)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "\d access_permission_action"
-              Table "public.access_permission_action"
-  Column   |         Type          | Collation | Nullable | Default 
------------+-----------------------+-----------+----------+---------
- action_id | bigint                |           | not null | 
- perm_id   | bigint                |           | not null | 
- user_id   | bigint                |           |          | 
- group_id  | bigint                |           |          | 
- action    | character varying(64) |           | not null | 
-Indexes:
-    "access_perm_action_pk" PRIMARY KEY, btree (action_id)
-    "access_perm_act_group_id_idx" btree (group_id)
-    "access_perm_act_user_id_idx" btree (user_id)
-    "access_perm_action_perm_id_idx" btree (perm_id)
-Foreign-key constraints:
-    "access_perm_action_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id) ON DELETE CASCADE
-    "access_perm_action_perms_fk" FOREIGN KEY (perm_id) REFERENCES access_permissions(perm_id)
-    "access_perm_action_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id) ON DELETE CASCADE
-Triggers:
-    access_trg_perm_actions BEFORE INSERT OR UPDATE ON access_permission_action FOR EACH STATEMENT EXECUTE FUNCTION access_fnc_allow_read_only()
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "\d access_permissions_targets_v2"
-                  Table "public.access_permissions_targets_v2"
-        Column         |          Type          | Collation | Nullable | Default 
------------------------+------------------------+-----------+----------+---------
- target_id             | bigint                 |           | not null | 
- perm_id               | bigint                 |           | not null | 
- resource_type         | character varying(255) |           | not null | 
- target_name           | character varying(255) |           | not null | 
- is_target_ant_pattern | smallint               |           | not null | 
- include_patterns      | bytea                  |           | not null | 
- exclude_patterns      | bytea                  |           | not null | 
-Indexes:
-    "access_permissions_targets_pk" PRIMARY KEY, btree (target_id)
-    "access_perm_trg_composite_idx" UNIQUE, btree (perm_id, resource_type, target_name)
-    "access_perm_trg_rsc_antptn_idx" btree (resource_type, is_target_ant_pattern)
-    "access_perm_trg_trgnme_rsc_idx" btree (target_name, resource_type)
-Foreign-key constraints:
-    "access_permissions_trg_prms_fk" FOREIGN KEY (perm_id) REFERENCES access_permissions_v2(perm_id)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "\d access_permissions_actions_v2"
-              Table "public.access_permissions_actions_v2"
-    Column     |          Type          | Collation | Nullable | Default 
----------------+------------------------+-----------+----------+---------
- action_id     | bigint                 |           | not null | 
- perm_id       | bigint                 |           | not null | 
- resource_type | character varying(255) |           | not null | 
- user_id       | bigint                 |           |          | 
- group_id      | bigint                 |           |          | 
- actions       | bigint                 |           | not null | 
-Indexes:
-    "access_permissions_actions_pk" PRIMARY KEY, btree (action_id)
-    "access_perm_act_group_rsc_idx" btree (group_id, resource_type)
-    "access_perm_act_permid_rsc_idx" btree (perm_id, resource_type)
-    "access_perm_act_user_rsc_idx" btree (user_id, resource_type)
-Foreign-key constraints:
-    "access_perm_act_v2_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-    "access_perm_action_v2_perms_fk" FOREIGN KEY (perm_id) REFERENCES access_permissions_v2(perm_id)
-    "access_perm_action_v2_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "\d access_permissions_actions_v2"
-              Table "public.access_permissions_actions_v2"
-    Column     |          Type          | Collation | Nullable | Default 
----------------+------------------------+-----------+----------+---------
- action_id     | bigint                 |           | not null | 
- perm_id       | bigint                 |           | not null | 
- resource_type | character varying(255) |           | not null | 
- user_id       | bigint                 |           |          | 
- group_id      | bigint                 |           |          | 
- actions       | bigint                 |           | not null | 
-Indexes:
-    "access_permissions_actions_pk" PRIMARY KEY, btree (action_id)
-    "access_perm_act_group_rsc_idx" btree (group_id, resource_type)
-    "access_perm_act_permid_rsc_idx" btree (perm_id, resource_type)
-    "access_perm_act_user_rsc_idx" btree (user_id, resource_type)
-Foreign-key constraints:
-    "access_perm_act_v2_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-    "access_perm_action_v2_perms_fk" FOREIGN KEY (perm_id) REFERENCES access_permissions_v2(perm_id)
-    "access_perm_action_v2_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_permissions_actions_v2;"
- action_id | perm_id | resource_type | user_id | group_id | actions 
------------+---------+---------------+---------+----------+---------
-         2 |       1 | artifact      |         |        1 |       1
-         1 |       1 | build         |         |        1 |       1
-      1001 |    1001 | artifact      |    2002 |          |      95
-(3 rows)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_permissions;"
- perm_id | perm_name | display_name | service_id | resource_type | created | modified | lower_display_name 
----------+-----------+--------------+------------+---------------+---------+----------+--------------------
-(0 rows)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT * FROM access_permission_action;"
- action_id | perm_id | user_id | group_id | action 
------------+---------+---------+----------+--------
-(0 rows)
+[sikaj01@ip-10-56-128-233 ~]$ cat prod_permissions_detail/uploadOnly.json
+cat: prod_permissions_detail/uploadOnly.json: No such file or directory
+[sikaj01@ip-10-56-128-233 ~]$ ll
+total 588
+drwxr-x---. 6 sikaj01 users  16384 Aug 12 00:49 artifactory-migration
+-rw-r--r--. 1 sikaj01 users 290502 Aug  3 17:17 artifactory_pre_admin_reset_20260803.dump
+-rw-r--r--. 1 sikaj01 users 293881 Aug 10 15:11 artifactory_pre_repo_insert_20260810.dump
+[sikaj01@ip-10-56-128-233 ~]$ cd artifactory-migration/
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ cat prod_permissions_detail/uploadOnly.json
+{
+  "name" : "uploadOnly",
+  "repo" : {
+    "actions" : {
+      "users" : {
+        "sa_bamboo" : [ "read", "annotate", "write", "delete" ],
+        "uploader" : [ "read", "annotate", "write", "delete" ],
+        "sa_conexus" : [ "read", "annotate", "write", "delete" ]
+      },
+      "groups" : {
+        "uploadOnly" : [ "read", "annotate", "write", "delete" ]
+      }
+    },
+    "repositories" : [ "conexus-rc-local", "conexus-release-local", "conexus-snapshot-local", "file-local", "ll-2025-jboss-8", "ll-CNXS-68737-newer-versions", "ll-dev-cutover-test-01", "ll-dev-cutover-test-02", "ll-jboss8", "ll-modelchanges", "ll-postgres", "ll-tops-task-order-ahcs", "ll-unified-automation", "ll-upgrades", "rpm-local" ],
+    "include-patterns" : [ "**", "ll-*" ],
+    "exclude-patterns" : [ ]
+  }
+}[sikaj01@ip-10-56-128-233 artifactory-migration]$ 
