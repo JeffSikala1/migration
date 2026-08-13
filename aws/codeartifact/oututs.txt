@@ -1,32 +1,26 @@
-[root@ip-10-56-128-233 ~]# dig +short artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
-10.56.131.182
-10.56.133.26
-[root@ip-10-56-128-233 ~]# ip addr show | grep "inet "
-    inet 127.0.0.1/8 scope host lo
-    inet 10.56.128.233/24 metric 512 brd 10.56.128.255 scope global dynamic ens5
-    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
-    inet 172.18.0.1/16 brd 172.18.255.255 scope global br-7e224dda37c4
-[root@ip-10-56-128-233 ~]# openssl s_client -connect 127.0.0.1:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
-depth=3 C=US, O=Internet Security Research Group, CN=ISRG Root X1
+[root@ip-10-56-128-233 ~]# for ip in 10.56.131.182 10.56.133.26; do
+  echo "== $ip =="
+  openssl s_client -connect ${ip}:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
+done
+== 10.56.131.182 ==
+== 10.56.133.26 ==
+depth=0 CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
+verify error:num=20:unable to get local issuer certificate
 verify return:1
-depth=2 C=US, O=ISRG, CN=Root YR
-verify return:1
-depth=1 C=US, O=Let's Encrypt, CN=YR1
+depth=0 CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
+verify error:num=21:unable to verify the first certificate
 verify return:1
 depth=0 CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
 verify return:1
-Verify return code: 0 (ok)
+Verify return code: 21 (unable to verify the first certificate)
 [root@ip-10-56-128-233 ~]# 
 
-
-
-[root@ip-10-56-112-33 cert_renewal]# sha256sum fullchain.pem
-sha256sum: fullchain.pem: No such file or directory
-[root@ip-10-56-112-33 cert_renewal]# cd /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/
-[root@ip-10-56-112-33 dev.cnxs.vpcaas.fcs.gsa.gov]# sha256sum fullchain.pem
-7439ae96c10b1ee7a3d6d05e0c857b07de9e69317beb1cabc37b300544f3aa7d  fullchain.pem
-[root@ip-10-56-112-33 dev.cnxs.vpcaas.fcs.gsa.gov]# grep -c "BEGIN CERTIFICATE" fullchain.pem
-3
-[root@ip-10-56-112-33 dev.cnxs.vpcaas.fcs.gsa.gov]# openssl x509 -in cert.pem -noout -enddate
-notAfter=Sep  7 14:30:53 2026 GMT
-[root@ip-10-56-112-33 dev.cnxs.vpcaas.fcs.gsa.gov]# 
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=10.56.131.182,10.56.133.26"   --query "NetworkInterfaces[].{IP:PrivateIpAddress,Desc:Description,InstanceId:Attachment.InstanceId}" --output table
+--------------------------------------------------------------------------------------
+|                              DescribeNetworkInterfaces                             |
++----------------------------------------------------+----------------+--------------+
+|                        Desc                        |      IP        | InstanceId   |
++----------------------------------------------------+----------------+--------------+
+|  ELB net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 |  10.56.133.26  |  None        |
+|  ELB net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 |  10.56.131.182 |  None        |
++----------------------------------------------------+----------------+--------------+
