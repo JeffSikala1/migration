@@ -3,4 +3,28 @@
 [root@ip-10-56-128-233 ~]# docker exec dev-nginx openssl x509 -in /etc/nginx/certificates/dev_wildcard.pem -noout -subject -issuer
 subject=CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
 issuer=C=US, O=Let's Encrypt, CN=YR1
+[root@ip-10-56-128-233 ~]# docker exec dev-nginx sh -c '
+awk "BEGIN{c=0} /BEGIN CERTIFICATE/{c++} {print > (\"/tmp/cert\" c \".pem\")}" /etc/nginx/certificates/dev_wildcard.pem
+for f in /tmp/cert1.pem /tmp/cert2.pem /tmp/cert3.pem; do
+  echo "== $f =="
+  openssl x509 -in $f -noout -subject -issuer
+done
+> '
+== /tmp/cert1.pem ==
+subject=CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
+issuer=C=US, O=Let's Encrypt, CN=YR1
+== /tmp/cert2.pem ==
+subject=C=US, O=Let's Encrypt, CN=YR1
+issuer=C=US, O=ISRG, CN=Root YR
+== /tmp/cert3.pem ==
+subject=C=US, O=ISRG, CN=Root YR
+issuer=C=US, O=Internet Security Research Group, CN=ISRG Root X1
+[root@ip-10-56-128-233 ~]# docker exec dev-nginx nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+[root@ip-10-56-128-233 ~]# docker exec dev-nginx ls -la --time-style=full-iso /etc/nginx/certificates/dev_wildcard.pem
+-rw-r-----. 1 1001 users 5692 2026-07-30 16:14:12.026988041 +0000 /etc/nginx/certificates/dev_wildcard.pem
+[root@ip-10-56-128-233 ~]# docker inspect dev-nginx --format '{{.State.StartedAt}}'
+2026-07-30T16:33:51.341208027Z
 [root@ip-10-56-128-233 ~]# 
+
