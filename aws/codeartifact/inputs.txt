@@ -1,30 +1,42 @@
-# make sure you're back on ip-10-56-128-233
-hostname
-openssl s_client -connect artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
-ls /etc/pki/ca-trust/source/anchors/ 2>/dev/null
-find /etc/pki -iname "*ISRG*" 2>/dev/null
-rpm -q ca-certificates
-
-
-bash
-
-echo "Run these directly on .233 (not inside a container):"
+echo "Run on .233:"
 cat <<'CMDS'
-hostname
-find /etc/pki -iname "*ISRG*" 2>/dev/null
-rpm -q ca-certificates
-openssl s_client -connect artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
+# What IP does the DNS name actually resolve to from .233?
+dig +short artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
+ip addr show | grep "inet "
+
+# Connect directly to localhost instead of the public DNS name, forcing SNI to match
+openssl s_client -connect 127.0.0.1:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
 CMDS
 Output
 
-Run these directly on .233 (not inside a container):
-hostname
-find /etc/pki -iname "*ISRG*" 2>/dev/null
-rpm -q ca-certificates
-openssl s_client -connect artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
-Done
+Run on .233:
+# What IP does the DNS name actually resolve to from .233?
+dig +short artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
+ip addr show | grep "inet "
+
+# Connect directly to localhost instead of the public DNS name, forcing SNI to match
+openssl s_client -connect 127.0.0.1:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
 
 
 
-sudo dnf reinstall -y ca-certificates
-sudo update-ca-trust extract
+
+echo "On .33 (as root, still in /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/):"
+cat <<'CMDS'
+sha256sum fullchain.pem
+grep -c "BEGIN CERTIFICATE" fullchain.pem
+openssl x509 -in cert.pem -noout -enddate
+CMDS
+echo
+echo "On .233:"
+cat <<'CMDS'
+sha256sum <(docker exec dev-nginx cat /etc/nginx/certificates/dev_wildcard.pem)
+CMDS
+Output
+
+On .33 (as root, still in /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/):
+sha256sum fullchain.pem
+grep -c "BEGIN CERTIFICATE" fullchain.pem
+openssl x509 -in cert.pem -noout -enddate
+
+On .233:
+sha256sum <(docker exec dev-nginx cat /etc/nginx/certificates/dev_wildcard.pem)
