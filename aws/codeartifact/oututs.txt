@@ -1,391 +1,115 @@
-[sikaj01@ip-10-56-128-233 ~]$ jf c add prod-artifactory \
-  --url=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory \
-  --access-token=$artifactory_prod_admin_token \
+[sikaj01@ip-10-56-128-233 ~]$ jf c add dev-artifactory \
+  --url=https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov \
+  --access-token=$artifactory_dev_admin_token \
   --interactive=false
-16:00:16 [🟠Warn] You are using JFrog CLI version 2.117.0, however version 2.120.0 is available.
-To install the latest version, visit: https://jfrog.com/getcli
-To see the release notes, visit: https://github.com/jfrog/jfrog-cli/releases
-To avoid this message, set the JFROG_CLI_AVOID_NEW_VERSION_WARNING variable to TRUE
-[sikaj01@ip-10-56-128-233 ~]$ 
+[sikaj01@ip-10-56-128-233 ~]$ jf c list
+'jf config list' is not a jf command. See --help
+[sikaj01@ip-10-56-128-233 ~]$ jf config list
+'jf config list' is not a jf command. See --help
+[sikaj01@ip-10-56-128-233 ~]$ jf config list --help
+'jf config list' is not a jf command. See --help
+[sikaj01@ip-10-56-128-233 ~]$ jf --help
+NAME:
+   jf - For full documentation, visit https://docs.jfrog.com/
 
-[root@ip-10-56-112-243 sikaj01]# crontab -l
-# Nightly at 02:15
-15 2 * * * /app/artifactorybackup/bin/nightly_backup.sh
+USAGE:
+   jf [global options] command [command options] [arguments...]
+   
+VERSION:
+   2.117.0
+   
+COMMANDS:
+     setup    An interactive command to configure your local package manager (e.g., npm, pip) to work with JFrog Artifactory.
+     help, h  Shows a list of commands or help for one command
 
-# Weekly Sunday at 03:00
-0 3 * * 0 /app/artifactorybackup/bin/weekly_backup.sh
+   Command Namespaces:
+     agent          Agent commands.
+     apptrust, at   AppTrust commands.
+     config, c      Server configuration commands
+     ds             Distribution V1 commands.
+     evd            Evidence command.
+     ide            IDE commands.
+     mc             Mission Control commands
+     mcp            MCP (Model Context Protocol) server commands
+     pl             Pipelines commands
+     plugin         Plugin commands
+     rt             Artifactory commands
+     skills, skill  Agent skill commands (same as jf agent skills).
+     xr             Xray commands.
 
-# Daily Secrets Manager backup (encrypted to S3)
-#55 1 * * * /app/artifactorybackup/bin/secrets_backup_daily.sh
+   Lifecycle:
+     release-bundle-annotate, rba          Annotate a release bundle
+     release-bundle-create, rbc            Create a release bundle from builds or from existing release bundles
+     release-bundle-delete-local, rbdell   Delete all release bundle promotions to an environment or delete a release bundle locally altogether.
+     release-bundle-delete-remote, rbdelr  Delete a release bundle remotely.
+     release-bundle-distribute, rbd        Distribute a release bundle.
+     release-bundle-export, rbe            Triggers the Export process and downloads the Release Bundle archive
+     release-bundle-finalize, rbf          Finalize a draft release bundle.
+     release-bundle-import, rbi            Import a local release bundle archive to Artifactory
+     release-bundle-promote, rbp           Promote a release bundle
+     release-bundle-search, rbs            This command is used to search release-bundle groups(names) and versions APIs.
+     release-bundle-update, rbu            Update an existing draft release bundle. The --add flag is mandatory to specify the type of operation.
 
-# Cleanup local staging older than 1 day
-0 4 * * * find /app/artifactorybackup/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+   Other:
+     access-token-create, atc        Creates an access token. By default, a user-scoped token is created. Administrator may provide the scope explicitly with '--scope', or implicitly with '--groups', '--grant-admin'.
+     api                             Invoke a JFrog Platform HTTP API using the configured server URL and credentials (hostname and token are not passed manually; use 'jf config' or --url / --access-token / --server-id as usual). REST API reference: https://jfrog.com/help/r/jfrog-platform-documentation/rest-apis (OpenAPI bundles are not shipped with the CLI).
+     completion                      Generate autocomplete scripts
+     exchange-oidc-token, eot        Exchanges a token ID from an OIDC provider with a JFrog server to a valid access token and returns the access token and the username.
+     generate-summary-markdown, gsm  Generate a summary of recorded CLI commands that were executed on the current machine. The report is generated in Markdown format and saved in the directory stored in the JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR environment variable.
+     login                           Log in to a JFrog Platform via your web browser. Available for Artifactory 7.64.0 and above
+     options                         Show all supported environment variables
+     stats, st                       Returns all statistics related to a specific product for a given server.
 
-[root@ip-10-56-112-243 sikaj01]# docker ps
-CONTAINER ID   IMAGE                                                         COMMAND                  CREATED        STATUS        PORTS                                                                      NAMES
-7c25ec7ae10e   releases-docker.jfrog.io/jfrog/nginx-artifactory-pro:7.68.7   "/entrypoint-nginx.sh"   6 months ago   Up 36 hours   0.0.0.0:80->80/tcp, :::80->80/tcp, 0.0.0.0:443->443/tcp, :::443->443/tcp   artifactory-nginx
-dc00bfc2ebf3   releases-docker.jfrog.io/jfrog/artifactory-pro:7.104.14       "/entrypoint-artifac…"   6 months ago   Up 36 hours   8081/tcp                                                                   artifactory
-6b40766d0dc5   postgres:15-alpine                                            "docker-entrypoint.s…"   6 months ago   Up 36 hours   5432/tcp                                                                   artifactory-postgres
-[root@ip-10-56-112-243 sikaj01]# cat /app/artifactorybackup/bin/*
-#!/usr/bin/env bash
-set -euo pipefail
+   Package Managers::
+     conan                   Run native conan command.
+     conan-config, conanc    Generate conan build configuration.
+     docker                  Run any docker command, including ‘jf docker scan’ for scanning a local image with JFrog Xray.
+     dotnet                  Run .NET Core CLI.
+     dotnet-config, dotnetc  Generate dotnet configuration.
+     go                      Runs go.
+     go-config, goc          Generate go build configuration.
+     go-publish, gp          Publish go package and/or its dependencies to Artifactory.
+     gradle                  Run Gradle build.
+     gradle-config, gradlec  Generate gradle build configuration.
+     helm                    Run native Helm command with build-info collection support.
+     hugging-face, hf        Download or upload models/datasets from/to HuggingFace Hub.
+     mvn                     Run Maven build.
+     mvn-config, mvnc        Generate maven build configuration.
+     mvnw                    Run a Maven build using the project's Maven Wrapper (mvnw/mvnw.cmd).
+     nix                     Run native nix commands with build-info support.
+     npm                     Run npm command.
+     npm-config, npmc        Generate npm configuration.
+     nuget                   Run NuGet.
+     nuget-config, nugetc    Generate nuget configuration.
+     pip                     Run pip install.
+     pip-config, pipc        Generate pip build configuration.
+     pipenv                  Run pipenv install.
+     pipenv-config, pipec    Generate pipenv build configuration.
+     pnpm                    Run pnpm command.
+     pnpm-config, pnpmc      Generate pnpm configuration.
+     poetry                  Run poetry command
+     poetry-config, poc      Generate poetry build configuration.
+     ruby-config, rubyc      Generate ruby build configuration.
+     terraform, tf           Run Terraform
+     terraform-config, tfc   Generate Terraform configuration
+     twine                   Run twine
+     uv                      Run uv command
+     yarn                    Run Yarn commands.
+     yarn-config, yarnc      Generate Yarn configuration.
 
-# ===== Config =====
-BUCKET="s3://cnxs-artifactory-backups"
-DATE="$(date +%F)"
-TS="$(date +%Y%m%d_%H%M%S)"
-BASE="/app/artifactorybackup"
-STAGE="${BASE}/staging/${DATE}/${TS}"
-LOGDIR="${BASE}/logs"
-LOG="${LOGDIR}/nightly-${DATE}.log"
-HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
-AWS_REGION="${AWS_REGION:-us-east-1}"
+   Platform Services:
+     worker  Tools for managing workers
 
-PG_CONTAINER="${PG_CONTAINER:-artifactory-postgres}"
-PG_USER="artifactory"
-DB_LIST=(${DB_LIST:-artifactory})
+   Security:
+     audit, aud          Scan your source code on demand to detect CVEs, license issues, misconfigurations, secrets, and other risks, with results shown in the terminal and in the JFrog Platform.
+     build-scan, bs      Scan a published build-info with Xray.
+     curation-audit, ca  Audit your project dependencies for their curation status.
+     malicious-scan, ms  [Beta] Scan malicious models (pickle files, etc.) located in the working directory.
+     sbom-enrich, se     Enrich sbom format JSON located on the local file-system with Xray.
+     scan, s             Scan files located on the local file-system with Xray.
 
-mkdir -p "$STAGE" "$LOGDIR"
-exec > >(tee -a "$LOG") 2>&1
-
-echo "==== Artifactory nightly backup start: ${TS} host=${HOSTNAME} ===="
-
-# ===== Helpers =====
-need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
-need aws
-need docker
-need tar
-
-have_jq=0
-if command -v jq >/dev/null 2>&1; then
-  have_jq=1
-else
-  echo "WARN: jq not found; metadata.json will be minimal."
-fi
-
-s3_put_dir() {
-  local src="$1" dest="$2"
-  aws s3 cp "$src" "$dest" --recursive
-}
-
-s3_put_file() {
-  local src="$1" dest="$2"
-  aws s3 cp "$src" "$dest"
-}
-
-# ===== 1) Postgres dumps (logical) =====
-echo "[1/5] Postgres dumps..."
-mkdir -p "$STAGE/postgres"
-
-if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
-  echo "ERROR: Postgres container '$PG_CONTAINER' not running. Aborting."
-  exit 3
-fi
-
-echo "  - dumping globals (roles/grants)"
-docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
-  > "$STAGE/postgres/globals_${TS}.sql"
-
-for DB in "${DB_LIST[@]}"; do
-  echo "  - dumping ${DB}"
-  docker exec "$PG_CONTAINER" pg_dump -U "$PG_USER" -Fc "$DB" \
-    > "$STAGE/postgres/${DB}_${TS}.dump"
-done
-
-# ===== 2) Artifactory volumes (tar) =====
-# NOTE: Filestore is excluded — it is already backed by the
-# conexus-artifactory-filestore S3 bucket natively via Artifactory.
-# Nginx TLS certs are excluded — managed and backed up by the
-# Atlassian backup on .34 (shared wildcard cert).
-# artifactory/var is streamed directly to S3 — too large to stage locally.
-echo "[2/5] Artifactory volume backups..."
-mkdir -p "$STAGE/apps"
-
-echo "  - streaming artifactory/var directly to S3 (too large to stage locally)"
-# Exclude live log files (change during read, not needed for restore).
-tar -czf - \
-  --exclude=/app/jfrog/artifactory/var/log \
-  /app/jfrog/artifactory/var | \
-  pv -pterab | \
-  aws s3 cp - "${BUCKET}/apps/${DATE}/artifactory_var_${TS}.tar.gz" \
-  --sse aws:kms
-
-echo "  - tarring artifactory/security"
-tar -czf "$STAGE/apps/artifactory_security_${TS}.tar.gz" \
-  /app/jfrog/artifactory/security
-
-# ===== 3) Artifactory crypto / keystores =====
-echo "[3/5] Artifactory crypto safety backup..."
-mkdir -p "$STAGE/crypto"
-
-# master.key and join.key live under var/etc/security — already captured
-# in the var stream above, but snapshot them explicitly as a safety net.
-tar -czf "$STAGE/crypto/artifactory_keys_${TS}.tar.gz" \
-  /app/jfrog/artifactory/var/etc/security \
-  2>/dev/null || true
-
-# ===== 4) Metadata =====
-echo "[4/5] Metadata..."
-if [[ "$have_jq" -eq 1 ]]; then
-  cat > "$STAGE/metadata.json" <<JSON
-{
-  "timestamp": "${TS}",
-  "date": "${DATE}",
-  "host": "${HOSTNAME}",
-  "region": "${AWS_REGION}",
-  "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
-  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]')
-}
-JSON
-else
-  cat > "$STAGE/metadata.json" <<JSON
-{
-  "timestamp": "${TS}",
-  "date": "${DATE}",
-  "host": "${HOSTNAME}",
-  "region": "${AWS_REGION}",
-  "note": "jq not installed; container/volume inventory omitted"
-}
-JSON
-fi
-
-# ===== 5) Upload to S3 =====
-# Note: artifactory_var already streamed directly in step 2.
-echo "[5/5] Uploading to S3..."
-s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
-s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
-s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
-s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
-
-# ===== EBS snapshots =====
-echo "[EXTRA] EBS snapshots..."
-TOKEN_IMDS="$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
-  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")"
-
-INSTANCE_ID="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
-  http://169.254.169.254/latest/meta-data/instance-id)"
-
-AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
-  http://169.254.169.254/latest/meta-data/placement/availability-zone)"
-
-REGION="${AZ::-1}"
-
-VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
-  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
-
-declare -A VOL_PURPOSE
-VOL_PURPOSE["vol-078ee09ac10c02f62"]="root"
-VOL_PURPOSE["vol-060bb45ae6b8d71bc"]="artifactory"
-VOL_PURPOSE["vol-04f0ab9e32f79dc75"]="postgres"
-
-for VOL in $VOL_IDS; do
-  echo "  - snapshotting volume $VOL"
-  PURPOSE_TAG="${VOL_PURPOSE[$VOL]:-unknown}"
-  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
-    --description "Nightly Artifactory backup ${HOSTNAME} ${TS}" \
-    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-artifactory-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=artifactory-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
-    --query SnapshotId --output text)"
-  echo "    created snapshot: $SNAP_ID"
-done
-
-echo "==== Artifactory nightly backup completed OK ===="
-
-# Cleanup local staging after successful upload
-echo "Cleaning up local staging..."
-rm -rf "$STAGE"
-
-#!/usr/bin/env bash
-set -euo pipefail
-
-AWS_REGION="${AWS_REGION:-us-east-1}"
-BUCKET="s3://cnxs-artifactory-backups"
-DATE="$(date +%F)"
-TS="$(date +%Y%m%d_%H%M%S)"
-HOST="$(hostname -f 2>/dev/null || hostname)"
-
-BASE="/app/artifactorybackup"
-STAGE="${BASE}/staging/secrets/${DATE}/${TS}"
-LOGDIR="${BASE}/logs"
-LOG="${LOGDIR}/secrets-backup-${DATE}.log"
-
-# KMS key used ONLY to encrypt the exported payload we store in S3
-KMS_KEY_ARN="arn:aws:kms:${AWS_REGION}:339713019047:key/ae797822-83c9-4752-89f1-eb9d3fc53b68"
-
-# Optional: only back up secrets with tag Backup=true
-TAG_FILTER_ENABLED="${TAG_FILTER_ENABLED:-0}"
-TAG_KEY="${TAG_KEY:-Backup}"
-TAG_VALUE="${TAG_VALUE:-true}"
-
-mkdir -p "$STAGE" "$LOGDIR"
-exec > >(tee -a "$LOG") 2>&1
-
-need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing $1"; exit 2; }; }
-need aws; need jq; need base64; need gzip
-
-OUT="${STAGE}/secrets_export_${HOST}_${TS}.ndjson"
-: > "$OUT"
-
-echo "==== Artifactory secrets backup start TS=${TS} host=${HOST} region=${AWS_REGION} ===="
-echo "Output file: $OUT"
-echo "Tag filter enabled: ${TAG_FILTER_ENABLED} (${TAG_KEY}=${TAG_VALUE})"
-echo "Export KMS key: ${KMS_KEY_ARN}"
-
-NEXT_TOKEN=""
-count=0
-kept=0
-skipped_tag=0
-failed_read=0
-failed_encrypt=0
-
-write_error_record() {
-  local name="$1" arn="$2" versionId="$3" errType="$4" errMsg="$5" sourceKms="$6"
-  jq -c -n \
-    --arg name "$name" \
-    --arg arn "$arn" \
-    --arg versionId "$versionId" \
-    --arg ts "$TS" \
-    --arg host "$HOST" \
-    --arg exportKms "$KMS_KEY_ARN" \
-    --arg sourceKms "$sourceKms" \
-    --arg errType "$errType" \
-    --arg errMsg "$errMsg" \
-    '{
-      name:$name,
-      arn:$arn,
-      versionId:($versionId // ""),
-      backedUpAt:$ts,
-      backupHost:$host,
-      exportKmsKey:$exportKms,
-      sourceKmsKey:($sourceKms // ""),
-      status:"error",
-      errorType:$errType,
-      error:$errMsg
-    }' >> "$OUT"
-}
-
-while :; do
-  if [[ -n "$NEXT_TOKEN" ]]; then
-    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100 --next-token "$NEXT_TOKEN")"
-  else
-    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100)"
-  fi
-
-  while read -r s; do
-    ((count++)) || true
-    ARN="$(echo "$s" | jq -r '.ARN')"
-    NAME="$(echo "$s" | jq -r '.Name')"
-    SOURCE_KMS="$(echo "$s" | jq -r '.KmsKeyId // empty')"
-
-    if [[ "$TAG_FILTER_ENABLED" -eq 1 ]]; then
-      TAG_OK="$(aws secretsmanager describe-secret --region "$AWS_REGION" --secret-id "$ARN" \
-        --query "Tags[?Key=='${TAG_KEY}' && Value=='${TAG_VALUE}'] | length(@)" --output text 2>/dev/null || echo 0)"
-      if [[ "$TAG_OK" == "0" ]]; then
-        echo "SKIP (tag filter) $NAME"
-        ((skipped_tag++)) || true
-        continue
-      fi
-    fi
-
-    echo "BACKUP $NAME"
-
-    VAL_JSON=""
-    if ! VAL_JSON="$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$ARN" 2>/tmp/secret_err.$$)"; then
-      ERR="$(tr -d '\n' </tmp/secret_err.$$ | sed 's/"/'\''/g')"
-      rm -f /tmp/secret_err.$$
-      echo "  ERROR (GetSecretValue) $NAME -> $ERR"
-      ((failed_read++)) || true
-      write_error_record "$NAME" "$ARN" "" "GetSecretValueFailed" "$ERR" "$SOURCE_KMS"
-      continue
-    fi
-    rm -f /tmp/secret_err.$$
-
-    VERSION_ID="$(echo "$VAL_JSON" | jq -r '.VersionId // empty')"
-    SECRET_STRING="$(echo "$VAL_JSON" | jq -r '.SecretString // empty')"
-    SECRET_BINARY_B64="$(echo "$VAL_JSON" | jq -r '.SecretBinary // empty')"
-
-    if [[ -n "$SECRET_STRING" ]]; then
-      PLAINTEXT_PAYLOAD="$(jq -n --arg t "string" --arg v "$SECRET_STRING" '{type:$t,value:$v}')"
-    elif [[ -n "$SECRET_BINARY_B64" ]]; then
-      PLAINTEXT_PAYLOAD="$(jq -n --arg t "binary_b64" --arg v "$SECRET_BINARY_B64" '{type:$t,value:$v}')"
-    else
-      echo "  WARN: no SecretString/SecretBinary for $NAME (skipping)"
-      ((failed_read++)) || true
-      write_error_record "$NAME" "$ARN" "$VERSION_ID" "EmptySecretValue" "No SecretString/SecretBinary present" "$SOURCE_KMS"
-      continue
-    fi
-
-    CIPHERTEXT_B64=""
-    if ! CIPHERTEXT_B64="$(printf '%s' "$PLAINTEXT_PAYLOAD" | \
-      aws kms encrypt --region "$AWS_REGION" \
-        --key-id "$KMS_KEY_ARN" \
-        --plaintext fileb:///dev/stdin \
-        --encryption-context "purpose=secrets-backup,secretArn=${ARN},backupDate=${DATE},backupHost=${HOST}" \
-        --query CiphertextBlob --output text 2>/tmp/kms_err.$$)"; then
-      ERR="$(tr -d '\n' </tmp/kms_err.$$ | sed 's/"/'\''/g')"
-      rm -f /tmp/kms_err.$$
-      echo "  ERROR (KMS Encrypt) $NAME -> $ERR"
-      ((failed_encrypt++)) || true
-      write_error_record "$NAME" "$ARN" "$VERSION_ID" "KMSEncryptFailed" "$ERR" "$SOURCE_KMS"
-      continue
-    fi
-    rm -f /tmp/kms_err.$$
-
-    jq -c -n \
-      --arg name "$NAME" \
-      --arg arn "$ARN" \
-      --arg versionId "$VERSION_ID" \
-      --arg ts "$TS" \
-      --arg host "$HOST" \
-      --arg bdate "$DATE" \
-      --arg exportKms "$KMS_KEY_ARN" \
-      --arg sourceKms "$SOURCE_KMS" \
-      --arg ciphertext "$CIPHERTEXT_B64" \
-      '{
-        name:$name,
-        arn:$arn,
-        versionId:$versionId,
-        backedUpAt:$ts,
-        backupDate:$bdate,
-        backupHost:$host,
-        exportKmsKey:$exportKms,
-        sourceKmsKey:($sourceKms // ""),
-        status:"ok",
-        ciphertextB64:$ciphertext
-      }' >> "$OUT"
-
-    ((kept++)) || true
-  done < <(echo "$RESP" | jq -c '.SecretList[]')
-
-  NEXT_TOKEN="$(echo "$RESP" | jq -r '.NextToken // empty')"
-  [[ -z "$NEXT_TOKEN" ]] && break
-done
-
-echo "==== SUMMARY ===="
-echo "Secrets enumerated: ${count}"
-echo "Backed up (ok):     ${kept}"
-echo "Skipped (tag):      ${skipped_tag}"
-echo "Failed (read):      ${failed_read}"
-echo "Failed (encrypt):   ${failed_encrypt}"
-
-GZ="${OUT}.gz"
-gzip -c "$OUT" > "$GZ"
-
-DEST="${BUCKET}/secrets/daily/${DATE}/secrets_export_${HOST}_${TS}.ndjson.gz"
-echo "Uploading: $GZ -> $DEST"
-aws s3 cp "$GZ" "$DEST"
-
-echo "==== Artifactory secrets backup completed OK ===="
-
-echo "Cleaning up local staging..."
-rm -rf "$STAGE"
-#!/usr/bin/env bash
-set -euo pipefail
-
-BUCKET="s3://cnxs-artifactory-backups"
-DATE="$(date +%G-W%V)"
-
-aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
-aws s3 sync "${BUCKET}/apps/${DATE}/"     "${BUCKET}/weekly/apps/${DATE}/"
-aws s3 sync "${BUCKET}/crypto/${DATE}/"   "${BUCKET}/weekly/crypto/${DATE}/"
-aws s3 sync "${BUCKET}/metadata/${DATE}/" "${BUCKET}/weekly/metadata/${DATE}/"
-[root@ip-10-56-112-243 sikaj01]# 
+GLOBAL OPTIONS:
+   --ai-help      Render agent-oriented help text. Also enabled by $JFROG_CLI_AI_HELP=true or when an AI agent is auto-detected.
+   --help, -h     show help
+   --version, -v  print the version
+   
