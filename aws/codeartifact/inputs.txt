@@ -1,37 +1,10 @@
-Anything repo (migrated) is a naming deviation from prod (forced by dev's pre-existing default permission occupying the name Anything)
+jf config show prod-artifactory
+curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $artifactory_prod_admin_token" \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping
 
 
+# What does the cert chain actually look like?
+openssl s_client -connect artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | head -30
 
-curl -fL https://install-cli.jfrog.io | sh
-jf --version
-
-
-
-jf c add prod-artifactory \
-  --url=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory \
-  --access-token=$artifactory_prod_admin_token \
-  --interactive=false
-
-
-jf c add dev-artifactory \
-  --url=<dev artifactory base URL>/artifactory \
-  --access-token=$dev_upload_token_secret \
-  --interactive=false
-
-
-
------------
-
-jf c add dev-artifactory \
-  --url=https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov \
-  --access-token=$artifactory_dev_admin_token \
-  --interactive=false
-
-jf c list
-
-
-
-
-jf config --help
-jf rt ping --server-id=prod-artifactory
-jf rt ping --server-id=dev-artifactory
+# Is this a DNS/routing flake or consistent?
+for i in 1 2 3; do curl -sv -o /dev/null https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping 2>&1 | grep -E "Connected to|SSL certificate|HTTP/"; done
