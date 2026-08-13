@@ -1,2 +1,32 @@
-docker exec dev-nginx grep -c "BEGIN CERTIFICATE" /etc/nginx/certificates/dev_wildcard.pem
-docker exec dev-nginx openssl x509 -in /etc/nginx/certificates/dev_wildcard.pem -noout -subject -issuer
+echo "Run these on the bastion:"
+cat <<'CMDS'
+# 1. Dump subject/issuer of each of the 3 certs in order, to check leaf-first ordering
+docker exec dev-nginx sh -c '
+awk "BEGIN{c=0} /BEGIN CERTIFICATE/{c++} {print > (\"/tmp/cert\" c \".pem\")}" /etc/nginx/certificates/dev_wildcard.pem
+for f in /tmp/cert1.pem /tmp/cert2.pem /tmp/cert3.pem; do
+  echo "== $f =="
+  openssl x509 -in $f -noout -subject -issuer
+done
+'
+
+# 2. Confirm nginx config is valid and check when it was last reloaded vs when the cert file was last modified
+docker exec dev-nginx nginx -t
+docker exec dev-nginx ls -la --time-style=full-iso /etc/nginx/certificates/dev_wildcard.pem
+docker inspect dev-nginx --format '{{.State.StartedAt}}'
+CMDS
+Output
+
+Run these on the bastion:
+# 1. Dump subject/issuer of each of the 3 certs in order, to check leaf-first ordering
+docker exec dev-nginx sh -c '
+awk "BEGIN{c=0} /BEGIN CERTIFICATE/{c++} {print > (\"/tmp/cert\" c \".pem\")}" /etc/nginx/certificates/dev_wildcard.pem
+for f in /tmp/cert1.pem /tmp/cert2.pem /tmp/cert3.pem; do
+  echo "== $f =="
+  openssl x509 -in $f -noout -subject -issuer
+done
+'
+
+# 2. Confirm nginx config is valid and check when it was last reloaded vs when the cert file was last modified
+docker exec dev-nginx nginx -t
+docker exec dev-nginx ls -la --time-style=full-iso /etc/nginx/certificates/dev_wildcard.pem
+docker inspect dev-nginx --format '{{.State.StartedAt}}'
