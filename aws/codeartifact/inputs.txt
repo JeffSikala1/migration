@@ -1,24 +1,5 @@
-bash
+aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(LoadBalancerName, 'outnlb')].{Name:LoadBalancerName,ARN:LoadBalancerArn,DNS:DNSName}" --output table
 
-echo "On .233:"
-cat <<'CMDS'
-for ip in 10.56.131.182 10.56.133.26; do
-  echo "== $ip =="
-  openssl s_client -connect ${ip}:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
-done
+aws elbv2 describe-target-groups --load-balancer-arn <ARN from above> --query "TargetGroups[].{Name:TargetGroupName,ARN:TargetGroupArn,Protocol:Protocol,Port:Port}" --output table
 
-# what actually owns/answers on these two IPs - are they even in this VPC's normal range for this host?
-aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=10.56.131.182,10.56.133.26" \
-  --query "NetworkInterfaces[].{IP:PrivateIpAddress,Desc:Description,InstanceId:Attachment.InstanceId}" --output table 2>/dev/null
-CMDS
-Output
-
-On .233:
-for ip in 10.56.131.182 10.56.133.26; do
-  echo "== $ip =="
-  openssl s_client -connect ${ip}:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
-done
-
-# what actually owns/answers on these two IPs - are they even in this VPC's normal range for this host?
-aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=10.56.131.182,10.56.133.26" \
-  --query "NetworkInterfaces[].{IP:PrivateIpAddress,Desc:Description,InstanceId:Attachment.InstanceId}" --output table 2>/dev/null
+aws elbv2 describe-target-health --target-group-arn <target group ARN from above> --output table
