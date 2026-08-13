@@ -1,44 +1,229 @@
-[sikaj01@ip-10-56-128-233 ~]$ cat <<'EOF'
-docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
-SELECT p.perm_id, p.name, t.resource_type, t.target_name, a.actions, u.username, g.group_name
-FROM access_permissions_v2 p
-JOIN access_permissions_targets_v2 t ON t.perm_id = p.perm_id
-LEFT JOIN access_permissions_actions_v2 a ON a.perm_id = p.perm_id AND a.resource_type = t.resource_type
-LEFT JOIN access_users u ON u.user_id = a.user_id
-LEFT JOIN access_groups g ON g.group_id = a.group_id
-WHERE p.perm_id = 1
-ORDER BY t.resource_type, t.target_name;"
-EOF
-docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
-SELECT p.perm_id, p.name, t.resource_type, t.target_name, a.actions, u.username, g.group_name
-FROM access_permissions_v2 p
-JOIN access_permissions_targets_v2 t ON t.perm_id = p.perm_id
-LEFT JOIN access_permissions_actions_v2 a ON a.perm_id = p.perm_id AND a.resource_type = t.resource_type
-LEFT JOIN access_users u ON u.user_id = a.user_id
-LEFT JOIN access_groups g ON g.group_id = a.group_id
-WHERE p.perm_id = 1
-ORDER BY t.resource_type, t.target_name;"
-[sikaj01@ip-10-56-128-233 ~]$ Output
--bash: Output: command not found
-[sikaj01@ip-10-56-128-233 ~]$ ll
-total 588
-drwxr-x---. 6 sikaj01 users  16384 Aug 13 14:55 artifactory-migration
--rw-r--r--. 1 sikaj01 users 290502 Aug  3 17:17 artifactory_pre_admin_reset_20260803.dump
--rw-r--r--. 1 sikaj01 users 293881 Aug 10 15:11 artifactory_pre_repo_insert_20260810.dump
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
-SELECT p.perm_id, p.name, t.resource_type, t.target_name, a.actions, u.username, g.group_name
-FROM access_permissions_v2 p
-JOIN access_permissions_targets_v2 t ON t.perm_id = p.perm_id
-LEFT JOIN access_permissions_actions_v2 a ON a.perm_id = p.perm_id AND a.resource_type = t.resource_type
-LEFT JOIN access_users u ON u.user_id = a.user_id
-LEFT JOIN access_groups g ON g.group_id = a.group_id
-WHERE p.perm_id = 1
-ORDER BY t.resource_type, t.target_name;"
- perm_id |   name   | resource_type |      target_name       | actions | username | group_name 
----------+----------+---------------+------------------------+---------+----------+------------
-       1 | Anything | artifact      | ANY                    |       1 |          | readers
-       1 | Anything | artifact      | ANY DISTRIBUTION       |       1 |          | readers
-       1 | Anything | artifact      | ANY LOCAL              |       1 |          | readers
-       1 | Anything | artifact      | ANY REMOTE             |       1 |          | readers
-       1 | Anything | build         | artifactory-build-info |       1 |          | readers
-(5 rows)
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ grep -A5 "COPY access_permissions_targets_v2" permission_tables_backup_20260813_145516.sql | head -20
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ cat permission_tables_backup_20260813_145516.sql 
+-- Dumped from database version 15.18
+-- Dumped by pg_dump version 15.18
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: access_permissions_actions_v2; Type: TABLE; Schema: public; Owner: artifactory
+--
+
+CREATE TABLE public.access_permissions_actions_v2 (
+    action_id bigint NOT NULL,
+    perm_id bigint NOT NULL,
+    resource_type character varying(255) NOT NULL,
+    user_id bigint,
+    group_id bigint,
+    actions bigint NOT NULL
+);
+
+
+ALTER TABLE public.access_permissions_actions_v2 OWNER TO artifactory;
+
+--
+-- Name: access_permissions_targets_v2; Type: TABLE; Schema: public; Owner: artifactory
+--
+
+CREATE TABLE public.access_permissions_targets_v2 (
+    target_id bigint NOT NULL,
+    perm_id bigint NOT NULL,
+    resource_type character varying(255) NOT NULL,
+    target_name character varying(255) NOT NULL,
+    is_target_ant_pattern smallint NOT NULL,
+    include_patterns bytea NOT NULL,
+    exclude_patterns bytea NOT NULL
+);
+
+
+ALTER TABLE public.access_permissions_targets_v2 OWNER TO artifactory;
+
+--
+-- Name: access_permissions_v2; Type: TABLE; Schema: public; Owner: artifactory
+--
+
+CREATE TABLE public.access_permissions_v2 (
+    perm_id bigint NOT NULL,
+    name character varying(255) NOT NULL,
+    created bigint NOT NULL,
+    modified bigint NOT NULL,
+    created_by character varying(255) NOT NULL,
+    modified_by character varying(255) NOT NULL,
+    lower_name character varying(255) NOT NULL,
+    description character varying(1024),
+    realm character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.access_permissions_v2 OWNER TO artifactory;
+
+--
+-- Data for Name: access_permissions_actions_v2; Type: TABLE DATA; Schema: public; Owner: artifactory
+--
+
+COPY public.access_permissions_actions_v2 (action_id, perm_id, resource_type, user_id, group_id, actions) FROM stdin;
+2       1       artifact        \N      1       1
+1       1       build   \N      1       1
+1003    1002    artifact        \N      1       1
+1011    1002    artifact        2002    \N      64
+\.
+
+
+--
+-- Data for Name: access_permissions_targets_v2; Type: TABLE DATA; Schema: public; Owner: artifactory
+--
+
+COPY public.access_permissions_targets_v2 (target_id, perm_id, resource_type, target_name, is_target_ant_pattern, include_patterns, exclude_patterns) FROM stdin;
+2       1       artifact        ANY     0       \\x5b222a2a225d \\x5b5d
+1       1       build   artifactory-build-info  0       \\x5b222a2a225d \\x5b5d
+3       2       artifact        ANY REMOTE      0       \\x5b222a2a225d \\x5b5d
+1004    1002    artifact        conexus-release-local   0       \\x5b222a2a225d \\x5b5d
+1005    1002    build   artifactory-build-info  0       \\x5b222a2a225d \\x5b5d
+\.
+
+
+--
+-- Data for Name: access_permissions_v2; Type: TABLE DATA; Schema: public; Owner: artifactory
+--
+
+COPY public.access_permissions_v2 (perm_id, name, created, modified, created_by, modified_by, lower_name, description, realm) FROM stdin;
+1       Anything        1785353204576   1785353204576   anonymous       anonymous       anything        Default read permissions        INTERNAL
+2       Any Remote      1785353204701   1785353204701   anonymous       anonymous       any remote      Default any remote permission   INTERNAL
+1002    schema-test-perm-2      1786625845651   1786631897567   jeff.sikala@gsa.gov     jeff.sikala@gsa.gov     schema-test-perm-2      \N      GLOBAL
+\.
+
+
+--
+-- Name: access_permissions_actions_v2 access_permissions_actions_pk; Type: CONSTRAINT; Schema: public; Owner: artifactory
+--
+
+ALTER TABLE ONLY public.access_permissions_actions_v2
+    ADD CONSTRAINT access_permissions_actions_pk PRIMARY KEY (action_id);
+
+
+--
+-- Name: access_permissions_targets_v2 access_permissions_targets_pk; Type: CONSTRAINT; Schema: public; Owner: artifactory
+--
+
+ALTER TABLE ONLY public.access_permissions_targets_v2
+    ADD CONSTRAINT access_permissions_targets_pk PRIMARY KEY (target_id);
+
+
+--
+-- Name: access_permissions_v2 access_permissions_v2_pk; Type: CONSTRAINT; Schema: public; Owner: artifactory
+--
+
+ALTER TABLE ONLY public.access_permissions_v2
+    ADD CONSTRAINT access_permissions_v2_pk PRIMARY KEY (perm_id);
+
+
+--
+-- Name: access_perm_act_group_rsc_idx; Type: INDEX; Schema: public; Owner: artifactory
+--
+
+CREATE INDEX access_perm_act_group_rsc_idx ON public.access_permissions_actions_v2 USING btree (group_id, resource_type);
+
+
+--
+-- Name: access_perm_act_permid_rsc_idx; Type: INDEX; Schema: public; Owner: artifactory
+--
+
+CREATE INDEX access_perm_act_permid_rsc_idx ON public.access_permissions_actions_v2 USING btree (perm_id, resource_type);
+
+
+--
+-- Name: access_perm_act_user_rsc_idx; Type: INDEX; Schema: public; Owner: artifactory
+--
+
+CREATE INDEX access_perm_act_user_rsc_idx ON public.access_permissions_actions_v2 USING btree (user_id, resource_type);
+
+
+--
+-- Name: access_perm_lwr_name_idx; Type: INDEX; Schema: public; Owner: artifactory
+--
+
+CREATE INDEX access_perm_lwr_name_idx ON public.access_permissions_v2 USING btree (lower_name);
+
+
+--
+-- Name: access_perm_name_unq_idx; Type: INDEX; Schema: public; Owner: artifactory
+--
+
+CREATE UNIQUE INDEX access_perm_name_unq_idx ON public.access_permissions_v2 USING btree (name);
+
+
+--
+-- Name: access_perm_trg_composite_idx; Type: INDEX; Schema: public; Owner: artifactory
+--
+
+CREATE UNIQUE INDEX access_perm_trg_composite_idx ON public.access_permissions_targets_v2 USING btree (perm_id, resource_type, target_name);
+
+
+--
+-- Name: access_perm_trg_rsc_antptn_idx; Type: INDEX; Schema: public; Owner: artifactory
+--
+
+CREATE INDEX access_perm_trg_rsc_antptn_idx ON public.access_permissions_targets_v2 USING btree (resource_type, is_target_ant_pattern);
+
+
+--
+-- Name: access_perm_trg_trgnme_rsc_idx; Type: INDEX; Schema: public; Owner: artifactory
+--
+
+CREATE INDEX access_perm_trg_trgnme_rsc_idx ON public.access_permissions_targets_v2 USING btree (target_name, resource_type);
+
+
+--
+-- Name: access_permissions_actions_v2 access_perm_act_v2_groups_fk; Type: FK CONSTRAINT; Schema: public; Owner: artifactory
+--
+
+ALTER TABLE ONLY public.access_permissions_actions_v2
+    ADD CONSTRAINT access_perm_act_v2_groups_fk FOREIGN KEY (group_id) REFERENCES public.access_groups(group_id);
+
+
+--
+-- Name: access_permissions_actions_v2 access_perm_action_v2_perms_fk; Type: FK CONSTRAINT; Schema: public; Owner: artifactory
+--
+
+ALTER TABLE ONLY public.access_permissions_actions_v2
+    ADD CONSTRAINT access_perm_action_v2_perms_fk FOREIGN KEY (perm_id) REFERENCES public.access_permissions_v2(perm_id);
+
+
+--
+-- Name: access_permissions_actions_v2 access_perm_action_v2_users_fk; Type: FK CONSTRAINT; Schema: public; Owner: artifactory
+--
+
+ALTER TABLE ONLY public.access_permissions_actions_v2
+    ADD CONSTRAINT access_perm_action_v2_users_fk FOREIGN KEY (user_id) REFERENCES public.access_users(user_id);
+
+
+--
+-- Name: access_permissions_targets_v2 access_permissions_trg_prms_fk; Type: FK CONSTRAINT; Schema: public; Owner: artifactory
+--
+
+ALTER TABLE ONLY public.access_permissions_targets_v2
+    ADD CONSTRAINT access_permissions_trg_prms_fk FOREIGN KEY (perm_id) REFERENCES public.access_permissions_v2(perm_id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
+DELETE FROM access_permissions_targets_v2
+WHERE perm_id = 1 AND resource_type = 'build' AND target_name = 'artifactory-build-info';"
+DELETE 1
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ 
