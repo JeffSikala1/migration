@@ -1,42 +1,24 @@
-echo "Run on .233:"
-cat <<'CMDS'
-# What IP does the DNS name actually resolve to from .233?
-dig +short artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
-ip addr show | grep "inet "
+bash
 
-# Connect directly to localhost instead of the public DNS name, forcing SNI to match
-openssl s_client -connect 127.0.0.1:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
-CMDS
-Output
-
-Run on .233:
-# What IP does the DNS name actually resolve to from .233?
-dig +short artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
-ip addr show | grep "inet "
-
-# Connect directly to localhost instead of the public DNS name, forcing SNI to match
-openssl s_client -connect 127.0.0.1:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
-
-
-
-
-echo "On .33 (as root, still in /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/):"
-cat <<'CMDS'
-sha256sum fullchain.pem
-grep -c "BEGIN CERTIFICATE" fullchain.pem
-openssl x509 -in cert.pem -noout -enddate
-CMDS
-echo
 echo "On .233:"
 cat <<'CMDS'
-sha256sum <(docker exec dev-nginx cat /etc/nginx/certificates/dev_wildcard.pem)
+for ip in 10.56.131.182 10.56.133.26; do
+  echo "== $ip =="
+  openssl s_client -connect ${ip}:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
+done
+
+# what actually owns/answers on these two IPs - are they even in this VPC's normal range for this host?
+aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=10.56.131.182,10.56.133.26" \
+  --query "NetworkInterfaces[].{IP:PrivateIpAddress,Desc:Description,InstanceId:Attachment.InstanceId}" --output table 2>/dev/null
 CMDS
 Output
 
-On .33 (as root, still in /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/):
-sha256sum fullchain.pem
-grep -c "BEGIN CERTIFICATE" fullchain.pem
-openssl x509 -in cert.pem -noout -enddate
-
 On .233:
-sha256sum <(docker exec dev-nginx cat /etc/nginx/certificates/dev_wildcard.pem)
+for ip in 10.56.131.182 10.56.133.26; do
+  echo "== $ip =="
+  openssl s_client -connect ${ip}:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
+done
+
+# what actually owns/answers on these two IPs - are they even in this VPC's normal range for this host?
+aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=10.56.131.182,10.56.133.26" \
+  --query "NetworkInterfaces[].{IP:PrivateIpAddress,Desc:Description,InstanceId:Attachment.InstanceId}" --output table 2>/dev/null
