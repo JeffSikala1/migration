@@ -1,25 +1,391 @@
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres pg_dump -U artifactory -d artifactory \
-  -t access_permissions_v2 -t access_permissions_targets_v2 -t access_permissions_actions_v2 \
-  > permission_tables_backup_$(date +%Y%m%d_%H%M%S)_fix.sql
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory < fix_anything_perm.sql
-BEGIN
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-INSERT 0 1
-COMMIT
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker restart dev-artifactory
-dev-artifactory
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_permissions_v2;"
- count 
--------
-    20
-(1 row)
+[sikaj01@ip-10-56-128-233 ~]$ jf c add prod-artifactory \
+  --url=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory \
+  --access-token=$artifactory_prod_admin_token \
+  --interactive=false
+16:00:16 [🟠Warn] You are using JFrog CLI version 2.117.0, however version 2.120.0 is available.
+To install the latest version, visit: https://jfrog.com/getcli
+To see the release notes, visit: https://github.com/jfrog/jfrog-cli/releases
+To avoid this message, set the JFROG_CLI_AVOID_NEW_VERSION_WARNING variable to TRUE
+[sikaj01@ip-10-56-128-233 ~]$ 
 
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT perm_id, name FROM access_permissions_v2 WHERE lower_name ILIKE 'anything%';"
- perm_id |        name         
----------+---------------------
-       1 | Anything
-    1019 | Anything (migrated)
-(2 rows)
+[root@ip-10-56-112-243 sikaj01]# crontab -l
+# Nightly at 02:15
+15 2 * * * /app/artifactorybackup/bin/nightly_backup.sh
+
+# Weekly Sunday at 03:00
+0 3 * * 0 /app/artifactorybackup/bin/weekly_backup.sh
+
+# Daily Secrets Manager backup (encrypted to S3)
+#55 1 * * * /app/artifactorybackup/bin/secrets_backup_daily.sh
+
+# Cleanup local staging older than 1 day
+0 4 * * * find /app/artifactorybackup/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+
+[root@ip-10-56-112-243 sikaj01]# docker ps
+CONTAINER ID   IMAGE                                                         COMMAND                  CREATED        STATUS        PORTS                                                                      NAMES
+7c25ec7ae10e   releases-docker.jfrog.io/jfrog/nginx-artifactory-pro:7.68.7   "/entrypoint-nginx.sh"   6 months ago   Up 36 hours   0.0.0.0:80->80/tcp, :::80->80/tcp, 0.0.0.0:443->443/tcp, :::443->443/tcp   artifactory-nginx
+dc00bfc2ebf3   releases-docker.jfrog.io/jfrog/artifactory-pro:7.104.14       "/entrypoint-artifac…"   6 months ago   Up 36 hours   8081/tcp                                                                   artifactory
+6b40766d0dc5   postgres:15-alpine                                            "docker-entrypoint.s…"   6 months ago   Up 36 hours   5432/tcp                                                                   artifactory-postgres
+[root@ip-10-56-112-243 sikaj01]# cat /app/artifactorybackup/bin/*
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ===== Config =====
+BUCKET="s3://cnxs-artifactory-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+BASE="/app/artifactorybackup"
+STAGE="${BASE}/staging/${DATE}/${TS}"
+LOGDIR="${BASE}/logs"
+LOG="${LOGDIR}/nightly-${DATE}.log"
+HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+
+PG_CONTAINER="${PG_CONTAINER:-artifactory-postgres}"
+PG_USER="artifactory"
+DB_LIST=(${DB_LIST:-artifactory})
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+echo "==== Artifactory nightly backup start: ${TS} host=${HOSTNAME} ===="
+
+# ===== Helpers =====
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
+need aws
+need docker
+need tar
+
+have_jq=0
+if command -v jq >/dev/null 2>&1; then
+  have_jq=1
+else
+  echo "WARN: jq not found; metadata.json will be minimal."
+fi
+
+s3_put_dir() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest" --recursive
+}
+
+s3_put_file() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest"
+}
+
+# ===== 1) Postgres dumps (logical) =====
+echo "[1/5] Postgres dumps..."
+mkdir -p "$STAGE/postgres"
+
+if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
+  echo "ERROR: Postgres container '$PG_CONTAINER' not running. Aborting."
+  exit 3
+fi
+
+echo "  - dumping globals (roles/grants)"
+docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
+  > "$STAGE/postgres/globals_${TS}.sql"
+
+for DB in "${DB_LIST[@]}"; do
+  echo "  - dumping ${DB}"
+  docker exec "$PG_CONTAINER" pg_dump -U "$PG_USER" -Fc "$DB" \
+    > "$STAGE/postgres/${DB}_${TS}.dump"
+done
+
+# ===== 2) Artifactory volumes (tar) =====
+# NOTE: Filestore is excluded — it is already backed by the
+# conexus-artifactory-filestore S3 bucket natively via Artifactory.
+# Nginx TLS certs are excluded — managed and backed up by the
+# Atlassian backup on .34 (shared wildcard cert).
+# artifactory/var is streamed directly to S3 — too large to stage locally.
+echo "[2/5] Artifactory volume backups..."
+mkdir -p "$STAGE/apps"
+
+echo "  - streaming artifactory/var directly to S3 (too large to stage locally)"
+# Exclude live log files (change during read, not needed for restore).
+tar -czf - \
+  --exclude=/app/jfrog/artifactory/var/log \
+  /app/jfrog/artifactory/var | \
+  pv -pterab | \
+  aws s3 cp - "${BUCKET}/apps/${DATE}/artifactory_var_${TS}.tar.gz" \
+  --sse aws:kms
+
+echo "  - tarring artifactory/security"
+tar -czf "$STAGE/apps/artifactory_security_${TS}.tar.gz" \
+  /app/jfrog/artifactory/security
+
+# ===== 3) Artifactory crypto / keystores =====
+echo "[3/5] Artifactory crypto safety backup..."
+mkdir -p "$STAGE/crypto"
+
+# master.key and join.key live under var/etc/security — already captured
+# in the var stream above, but snapshot them explicitly as a safety net.
+tar -czf "$STAGE/crypto/artifactory_keys_${TS}.tar.gz" \
+  /app/jfrog/artifactory/var/etc/security \
+  2>/dev/null || true
+
+# ===== 4) Metadata =====
+echo "[4/5] Metadata..."
+if [[ "$have_jq" -eq 1 ]]; then
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
+  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]')
+}
+JSON
+else
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "note": "jq not installed; container/volume inventory omitted"
+}
+JSON
+fi
+
+# ===== 5) Upload to S3 =====
+# Note: artifactory_var already streamed directly in step 2.
+echo "[5/5] Uploading to S3..."
+s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
+s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
+s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
+s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
+
+# ===== EBS snapshots =====
+echo "[EXTRA] EBS snapshots..."
+TOKEN_IMDS="$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")"
+
+INSTANCE_ID="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/instance-id)"
+
+AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/placement/availability-zone)"
+
+REGION="${AZ::-1}"
+
+VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
+  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
+
+declare -A VOL_PURPOSE
+VOL_PURPOSE["vol-078ee09ac10c02f62"]="root"
+VOL_PURPOSE["vol-060bb45ae6b8d71bc"]="artifactory"
+VOL_PURPOSE["vol-04f0ab9e32f79dc75"]="postgres"
+
+for VOL in $VOL_IDS; do
+  echo "  - snapshotting volume $VOL"
+  PURPOSE_TAG="${VOL_PURPOSE[$VOL]:-unknown}"
+  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
+    --description "Nightly Artifactory backup ${HOSTNAME} ${TS}" \
+    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-artifactory-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=artifactory-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
+    --query SnapshotId --output text)"
+  echo "    created snapshot: $SNAP_ID"
+done
+
+echo "==== Artifactory nightly backup completed OK ===="
+
+# Cleanup local staging after successful upload
+echo "Cleaning up local staging..."
+rm -rf "$STAGE"
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+AWS_REGION="${AWS_REGION:-us-east-1}"
+BUCKET="s3://cnxs-artifactory-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+HOST="$(hostname -f 2>/dev/null || hostname)"
+
+BASE="/app/artifactorybackup"
+STAGE="${BASE}/staging/secrets/${DATE}/${TS}"
+LOGDIR="${BASE}/logs"
+LOG="${LOGDIR}/secrets-backup-${DATE}.log"
+
+# KMS key used ONLY to encrypt the exported payload we store in S3
+KMS_KEY_ARN="arn:aws:kms:${AWS_REGION}:339713019047:key/ae797822-83c9-4752-89f1-eb9d3fc53b68"
+
+# Optional: only back up secrets with tag Backup=true
+TAG_FILTER_ENABLED="${TAG_FILTER_ENABLED:-0}"
+TAG_KEY="${TAG_KEY:-Backup}"
+TAG_VALUE="${TAG_VALUE:-true}"
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing $1"; exit 2; }; }
+need aws; need jq; need base64; need gzip
+
+OUT="${STAGE}/secrets_export_${HOST}_${TS}.ndjson"
+: > "$OUT"
+
+echo "==== Artifactory secrets backup start TS=${TS} host=${HOST} region=${AWS_REGION} ===="
+echo "Output file: $OUT"
+echo "Tag filter enabled: ${TAG_FILTER_ENABLED} (${TAG_KEY}=${TAG_VALUE})"
+echo "Export KMS key: ${KMS_KEY_ARN}"
+
+NEXT_TOKEN=""
+count=0
+kept=0
+skipped_tag=0
+failed_read=0
+failed_encrypt=0
+
+write_error_record() {
+  local name="$1" arn="$2" versionId="$3" errType="$4" errMsg="$5" sourceKms="$6"
+  jq -c -n \
+    --arg name "$name" \
+    --arg arn "$arn" \
+    --arg versionId "$versionId" \
+    --arg ts "$TS" \
+    --arg host "$HOST" \
+    --arg exportKms "$KMS_KEY_ARN" \
+    --arg sourceKms "$sourceKms" \
+    --arg errType "$errType" \
+    --arg errMsg "$errMsg" \
+    '{
+      name:$name,
+      arn:$arn,
+      versionId:($versionId // ""),
+      backedUpAt:$ts,
+      backupHost:$host,
+      exportKmsKey:$exportKms,
+      sourceKmsKey:($sourceKms // ""),
+      status:"error",
+      errorType:$errType,
+      error:$errMsg
+    }' >> "$OUT"
+}
+
+while :; do
+  if [[ -n "$NEXT_TOKEN" ]]; then
+    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100 --next-token "$NEXT_TOKEN")"
+  else
+    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100)"
+  fi
+
+  while read -r s; do
+    ((count++)) || true
+    ARN="$(echo "$s" | jq -r '.ARN')"
+    NAME="$(echo "$s" | jq -r '.Name')"
+    SOURCE_KMS="$(echo "$s" | jq -r '.KmsKeyId // empty')"
+
+    if [[ "$TAG_FILTER_ENABLED" -eq 1 ]]; then
+      TAG_OK="$(aws secretsmanager describe-secret --region "$AWS_REGION" --secret-id "$ARN" \
+        --query "Tags[?Key=='${TAG_KEY}' && Value=='${TAG_VALUE}'] | length(@)" --output text 2>/dev/null || echo 0)"
+      if [[ "$TAG_OK" == "0" ]]; then
+        echo "SKIP (tag filter) $NAME"
+        ((skipped_tag++)) || true
+        continue
+      fi
+    fi
+
+    echo "BACKUP $NAME"
+
+    VAL_JSON=""
+    if ! VAL_JSON="$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$ARN" 2>/tmp/secret_err.$$)"; then
+      ERR="$(tr -d '\n' </tmp/secret_err.$$ | sed 's/"/'\''/g')"
+      rm -f /tmp/secret_err.$$
+      echo "  ERROR (GetSecretValue) $NAME -> $ERR"
+      ((failed_read++)) || true
+      write_error_record "$NAME" "$ARN" "" "GetSecretValueFailed" "$ERR" "$SOURCE_KMS"
+      continue
+    fi
+    rm -f /tmp/secret_err.$$
+
+    VERSION_ID="$(echo "$VAL_JSON" | jq -r '.VersionId // empty')"
+    SECRET_STRING="$(echo "$VAL_JSON" | jq -r '.SecretString // empty')"
+    SECRET_BINARY_B64="$(echo "$VAL_JSON" | jq -r '.SecretBinary // empty')"
+
+    if [[ -n "$SECRET_STRING" ]]; then
+      PLAINTEXT_PAYLOAD="$(jq -n --arg t "string" --arg v "$SECRET_STRING" '{type:$t,value:$v}')"
+    elif [[ -n "$SECRET_BINARY_B64" ]]; then
+      PLAINTEXT_PAYLOAD="$(jq -n --arg t "binary_b64" --arg v "$SECRET_BINARY_B64" '{type:$t,value:$v}')"
+    else
+      echo "  WARN: no SecretString/SecretBinary for $NAME (skipping)"
+      ((failed_read++)) || true
+      write_error_record "$NAME" "$ARN" "$VERSION_ID" "EmptySecretValue" "No SecretString/SecretBinary present" "$SOURCE_KMS"
+      continue
+    fi
+
+    CIPHERTEXT_B64=""
+    if ! CIPHERTEXT_B64="$(printf '%s' "$PLAINTEXT_PAYLOAD" | \
+      aws kms encrypt --region "$AWS_REGION" \
+        --key-id "$KMS_KEY_ARN" \
+        --plaintext fileb:///dev/stdin \
+        --encryption-context "purpose=secrets-backup,secretArn=${ARN},backupDate=${DATE},backupHost=${HOST}" \
+        --query CiphertextBlob --output text 2>/tmp/kms_err.$$)"; then
+      ERR="$(tr -d '\n' </tmp/kms_err.$$ | sed 's/"/'\''/g')"
+      rm -f /tmp/kms_err.$$
+      echo "  ERROR (KMS Encrypt) $NAME -> $ERR"
+      ((failed_encrypt++)) || true
+      write_error_record "$NAME" "$ARN" "$VERSION_ID" "KMSEncryptFailed" "$ERR" "$SOURCE_KMS"
+      continue
+    fi
+    rm -f /tmp/kms_err.$$
+
+    jq -c -n \
+      --arg name "$NAME" \
+      --arg arn "$ARN" \
+      --arg versionId "$VERSION_ID" \
+      --arg ts "$TS" \
+      --arg host "$HOST" \
+      --arg bdate "$DATE" \
+      --arg exportKms "$KMS_KEY_ARN" \
+      --arg sourceKms "$SOURCE_KMS" \
+      --arg ciphertext "$CIPHERTEXT_B64" \
+      '{
+        name:$name,
+        arn:$arn,
+        versionId:$versionId,
+        backedUpAt:$ts,
+        backupDate:$bdate,
+        backupHost:$host,
+        exportKmsKey:$exportKms,
+        sourceKmsKey:($sourceKms // ""),
+        status:"ok",
+        ciphertextB64:$ciphertext
+      }' >> "$OUT"
+
+    ((kept++)) || true
+  done < <(echo "$RESP" | jq -c '.SecretList[]')
+
+  NEXT_TOKEN="$(echo "$RESP" | jq -r '.NextToken // empty')"
+  [[ -z "$NEXT_TOKEN" ]] && break
+done
+
+echo "==== SUMMARY ===="
+echo "Secrets enumerated: ${count}"
+echo "Backed up (ok):     ${kept}"
+echo "Skipped (tag):      ${skipped_tag}"
+echo "Failed (read):      ${failed_read}"
+echo "Failed (encrypt):   ${failed_encrypt}"
+
+GZ="${OUT}.gz"
+gzip -c "$OUT" > "$GZ"
+
+DEST="${BUCKET}/secrets/daily/${DATE}/secrets_export_${HOST}_${TS}.ndjson.gz"
+echo "Uploading: $GZ -> $DEST"
+aws s3 cp "$GZ" "$DEST"
+
+echo "==== Artifactory secrets backup completed OK ===="
+
+echo "Cleaning up local staging..."
+rm -rf "$STAGE"
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUCKET="s3://cnxs-artifactory-backups"
+DATE="$(date +%G-W%V)"
+
+aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
+aws s3 sync "${BUCKET}/apps/${DATE}/"     "${BUCKET}/weekly/apps/${DATE}/"
+aws s3 sync "${BUCKET}/crypto/${DATE}/"   "${BUCKET}/weekly/crypto/${DATE}/"
+aws s3 sync "${BUCKET}/metadata/${DATE}/" "${BUCKET}/weekly/metadata/${DATE}/"
+[root@ip-10-56-112-243 sikaj01]# 
