@@ -1,34 +1,44 @@
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT perm_id, name, realm FROM access_permissions_v2 WHERE lower_name = 'anything';"
- perm_id |   name   |  realm   
----------+----------+----------
-       1 | Anything | INTERNAL
-(1 row)
-
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
-SELECT p.name, t.resource_type, t.target_name, a.actions, u.username, g.group_name
+[sikaj01@ip-10-56-128-233 ~]$ cat <<'EOF'
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
+SELECT p.perm_id, p.name, t.resource_type, t.target_name, a.actions, u.username, g.group_name
 FROM access_permissions_v2 p
 JOIN access_permissions_targets_v2 t ON t.perm_id = p.perm_id
-JOIN access_permissions_actions_v2 a ON a.perm_id = p.perm_id AND a.resource_type = t.resource_type
+LEFT JOIN access_permissions_actions_v2 a ON a.perm_id = p.perm_id AND a.resource_type = t.resource_type
 LEFT JOIN access_users u ON u.user_id = a.user_id
 LEFT JOIN access_groups g ON g.group_id = a.group_id
-WHERE p.name = 'conexus-deploy';"
-      name      | resource_type |      target_name       | actions |         username         | group_name  
-----------------+---------------+------------------------+---------+--------------------------+-------------
- conexus-deploy | artifact      | conexus-rc-local       |      19 | sa_bamboo                | 
- conexus-deploy | artifact      | conexus-release-local  |      19 | sa_bamboo                | 
- conexus-deploy | artifact      | conexus-snapshot-local |      19 | sa_bamboo                | 
- conexus-deploy | artifact      | file-local             |      19 | sa_bamboo                | 
- conexus-deploy | artifact      | ll-modelchanges        |      19 | sa_bamboo                | 
- conexus-deploy | artifact      | conexus-rc-local       |      23 | robert.wernsman@usda.gov | 
- conexus-deploy | artifact      | conexus-release-local  |      23 | robert.wernsman@usda.gov | 
- conexus-deploy | artifact      | conexus-snapshot-local |      23 | robert.wernsman@usda.gov | 
- conexus-deploy | artifact      | file-local             |      23 | robert.wernsman@usda.gov | 
- conexus-deploy | artifact      | ll-modelchanges        |      23 | robert.wernsman@usda.gov | 
- conexus-deploy | artifact      | conexus-rc-local       |      23 |                          | nsfs_devops
- conexus-deploy | artifact      | conexus-release-local  |      23 |                          | nsfs_devops
- conexus-deploy | artifact      | conexus-snapshot-local |      23 |                          | nsfs_devops
- conexus-deploy | artifact      | file-local             |      23 |                          | nsfs_devops
- conexus-deploy | artifact      | ll-modelchanges        |      23 |                          | nsfs_devops
-(15 rows)
-
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ 
+WHERE p.perm_id = 1
+ORDER BY t.resource_type, t.target_name;"
+EOF
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
+SELECT p.perm_id, p.name, t.resource_type, t.target_name, a.actions, u.username, g.group_name
+FROM access_permissions_v2 p
+JOIN access_permissions_targets_v2 t ON t.perm_id = p.perm_id
+LEFT JOIN access_permissions_actions_v2 a ON a.perm_id = p.perm_id AND a.resource_type = t.resource_type
+LEFT JOIN access_users u ON u.user_id = a.user_id
+LEFT JOIN access_groups g ON g.group_id = a.group_id
+WHERE p.perm_id = 1
+ORDER BY t.resource_type, t.target_name;"
+[sikaj01@ip-10-56-128-233 ~]$ Output
+-bash: Output: command not found
+[sikaj01@ip-10-56-128-233 ~]$ ll
+total 588
+drwxr-x---. 6 sikaj01 users  16384 Aug 13 14:55 artifactory-migration
+-rw-r--r--. 1 sikaj01 users 290502 Aug  3 17:17 artifactory_pre_admin_reset_20260803.dump
+-rw-r--r--. 1 sikaj01 users 293881 Aug 10 15:11 artifactory_pre_repo_insert_20260810.dump
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
+SELECT p.perm_id, p.name, t.resource_type, t.target_name, a.actions, u.username, g.group_name
+FROM access_permissions_v2 p
+JOIN access_permissions_targets_v2 t ON t.perm_id = p.perm_id
+LEFT JOIN access_permissions_actions_v2 a ON a.perm_id = p.perm_id AND a.resource_type = t.resource_type
+LEFT JOIN access_users u ON u.user_id = a.user_id
+LEFT JOIN access_groups g ON g.group_id = a.group_id
+WHERE p.perm_id = 1
+ORDER BY t.resource_type, t.target_name;"
+ perm_id |   name   | resource_type |      target_name       | actions | username | group_name 
+---------+----------+---------------+------------------------+---------+----------+------------
+       1 | Anything | artifact      | ANY                    |       1 |          | readers
+       1 | Anything | artifact      | ANY DISTRIBUTION       |       1 |          | readers
+       1 | Anything | artifact      | ANY LOCAL              |       1 |          | readers
+       1 | Anything | artifact      | ANY REMOTE             |       1 |          | readers
+       1 | Anything | build         | artifactory-build-info |       1 |          | readers
+(5 rows)
