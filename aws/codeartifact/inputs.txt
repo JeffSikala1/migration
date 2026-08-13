@@ -1,13 +1,22 @@
-cd ~/artifactory-migration
-
-docker exec -i dev-postgres pg_dump -U artifactory -d artifactory \
-  -t access_permissions_v2 -t access_permissions_targets_v2 -t access_permissions_actions_v2 \
-  > permission_tables_backup_$(date +%Y%m%d_%H%M%S)_fix.sql
-
-docker exec -i dev-postgres psql -U artifactory -d artifactory < fix_anything_perm.sql
-
-docker restart dev-artifactory
+Anything repo (migrated) is a naming deviation from prod (forced by dev's pre-existing default permission occupying the name Anything)
 
 
-docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_permissions_v2;"
-docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT perm_id, name FROM access_permissions_v2 WHERE lower_name ILIKE 'anything%';"
+
+curl -fL https://install-cli.jfrog.io | sh
+jf --version
+
+
+
+jf c add prod-artifactory \
+  --url=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory \
+  --access-token=$prod_read_token_secret \
+  --interactive=false
+
+
+jf c add dev-artifactory \
+  --url=<dev artifactory base URL>/artifactory \
+  --access-token=$dev_upload_token_secret \
+  --interactive=false
+
+
+
