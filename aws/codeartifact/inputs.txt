@@ -1,6 +1,13 @@
-grep -A5 "COPY access_permissions_targets_v2" permission_tables_backup_20260813_145516.sql | head -20
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
+INSERT INTO access_permissions_targets_v2 (target_id, perm_id, resource_type, target_name, is_target_ant_pattern, include_patterns, exclude_patterns)
+VALUES (1, 1, 'build', 'artifactory-build-info', 0, decode('5b222a2a225d','hex'), decode('5b5d','hex'));"
+
+
 
 docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
 DELETE FROM access_permissions_targets_v2
-WHERE perm_id = 1 AND resource_type = 'build' AND target_name = 'artifactory-build-info';"
+WHERE perm_id = 1 AND resource_type = 'artifact' AND target_name IN ('ANY LOCAL', 'ANY REMOTE', 'ANY DISTRIBUTION');"
 
+
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
+SELECT target_id, perm_id, resource_type, target_name FROM access_permissions_targets_v2 WHERE perm_id = 1 ORDER BY resource_type;"
