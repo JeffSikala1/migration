@@ -1,7 +1,10 @@
-cd ~/artifactory-migration
-docker exec -i dev-postgres pg_dump -U artifactory -d artifactory -t access_permissions_v2 -t access_permissions_targets_v2 -t access_permissions_actions_v2 > permission_tables_backup_$(date +%Y%m%d_%H%M%S).sql
-docker exec -i dev-postgres psql -U artifactory -d artifactory < permission_inserts.sql
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT perm_id, name, realm FROM access_permissions_v2 WHERE lower_name = 'anything';"
 
-
-docker restart dev-artifactory
-docker exec -i dev-postgres psql -U artifactory -d artifactory -c "SELECT count(*) FROM access_permissions_v2;"
+docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
+SELECT p.name, t.resource_type, t.target_name, a.actions, u.username, g.group_name
+FROM access_permissions_v2 p
+JOIN access_permissions_targets_v2 t ON t.perm_id = p.perm_id
+JOIN access_permissions_actions_v2 a ON a.perm_id = p.perm_id AND a.resource_type = t.resource_type
+LEFT JOIN access_users u ON u.user_id = a.user_id
+LEFT JOIN access_groups g ON g.group_id = a.group_id
+WHERE p.name = 'conexus-deploy';"
