@@ -1,21 +1,46 @@
-[sikaj01@ip-10-56-112-33 cert_renewal]$ ls /etc/pki/ca-trust/source/anchors/ 2>/dev/null
-DigiCertGlobalG2TLSRSASHA2562020CA1.pem  amzn.pem  cert_wildcard_chain.pem  isrgrootx1.crt  r12.pem  server_certs.pem
-DigiCertGlobalRootG2.pem                 ca.crt    e7.txt                   letsroot.pem    r13.pem  test_wildcard_chain.pem
-[sikaj01@ip-10-56-112-33 cert_renewal]$ openssl version -d
-OPENSSLDIR: "/etc/pki/tls"
-[sikaj01@ip-10-56-112-33 cert_renewal]$ find /etc/pki -iname "*ISRG*" 2>/dev/null
+[root@ip-10-56-128-233 ~]# docker exec dev-nginx sh -c '
+awk "BEGIN{c=0} /BEGIN CERTIFICATE/{c++} {print > (\"/tmp/cert\" c \".pem\")}" /etc/nginx/certificates/dev_wildcard.pem
+for f in /tmp/cert1.pem /tmp/cert2.pem /tmp/cert3.pem; do
+  echo "== $f =="
+  openssl x509 -in $f -noout -subject -issuer
+done
+> '
+== /tmp/cert1.pem ==
+subject=CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
+issuer=C=US, O=Let's Encrypt, CN=YR1
+== /tmp/cert2.pem ==
+subject=C=US, O=Let's Encrypt, CN=YR1
+issuer=C=US, O=ISRG, CN=Root YR
+== /tmp/cert3.pem ==
+subject=C=US, O=ISRG, CN=Root YR
+issuer=C=US, O=Internet Security Research Group, CN=ISRG Root X1
+[root@ip-10-56-128-233 ~]# docker exec dev-nginx nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+[root@ip-10-56-128-233 ~]# docker exec dev-nginx ls -la --time-style=full-iso /etc/nginx/certificates/dev_wildcard.pem
+-rw-r-----. 1 1001 users 5692 2026-07-30 16:14:12.026988041 +0000 /etc/nginx/certificates/dev_wildcard.pem
+[root@ip-10-56-128-233 ~]# docker inspect dev-nginx --format '{{.State.StartedAt}}'
+2026-07-30T16:33:51.341208027Z
+[root@ip-10-56-128-233 ~]# ls /etc/pki/ca-trust/source/anchors/ 2>/dev/null
+[root@ip-10-56-128-233 ~]# ls /etc/pki/ca-trust/source/anchors/ 
+[root@ip-10-56-128-233 ~]# openssl s_client -connect artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
+[root@ip-10-56-128-233 ~]# hostname
+ip-10-56-128-233.ec2.internal
+[root@ip-10-56-128-233 ~]# openssl s_client -connect artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
+^C
+[root@ip-10-56-128-233 ~]# ls /etc/pki/ca-trust/source/anchors/ 2>/dev/null
+[root@ip-10-56-128-233 ~]# find /etc/pki -iname "*ISRG*" 2>/dev/null
 /etc/pki/ca-trust/extracted/pem/directory-hash/ISRG_Root_X1.pem
 /etc/pki/ca-trust/extracted/pem/directory-hash/ISRG_Root_X2.pem
-/etc/pki/ca-trust/source/anchors/isrgrootx1.crt
-[sikaj01@ip-10-56-112-33 cert_renewal]$ rpm -q ca-certificates
+[root@ip-10-56-128-233 ~]# rpm -q ca-certificates
 ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch
-[sikaj01@ip-10-56-112-33 cert_renewal]$ openssl s_client -connect artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
-depth=3 C=US, O=Internet Security Research Group, CN=ISRG Root X1
+[root@ip-10-56-128-233 ~]# openssl s_client -connect artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
+depth=0 CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
+verify error:num=20:unable to get local issuer certificate
 verify return:1
-depth=2 C=US, O=ISRG, CN=Root YR
-verify return:1
-depth=1 C=US, O=Let's Encrypt, CN=YR1
+depth=0 CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
+verify error:num=21:unable to verify the first certificate
 verify return:1
 depth=0 CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
 verify return:1
-Verify return code: 0 (ok)
+Verify return code: 21 (unable to verify the first certificate)
