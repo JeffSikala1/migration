@@ -1,27 +1,16 @@
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
-DELETE FROM access_permissions_targets_v2
-WHERE perm_id = 1 AND resource_type = 'build' AND target_name = 'artifactory-build-info';"
-DELETE 1
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
-INSERT INTO access_permissions_targets_v2 (target_id, perm_id, resource_type, target_name, is_target_ant_pattern, include_patterns, exclude_patterns)
-VALUES (1, 1, 'build', 'artifactory-build-info', 0, decode('5b222a2a225d','hex'), decode('5b5d','hex'));"
-INSERT 0 1
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
-INSERT INTO access_permissions_targets_v2 (target_id, perm_id, resource_type, target_name, is_target_ant_pattern, include_patterns, exclude_patterns)
-VALUES (1, 1, 'build', 'artifactory-build-info', 0, decode('5b222a2a225d','hex'), decode('5b5d','hex'));"
-ERROR:  duplicate key value violates unique constraint "access_permissions_targets_pk"
-DETAIL:  Key (target_id)=(1) already exists.
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
-DELETE FROM access_permissions_targets_v2
-WHERE perm_id = 1 AND resource_type = 'artifact' AND target_name IN ('ANY LOCAL', 'ANY REMOTE', 'ANY DISTRIBUTION');"
-DELETE 3
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ 
-docker exec -i dev-postgres psql -U artifactory -d artifactory -c "
-SELECT target_id, perm_id, resource_type, target_name FROM access_permissions_targets_v2 WHERE perm_id = 1 ORDER BY resource_type;"
- target_id | perm_id | resource_type |      target_name       
------------+---------+---------------+------------------------
-         2 |       1 | artifact      | ANY
-         1 |       1 | build         | artifactory-build-info
-(2 rows)
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ vim fix_anything_perm.py
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ python3 fix_anything_perm.py
+Wrote 1 permission, 4 target, 0 action INSERTs to /home/sikaj01/artifactory-migration/fix_anything_perm.sql
+[sikaj01@ip-10-56-128-233 artifactory-migration]$ cat fix_anything_perm.sql
+BEGIN;
 
-[sikaj01@ip-10-56-128-233 artifactory-migration]$ 
+INSERT INTO access_permissions_v2 (perm_id, name, created, modified, created_by, modified_by, lower_name, description, realm) SELECT (SELECT COALESCE(MAX(perm_id),0)+1 FROM access_permissions_v2), 'Anything (migrated)', 1735689600000, 1735689600000, 'migration-script', 'migration-script', 'anything (migrated)', 'Migrated from prod permission: Anything', 'GLOBAL' WHERE NOT EXISTS (SELECT 1 FROM access_permissions_v2 WHERE name = 'Anything (migrated)');
+
+INSERT INTO access_permissions_targets_v2 (target_id, perm_id, resource_type, target_name, is_target_ant_pattern, include_patterns, exclude_patterns) SELECT (SELECT COALESCE(MAX(target_id),0)+1 FROM access_permissions_targets_v2), p.perm_id, 'artifact', 'ANY DISTRIBUTION', 0, decode('5b222a2a225d', 'hex'), decode('5b5d', 'hex') FROM access_permissions_v2 p WHERE p.name = 'Anything (migrated)' AND NOT EXISTS (SELECT 1 FROM access_permissions_targets_v2 t WHERE t.perm_id = p.perm_id AND t.resource_type = 'artifact' AND t.target_name = 'ANY DISTRIBUTION');
+INSERT INTO access_permissions_targets_v2 (target_id, perm_id, resource_type, target_name, is_target_ant_pattern, include_patterns, exclude_patterns) SELECT (SELECT COALESCE(MAX(target_id),0)+1 FROM access_permissions_targets_v2), p.perm_id, 'artifact', 'ANY LOCAL', 0, decode('5b222a2a225d', 'hex'), decode('5b5d', 'hex') FROM access_permissions_v2 p WHERE p.name = 'Anything (migrated)' AND NOT EXISTS (SELECT 1 FROM access_permissions_targets_v2 t WHERE t.perm_id = p.perm_id AND t.resource_type = 'artifact' AND t.target_name = 'ANY LOCAL');
+INSERT INTO access_permissions_targets_v2 (target_id, perm_id, resource_type, target_name, is_target_ant_pattern, include_patterns, exclude_patterns) SELECT (SELECT COALESCE(MAX(target_id),0)+1 FROM access_permissions_targets_v2), p.perm_id, 'artifact', 'ANY REMOTE', 0, decode('5b222a2a225d', 'hex'), decode('5b5d', 'hex') FROM access_permissions_v2 p WHERE p.name = 'Anything (migrated)' AND NOT EXISTS (SELECT 1 FROM access_permissions_targets_v2 t WHERE t.perm_id = p.perm_id AND t.resource_type = 'artifact' AND t.target_name = 'ANY REMOTE');
+INSERT INTO access_permissions_targets_v2 (target_id, perm_id, resource_type, target_name, is_target_ant_pattern, include_patterns, exclude_patterns) SELECT (SELECT COALESCE(MAX(target_id),0)+1 FROM access_permissions_targets_v2), p.perm_id, 'build', 'artifactory-build-info', 0, decode('5b222a2a225d', 'hex'), decode('5b5d', 'hex') FROM access_permissions_v2 p WHERE p.name = 'Anything (migrated)' AND NOT EXISTS (SELECT 1 FROM access_permissions_targets_v2 t WHERE t.perm_id = p.perm_id AND t.resource_type = 'build' AND t.target_name = 'artifactory-build-info');
+
+
+
+COMMIT;
