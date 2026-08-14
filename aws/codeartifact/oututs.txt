@@ -1,29 +1,107 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker ps
-CONTAINER ID   IMAGE                                                     COMMAND                  CREATED       STATUS        PORTS                                      NAMES
-05ccbc52a0ba   nginx:1.29.3                                              "/docker-entrypoint.…"   2 weeks ago   Up 2 weeks    0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp   dev-nginx
-bbe9824ab941   releases-docker.jfrog.io/jfrog/artifactory-oss:7.104.14   "/entrypoint-artifac…"   2 weeks ago   Up 19 hours   0.0.0.0:8081-8082->8081-8082/tcp           dev-artifactory
-32baf1b78df2   postgres:15-alpine                                        "docker-entrypoint.s…"   2 weeks ago   Up 2 weeks    5432/tcp                                   dev-postgres
-[sikaj01@ip-10-56-128-233 ~]$ 
-
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --load-balancer-arns arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 --query "LoadBalancers[].AvailabilityZones[].SubnetId" --output table
-------------------------------
-|    DescribeLoadBalancers   |
-+----------------------------+
-|  subnet-0fa28a398cb662a71  |
-|  subnet-0826111a038991700  |
-+----------------------------+
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-network-acls --filters "Name=association.subnet-id,Values=subnet-0fa28a398cb662a71,subnet-0826111a038991700" --query "NetworkAcls[].Entries" --output table
-----------------------------------------------------------------------------------
-|                               DescribeNetworkAcls                              |
-+-----------+---------+----------------+-----------+--------------+--------------+
-| CidrBlock | Egress  | Ipv6CidrBlock  | Protocol  | RuleAction   | RuleNumber   |
-+-----------+---------+----------------+-----------+--------------+--------------+
-|  0.0.0.0/0|  True   |                |  -1       |  allow       |  100         |
-|           |  True   |  ::/0          |  -1       |  allow       |  101         |
-|  0.0.0.0/0|  True   |                |  -1       |  deny        |  32767       |
-|           |  True   |  ::/0          |  -1       |  deny        |  32768       |
-|  0.0.0.0/0|  False  |                |  -1       |  allow       |  100         |
-|           |  False  |  ::/0          |  -1       |  allow       |  101         |
-|  0.0.0.0/0|  False  |                |  -1       |  deny        |  32767       |
-|           |  False  |  ::/0          |  -1       |  deny        |  32768       |
-+-----------+---------+----------------+-----------+--------------+--------------+
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-flow-logs --filter "Name=resource-id,Values=vpc-0cb2efc594903069d" --output table
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|                                                                                       DescribeFlowLogs                                                                                       |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+||                                                                                          FlowLogs                                                                                          ||
+|+--------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------+|
+||  CreationTime            |  2024-01-29T22:01:37.325000+00:00                                                                                                                               ||
+||  DeliverLogsPermissionArn|                                                                                                                                                                 ||
+||  DeliverLogsStatus       |  SUCCESS                                                                                                                                                        ||
+||  FlowLogId               |  fl-0e57481e11810dd37                                                                                                                                           ||
+||  FlowLogStatus           |  ACTIVE                                                                                                                                                         ||
+||  LogDestination          |  arn:aws:s3:::fcslogs-vpcflow-us-east-1                                                                                                                         ||
+||  LogDestinationType      |  s3                                                                                                                                                             ||
+||  LogFormat               |  ${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}   ||
+||  LogGroupName            |                                                                                                                                                                 ||
+||  MaxAggregationInterval  |  600                                                                                                                                                            ||
+||  ResourceId              |  vpc-0cb2efc594903069d                                                                                                                                          ||
+||  TrafficType             |  ALL                                                                                                                                                            ||
+|+--------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------+|
+|||                                                                                    DestinationOptions                                                                                    |||
+||+---------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------+||
+|||  FileFormat                                                                                                               |  plain-text                                                  |||
+|||  HiveCompatiblePartitions                                                                                                 |  False                                                       |||
+|||  PerHourPartition                                                                                                         |  False                                                       |||
+||+---------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------+||
+|||                                                                                           Tags                                                                                           |||
+||+--------------------------------------------------+------------------------------------------------------------------------------------------------------------
+---------------------------+||
+|||                        Key                       |                                                                 Value                                      
+                           |||
+||+--------------------------------------------------+------------------------------------------------------------------------------------------------------------
+---------------------------+||
+|||  Account                                         |  471112718870                                                                                              
+                           |||
+|||  FCS-Managed-Resource                            |  Please do not modify outside of the FCS Delivery Pipeline                                                 
+                           |||
+|||  Terraform                                       |  true                                                                                                      
+                           |||
+|||  VPC                                             |  fcs-conexus-dev-D                                                                                         
+                           |||
+|||  Env                                             |  development                                                                                               
+                           |||
+|||  FDP-Terragrunt-Path                             |  accounts/fcs-conexus-dev/network/us-east-1/development/vpc                                                
+                           |||
+|||  Client-id                                       |  075                                                                                                       
+                           |||
+|||  Name                                            |  centralized_intermediate_term                                                                             
+                           |||
+||+--------------------------------------------------+------------------------------------------------------------------------------------------------------------
+---------------------------+||
+||                                                                                          FlowLogs                                                              
+                            ||
+|+--------------------------+-------------------------------------------------------------------------------------------------------------------------------------
+----------------------------+|
+||  CreationTime            |  2024-01-29T22:01:37.362000+00:00                                                                                                   
+                            ||
+||  DeliverLogsPermissionArn|  arn:aws:iam::471112718870:role/fcs-conexus-dev-D_fl_to_cw                                                                          
+                            ||
+||  DeliverLogsStatus       |  SUCCESS                                                                                                                            
+                            ||
+||  FlowLogId               |  fl-053d4ab83f892156f                                                                                                               
+                            ||
+||  FlowLogStatus           |  ACTIVE                                                                                                                             
+                            ||
+||  LogDestination          |  arn:aws:logs:us-east-1:471112718870:log-group:VPCFlowLogs/fcs-conexus-dev-D                                                        
+                            ||
+||  LogDestinationType      |  cloud-watch-logs                                                                                                                   
+                            ||
+||  LogFormat               |  ${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end
+} ${action} ${log-status}   ||
+||  LogGroupName            |  VPCFlowLogs/fcs-conexus-dev-D                                                                                                      
+                            ||
+||  MaxAggregationInterval  |  600                                                                                                                                
+                            ||
+||  ResourceId              |  vpc-0cb2efc594903069d                                                                                                              
+                            ||
+||  TrafficType             |  ALL                                                                                                                                
+                            ||
+|+--------------------------+-------------------------------------------------------------------------------------------------------------------------------------
+----------------------------+|
+|||                                                                                           Tags                                                                
+                           |||
+||+--------------------------------------------------+------------------------------------------------------------------------------------------------------------
+---------------------------+||
+|||                        Key                       |                                                                 Value                                      
+                           |||
+||+--------------------------------------------------+------------------------------------------------------------------------------------------------------------
+---------------------------+||
+|||  Account                                         |  471112718870                                                                                              
+                           |||
+|||  FCS-Managed-Resource                            |  Please do not modify outside of the FCS Delivery Pipeline                                                 
+                           |||
+|||  Terraform                                       |  true                                                                                                      
+                           |||
+|||  VPC                                             |  fcs-conexus-dev-D                                                                                         
+                           |||
+|||  Env                                             |  development                                                                                               
+                           |||
+|||  FDP-Terragrunt-Path                             |  accounts/fcs-conexus-dev/network/us-east-1/development/vpc                                                
+                           |||
+|||  Client-id                                       |  075                                                                                                       
+                           |||
+|||  Name                                            |  local_short_term                                                                                          
+                           |||
+||+--------------------------------------------------+------------------------------------------------------------------------------------------------------------
+---------------------------+||
+(END)
