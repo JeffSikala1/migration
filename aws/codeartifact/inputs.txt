@@ -1,34 +1,12 @@
-cat > /tmp/diff_snapshot.py << 'EOF'
-import os, requests
+cd /home/sikaj01/artifactory-migration/pilot-transfer
 
-PROD_URL = "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
-DEV_URL = "https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory"
-PROD_TOKEN = os.environ["artifactory_prod_admin_token"]
-DEV_TOKEN = os.environ["artifactory_dev_admin_token"]
+jf rt download --server-id=prod-artifactory \
+  "conexus-snapshot-local/gov/gsa/cnxs/ui/ui-war/01.00.000.106-SNAPSHOT/ui-war-01.00.000.106-20251028.205702-37.*" \
+  "staged/conexus-snapshot-local/"
 
-def list_paths(base_url, token, repo):
-    resp = requests.post(
-        f"{base_url}/api/search/aql",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "text/plain"},
-        data=f'items.find({{"repo":"{repo}","type":"file"}}).include("path","name")',
-        timeout=120,
-    )
-    resp.raise_for_status()
-    return {f'{i["path"]}/{i["name"]}' for i in resp.json()["results"]}
+jf rt upload --server-id=dev-artifactory \
+  "staged/conexus-snapshot-local/gov/gsa/cnxs/ui/ui-war/01.00.000.106-SNAPSHOT/ui-war-01.00.000.106-20251028.205702-37.(*)" \
+  "conexus-snapshot-local/gov/gsa/cnxs/ui/ui-war/01.00.000.106-SNAPSHOT/ui-war-01.00.000.106-20251028.205702-37.{1}"
 
-repo = "conexus-snapshot-local"
-prod = list_paths(PROD_URL, PROD_TOKEN, repo)
-dev = list_paths(DEV_URL, DEV_TOKEN, repo)
 
-missing = prod - dev
-print(f"prod: {len(prod)}, dev: {len(dev)}, missing from dev: {len(missing)}")
-for p in sorted(missing):
-    print(f"  MISSING: {p}")
-
-extra = dev - prod
-if extra:
-    print(f"unexpected extra in dev: {len(extra)}")
-    for p in sorted(extra):
-        print(f"  EXTRA: {p}")
-EOF
 python3 /tmp/diff_snapshot.py
