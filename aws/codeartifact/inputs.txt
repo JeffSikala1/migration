@@ -1,52 +1,34 @@
-"/c/Program Files/Google/Chrome/Application/chrome.exe" --host-resolver-rules="MAP artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov 127.0.0.1" --new-window "https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443"
+cat > /tmp/diff_snapshot.py << 'EOF'
+import os, requests
 
+PROD_URL = "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory"
+DEV_URL = "https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory"
+PROD_TOKEN = os.environ["artifactory_prod_admin_token"]
+DEV_TOKEN = os.environ["artifactory_dev_admin_token"]
 
+def list_paths(base_url, token, repo):
+    resp = requests.post(
+        f"{base_url}/api/search/aql",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "text/plain"},
+        data=f'items.find({{"repo":"{repo}","type":"file"}}).include("path","name")',
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return {f'{i["path"]}/{i["name"]}' for i in resp.json()["results"]}
 
+repo = "conexus-snapshot-local"
+prod = list_paths(PROD_URL, PROD_TOKEN, repo)
+dev = list_paths(DEV_URL, DEV_TOKEN, repo)
 
-curl --resolve artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443:127.0.0.1 \
-  https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping
+missing = prod - dev
+print(f"prod: {len(prod)}, dev: {len(dev)}, missing from dev: {len(missing)}")
+for p in sorted(missing):
+    print(f"  MISSING: {p}")
 
-
-
-& "C:\Program Files\Google\Chrome\Application\chrome.exe" --host-resolver-rules="MAP artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov 127.0.0.1" --new-window "https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443"
-
-
-
-curl --resolve artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443:127.0.0.1 \
-  https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping
-
-
-
-
-curl.exe --resolve artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443:127.0.0.1 https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping
-
-
-netstat -an | grep 8443
-
-
-openssl s_client -connect 127.0.0.1:8443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
-curl -v --resolve artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443:127.0.0.1 https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping
-
-curl -v --resolve artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443:127.0.0.1 -H "Host: artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov" https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping
-
-
-
-ssh -i .ssh/sikala_2 -L 8443:artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443 -N sikaj01@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
-
-curl -v --resolve artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443:127.0.0.1 https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping
-
-& "C:\Program Files\Google\Chrome\Application\chrome.exe" --host-resolver-rules="MAP artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov 127.0.0.1" --new-window "https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443"
-
-
-# How to tunnel to the dev artifactory and hit it locally on port 8443
-SSH key: sikala_2 (in .ssh/ under your home dir — on this laptop that's /h/.ssh/, i.e. H:\.ssh\ — not C:\Users\jeffssikala\.ssh\, they're different locations on this machine)
-
-Example SSH tunnel command:
-ssh -i .ssh/sikala_2 -L 8443:artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443 -N sikaj01@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
-
-Once the SSH tunnel is established, you can access the dev artifactory locally on port 8443 using the Chrome command or curl commands provided above.
-& "C:\Program Files\Google\Chrome\Application\chrome.exe" --host-resolver-rules="MAP artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov 127.0.0.1" --new-window "https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443"
-
-check if it resolves correctly by running:
-curl --resolve artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443:127.0.0.1 \
-  https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping
+extra = dev - prod
+if extra:
+    print(f"unexpected extra in dev: {len(extra)}")
+    for p in sorted(extra):
+        print(f"  EXTRA: {p}")
+EOF
+python3 /tmp/diff_snapshot.py
