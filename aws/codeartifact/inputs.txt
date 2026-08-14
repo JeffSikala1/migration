@@ -1,5 +1,11 @@
-sudo tcpdump -i any -n 'tcp port 8443 or tcp port 9443 or tcp port 443' -c 50 -v
+jf rt curl -s "artifactory-prod" -XPOST /api/search/aql -H "Content-Type: text/plain" -d 'items.find({"repo":"ansible-vault-password-files"})'
 
 
+jf rt curl --server-id=dev-artifactory -XPOST /api/search/aql -H "Content-Type: text/plain" -d 'items.find({"repo":"ansible-vault-password-files"})'
 
-sudo tcpdump -i any -n 'tcp port 8443 or tcp port 9443' -c 30 -v
+
+mkdir -p ~/artifactory-migration/pilot-transfer
+cd ~/artifactory-migration/pilot-transfer
+jf rt download --server-id=prod-artifactory "ansible-vault-password-files/*" ./staged/
+
+jf rt upload --server-id=dev-artifactory "./staged/(*)" "ansible-vault-password-files/{1}"
