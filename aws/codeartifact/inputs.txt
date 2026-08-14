@@ -1,10 +1,8 @@
-nslookup artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
+# create the new listener on 9443, same target group as before
+aws elbv2 create-listener \
+  --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 \
+  --protocol TCP --port 9443 \
+  --default-actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc
 
-
-nslookup artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
-
-nc -zv artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov 8443
-telnet artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov 8443
-Test-NetConnection -ComputerName artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov -Port 9443
-
-curl -sv -o /dev/null https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping 2>&1 | tail -20
+# once confirmed working, remove the now-unneeded 8443 listener
+aws elbv2 delete-listener --listener-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:listener/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712/c57e70a4c0105dea
