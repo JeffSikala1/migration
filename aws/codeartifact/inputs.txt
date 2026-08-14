@@ -1,1 +1,11 @@
-aws ec2 describe-flow-logs --filter "Name=resource-id,Values=vpc-0cb2efc594903069d" --output table
+aws logs start-query \
+  --log-group-name "VPCFlowLogs/fcs-conexus-dev-D" \
+  --start-time $(date -d '30 minutes ago' +%s) \
+  --end-time $(date +%s) \
+  --query-string 'fields @timestamp, srcaddr, dstaddr, srcport, dstport, action
+  | filter dstport = 8443
+  | sort @timestamp desc
+  | limit 50'
+
+
+aws logs get-query-results --query-id <query-id-from-above> --output table
