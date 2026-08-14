@@ -1,155 +1,29 @@
-[sikaj01@ip-10-56-128-233 ~]$ openssl s_client -connect artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
- </dev/null 2>&1 | head -30
-40F7559CBC7F0000:error:8000006E:system library:BIO_connect:Connection timed out:crypto/bio/bio_sock2.c:183:calling connect()
-40F7559CBC7F0000:error:10000067:BIO routines:BIO_connect:connect error:crypto/bio/bio_sock2.c:185:
-40F7559CBC7F0000:error:8000006E:system library:BIO_connect:Connection timed out:crypto/bio/bio_sock2.c:183:calling connect()
-40F7559CBC7F0000:error:10000067:BIO routines:BIO_connect:connect error:crypto/bio/bio_sock2.c:185:
-connect:errno=110
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-listeners --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 --query "Listeners[?Port==\`8443\`]" --output table
-----------------------------------------------------------------------------------------------------------------------------------------------------
-|                                                                 DescribeListeners                                                                |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------+
-|  ListenerArn    |  arn:aws:elasticloadbalancing:us-east-1:471112718870:listener/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712/c57e70a4c0105dea   |
-|  LoadBalancerArn|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712                |
-|  Port           |  8443                                                                                                                          |
-|  Protocol       |  TCP                                                                                                                           |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------+
-||                                                                 DefaultActions                                                                 ||
-|+--------------------+---------------------------------------------------------------------------------------------------------------------------+|
-||  Order             |  1                                                                                                                        ||
-||  TargetGroupArn    |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc                     ||
-||  Type              |  forward                                                                                                                  ||
-|+--------------------+---------------------------------------------------------------------------------------------------------------------------+|
-|||                                                                 ForwardConfig                                                                |||
-||+----------------------------------------------------------------------------------------------------------------------------------------------+||
-||||                                                         TargetGroupStickinessConfig                                                        ||||
-|||+----------------------------------------------------------------------------+---------------------------------------------------------------+|||
-||||  Enabled                                                                   |  False                                                        ||||
-|||+----------------------------------------------------------------------------+---------------------------------------------------------------+|||
-||||                                                                TargetGroups                                                                ||||
-|||+-------------------+------------------------------------------------------------------------------------------------------------------------+|||
-||||  TargetGroupArn   |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc                  ||||
-||||  Weight           |  1                                                                                                                     ||||
-|||+-------------------+------------------------------------------------------------------------------------------------------------------------+|||
+[sikaj01@ip-10-56-128-233 ~]$ docker ps
+CONTAINER ID   IMAGE                                                     COMMAND                  CREATED       STATUS        PORTS                                      NAMES
+05ccbc52a0ba   nginx:1.29.3                                              "/docker-entrypoint.…"   2 weeks ago   Up 2 weeks    0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp   dev-nginx
+bbe9824ab941   releases-docker.jfrog.io/jfrog/artifactory-oss:7.104.14   "/entrypoint-artifac…"   2 weeks ago   Up 19 hours   0.0.0.0:8081-8082->8081-8082/tcp           dev-artifactory
+32baf1b78df2   postgres:15-alpine                                        "docker-entrypoint.s…"   2 weeks ago   Up 2 weeks    5432/tcp                                   dev-postgres
 [sikaj01@ip-10-56-128-233 ~]$ 
 
-
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc --output table
--------------------------------------------------------------------------------------------------------
-|                                        DescribeTargetHealth                                         |
-+-----------------------------------------------------------------------------------------------------+
-||                                     TargetHealthDescriptions                                      ||
-|+---------------------------------------------------------------------------------------------------+|
-||                                          HealthCheckPort                                          ||
-|+---------------------------------------------------------------------------------------------------+|
-||  443                                                                                              ||
-|+---------------------------------------------------------------------------------------------------+|
-|||                                     AdministrativeOverride                                      |||
-||+--------------------------------------------+-------------------------------------+--------------+||
-|||                 Description                |               Reason                |    State     |||
-||+--------------------------------------------+-------------------------------------+--------------+||
-|||  No override is currently active on target |  AdministrativeOverride.NoOverride  |  no_override |||
-||+--------------------------------------------+-------------------------------------+--------------+||
-|||                                             Target                                              |||
-||+-----------------------------------------------------------------------+-------------------------+||
-|||                                  Id                                   |          Port           |||
-||+-----------------------------------------------------------------------+-------------------------+||
-|||  i-0dd6e0c7c4fcc27f9                                                  |  443                    |||
-||+-----------------------------------------------------------------------+-------------------------+||
-|||                                          TargetHealth                                           |||
-||+-------------------------------------------+-----------------------------------------------------+||
-|||  State                                    |  healthy                                            |||
-||+-------------------------------------------+-----------------------------------------------------+||
-[sikaj01@ip-10-56-128-233 ~]$ 
-
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --instance-ids i-0dd6e0c7c4fcc27f9 --query "Reservations[].Instances[].SecurityGroups" --output table
------------------------------------------------------------------------------
-|                             DescribeInstances                             |
-+-----------------------+---------------------------------------------------+
-|        GroupId        |                     GroupName                     |
-+-----------------------+---------------------------------------------------+
-|  sg-011fa66bc3ef9c842 |  vpc-0cb2efc594903069d20250114205005598700000001  |
-+-----------------------+---------------------------------------------------+
-[sikaj01@ip-10-56-128-233 ~]$ 
-
-
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --instance-ids i-0dd6e0c7c4fcc27f9 --query "Reservations[].Instances[].SecurityGroups" --output table
------------------------------------------------------------------------------
-|                             DescribeInstances                             |
-+-----------------------+---------------------------------------------------+
-|        GroupId        |                     GroupName                     |
-+-----------------------+---------------------------------------------------+
-|  sg-011fa66bc3ef9c842 |  vpc-0cb2efc594903069d20250114205005598700000001  |
-+-----------------------+---------------------------------------------------+
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-security-groups --group-ids sg-011fa66bc3ef9c842 --query "SecurityGroups[].IpPermissions" --output table
-------------------------
-|DescribeSecurityGroups|
-+----------------------+
-|      IpProtocol      |
-+----------------------+
-|  -1                  |
-+----------------------+
-||      IpRanges      ||
-|+--------------------+|
-||       CidrIp       ||
-|+--------------------+|
-||  0.0.0.0/0         ||
-|+--------------------+|
-||     Ipv6Ranges     ||
-|+--------------------+|
-||      CidrIpv6      ||
-|+--------------------+|
-||  ::/0              ||
-|+--------------------+|
-[sikaj01@ip-10-56-128-233 ~]$ 
-
-
-[sikaj01@ip-10-56-128-233 ~]$ openssl s_client -connect 127.0.0.1:8443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | grep -E "^depth|verify (error|return)|Verify return code"
-[sikaj01@ip-10-56-128-233 ~]$ curl -sv -o /dev/null https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping 2>&1 | tail -20
-* Host artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443 was resolved.
-* IPv6: (none)
-* IPv4: 10.56.133.26, 10.56.131.182
-*   Trying 10.56.133.26:8443...
-*   Trying 10.56.131.182:8443...
-* connect to 10.56.133.26 port 8443 from 10.56.128.233 port 40162 failed: Connection timed out
-* connect to 10.56.131.182 port 8443 from 10.56.128.233 port 37722 failed: Connection timed out
-* Failed to connect to artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov port 8443 after 130207 ms: Could not connect to server
-* closing connection #0
-[sikaj01@ip-10-56-128-233 ~]$
-
-
-
-
-
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancer-attributes --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 --output table
------------------------------------------------------------------------
-|                   DescribeLoadBalancerAttributes                    |
-+---------------------------------------------------------------------+
-||                            Attributes                             ||
-|+-----------------------------------------+-------------------------+|
-||                   Key                   |          Value          ||
-|+-----------------------------------------+-------------------------+|
-||  deletion_protection.enabled            |  false                  ||
-||  load_balancing.cross_zone.enabled      |  true                   ||
-||  access_logs.s3.enabled                 |  false                  ||
-||  dns_record.client_routing_policy       |  any_availability_zone  ||
-||  access_logs.s3.prefix                  |                         ||
-||  zonal_shift.config.enabled             |  false                  ||
-||  access_logs.s3.bucket                  |                         ||
-||  secondary_ips.auto_assigned.per_subnet |  0                      ||
-|+-----------------------------------------+-------------------------+|
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --load-balancer-arns arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 --query "LoadBalancers[].SecurityGroups" --output table
-[sikaj01@ip-10-56-128-233 ~]$ openssl s_client -connect fcs-conexus-dev-D-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com:8443 -servername artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov </dev/null 2>&1 | head -10
-4017E6A31C7F0000:error:8000006E:system library:BIO_connect:Connection timed out:crypto/bio/bio_sock2.c:183:calling connect()
-4017E6A31C7F0000:error:10000067:BIO routines:BIO_connect:connect error:crypto/bio/bio_sock2.c:185:
-4017E6A31C7F0000:error:8000006E:system library:BIO_connect:Connection timed out:crypto/bio/bio_sock2.c:183:calling connect()
-4017E6A31C7F0000:error:10000067:BIO routines:BIO_connect:connect error:crypto/bio/bio_sock2.c:185:
-connect:errno=110
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --load-balancer-arns arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 --query "LoadBalancers[].State" --output table
------------------------
-|DescribeLoadBalancers|
-+---------------------+
-|        Code         |
-+---------------------+
-|  active             |
-+---------------------+
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --load-balancer-arns arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 --query "LoadBalancers[].AvailabilityZones[].SubnetId" --output table
+------------------------------
+|    DescribeLoadBalancers   |
++----------------------------+
+|  subnet-0fa28a398cb662a71  |
+|  subnet-0826111a038991700  |
++----------------------------+
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-network-acls --filters "Name=association.subnet-id,Values=subnet-0fa28a398cb662a71,subnet-0826111a038991700" --query "NetworkAcls[].Entries" --output table
+----------------------------------------------------------------------------------
+|                               DescribeNetworkAcls                              |
++-----------+---------+----------------+-----------+--------------+--------------+
+| CidrBlock | Egress  | Ipv6CidrBlock  | Protocol  | RuleAction   | RuleNumber   |
++-----------+---------+----------------+-----------+--------------+--------------+
+|  0.0.0.0/0|  True   |                |  -1       |  allow       |  100         |
+|           |  True   |  ::/0          |  -1       |  allow       |  101         |
+|  0.0.0.0/0|  True   |                |  -1       |  deny        |  32767       |
+|           |  True   |  ::/0          |  -1       |  deny        |  32768       |
+|  0.0.0.0/0|  False  |                |  -1       |  allow       |  100         |
+|           |  False  |  ::/0          |  -1       |  allow       |  101         |
+|  0.0.0.0/0|  False  |                |  -1       |  deny        |  32767       |
+|           |  False  |  ::/0          |  -1       |  deny        |  32768       |
++-----------+---------+----------------+-----------+--------------+--------------+
