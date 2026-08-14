@@ -1,9 +1,10 @@
-jf c remove dev-artifactory
-jf c add dev-artifactory \
-  --artifactory-url=https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory \
-  --access-token=$artifactory_dev_admin_token \
-  --interactive=false
-jf rt ping --server-id=dev-artifactory
+cd ~/artifactory-migration/pilot-transfer
+jf rt upload --server-id=dev-artifactory "staged/(*)" "ansible-vault-password-files/{1}"
 
 
-find ~/artifactory-migration/pilot-transfer/staged/ -type f -exec ls -la {} \;
+
+curl -s -XPOST \
+  -H "Authorization: Bearer $artifactory_dev_admin_token" \
+  -H "Content-Type: text/plain" \
+  -d 'items.find({"repo":"ansible-vault-password-files"})' \
+  https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql
