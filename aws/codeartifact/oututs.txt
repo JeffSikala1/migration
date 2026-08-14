@@ -1,15 +1,127 @@
-[root@ip-10-56-112-243 sikaj01]# echo "127.0.0.1 artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov" | sudo tee -a /etc/hosts
+[sikaj01@ip-10-56-128-233 ~]$ echo "127.0.0.1 artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov" | sudo tee -a /etc/hosts
+[sudo] password for sikaj01: 
 127.0.0.1 artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
-[root@ip-10-56-112-243 sikaj01]# curl -sv -o /dev/null https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping 2>&1 | tail -20
+[sikaj01@ip-10-56-128-233 ~]$ curl -sv -o /dev/null https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping 2>&1 | tail -20
 * Host artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443 was resolved.
 * IPv6: (none)
 * IPv4: 127.0.0.1
 *   Trying 127.0.0.1:8443...
-* connect to 127.0.0.1 port 8443 from 127.0.0.1 port 57330 failed: Connection refused
-* Failed to connect to artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov port 8443 after 1 ms: Could not connect to server
+* connect to 127.0.0.1 port 8443 from 127.0.0.1 port 56496 failed: Connection refused
+* Failed to connect to artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov port 8443 after 0 ms: Could not connect to server
 * closing connection #0
-[root@ip-10-56-112-243 sikaj01]# 
 
+[sikaj01@ip-10-56-128-233 ~]$ cat /etc/hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost6 localhost6.localdomain6
+127.0.0.1 artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --names fcs-conexus-dev-D-outuinlb --query "LoadBalancers[].{Name:LoadBalancerName,Scheme:Scheme,DNS:DNSName}" --output table
+-----------------------------------------------------------------------------------------------------------------------
+|                                                DescribeLoadBalancers                                                |
++--------------------------------------------------------------------------+------------------------------+-----------+
+|                                    DNS                                   |            Name              |  Scheme   |
++--------------------------------------------------------------------------+------------------------------+-----------+
+|  fcs-conexus-dev-D-outuinlb-7e5ced0483d329d2.elb.us-east-1.amazonaws.com |  fcs-conexus-dev-D-outuinlb  |  internal |
++--------------------------------------------------------------------------+------------------------------+-----------+
+[sikaj01@ip-10-56-128-233 ~]$  fcs-conexus-dev-D-outuinlb-7e5ced0483d329d2.elb.us-east-1.amazonaws.com^C
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-listeners --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2 --output table
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+|                                                                   DescribeListeners                                                                  |
++------------------------------------------------------------------------------------------------------------------------------------------------------+
+||                                                                      Listeners                                                                     ||
+|+-----------------+----------------------------------------------------------------------------------------------------------------------------------+|
+||  ListenerArn    |  arn:aws:elasticloadbalancing:us-east-1:471112718870:listener/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2/2c6e2da541d7c820   ||
+||  LoadBalancerArn|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2                ||
+||  Port           |  80                                                                                                                              ||
+||  Protocol       |  TCP                                                                                                                             ||
+|+-----------------+----------------------------------------------------------------------------------------------------------------------------------+|
+|||                                                                  DefaultActions                                                                  |||
+||+------------------+-------------------------------------------------------------------------------------------------------------------------------+||
+|||  Order           |  1                                                                                                                            |||
+|||  TargetGroupArn  |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgrouphttp/40cdc6e1a7240730              |||
+|||  Type            |  forward                                                                                                                      |||
+||+------------------+-------------------------------------------------------------------------------------------------------------------------------+||
+||||                                                                  ForwardConfig                                                                 ||||
+|||+------------------------------------------------------------------------------------------------------------------------------------------------+|||
+|||||                                                          TargetGroupStickinessConfig                                                         |||||
+||||+-----------------------------------------------------------------------------+----------------------------------------------------------------+||||
+|||||  Enabled                                                                    |  False                                                         |||||
+||||+-----------------------------------------------------------------------------+----------------------------------------------------------------+||||
+|||||                                                                 TargetGroups                                                                 |||||
+||||+-----------------+----------------------------------------------------------------------------------------------------------------------------+||||
+|||||  TargetGroupArn |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgrouphttp/40cdc6e1a7240730           |||||
+||||+-----------------+----------------------------------------------------------------------------------------------------------------------------+||||
+||                                                                      Listeners                                                                     ||
+|+-----------------+----------------------------------------------------------------------------------------------------------------------------------+|
+||  ListenerArn    |  arn:aws:elasticloadbalancing:us-east-1:471112718870:listener/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2/37783e114971b719   ||
+||  LoadBalancerArn|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2                ||
+||  Port           |  22                                                                                                                              ||
+||  Protocol       |  TCP                                                                                                                             ||
+|+-----------------+----------------------------------------------------------------------------------------------------------------------------------+|
+|||                                                                  DefaultActions                                                                  |||
+||+------------------+-------------------------------------------------------------------------------------------------------------------------------+||
+|||  Order           |  1                                                                                                                            |||
+|||  TargetGroupArn  |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroupsftp/f178a3ccb3ba3125              |||
+|||  Type            |  forward                                                                                                                      |||
+||+------------------+-------------------------------------------------------------------------------------------------------------------------------+||
+||||                                                                  ForwardConfig                                                                 ||||
+|||+------------------------------------------------------------------------------------------------------------------------------------------------+|||
+|||||                                                          TargetGroupStickinessConfig                                                         |||||
+||||+-----------------------------------------------------------------------------+----------------------------------------------------------------+||||
+|||||  Enabled                                                                    |  False                                                         |||||
+||||+-----------------------------------------------------------------------------+----------------------------------------------------------------+||||
+|||||                                                                 TargetGroups                                                                 |||||
+||||+-----------------+----------------------------------------------------------------------------------------------------------------------------+||||
+|||||  TargetGroupArn |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroupsftp/f178a3ccb3ba3125           |||||
+||||+-----------------+----------------------------------------------------------------------------------------------------------------------------+||||
+||                                                                      Listeners                                                                     ||
+|+-----------------+----------------------------------------------------------------------------------------------------------------------------------+|
+||  ListenerArn    |  arn:aws:elasticloadbalancing:us-east-1:471112718870:listener/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2/8020e5aece1cf18b   ||
+||  LoadBalancerArn|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2                ||
+||  Port           |  443                                                                                                                             ||
+||  Protocol       |  TCP                                                                                                                             ||
+|+-----------------+----------------------------------------------------------------------------------------------------------------------------------+|
+|||                                                                  DefaultActions                                                                  |||
+||+-------------------+------------------------------------------------------------------------------------------------------------------------------+||
+|||  Order            |  1                                                                                                                           |||
+|||  TargetGroupArn   |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroup/d96dfbe2ad719fdf                 |||
+|||  Type             |  forward                                                                                                                     |||
+||+-------------------+------------------------------------------------------------------------------------------------------------------------------+||
+||||                                                                  ForwardConfig                                                                 ||||
+|||+------------------------------------------------------------------------------------------------------------------------------------------------+|||
+|||||                                                          TargetGroupStickinessConfig                                                         |||||
+||||+-----------------------------------------------------------------------------+----------------------------------------------------------------+||||
+|||||  Enabled                                                                    |  False                                                         |||||
+||||+-----------------------------------------------------------------------------+----------------------------------------------------------------+||||
+|||||                                                                 TargetGroups                                                                 |||||
+||||+------------------+---------------------------------------------------------------------------------------------------------------------------+||||
+|||||  TargetGroupArn  |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroup/d96dfbe2ad719fdf              |||||
+||||+------------------+---------------------------------------------------------------------------------------------------------------------------+||||
+(END)
 
-artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov to fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.
-maybe artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov to fcs-conexus-dev-D-outuinlb-7e5ced0483d329d2.elb.us-east-1.amazonaws.com
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-groups --query "TargetGroups[?LoadBalancerArns[0]==\`arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2\`].{Name:TargetGroupName,ARN:TargetGroupArn}" --output table
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+|                                                                DescribeTargetGroups                                                                 |
++-------------------------------------------------------------------------------------------------------------------+---------------------------------+
+|                                                        ARN                                                        |              Name               |
++-------------------------------------------------------------------------------------------------------------------+---------------------------------+
+|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroup/d96dfbe2ad719fdf      |  outuinlbtouialbtargetgroup     |
+|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgrouphttp/40cdc6e1a7240730  |  outuinlbtouialbtargetgrouphttp |
+|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroupsftp/f178a3ccb3ba3125  |  outuinlbtouialbtargetgroupsftp |
++-------------------------------------------------------------------------------------------------------------------+---------------------------------+
+[sikaj01@ip-10-56-128-233 ~]$ aws route53 list-hosted-zones-by-name --dns-name dev.cnxs.vpcaas.fcs.gsa.gov --query "HostedZones[?Config.PrivateZone==\`true\`].Id" --output text
+/hostedzone/Z0302955A48RKPB320IR
+
+[sikaj01@ip-10-56-128-233 ~]$ aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --query "ResourceRecordSets[?Name=='artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.']" --output table
+------------------------------------------------------------------------------------------------------------------------
+|                                                ListResourceRecordSets                                                |
++-----------------------------------------------------------------------------------------------------+----------------+
+|                                                Name                                                 |     Type       |
++-----------------------------------------------------------------------------------------------------+----------------+
+|  artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.                                                      |  A             |
++-----------------------------------------------------------------------------------------------------+----------------+
+||                                                     AliasTarget                                                    ||
+|+-------------------------------------------------------------------------+-----------------------+------------------+|
+||                                 DNSName                                 | EvaluateTargetHealth  |  HostedZoneId    ||
+|+-------------------------------------------------------------------------+-----------------------+------------------+|
+||  fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com. |  True                 |  Z26RNL4JYFTOTI  ||
+|+-------------------------------------------------------------------------+-----------------------+------------------+|

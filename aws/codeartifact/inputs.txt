@@ -2,10 +2,10 @@
 aws elbv2 describe-load-balancers --names fcs-conexus-dev-D-outuinlb --query "LoadBalancers[].{Name:LoadBalancerName,Scheme:Scheme,DNS:DNSName}" --output table
 
 # Does it have a listener on 443/8443, and what target group(s) does it forward to?
-aws elbv2 describe-listeners --load-balancer-arn <ARN from above> --output table
+aws elbv2 describe-listeners --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2 --output table
 
 # Is artifactory-test-tg (or any target group containing i-0dd6e0c7c4fcc27f9) attached to THIS load balancer too?
-aws elbv2 describe-target-groups --query "TargetGroups[?LoadBalancerArns[0]==\`<outuinlb ARN>\`].{Name:TargetGroupName,ARN:TargetGroupArn}" --output table
+aws elbv2 describe-target-groups --query "TargetGroups[?LoadBalancerArns[0]==\`arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2\`].{Name:TargetGroupName,ARN:TargetGroupArn}" --output table
 
 # And what does the current private hosted zone record for the hostname actually point to right now?
 aws route53 list-hosted-zones-by-name --dns-name dev.cnxs.vpcaas.fcs.gsa.gov --query "HostedZones[?Config.PrivateZone==\`true\`].Id" --output text
@@ -13,7 +13,7 @@ aws route53 list-hosted-zones-by-name --dns-name dev.cnxs.vpcaas.fcs.gsa.gov --q
 
 
 
-aws route53 list-resource-record-sets --hosted-zone-id <zone-id> --query "ResourceRecordSets[?Name=='artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.']" --output table
+aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --query "ResourceRecordSets[?Name=='artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.']" --output table
 
 
 echo "127.0.0.1 artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov" | sudo tee -a /etc/hosts
