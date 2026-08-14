@@ -1,27 +1,10 @@
-# What is outuinlb, and is it internal-facing?
-aws elbv2 describe-load-balancers --names fcs-conexus-dev-D-outuinlb --query "LoadBalancers[].{Name:LoadBalancerName,Scheme:Scheme,DNS:DNSName}" --output table
-
-# Does it have a listener on 443/8443, and what target group(s) does it forward to?
-aws elbv2 describe-listeners --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2 --output table
-
-# Is artifactory-test-tg (or any target group containing i-0dd6e0c7c4fcc27f9) attached to THIS load balancer too?
-aws elbv2 describe-target-groups --query "TargetGroups[?LoadBalancerArns[0]==\`arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2\`].{Name:TargetGroupName,ARN:TargetGroupArn}" --output table
-
-# And what does the current private hosted zone record for the hostname actually point to right now?
-aws route53 list-hosted-zones-by-name --dns-name dev.cnxs.vpcaas.fcs.gsa.gov --query "HostedZones[?Config.PrivateZone==\`true\`].Id" --output text
+nslookup artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
 
 
+nslookup artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov
 
-
-aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --query "ResourceRecordSets[?Name=='artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.']" --output table
-
-
-echo "127.0.0.1 artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov" | sudo tee -a /etc/hosts
-
-
+nc -zv artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov 8443
+telnet artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov 8443
+Test-connection to artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov on port 8443
+Test-connection -ComputerName artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov -Port 8443
 curl -sv -o /dev/null https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov:8443/artifactory/api/system/ping 2>&1 | tail -20
-jf rt ping --server-id=dev-artifactory
-
-
-jf c edit dev-artifactory --url=https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov --access-token=$artifactory_dev_admin_token --interactive=false
-jf rt ping --server-id=dev-artifactory
