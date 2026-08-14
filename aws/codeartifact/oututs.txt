@@ -1,18 +1,3 @@
-[sikaj01@ip-10-56-128-233 pilot-transfer]$ jf c add prod-artifactory \
-  --artifactory-url=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory \
-  --access-token=$artifactory_prod_admin_token \
-  --interactive=false
-[sikaj01@ip-10-56-128-233 pilot-transfer]$ jf rt ping --server-id=prod-artifactory
-OK
-[sikaj01@ip-10-56-128-233 pilot-transfer]$ jf rt download --server-id=prod-artifactory "ansible-vault-password-files/*" staged/
-14:23:01 [🔵Info] Log path: /home/sikaj01/.jfrog/logs/jfrog-cli.2026-08-14.14-23-01.1033621.log
-{
-  "status": "success",
-  "totals": {
-    "success": 3,
-    "failure": 0
-  }
-}
 [sikaj01@ip-10-56-128-233 pilot-transfer]$ jf rt download --server-id=prod-artifactory "ansible-vault-password-files/*" staged/
 14:23:31 [🔵Info] Log path: /home/sikaj01/.jfrog/logs/jfrog-cli.2026-08-14.14-23-31.1033642.log
 {
@@ -34,4 +19,68 @@ OK
 -rw-r-----. 1 sikaj01 users 33 Aug 14 14:23 /home/sikaj01/artifactory-migration/pilot-transfer/staged/Prod
 -rw-r-----. 1 sikaj01 users 33 Aug 14 14:23 /home/sikaj01/artifactory-migration/pilot-transfer/staged/Cert
 -rw-r-----. 1 sikaj01 users 33 Aug 14 14:23 /home/sikaj01/artifactory-migration/pilot-transfer/staged/Test
-[sikaj01@ip-10-56-128-233 pilot-transfer]$ 
+[sikaj01@ip-10-56-128-233 pilot-transfer]$ cd ~/artifactory-migration/pilot-transfer
+[sikaj01@ip-10-56-128-233 pilot-transfer]$ jf rt upload --server-id=dev-artifactory "staged/(*)" "ansible-vault-password-files/{1}"
+14:29:22 [🔵Info] Log path: /home/sikaj01/.jfrog/logs/jfrog-cli.2026-08-14.14-29-22.1033954.log
+14:29:22 [🔵Info] These files were uploaded:
+
+📦 ansible-vault-password-files
+├── 📄 Cert
+├── 📄 Prod
+└── 📄 Test
+
+
+{
+  "status": "success",
+  "totals": {
+    "success": 3,
+    "failure": 0
+  }
+}
+[sikaj01@ip-10-56-128-233 pilot-transfer]$ curl -s -XPOST \
+  -H "Authorization: Bearer $artifactory_dev_admin_token" \
+  -H "Content-Type: text/plain" \
+  -d 'items.find({"repo":"ansible-vault-password-files"})' \
+  https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql
+
+{
+"results" : [ {
+  "repo" : "ansible-vault-password-files",
+  "path" : ".",
+  "name" : "Cert",
+  "type" : "file",
+  "size" : 33,
+  "created" : "2026-08-14T14:29:22.312Z",
+  "created_by" : "admin",
+  "modified" : "2026-08-14T14:29:22.312Z",
+  "modified_by" : "admin",
+  "updated" : "2026-08-14T14:29:22.380Z"
+},{
+  "repo" : "ansible-vault-password-files",
+  "path" : ".",
+  "name" : "Test",
+  "type" : "file",
+  "size" : 33,
+  "created" : "2026-08-14T14:29:22.312Z",
+  "created_by" : "admin",
+  "modified" : "2026-08-14T14:29:22.312Z",
+  "modified_by" : "admin",
+  "updated" : "2026-08-14T14:29:22.380Z"
+},{
+  "repo" : "ansible-vault-password-files",
+  "path" : ".",
+  "name" : "Prod",
+  "type" : "file",
+  "size" : 33,
+  "created" : "2026-08-14T14:29:22.310Z",
+  "created_by" : "admin",
+  "modified" : "2026-08-14T14:29:22.310Z",
+  "modified_by" : "admin",
+  "updated" : "2026-08-14T14:29:22.380Z"
+} ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 3,
+  "total" : 3
+}
+}
