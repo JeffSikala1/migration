@@ -931,3 +931,177 @@ Aug 19 18:07:30 ip-10-56-128-233.ec2.internal crontab[330392]: (root) LIST (sika
 
 
 === END OF REPORT ===
+
+
+
+
+
+[sikaj01@ip-10-56-112-34 ~]$ sudo su -
+Last login: Wed Aug 19 14:55:03 UTC 2026 on pts/1
+[root@ip-10-56-112-34 ~]# history | grep nginxVolume
+  144  find /var/lib/docker/volumes/nginxVolume/_data -maxdepth 3 -type f \(   -name "nginx.conf" -o   -name "*.conf" -o   -path "*/certificates/*" \) | sort
+  145  find /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data -maxdepth 3 -type f \(   -name "nginx.conf" -o   -name "*.conf" -o   -path "*/certificates/*" \) | sort
+  147  cat /var/lib/docker/volumes/nginxVolume/_data/nginx.conf
+  148  cat /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/nginx.conf
+  149  ls -lah /var/lib/docker/volumes/nginxVolume/_data/conf.d
+  150  ls -lah /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/conf.d
+  151  cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf 
+  152  cat /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf 
+  153  cat /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/conf.d/default.conf 
+  154  cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/default.conf 
+  155  openssl x509 -in /var/lib/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -subject -issuer -dates
+  156  openssl x509 -in /var/lib/docker/volumes/nginxVolume/_data/nginxVolume/_data/certificates/mgmt_wildcard.pem -noout -subject -issuer -dates
+  159  docker volume inspect nginxVolume
+  161  ls -alh /var/lib/docker/volumes/nginxVolume/_
+  175  find /var/lib/docker/volumes/nginxVolume -type f | sort | egrep 'bamboo|conf$|\.conf$'
+  177  grep -Rni 'bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov\|prod-bamboo\|:8085\|server_name.*bamboo' /var/lib/docker/volumes/nginxVolume 2>/dev/null
+  227  ls -l /var/lib/docker/volumes/nginxVolume/
+  228  ls -l /var/lib/docker/volumes/nginxVolume/_data/
+  230  ls -l /app/docker/volumes/nginxVolume/_data/certificates/
+  236  docker volume inspect nginxVolume
+  237  ll /app/docker/volumes/nginxVolume/_data/
+  238  ll /app/docker/volumes/nginxVolume/_data/certificates/
+  239  ll /app/docker/volumes/nginxVolume/_data/conf.d/
+  240  grep -RniE 'ssl_certificate|ssl_certificate_key' /app/docker/volumes/nginxVolume/_data
+  242  cd /app/docker/volumes/nginxVolume/_data/certificates
+  255  openssl x509 -in /app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem -pubkey -noout   | openssl pkey -pubin -outform DER   | openssl dgst -sha256
+  256  openssl pkey -in /app/docker/volumes/nginxVolume/_data/certificates/privatekey.key -pubout -outform DER   | openssl dgst -sha256
+  284  CERT=/app/docker/volumes/nginxVolume/_data/certificates/mgmt_wildcard.pem
+  285  KEY=/app/docker/volumes/nginxVolume/_data/certificates/privatekey.key
+  682  docker volume inspect nginxVolume
+  683  ls -l /app/docker/volumes/nginxVolume/_data
+  684  less /app/docker/volumes/nginxVolume/_data/nginx.conf 
+  685  less /app/docker/volumes/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf 
+  753  cd /app/docker/volumes/nginxVolume/_data/
+  873  docker volumes inspect bambooVolume bitbucketVolume nginxVolume
+  874  docker volume inspect bambooVolume bitbucketVolume nginxVolume
+  875  docker volume inspect bambooVolume bitbucketVolume nginxVolume optbambooVolume optbitbucketVolume optbitbucketVolume94 pgdataVolume16
+  985  cat /var/lib/docker/volumes/nginxVolume/_data/nginx.conf
+  986  cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf
+  987  cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/default.conf 
+  988  cat /var/lib/docker/volumes/nginxVolume/_data/find /var/lib/docker/volumes/nginxVolume -type f | sort | egrep 'bamboo|conf$|\.conf$'
+ 1000  history | grep nginxVolume
+[root@ip-10-56-112-34 ~]# !986
+cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/cnxs-mgmt-bitbucket.conf
+server {
+    server_name bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+    listen 80;
+    return 301 https://$http_host/;
+
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    listen [::]:443 ssl;
+    server_name bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov;
+    ssl_certificate /etc/nginx/certificates/mgmt_wildcard.pem;
+    ssl_certificate_key /etc/nginx/certificates/privatekey.key;
+#    include sites.common;
+    resolver 127.0.0.11 ipv6=off valid=30s;
+    location / {
+        set $stagingbitbucket http://cnxs-mgmt-bitbucket:7990;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_pass http://cnxs-mgmt-bitbucket:7990;
+        proxy_http_version 1.1;
+
+        # helpful for large pushes / long ops
+        client_max_body_size 0;
+        proxy_read_timeout  600s;
+        proxy_send_timeout  600s;
+        send_timeout        600s;
+    }
+
+}
+[root@ip-10-56-112-34 ~]# cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/
+cnxs-mgmt-bitbucket.conf  default.conf              
+[root@ip-10-56-112-34 ~]# cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/
+cnxs-mgmt-bitbucket.conf  default.conf              
+[root@ip-10-56-112-34 ~]# cat /var/lib/docker/volumes/nginxVolume/_data/conf.d/default.conf 
+server {
+    listen       80;
+    listen  [::]:80;
+    server_name  localhost;
+
+    #access_log  /var/log/nginx/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+
+    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+    #
+    #location ~ \.php$ {
+    #    proxy_pass   http://127.0.0.1;
+    #}
+
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    #
+    #location ~ \.php$ {
+    #    root           html;
+    #    fastcgi_pass   127.0.0.1:9000;
+    #    fastcgi_index  index.php;
+    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+    #    include        fastcgi_params;
+    #}
+
+    # deny access to .htaccess files, if Apache's document root
+    # concurs with nginx's one
+    #
+    #location ~ /\.ht {
+    #    deny  all;
+    #}
+}
+
+[root@ip-10-56-112-34 ~]# cat /var/lib/docker/volumes/nginxVolume/_data/
+README                blocklist/            ca-bundle.trust.crt   edk2/                 mime.types            nginxVolume/          scgi_params
+anchors/              ca-bundle.crt         certificates/         fastcgi_params        modules               openssl/              uwsgi_params
+blacklist/            ca-bundle.legacy.crt  conf.d/               java/                 nginx.conf            pem/                  
+[root@ip-10-56-112-34 ~]# cat /var/lib/docker/volumes/nginxVolume/_data/nginx.conf 
+
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    include /etc/nginx/conf.d/*.conf;
+}
