@@ -1,13 +1,36 @@
-# confirm the new size took
-curl -s http://169.254.169.254/latest/meta-data/instance-type
-nproc
-free -h
-
-# confirm all three existing containers came back healthy after the stop/start
-docker ps -a
-docker logs dev-artifactory --tail 50
-docker logs dev-nginx --tail 20
+docker start dev-postgres
+sleep 5
 docker logs dev-postgres --tail 20
+
+docker start dev-artifactory
+sleep 10
+docker logs dev-artifactory --tail 50
+
+docker start dev-nginx
+docker logs dev-nginx --tail 20
+
+docker ps -a   # confirm all three show "Up"
+
+
+
+
+
+# On .34 (mgmt account, S3 access works here)
+mkdir -p /tmp/atlassian-restore-relay
+cd /tmp/atlassian-restore-relay
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-20/bitbucket_20260820_021501.tar.gz .
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-20/bamboo_20260820_021501.tar.gz .
+aws s3 cp s3://cnxs-atlassian-backups/postgres/2026-08-20/bitbucket_20260820_021501.dump .
+aws s3 cp s3://cnxs-atlassian-backups/postgres/2026-08-20/bamboo_20260820_021501.dump .
+aws s3 cp s3://cnxs-atlassian-backups/postgres/2026-08-20/globals_20260820_021501.sql .
+
+# relay to the bastion
+scp /tmp/atlassian-restore-relay/* sikaj01@10.56.112.33:/tmp/atlassian-restore-relay/
+
+# then from .33, relay to .233
+ssh sikaj01@10.56.112.33
+scp /tmp/atlassian-restore-relay/* sikaj01@10.56.128.233:/app/restore-staging/
+
 
 
 
