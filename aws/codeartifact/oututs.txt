@@ -1,1244 +1,249 @@
-bash: [default]: command not found
-bash: aws_access_key_id: command not found
-bash: aws_secret_access_key: command not found
-[sikaj01@ip-10-56-112-33 ~]$ ssh -i ~/.ssh/id_rsa sikaj01@10.56.112.34
-Authorized uses only. All activity may be monitored and reported.
-Authorized uses only. All activity may be monitored and reported.
-   ,     #_
-   ~\_  ####_        Amazon Linux 2023
-  ~~  \_#####\
-  ~~     \###|
-  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
-   ~~       V~' '->
-    ~~~         /
-      ~~._.   _/
-         _/ _/
-       _/m/'
-Last login: Wed Aug 19 18:15:19 2026 from 10.56.112.33
-[sikaj01@ip-10-56-112-34 ~]$ sudo su -
-Last login: Wed Aug 19 18:18:46 UTC 2026 on pts/1
-[root@ip-10-56-112-34 ~]# cat /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-#!/usr/bin/env bash
-set -euo pipefail
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U artifactory -c "\du"
+                                    List of roles
+  Role name  |                         Attributes                         | Member of 
+-------------+------------------------------------------------------------+-----------
+ artifactory | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
 
-# ===== Config =====
-BUCKET="s3://cnxs-atlassian-backups"
-DATE="$(date +%F)"
-TS="$(date +%Y%m%d_%H%M%S)"
-BASE="/app/bamboobackup/atlassian-backups"
-STAGE="${BASE}/staging/${DATE}/${TS}"
-LOGDIR="${BASE}/logs"
-LOG="${LOGDIR}/nightly-${DATE}.log"
-HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
-AWS_REGION="${AWS_REGION:-us-east-1}"
 
-PG_CONTAINER="${PG_CONTAINER:-prod-postgres}"
-DB_LIST=(${DB_LIST:-bitbucket bamboo})   # space-separated, override if needed
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls s3://cnxs-atlassian-backups/apps/
 
-mkdir -p "$STAGE" "$LOGDIR"
-exec > >(tee -a "$LOG") 2>&1
+An error occurred (AccessDenied) when calling the ListObjectsV2 operation: User: arn:aws:iam::471112718870:user/jeff.sikala is not authorized to perform: s3:ListBucket on resource: "arn:aws:s3:::cnxs-atlassian-backups" because no resource-based policy allows the s3:ListBucket action
+[sikaj01@ip-10-56-128-233 ~]$ 
 
-echo "==== Nightly backup start: ${TS} host=${HOSTNAME} ===="
 
-# ===== Helpers =====
-need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
-need aws
-need docker
-need tar
+[sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/apps/
+                           PRE 2026-01-06/
+                           PRE 2026-01-07/
+                           PRE 2026-01-08/
+                           PRE 2026-01-09/
+                           PRE 2026-01-10/
+                           PRE 2026-01-11/
+                           PRE 2026-01-12/
+                           PRE 2026-01-13/
+                           PRE 2026-01-16/
+                           PRE 2026-01-17/
+                           PRE 2026-01-18/
+                           PRE 2026-01-19/
+                           PRE 2026-01-20/
+                           PRE 2026-01-21/
+                           PRE 2026-01-22/
+                           PRE 2026-01-23/
+                           PRE 2026-01-24/
+                           PRE 2026-01-25/
+                           PRE 2026-01-26/
+                           PRE 2026-01-27/
+                           PRE 2026-01-28/
+                           PRE 2026-01-29/
+                           PRE 2026-01-30/
+                           PRE 2026-01-31/
+                           PRE 2026-02-01/
+                           PRE 2026-02-02/
+                           PRE 2026-02-03/
+                           PRE 2026-02-04/
+                           PRE 2026-02-05/
+                           PRE 2026-02-06/
+                           PRE 2026-02-07/
+                           PRE 2026-02-08/
+                           PRE 2026-02-09/
+                           PRE 2026-02-10/
+                           PRE 2026-02-11/
+                           PRE 2026-02-12/
+                           PRE 2026-02-13/
+                           PRE 2026-02-14/
+                           PRE 2026-02-15/
+                           PRE 2026-02-16/
+                           PRE 2026-02-17/
+                           PRE 2026-02-18/
+                           PRE 2026-02-19/
+                           PRE 2026-02-20/
+                           PRE 2026-02-21/
+                           PRE 2026-02-22/
+                           PRE 2026-02-23/
+                           PRE 2026-02-24/
+                           PRE 2026-02-25/
+                           PRE 2026-02-26/
+                           PRE 2026-02-27/
+                           PRE 2026-02-28/
+                           PRE 2026-03-01/
+                           PRE 2026-03-02/
+                           PRE 2026-03-03/
+                           PRE 2026-03-04/
+                           PRE 2026-03-05/
+                           PRE 2026-03-06/
+                           PRE 2026-03-07/
+                           PRE 2026-03-08/
+                           PRE 2026-03-09/
+                           PRE 2026-03-10/
+                           PRE 2026-03-11/
+                           PRE 2026-03-12/
+                           PRE 2026-03-13/
+                           PRE 2026-03-14/
+                           PRE 2026-03-15/
+                           PRE 2026-03-16/
+                           PRE 2026-03-17/
+                           PRE 2026-03-18/
+                           PRE 2026-03-19/
+                           PRE 2026-03-20/
+                           PRE 2026-03-21/
+                           PRE 2026-03-22/
+                           PRE 2026-03-23/
+                           PRE 2026-03-24/
+                           PRE 2026-03-25/
+                           PRE 2026-03-26/
+                           PRE 2026-03-27/
+                           PRE 2026-03-28/
+                           PRE 2026-03-29/
+                           PRE 2026-03-30/
+                           PRE 2026-03-31/
+                           PRE 2026-04-01/
+                           PRE 2026-04-02/
+                           PRE 2026-04-03/
+                           PRE 2026-04-04/
+                           PRE 2026-04-05/
+                           PRE 2026-04-06/
+                           PRE 2026-04-07/
+                           PRE 2026-04-08/
+                           PRE 2026-04-09/
+                           PRE 2026-04-10/
+                           PRE 2026-04-11/
+                           PRE 2026-04-12/
+                           PRE 2026-04-13/
+                           PRE 2026-04-14/
+                           PRE 2026-04-15/
+                           PRE 2026-04-16/
+                           PRE 2026-04-17/
+                           PRE 2026-04-18/
+                           PRE 2026-04-19/
+                           PRE 2026-04-20/
+                           PRE 2026-04-21/
+                           PRE 2026-04-22/
+                           PRE 2026-04-23/
+                           PRE 2026-04-24/
+                           PRE 2026-04-25/
+                           PRE 2026-04-26/
+                           PRE 2026-04-27/
+                           PRE 2026-04-28/
+                           PRE 2026-04-29/
+                           PRE 2026-05-02/
+                           PRE 2026-05-03/
+                           PRE 2026-05-04/
+                           PRE 2026-05-05/
+                           PRE 2026-05-06/
+                           PRE 2026-05-07/
+                           PRE 2026-05-08/
+                           PRE 2026-05-09/
+                           PRE 2026-05-10/
+                           PRE 2026-05-11/
+                           PRE 2026-05-12/
+                           PRE 2026-05-13/
+                           PRE 2026-05-14/
+                           PRE 2026-05-15/
+                           PRE 2026-05-16/
+                           PRE 2026-05-17/
+                           PRE 2026-05-18/
+                           PRE 2026-05-19/
+                           PRE 2026-05-20/
+                           PRE 2026-05-21/
+                           PRE 2026-05-22/
+                           PRE 2026-05-23/
+                           PRE 2026-05-24/
+                           PRE 2026-05-25/
+                           PRE 2026-05-26/
+                           PRE 2026-05-27/
+                           PRE 2026-05-28/
+                           PRE 2026-05-29/
+                           PRE 2026-05-30/
+                           PRE 2026-05-31/
+                           PRE 2026-06-01/
+                           PRE 2026-06-02/
+                           PRE 2026-06-03/
+                           PRE 2026-06-04/
+                           PRE 2026-06-05/
+                           PRE 2026-06-06/
+                           PRE 2026-06-07/
+                           PRE 2026-06-08/
+                           PRE 2026-06-09/
+                           PRE 2026-06-10/
+                           PRE 2026-06-11/
+                           PRE 2026-06-12/
+                           PRE 2026-06-13/
+                           PRE 2026-06-14/
+                           PRE 2026-06-15/
+                           PRE 2026-06-16/
+                           PRE 2026-06-17/
+                           PRE 2026-06-18/
+                           PRE 2026-06-19/
+                           PRE 2026-06-20/
+                           PRE 2026-06-21/
+                           PRE 2026-06-22/
+                           PRE 2026-06-23/
+                           PRE 2026-06-24/
+                           PRE 2026-06-25/
+                           PRE 2026-06-26/
+                           PRE 2026-06-27/
+                           PRE 2026-06-28/
+                           PRE 2026-06-29/
+                           PRE 2026-06-30/
+                           PRE 2026-07-01/
+                           PRE 2026-07-02/
+                           PRE 2026-07-03/
+                           PRE 2026-07-04/
+                           PRE 2026-07-05/
+                           PRE 2026-07-06/
+                           PRE 2026-07-07/
+                           PRE 2026-07-08/
+                           PRE 2026-07-09/
+                           PRE 2026-07-10/
+                           PRE 2026-07-11/
+                           PRE 2026-07-12/
+                           PRE 2026-07-13/
+                           PRE 2026-07-14/
+                           PRE 2026-07-15/
+                           PRE 2026-07-16/
+                           PRE 2026-07-17/
+                           PRE 2026-07-18/
+                           PRE 2026-07-19/
+                           PRE 2026-07-20/
+                           PRE 2026-07-21/
+                           PRE 2026-07-22/
+                           PRE 2026-07-23/
+                           PRE 2026-07-24/
+                           PRE 2026-07-25/
+                           PRE 2026-07-26/
+                           PRE 2026-07-27/
+                           PRE 2026-07-28/
+                           PRE 2026-07-29/
+                           PRE 2026-07-30/
+                           PRE 2026-07-31/
+                           PRE 2026-08-01/
+                           PRE 2026-08-02/
+                           PRE 2026-08-03/
+                           PRE 2026-08-04/
+                           PRE 2026-08-05/
+                           PRE 2026-08-06/
+                           PRE 2026-08-07/
+                           PRE 2026-08-08/
+                           PRE 2026-08-09/
+                           PRE 2026-08-10/
+                           PRE 2026-08-11/
+                           PRE 2026-08-12/
+                           PRE 2026-08-13/
+                           PRE 2026-08-14/
+                           PRE 2026-08-15/
+                           PRE 2026-08-16/
+                           PRE 2026-08-17/
+                           PRE 2026-08-18/
+                           PRE 2026-08-19/
+                           PRE 2026-08-20/
+2026-05-04 21:07:24         65 test_upload.txt
+[sikaj01@ip-10-56-112-34 ~]$ 
 
-have_jq=0
-if command -v jq >/dev/null 2>&1; then
-  have_jq=1
-else
-  echo "WARN: jq not found; metadata.json will be minimal."
-fi
-
-s3_put_dir() {
-  local src="$1" dest="$2"
-  aws s3 cp "$src" "$dest" --recursive
-}
-
-s3_put_file() {
-  local src="$1" dest="$2"
-  aws s3 cp "$src" "$dest"
-}
-
-# ===== 1) Postgres dumps (logical) =====
-echo "[1/6] Postgres dumps..."
-mkdir -p "$STAGE/postgres"
-
-# quick sanity check container exists
-if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
-  echo "ERROR: Postgres container '$PG_CONTAINER' not running. Aborting."
-  exit 3
-fi
-
-# Dump globals (roles, grants) - optional but recommended
-echo "  - dumping globals (roles/grants)"
-docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
-  > "$STAGE/postgres/globals_${TS}.sql"
-
-for DB in "${DB_LIST[@]}"; do
-  echo "  - dumping ${DB}"
-  docker exec "$PG_CONTAINER" pg_dump -U postgres -Fc "$DB" \
-    > "$STAGE/postgres/${DB}_${TS}.dump"
-done
-
-# ===== 2) Atlassian volumes (tar) =====
-echo "[2/6] Atlassian volume backups..."
-mkdir -p "$STAGE/apps"
-
-tar -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" \
-  /var/lib/docker/volumes/bitbucketVolume/_data \
-  /var/lib/docker/volumes/optbitbucketVolume/_data
-
-tar -czf "$STAGE/apps/bamboo_${TS}.tar.gz" \
-  /var/lib/docker/volumes/bambooVolume/_data \
-  /var/lib/docker/volumes/optbambooVolume/_data
-
-# ===== 3) NGINX + TLS/certs/config =====
-echo "[3/6] NGINX + TLS backup..."
-mkdir -p "$STAGE/nginx"
-
-# Include common cert locations; ignore missing
-tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
-  /etc/nginx \
-  /var/lib/docker/volumes/nginxVolume/_data \
-  /etc/ssl \
-  /etc/pki \
-  2>/dev/null || true
-
-# ===== 4) Bamboo keystores (explicit safety net) =====
-echo "[4/6] Bamboo keystore safety backup..."
-mkdir -p "$STAGE/crypto"
-
-tar -czf "$STAGE/crypto/bamboo_keystores_${TS}.tar.gz" \
-  /var/lib/docker/volumes/bambooVolume/_data \
-  /var/lib/docker/volumes/optbambooVolume/_data \
-  2>/dev/null || true
-
-# ===== 5) Metadata =====
-echo "[5/6] Metadata..."
-if [[ "$have_jq" -eq 1 ]]; then
-  cat > "$STAGE/metadata.json" <<JSON
-{
-  "timestamp": "${TS}",
-  "date": "${DATE}",
-  "host": "${HOSTNAME}",
-  "region": "${AWS_REGION}",
-  "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
-  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]')
-}
-JSON
-else
-  cat > "$STAGE/metadata.json" <<JSON
-{
-  "timestamp": "${TS}",
-  "date": "${DATE}",
-  "host": "${HOSTNAME}",
-  "region": "${AWS_REGION}",
-  "note": "jq not installed; container/volume inventory omitted"
-}
-JSON
-fi
-
-# ===== 6) Upload to S3 =====
-echo "[6/6] Uploading to S3..."
-s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
-s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
-s3_put_dir  "$STAGE/nginx"    "${BUCKET}/nginx/${DATE}/"
-s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
-s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
-
-# ===== EBS snapshots (same run) =====
-echo "[EXTRA] EBS snapshots..."
-TOKEN_IMDS="$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
-  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")"
-
-INSTANCE_ID="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
-  http://169.254.169.254/latest/meta-data/instance-id)"
-
-AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
-  http://169.254.169.254/latest/meta-data/placement/availability-zone)"
-
-REGION="${AZ::-1}"
-
-# Find attached EBS volume IDs
-VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
-  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
-
-# Map volume IDs to mount purpose using NVMe serial mapping (common on Nitro)
-# This is best-effort; if it can't map, we still snapshot.
-declare -A VOL_PURPOSE
-VOL_PURPOSE["vol-08f7bca75e08f0d3f"]="root"
-VOL_PURPOSE["vol-05ebadfa92a493533"]="app"
-VOL_PURPOSE["vol-04e3115aea57b5c70"]="backup"
-
-for VOL in $VOL_IDS; do
-  echo "  - snapshotting volume $VOL"
-  PURPOSE_TAG="${VOL_PURPOSE[$VOL]:-unknown}"
-  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
-    --description "Nightly Atlassian backup ${HOSTNAME} ${TS}" \
-    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-atlassian-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=atlassian-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
-    --query SnapshotId --output text)"
-  echo "    created snapshot: $SNAP_ID"
-done
-
-echo "==== Nightly backup completed OK ===="
-
-# Cleanup local staging after successful upload
-echo "Cleaning up local staging..."
-rm -rf "$STAGE"
-[root@ip-10-56-112-34 ~]# cat /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
-#!/usr/bin/env bash
-set -euo pipefail
-
-BUCKET="s3://cnxs-atlassian-backups"
-DATE="$(date +%G-W%V)"
-
-aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
-aws s3 sync "${BUCKET}/apps/${DATE}/"     "${BUCKET}/weekly/apps/${DATE}/"
-aws s3 sync "${BUCKET}/nginx/${DATE}/"    "${BUCKET}/weekly/nginx/${DATE}/"
-aws s3 sync "${BUCKET}/metadata/${DATE}/" "${BUCKET}/weekly/metadata/${DATE}/"
-[root@ip-10-56-112-34 ~]# cat /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
-#!/usr/bin/env bash
-set -euo pipefail
-
-AWS_REGION="${AWS_REGION:-us-east-1}"
-BUCKET="s3://cnxs-atlassian-backups"
-DATE="$(date +%F)"
-TS="$(date +%Y%m%d_%H%M%S)"
-HOST="$(hostname -f 2>/dev/null || hostname)"
-
-BASE="/app/bamboobackup/atlassian-backups"
-STAGE="${BASE}/staging/secrets/${DATE}/${TS}"
-LOGDIR="${BASE}/logs"
-LOG="${LOGDIR}/secrets-backup-${DATE}.log"
-
-# KMS key used ONLY to encrypt the exported payload we store in S3
-KMS_KEY_ARN="arn:aws:kms:${AWS_REGION}:339713019047:key/ae797822-83c9-4752-89f1-eb9d3fc53b68"
-
-# Optional: only back up secrets with tag Backup=true
-TAG_FILTER_ENABLED="${TAG_FILTER_ENABLED:-0}"
-TAG_KEY="${TAG_KEY:-Backup}"
-TAG_VALUE="${TAG_VALUE:-true}"
-
-mkdir -p "$STAGE" "$LOGDIR"
-exec > >(tee -a "$LOG") 2>&1
-
-need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing $1"; exit 2; }; }
-need aws; need jq; need base64; need gzip
-
-OUT="${STAGE}/secrets_export_${HOST}_${TS}.ndjson"
-: > "$OUT"
-
-echo "==== Secrets backup start TS=${TS} host=${HOST} region=${AWS_REGION} ===="
-echo "Output file: $OUT"
-echo "Tag filter enabled: ${TAG_FILTER_ENABLED} (${TAG_KEY}=${TAG_VALUE})"
-echo "Export KMS key: ${KMS_KEY_ARN}"
-
-# Pagination + counters
-NEXT_TOKEN=""
-count=0
-kept=0
-skipped_tag=0
-failed_read=0
-failed_encrypt=0
-
-# Helper: write a record even when something fails (no plaintext)
-write_error_record() {
-  local name="$1" arn="$2" versionId="$3" errType="$4" errMsg="$5" sourceKms="$6"
-  jq -c -n \
-    --arg name "$name" \
-    --arg arn "$arn" \
-    --arg versionId "$versionId" \
-    --arg ts "$TS" \
-    --arg host "$HOST" \
-    --arg exportKms "$KMS_KEY_ARN" \
-    --arg sourceKms "$sourceKms" \
-    --arg errType "$errType" \
-    --arg errMsg "$errMsg" \
-    '{
-      name:$name,
-      arn:$arn,
-      versionId:($versionId // ""),
-      backedUpAt:$ts,
-      backupHost:$host,
-      exportKmsKey:$exportKms,
-      sourceKmsKey:($sourceKms // ""),
-      status:"error",
-      errorType:$errType,
-      error:$errMsg
-    }' >> "$OUT"
-}
-
-while :; do
-  if [[ -n "$NEXT_TOKEN" ]]; then
-    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100 --next-token "$NEXT_TOKEN")"
-  else
-    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100)"
-  fi
-
-  while read -r s; do
-    ((count++)) || true
-    ARN="$(echo "$s" | jq -r '.ARN')"
-    NAME="$(echo "$s" | jq -r '.Name')"
-    SOURCE_KMS="$(echo "$s" | jq -r '.KmsKeyId // empty')"
-
-    # Optional tag filter
-    if [[ "$TAG_FILTER_ENABLED" -eq 1 ]]; then
-      TAG_OK="$(aws secretsmanager describe-secret --region "$AWS_REGION" --secret-id "$ARN" \
-        --query "Tags[?Key=='${TAG_KEY}' && Value=='${TAG_VALUE}'] | length(@)" --output text 2>/dev/null || echo 0)"
-      if [[ "$TAG_OK" == "0" ]]; then
-        echo "SKIP (tag filter) $NAME"
-        ((skipped_tag++)) || true
-        continue
-      fi
-    fi
-
-    echo "BACKUP $NAME"
-
-    # Read secret value (can fail if Secrets Manager cannot decrypt w/ that secret's KMS key)
-    VAL_JSON=""
-    if ! VAL_JSON="$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$ARN" 2>/tmp/secret_err.$$)"; then
-      ERR="$(tr -d '\n' </tmp/secret_err.$$ | sed 's/"/'\''/g')"
-      rm -f /tmp/secret_err.$$
-      echo "  ERROR (GetSecretValue) $NAME -> $ERR"
-      ((failed_read++)) || true
-      write_error_record "$NAME" "$ARN" "" "GetSecretValueFailed" "$ERR" "$SOURCE_KMS"
-      continue
-    fi
-    rm -f /tmp/secret_err.$$
-
-    VERSION_ID="$(echo "$VAL_JSON" | jq -r '.VersionId // empty')"
-    SECRET_STRING="$(echo "$VAL_JSON" | jq -r '.SecretString // empty')"
-    SECRET_BINARY_B64="$(echo "$VAL_JSON" | jq -r '.SecretBinary // empty')"
-
-    # Prepare plaintext payload to encrypt (string or binary)
-    if [[ -n "$SECRET_STRING" ]]; then
-      PLAINTEXT_PAYLOAD="$(jq -n --arg t "string" --arg v "$SECRET_STRING" '{type:$t,value:$v}')"
-    elif [[ -n "$SECRET_BINARY_B64" ]]; then
-      PLAINTEXT_PAYLOAD="$(jq -n --arg t "binary_b64" --arg v "$SECRET_BINARY_B64" '{type:$t,value:$v}')"
-    else
-      echo "  WARN: no SecretString/SecretBinary for $NAME (skipping)"
-      ((failed_read++)) || true
-      write_error_record "$NAME" "$ARN" "$VERSION_ID" "EmptySecretValue" "No SecretString/SecretBinary present" "$SOURCE_KMS"
-      continue
-    fi
-
-    # Encrypt export payload with YOUR export key + encryption context
-    # (context makes ciphertext harder to misuse outside this backup flow)
-    CIPHERTEXT_B64=""
-    if ! CIPHERTEXT_B64="$(printf '%s' "$PLAINTEXT_PAYLOAD" | \
-      aws kms encrypt --region "$AWS_REGION" \
-        --key-id "$KMS_KEY_ARN" \
-        --plaintext fileb:///dev/stdin \
-        --encryption-context "purpose=secrets-backup,secretArn=${ARN},backupDate=${DATE},backupHost=${HOST}" \
-        --query CiphertextBlob --output text 2>/tmp/kms_err.$$)"; then
-      ERR="$(tr -d '\n' </tmp/kms_err.$$ | sed 's/"/'\''/g')"
-      rm -f /tmp/kms_err.$$
-      echo "  ERROR (KMS Encrypt) $NAME -> $ERR"
-      ((failed_encrypt++)) || true
-      write_error_record "$NAME" "$ARN" "$VERSION_ID" "KMSEncryptFailed" "$ERR" "$SOURCE_KMS"
-      continue
-    fi
-    rm -f /tmp/kms_err.$$
-
-    # Write success record (no plaintext)
-    jq -c -n \
-      --arg name "$NAME" \
-      --arg arn "$ARN" \
-      --arg versionId "$VERSION_ID" \
-      --arg ts "$TS" \
-      --arg host "$HOST" \
-      --arg bdate "$DATE" \
-      --arg exportKms "$KMS_KEY_ARN" \
-      --arg sourceKms "$SOURCE_KMS" \
-      --arg ciphertext "$CIPHERTEXT_B64" \
-      '{
-        name:$name,
-        arn:$arn,
-        versionId:$versionId,
-        backedUpAt:$ts,
-        backupDate:$bdate,
-        backupHost:$host,
-        exportKmsKey:$exportKms,
-        sourceKmsKey:($sourceKms // ""),
-        status:"ok",
-        ciphertextB64:$ciphertext
-      }' >> "$OUT"
-
-    ((kept++)) || true
-  done < <(echo "$RESP" | jq -c '.SecretList[]')
-
-  NEXT_TOKEN="$(echo "$RESP" | jq -r '.NextToken // empty')"
-  [[ -z "$NEXT_TOKEN" ]] && break
-done
-
-echo "==== SUMMARY ===="
-echo "Secrets enumerated: ${count}"
-echo "Backed up (ok):     ${kept}"
-echo "Skipped (tag):      ${skipped_tag}"
-echo "Failed (read):      ${failed_read}"
-echo "Failed (encrypt):   ${failed_encrypt}"
-
-# Compress and upload
-GZ="${OUT}.gz"
-gzip -c "$OUT" > "$GZ"
-
-DEST="${BUCKET}/secrets/daily/${DATE}/secrets_export_${HOST}_${TS}.ndjson.gz"
-echo "Uploading: $GZ -> $DEST"
-aws s3 cp "$GZ" "$DEST"
-
-echo "==== Secrets backup completed OK ===="
-
-# Cleanup local staging after successful upload
-echo "Cleaning up local staging..."
-rm -rf "$STAGE"
-timed out waiting for input: auto-logout
-[sikaj01@ip-10-56-112-34 ~]$ sudo su -
-Last login: Wed Aug 19 20:04:50 UTC 2026 on pts/1
-[root@ip-10-56-112-34 ~]# cat /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh^C
-[root@ip-10-56-112-34 ~]# docker inspect prod-bamboo
-[
-    {
-        "Id": "f989498245ad56e9fe18494a5e328306570068cf1e5b06de1575b92d953b4d7e",
-        "Created": "2026-05-01T13:13:05.005982148Z",
-        "Path": "/usr/bin/tini",
-        "Args": [
-            "--",
-            "/entrypoint.py"
-        ],
-        "State": {
-            "Status": "running",
-            "Running": true,
-            "Paused": false,
-            "Restarting": false,
-            "OOMKilled": false,
-            "Dead": false,
-            "Pid": 3668,
-            "ExitCode": 0,
-            "Error": "",
-            "StartedAt": "2026-08-12T03:41:46.054578884Z",
-            "FinishedAt": "2026-08-12T03:40:44.754675042Z"
-        },
-        "Image": "sha256:23ed3051e3e79d57bdd280fa4cba177708ba7a6a8ccdeb05ab9266fb4b339cc0",
-        "ResolvConfPath": "/app/docker/containers/f989498245ad56e9fe18494a5e328306570068cf1e5b06de1575b92d953b4d7e/resolv.conf",
-        "HostnamePath": "/app/docker/containers/f989498245ad56e9fe18494a5e328306570068cf1e5b06de1575b92d953b4d7e/hostname",
-        "HostsPath": "/app/docker/containers/f989498245ad56e9fe18494a5e328306570068cf1e5b06de1575b92d953b4d7e/hosts",
-        "LogPath": "/app/docker/containers/f989498245ad56e9fe18494a5e328306570068cf1e5b06de1575b92d953b4d7e/f989498245ad56e9fe18494a5e328306570068cf1e5b06de1575b92d953b4d7e-json.log",
-        "Name": "/prod-bamboo",
-        "RestartCount": 0,
-        "Driver": "overlay2",
-        "Platform": "linux",
-        "MountLabel": "",
-        "ProcessLabel": "",
-        "AppArmorProfile": "",
-        "ExecIDs": null,
-        "HostConfig": {
-            "Binds": null,
-            "ContainerIDFile": "",
-            "LogConfig": {
-                "Type": "json-file",
-                "Config": {}
-            },
-            "NetworkMode": "prod-net",
-            "PortBindings": {
-                "8085/tcp": [
-                    {
-                        "HostIp": "",
-                        "HostPort": "8085"
-                    }
-                ],
-                "8443/tcp": [
-                    {
-                        "HostIp": "",
-                        "HostPort": "8443"
-                    }
-                ]
-            },
-            "RestartPolicy": {
-                "Name": "unless-stopped",
-                "MaximumRetryCount": 0
-            },
-            "AutoRemove": false,
-            "VolumeDriver": "",
-            "VolumesFrom": null,
-            "ConsoleSize": [
-                33,
-                115
-            ],
-            "CapAdd": null,
-            "CapDrop": null,
-            "CgroupnsMode": "private",
-            "Dns": [],
-            "DnsOptions": [],
-            "DnsSearch": [],
-            "ExtraHosts": null,
-            "GroupAdd": null,
-            "IpcMode": "private",
-            "Cgroup": "",
-            "Links": null,
-            "OomScoreAdj": 0,
-            "PidMode": "",
-            "Privileged": false,
-            "PublishAllPorts": false,
-            "ReadonlyRootfs": false,
-            "SecurityOpt": null,
-            "UTSMode": "",
-            "UsernsMode": "",
-            "ShmSize": 67108864,
-            "Runtime": "runc",
-            "Isolation": "",
-            "CpuShares": 0,
-            "Memory": 0,
-            "NanoCpus": 0,
-            "CgroupParent": "",
-            "BlkioWeight": 0,
-            "BlkioWeightDevice": [],
-            "BlkioDeviceReadBps": [],
-            "BlkioDeviceWriteBps": [],
-            "BlkioDeviceReadIOps": [],
-            "BlkioDeviceWriteIOps": [],
-            "CpuPeriod": 0,
-            "CpuQuota": 0,
-            "CpuRealtimePeriod": 0,
-            "CpuRealtimeRuntime": 0,
-            "CpusetCpus": "",
-            "CpusetMems": "",
-            "Devices": [],
-            "DeviceCgroupRules": null,
-            "DeviceRequests": null,
-            "MemoryReservation": 0,
-            "MemorySwap": 0,
-            "MemorySwappiness": null,
-            "OomKillDisable": null,
-            "PidsLimit": null,
-            "Ulimits": [
-                {
-                    "Name": "nofile",
-                    "Hard": 65536,
-                    "Soft": 32768
-                }
-            ],
-            "CpuCount": 0,
-            "CpuPercent": 0,
-            "IOMaximumIOps": 0,
-            "IOMaximumBandwidth": 0,
-            "Mounts": [
-                {
-                    "Type": "volume",
-                    "Source": "bambooVolume",
-                    "Target": "/var/atlassian/application-data/bamboo"
-                }
-            ],
-            "MaskedPaths": [
-                "/proc/asound",
-                "/proc/acpi",
-                "/proc/kcore",
-                "/proc/keys",
-                "/proc/latency_stats",
-                "/proc/timer_list",
-                "/proc/timer_stats",
-                "/proc/sched_debug",
-                "/proc/scsi",
-                "/sys/firmware",
-                "/sys/devices/virtual/powercap"
-            ],
-            "ReadonlyPaths": [
-                "/proc/bus",
-                "/proc/fs",
-                "/proc/irq",
-                "/proc/sys",
-                "/proc/sysrq-trigger"
-            ]
-        },
-        "GraphDriver": {
-            "Data": {
-                "LowerDir": "/app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5-init/diff:/app/docker/overlay2/a2de1006040cf10d62b0c72ec93a929c579a5729105b5ff3d0abd6b2acaafbb2/diff:/app/docker/overlay2/9a2ed55a4084829300ca5f0f77d2b23e3a28eb5f6395e4ee6f144fab8e8ad66f/diff:/app/docker/overlay2/f356ae43171d1f37d55784e7597240670fe37e882a22fcd0693fe43beca22af7/diff:/app/docker/overlay2/5b43d47aa24b25be9b4bb701cf08431373aee97d51606eb587aee4cac2b1ecbe/diff:/app/docker/overlay2/1b669f79daa8ea78f3a3912c5fbe5e3f11cb6b4d072aa3ed49b83aca47520b21/diff:/app/docker/overlay2/9ed47246b7ebf98203c207ce0056d884f4e1c8fdc0125bf2448ecd397a1253b7/diff:/app/docker/overlay2/4a0cbc0d9c14cd8cc766c4955ae0304199d792ca56e10054de460f39dbc7b168/diff:/app/docker/overlay2/6618c2e47cc5ac982c58974fe70378b5e2947b47d0d0e4ca3b70a9fed80f5608/diff:/app/docker/overlay2/c9448096dc0bfbfd90c5a5b7539389085e2ff2f64ca3e564d05e14d967ab278f/diff:/app/docker/overlay2/d6e38c431d4f5edf03d3a714e18149971f89de561e4c9cbd2eb50047b81ab5e6/diff:/app/docker/overlay2/8af7856c4f6ec2f35ed057504aa16f829503e6d16e594a4c16333d8866eb640f/diff:/app/docker/overlay2/81f8c33c43334b71426a6a435c24b26c3ee9cefd7c28657902c286930c4262a8/diff:/app/docker/overlay2/8bb6ed7f072dfa8083891b2a995c42ee2081bafdc12dd7b261257bead5e41e6d/diff:/app/docker/overlay2/15a17bd87853f2f18c17e21fae3a07871827f7ad943722a85fa836e9c55c41a2/diff:/app/docker/overlay2/5ac707556fa7a76260623f90c00f6fc3c087a6f244fb3dacb377be6fcca96258/diff:/app/docker/overlay2/65864cb15342af7014991575a71f42ea172adfaaa5e15bbbf2cba3545ac02b86/diff:/app/docker/overlay2/b939b9227931ae89dbe40910bce5a68ee5173cc15b44d7a867839908de8554e5/diff:/app/docker/overlay2/5f68059718593cbcc220375250fca6f75f7049b7d4991cf1eeac67878c2d5391/diff",
-                "MergedDir": "/app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5/merged",
-                "UpperDir": "/app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5/diff",
-                "WorkDir": "/app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5/work"
-            },
-            "Name": "overlay2"
-        },
-        "Mounts": [
-            {
-                "Type": "volume",
-                "Name": "bambooVolume",
-                "Source": "/app/docker/volumes/bambooVolume/_data",
-                "Destination": "/var/atlassian/application-data/bamboo",
-                "Driver": "local",
-                "Mode": "z",
-                "RW": true,
-                "Propagation": ""
-            }
-        ],
-        "Config": {
-            "Hostname": "bamboo",
-            "Domainname": "",
-            "User": "",
-            "AttachStdin": false,
-            "AttachStdout": false,
-            "AttachStderr": false,
-            "ExposedPorts": {
-                "54663/tcp": {},
-                "8085/tcp": {},
-                "8443/tcp": {}
-            },
-            "Tty": false,
-            "OpenStdin": false,
-            "StdinOnce": false,
-            "Env": [
-                "ATL_PROXY_NAME=bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov",
-                "ATL_PROXY_PORT=443",
-                "ATL_TOMCAT_SCHEME=https",
-                "PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                "JAVA_HOME=/opt/java/openjdk",
-                "LANG=en_US.UTF-8",
-                "LANGUAGE=en_US:en",
-                "LC_ALL=en_US.UTF-8",
-                "JAVA_VERSION=jdk-21.0.10+7",
-                "APP_NAME=bamboo",
-                "RUN_USER=bamboo",
-                "RUN_GROUP=bamboo",
-                "RUN_UID=2005",
-                "RUN_GID=2005",
-                "BAMBOO_HOME=/var/atlassian/application-data/bamboo",
-                "BAMBOO_INSTALL_DIR=/opt/atlassian/bamboo",
-                "MAVEN_HOME=/opt/maven",
-                "BAMBOO_VERSION=10.2.11"
-            ],
-            "Cmd": [
-                "/entrypoint.py"
-            ],
-            "Image": "atlassian/bamboo:10.2.11",
-            "Volumes": {
-                "/var/atlassian/application-data/bamboo": {}
-            },
-            "WorkingDir": "/var/atlassian/application-data/bamboo",
-            "Entrypoint": [
-                "/usr/bin/tini",
-                "--"
-            ],
-            "OnBuild": null,
-            "Labels": {
-                "maintainer": "dc-deployments@atlassian.com",
-                "org.opencontainers.image.version": "24.04",
-                "securitytxt": "https://www.atlassian.com/.well-known/security.txt"
-            }
-        },
-        "NetworkSettings": {
-            "Bridge": "",
-            "SandboxID": "01feb018a43773240c19ee52d1af9eae11bac9282395163747ceb943660ff33c",
-            "SandboxKey": "/var/run/docker/netns/01feb018a437",
-            "Ports": {
-                "54663/tcp": null,
-                "8085/tcp": [
-                    {
-                        "HostIp": "0.0.0.0",
-                        "HostPort": "8085"
-                    }
-                ],
-                "8443/tcp": [
-                    {
-                        "HostIp": "0.0.0.0",
-                        "HostPort": "8443"
-                    }
-                ]
-            },
-            "HairpinMode": false,
-            "LinkLocalIPv6Address": "",
-            "LinkLocalIPv6PrefixLen": 0,
-            "SecondaryIPAddresses": null,
-            "SecondaryIPv6Addresses": null,
-            "EndpointID": "",
-            "Gateway": "",
-            "GlobalIPv6Address": "",
-            "GlobalIPv6PrefixLen": 0,
-            "IPAddress": "",
-            "IPPrefixLen": 0,
-            "IPv6Gateway": "",
-            "MacAddress": "",
-            "Networks": {
-                "prod-net": {
-                    "IPAMConfig": null,
-                    "Links": null,
-                    "Aliases": [
-                        "bamboo",
-                        "f989498245ad"
-                    ],
-                    "MacAddress": "02:42:ac:12:00:04",
-                    "NetworkID": "d81e4102f500b69cf6f85ba6886e02fa6dbd2e5db304c2488d4ad4a0d9dc30b8",
-                    "EndpointID": "d30e0da473005d165376974fa711ba8f453e61b94027a56cce6215dcf6ee16e6",
-                    "Gateway": "172.18.0.1",
-                    "IPAddress": "172.18.0.4",
-                    "IPPrefixLen": 16,
-                    "IPv6Gateway": "",
-                    "GlobalIPv6Address": "",
-                    "GlobalIPv6PrefixLen": 0,
-                    "DriverOpts": null,
-                    "DNSNames": [
-                        "prod-bamboo",
-                        "bamboo",
-                        "f989498245ad"
-                    ]
-                }
-            }
-        }
-    }
-]
-
-[root@ip-10-56-112-34 ~]# docker inspect cnxs-mgmt-bitbucket
-[
-    {
-        "Id": "3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787",
-        "Created": "2026-03-11T20:22:58.075056414Z",
-        "Path": "/usr/bin/tini",
-        "Args": [
-            "--",
-            "/entrypoint.py",
-            "--log=INFO"
-        ],
-        "State": {
-            "Status": "running",
-            "Running": true,
-            "Paused": false,
-            "Restarting": false,
-            "OOMKilled": false,
-            "Dead": false,
-            "Pid": 3631,
-            "ExitCode": 0,
-            "Error": "",
-            "StartedAt": "2026-08-12T03:41:45.947528534Z",
-            "FinishedAt": "2026-08-12T03:40:34.806820661Z"
-        },
-        "Image": "sha256:fc66f747474d8fc6f2525528766244099e5e5e91f47ef33915a2246589cf76d9",
-        "ResolvConfPath": "/app/docker/containers/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787/resolv.conf",
-        "HostnamePath": "/app/docker/containers/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787/hostname",
-        "HostsPath": "/app/docker/containers/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787/hosts",
-        "LogPath": "/app/docker/containers/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787/3d7c479b38142683d50bf60e7f61c04c0a41e77ebb83602496fff8ace0876787-json.log",
-        "Name": "/cnxs-mgmt-bitbucket",
-        "RestartCount": 0,
-        "Driver": "overlay2",
-        "Platform": "linux",
-        "MountLabel": "",
-        "ProcessLabel": "",
-        "AppArmorProfile": "",
-        "ExecIDs": null,
-        "HostConfig": {
-            "Binds": [
-                "optbitbucketVolume94:/opt/atlassian",
-                "bitbucketVolume:/var/atlassian/application-data/bitbucket"
-            ],
-            "ContainerIDFile": "",
-            "LogConfig": {
-                "Type": "json-file",
-                "Config": {}
-            },
-            "NetworkMode": "prod-net",
-            "PortBindings": {
-                "7990/tcp": [
-                    {
-                        "HostIp": "",
-                        "HostPort": "7990"
-                    }
-                ],
-                "7999/tcp": [
-                    {
-                        "HostIp": "",
-                        "HostPort": "7999"
-                    }
-                ]
-            },
-            "RestartPolicy": {
-                "Name": "unless-stopped",
-                "MaximumRetryCount": 0
-            },
-            "AutoRemove": false,
-            "VolumeDriver": "",
-            "VolumesFrom": null,
-            "ConsoleSize": [
-                33,
-                132
-            ],
-            "CapAdd": null,
-            "CapDrop": null,
-            "CgroupnsMode": "private",
-            "Dns": [],
-            "DnsOptions": [],
-            "DnsSearch": [],
-            "ExtraHosts": null,
-            "GroupAdd": null,
-            "IpcMode": "private",
-            "Cgroup": "",
-            "Links": null,
-            "OomScoreAdj": 0,
-            "PidMode": "",
-            "Privileged": false,
-            "PublishAllPorts": false,
-            "ReadonlyRootfs": false,
-            "SecurityOpt": null,
-            "UTSMode": "",
-            "UsernsMode": "",
-            "ShmSize": 67108864,
-            "Runtime": "runc",
-            "Isolation": "",
-            "CpuShares": 0,
-            "Memory": 0,
-            "NanoCpus": 0,
-            "CgroupParent": "",
-            "BlkioWeight": 0,
-            "BlkioWeightDevice": [],
-            "BlkioDeviceReadBps": [],
-            "BlkioDeviceWriteBps": [],
-            "BlkioDeviceReadIOps": [],
-            "BlkioDeviceWriteIOps": [],
-            "CpuPeriod": 0,
-            "CpuQuota": 0,
-            "CpuRealtimePeriod": 0,
-            "CpuRealtimeRuntime": 0,
-            "CpusetCpus": "",
-            "CpusetMems": "",
-            "Devices": [],
-            "DeviceCgroupRules": null,
-            "DeviceRequests": null,
-            "MemoryReservation": 0,
-            "MemorySwap": 0,
-            "MemorySwappiness": null,
-            "OomKillDisable": null,
-            "PidsLimit": null,
-            "Ulimits": [
-                {
-                    "Name": "nofile",
-                    "Hard": 65536,
-                    "Soft": 32768
-                }
-            ],
-            "CpuCount": 0,
-            "CpuPercent": 0,
-            "IOMaximumIOps": 0,
-            "IOMaximumBandwidth": 0,
-            "MaskedPaths": [
-                "/proc/asound",
-                "/proc/acpi",
-                "/proc/kcore",
-                "/proc/keys",
-                "/proc/latency_stats",
-                "/proc/timer_list",
-                "/proc/timer_stats",
-                "/proc/sched_debug",
-                "/proc/scsi",
-                "/sys/firmware",
-                "/sys/devices/virtual/powercap"
-            ],
-            "ReadonlyPaths": [
-                "/proc/bus",
-                "/proc/fs",
-                "/proc/irq",
-                "/proc/sys",
-                "/proc/sysrq-trigger"
-            ]
-        },
-        "GraphDriver": {
-            "Data": {
-                "LowerDir": "/app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87-init/diff:/app/docker/overlay2/b802235fad4cb825641e25c60114f5dae94bb470cae2be75c92a97451cf3c1e4/diff:/app/docker/overlay2/c64fd30ed5e427c90e926929406f58f053ce036a2679729789556d735d5a7b16/diff:/app/docker/overlay2/792173627c9a91b4fcb94a4805a91fb9885b06d69061d7b406f3157fc1c9423e/diff:/app/docker/overlay2/f46786d435e158a0f342e98f98d67d30c901b4c04a7f63d108d465ae84d869bc/diff:/app/docker/overlay2/f9638e2e0830dd376dee97b8f17c6af370d73acba3fe8d63c1c96dbf7fa20221/diff:/app/docker/overlay2/dd1f030d399a77ebbb0e9161d377d6b8f9f17c328fb49ba36fd05562d99721ff/diff:/app/docker/overlay2/1c81199ab053f785b394b0f35b9ceac3451be615c0a3a84cd4e9ec0022857fae/diff:/app/docker/overlay2/9925d419a1407e9e6662b121b4c8b76f175cf3d4e02dcd699e703a399718faa9/diff:/app/docker/overlay2/46438a5774c932dd516a962079475f4df7ad20315794ae7b604ad4fed077089d/diff:/app/docker/overlay2/c2c816e405531a1beefc5914e01cd90552e891839f54cd4fa675be30f0729ba9/diff:/app/docker/overlay2/3075184e69453afba02e7e65cc0796232f0d008d089345363eaf94c9de5d6dd2/diff:/app/docker/overlay2/dcf6a9ddce5d92f627f742686c3caf1e8cd8c4b4da2bfdc10d66c753df9880a4/diff:/app/docker/overlay2/78299d7752334f6951379167e3de6168aa6354458005a09f017bdbf97191d30a/diff",
-                "MergedDir": "/app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/merged",
-                "UpperDir": "/app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/diff",
-                "WorkDir": "/app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/work"
-            },
-            "Name": "overlay2"
-        },
-        "Mounts": [
-            {
-                "Type": "volume",
-                "Name": "optbitbucketVolume94",
-                "Source": "/app/docker/volumes/optbitbucketVolume94/_data",
-                "Destination": "/opt/atlassian",
-                "Driver": "local",
-                "Mode": "z",
-                "RW": true,
-                "Propagation": ""
-            },
-            {
-                "Type": "volume",
-                "Name": "bitbucketVolume",
-                "Source": "/app/docker/volumes/bitbucketVolume/_data",
-                "Destination": "/var/atlassian/application-data/bitbucket",
-                "Driver": "local",
-                "Mode": "z",
-                "RW": true,
-                "Propagation": ""
-            }
-        ],
-        "Config": {
-            "Hostname": "bitbucket",
-            "Domainname": "",
-            "User": "",
-            "AttachStdin": false,
-            "AttachStdout": false,
-            "AttachStderr": false,
-            "ExposedPorts": {
-                "7990/tcp": {},
-                "7999/tcp": {}
-            },
-            "Tty": false,
-            "OpenStdin": false,
-            "StdinOnce": false,
-            "Env": [
-                "JVM_MINIMUM_MEMORY=1g",
-                "JVM_MAXIMUM_MEMORY=2g",
-                "JVM_SUPPORT_RECOMMENDED_ARGS=-Duser.timezone=America/Denver",
-                "ATL_TOMCAT_SECURE=true",
-                "ATL_PROXY_NAME=bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov",
-                "ATL_PROXY_PORT=443",
-                "SEARCH_ENABLED=true",
-                "ATL_TOMCAT_SCHEME=https",
-                "APPLICATION_MODE=default",
-                "PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                "JAVA_HOME=/opt/java/openjdk",
-                "LANG=en_US.UTF-8",
-                "LANGUAGE=en_US:en",
-                "LC_ALL=en_US.UTF-8",
-                "JAVA_VERSION=jdk-21.0.10+7",
-                "APP_NAME=bitbucket",
-                "RUN_USER=bitbucket",
-                "RUN_GROUP=bitbucket",
-                "RUN_UID=2003",
-                "RUN_GID=2003",
-                "BITBUCKET_HOME=/var/atlassian/application-data/bitbucket",
-                "BITBUCKET_INSTALL_DIR=/opt/atlassian/bitbucket",
-                "JRE_HOME=/opt/java/openjdk",
-                "JAVA_BINARY=/opt/java/openjdk/bin/java"
-            ],
-            "Cmd": [
-                "/entrypoint.py",
-                "--log=INFO"
-            ],
-            "Image": "atlassian/bitbucket:9.4.17",
-            "Volumes": {
-                "/var/atlassian/application-data/bitbucket": {}
-            },
-            "WorkingDir": "/var/atlassian/application-data/bitbucket",
-            "Entrypoint": [
-                "/usr/bin/tini",
-                "--"
-            ],
-            "OnBuild": null,
-            "Labels": {
-                "maintainer": "dc-deployments@atlassian.com",
-                "org.opencontainers.image.ref.name": "ubuntu",
-                "org.opencontainers.image.version": "24.04",
-                "securitytxt": "https://www.atlassian.com/.well-known/security.txt"
-            }
-        },
-        "NetworkSettings": {
-            "Bridge": "",
-            "SandboxID": "8ae4a20bf8ba1b6151587d06fbc6bf37857d5f21b893bf1cd8dfec723e6c2b36",
-            "SandboxKey": "/var/run/docker/netns/8ae4a20bf8ba",
-            "Ports": {
-                "7990/tcp": [
-                    {
-                        "HostIp": "0.0.0.0",
-                        "HostPort": "7990"
-                    }
-                ],
-                "7999/tcp": [
-                    {
-                        "HostIp": "0.0.0.0",
-                        "HostPort": "7999"
-                    }
-                ]
-            },
-            "HairpinMode": false,
-            "LinkLocalIPv6Address": "",
-            "LinkLocalIPv6PrefixLen": 0,
-            "SecondaryIPAddresses": null,
-            "SecondaryIPv6Addresses": null,
-            "EndpointID": "",
-            "Gateway": "",
-            "GlobalIPv6Address": "",
-            "GlobalIPv6PrefixLen": 0,
-            "IPAddress": "",
-            "IPPrefixLen": 0,
-            "IPv6Gateway": "",
-            "MacAddress": "",
-            "Networks": {
-                "prod-net": {
-                    "IPAMConfig": null,
-                    "Links": null,
-                    "Aliases": [
-                        "bitbucket",
-                        "3d7c479b3814"
-                    ],
-                    "MacAddress": "02:42:ac:12:00:03",
-                    "NetworkID": "d81e4102f500b69cf6f85ba6886e02fa6dbd2e5db304c2488d4ad4a0d9dc30b8",
-                    "EndpointID": "749105d31f706d6b971c0a7a141687c1306df3175592adf6e4dd49a6c2be54fd",
-                    "Gateway": "172.18.0.1",
-                    "IPAddress": "172.18.0.3",
-                    "IPPrefixLen": 16,
-                    "IPv6Gateway": "",
-                    "GlobalIPv6Address": "",
-                    "GlobalIPv6PrefixLen": 0,
-                    "DriverOpts": null,
-                    "DNSNames": [
-                        "cnxs-mgmt-bitbucket",
-                        "bitbucket",
-                        "3d7c479b3814"
-                    ]
-                }
-            }
-        }
-    }
-]
-[root@ip-10-56-112-34 ~]# docker inspect prod-postgres
-[
-    {
-        "Id": "704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e",
-        "Created": "2025-12-02T16:37:02.900727797Z",
-        "Path": "docker-entrypoint.sh",
-        "Args": [
-            "postgres"
-        ],
-        "State": {
-            "Status": "running",
-            "Running": true,
-            "Paused": false,
-            "Restarting": false,
-            "OOMKilled": false,
-            "Dead": false,
-            "Pid": 3180,
-            "ExitCode": 0,
-            "Error": "",
-            "StartedAt": "2026-08-12T03:41:42.987644309Z",
-            "FinishedAt": "2026-08-12T03:40:34.469971795Z"
-        },
-        "Image": "sha256:30a563de922f6676f6178d45389579f3b395dbf1a8b0c2e473a5b94b5b13aa27",
-        "ResolvConfPath": "/app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/resolv.conf",
-        "HostnamePath": "/app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/hostname",
-        "HostsPath": "/app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/hosts",
-        "LogPath": "/app/docker/containers/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e/704e46755f360377362d89aa42213a53e1b9ea6cd0429b2faafe24c0e04e271e-json.log",
-        "Name": "/prod-postgres",
-        "RestartCount": 0,
-        "Driver": "overlay2",
-        "Platform": "linux",
-        "MountLabel": "",
-        "ProcessLabel": "",
-        "AppArmorProfile": "",
-        "ExecIDs": null,
-        "HostConfig": {
-            "Binds": [
-                "pgdataVolume16:/var/lib/postgresql/data"
-            ],
-            "ContainerIDFile": "",
-            "LogConfig": {
-                "Type": "json-file",
-                "Config": {}
-            },
-            "NetworkMode": "prod-net",
-            "PortBindings": {
-                "5432/tcp": [
-                    {
-                        "HostIp": "",
-                        "HostPort": ""
-                    }
-                ]
-            },
-            "RestartPolicy": {
-                "Name": "no",
-                "MaximumRetryCount": 0
-            },
-            "AutoRemove": false,
-            "VolumeDriver": "",
-            "VolumesFrom": null,
-            "ConsoleSize": [
-                49,
-                185
-            ],
-            "CapAdd": null,
-            "CapDrop": null,
-            "CgroupnsMode": "private",
-            "Dns": [],
-            "DnsOptions": [],
-            "DnsSearch": [],
-            "ExtraHosts": null,
-            "GroupAdd": null,
-            "IpcMode": "private",
-            "Cgroup": "",
-            "Links": null,
-            "OomScoreAdj": 0,
-            "PidMode": "",
-            "Privileged": false,
-            "PublishAllPorts": false,
-            "ReadonlyRootfs": false,
-            "SecurityOpt": null,
-            "UTSMode": "",
-            "UsernsMode": "",
-            "ShmSize": 67108864,
-            "Runtime": "runc",
-            "Isolation": "",
-            "CpuShares": 0,
-            "Memory": 0,
-            "NanoCpus": 0,
-            "CgroupParent": "",
-            "BlkioWeight": 0,
-            "BlkioWeightDevice": [],
-            "BlkioDeviceReadBps": [],
-            "BlkioDeviceWriteBps": [],
-            "BlkioDeviceReadIOps": [],
-            "BlkioDeviceWriteIOps": [],
-            "CpuPeriod": 0,
-            "CpuQuota": 0,
-            "CpuRealtimePeriod": 0,
-            "CpuRealtimeRuntime": 0,
-            "CpusetCpus": "",
-            "CpusetMems": "",
-            "Devices": [],
-            "DeviceCgroupRules": null,
-            "DeviceRequests": null,
-            "MemoryReservation": 0,
-            "MemorySwap": 0,
-            "MemorySwappiness": null,
-            "OomKillDisable": null,
-            "PidsLimit": null,
-            "Ulimits": [
-                {
-                    "Name": "nofile",
-                    "Hard": 65536,
-                    "Soft": 32768
-                }
-            ],
-            "CpuCount": 0,
-            "CpuPercent": 0,
-            "IOMaximumIOps": 0,
-            "IOMaximumBandwidth": 0,
-            "MaskedPaths": [
-                "/proc/asound",
-                "/proc/acpi",
-                "/proc/kcore",
-                "/proc/keys",
-                "/proc/latency_stats",
-                "/proc/timer_list",
-                "/proc/timer_stats",
-                "/proc/sched_debug",
-                "/proc/scsi",
-                "/sys/firmware",
-                "/sys/devices/virtual/powercap"
-            ],
-            "ReadonlyPaths": [
-                "/proc/bus",
-                "/proc/fs",
-                "/proc/irq",
-                "/proc/sys",
-                "/proc/sysrq-trigger"
-            ]
-        },
-        "GraphDriver": {
-            "Data": {
-                "LowerDir": "/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b-init/diff:/app/docker/overlay2/2ec68b1f2e8992dac1e070fe706546b462a39b02f9bfbc868bac534ec874c23d/diff:/app/docker/overlay2/f4cf052c81133b743457bba0b00fb6ae0d3b4c974cb7de3a07f0ea7511a628fc/diff:/app/docker/overlay2/e2e99f0dd1c157d0a70e5f2e43606e4301e573f6f6cd8e28cfe7484211344c00/diff:/app/docker/overlay2/8ac7984a7ab62682fa5408f85c08932977534342f25f462fc9c1146150d74f5b/diff:/app/docker/overlay2/cf1f6ee0662b64bd27e1405ecc5029e792563b8168ed5af4840936679cf8c16c/diff:/app/docker/overlay2/cd2b5a27228a39f4b66a33d4284dcf753279f8fcfb77564cf386994120c3fff2/diff:/app/docker/overlay2/b6f81cc39390852eb087b5450fde6c27517d30f212a562beb22a9ad738b6e156/diff:/app/docker/overlay2/1d84d8a05a554d5342a5bc3964ffee1a8f9923dbbfd9d2ccfddd226b1ef8a16f/diff:/app/docker/overlay2/1833449b8120a5495dad0642e67da27eb4643c566b25c20f7b12d265a3fd79bb/diff:/app/docker/overlay2/74e37470c696472359b848510b26628fe00c93535382727c64678c88c555e8b9/diff:/app/docker/overlay2/5f3e7c25c450ee4406b5632b57893f0ae4465f59d82fe113198c9c21f3e96f6f/diff:/app/docker/overlay2/4aa56b1e1f6f8ffdd6897eb19d96d080a26d81771de86cfc26fb6ef819f5d2e1/diff:/app/docker/overlay2/a1b39ba344fa10168c06a3b852f2c08ff59eb290c05ee4e5091df9caaf560da0/diff:/app/docker/overlay2/fd38a3eda10450a5c60515ec0565e9370e7f63f8e7170f4c4bc1d7c5e3f00249/diff",
-                "MergedDir": "/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged",
-                "UpperDir": "/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/diff",
-                "WorkDir": "/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/work"
-            },
-            "Name": "overlay2"
-        },
-        "Mounts": [
-            {
-                "Type": "volume",
-                "Name": "pgdataVolume16",
-                "Source": "/app/docker/volumes/pgdataVolume16/_data",
-                "Destination": "/var/lib/postgresql/data",
-                "Driver": "local",
-                "Mode": "z",
-                "RW": true,
-                "Propagation": ""
-            }
-        ],
-        "Config": {
-            "Hostname": "704e46755f36",
-            "Domainname": "",
-            "User": "",
-            "AttachStdin": false,
-            "AttachStdout": false,
-            "AttachStderr": false,
-            "ExposedPorts": {
-                "5432/tcp": {}
-            },
-            "Tty": false,
-            "OpenStdin": false,
-            "StdinOnce": false,
-            "Env": [
-                "POSTGRES_PASSWORD=KIgregyfibUH",
-                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/postgresql/16/bin",
-                "GOSU_VERSION=1.17",
-                "LANG=en_US.utf8",
-                "PG_MAJOR=16",
-                "PG_VERSION=16.5-1.pgdg120+1",
-                "PGDATA=/var/lib/postgresql/data"
-            ],
-            "Cmd": [
-                "postgres"
-            ],
-            "Image": "postgres:16.5",
-            "Volumes": {
-                "/var/lib/postgresql/data": {}
-            },
-            "WorkingDir": "/",
-            "Entrypoint": [
-                "docker-entrypoint.sh"
-            ],
-            "OnBuild": null,
-            "Labels": {},
-            "StopSignal": "SIGINT"
-        },
-        "NetworkSettings": {
-            "Bridge": "",
-            "SandboxID": "9c1752a3707f24ddeb3afa3b0957c7efc116bbf315ebbb658be088edcfde98dd",
-            "SandboxKey": "/var/run/docker/netns/9c1752a3707f",
-            "Ports": {
-                "5432/tcp": [
-                    {
-                        "HostIp": "0.0.0.0",
-                        "HostPort": "32768"
-                    }
-                ]
-            },
-            "HairpinMode": false,
-            "LinkLocalIPv6Address": "",
-            "LinkLocalIPv6PrefixLen": 0,
-            "SecondaryIPAddresses": null,
-            "SecondaryIPv6Addresses": null,
-            "EndpointID": "",
-            "Gateway": "",
-            "GlobalIPv6Address": "",
-            "GlobalIPv6PrefixLen": 0,
-            "IPAddress": "",
-            "IPPrefixLen": 0,
-            "IPv6Gateway": "",
-            "MacAddress": "",
-            "Networks": {
-                "prod-net": {
-                    "IPAMConfig": null,
-                    "Links": null,
-                    "Aliases": [
-                        "704e46755f36"
-                    ],
-                    "MacAddress": "02:42:ac:12:00:02",
-                    "NetworkID": "d81e4102f500b69cf6f85ba6886e02fa6dbd2e5db304c2488d4ad4a0d9dc30b8",
-                    "EndpointID": "164b0288285d7c5aeec2db8e0cc58fdca789750a9333bb154a4cab0d85528d7e",
-                    "Gateway": "172.18.0.1",
-                    "IPAddress": "172.18.0.2",
-                    "IPPrefixLen": 16,
-                    "IPv6Gateway": "",
-                    "GlobalIPv6Address": "",
-                    "GlobalIPv6PrefixLen": 0,
-                    "DriverOpts": null,
-                    "DNSNames": [
-                        "prod-postgres",
-                        "704e46755f36"
-                    ]
-                }
-            }
-        }
-    }
-]
+[sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-20/\
+> 
+2026-08-20 02:21:07  419276181 bamboo_20260820_021501.tar.gz
+2026-08-20 02:21:07 7460976440 bitbucket_20260820_021501.tar.gz
+[sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/postgres/2026-08-20/
+2026-08-20 02:21:04  268584633 bamboo_20260820_021501.dump
+2026-08-20 02:21:04   24009533 bitbucket_20260820_021501.dump
+2026-08-20 02:21:04       1071 globals_20260820_021501.sql
+[sikaj01@ip-10-56-112-34 ~]$ 
