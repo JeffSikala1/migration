@@ -1,44 +1,8 @@
-docker run -d \
-  --name dev-bitbucket \
-  --network dev-net \
-  --restart unless-stopped \
-  -p 7990:7990 \
-  -p 7999:7999 \
-  -v /app/bitbucket:/var/atlassian/application-data/bitbucket \
-  -e ATL_PROXY_NAME=bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov \
-  -e ATL_PROXY_PORT=443 \
-  -e ATL_TOMCAT_SCHEME=https \
-  -e ATL_TOMCAT_SECURE=true \
-  -e JVM_MINIMUM_MEMORY=1g \
-  -e JVM_MAXIMUM_MEMORY=2g \
-  atlassian/bitbucket:9.4.17
-
-docker run -d \
-  --name dev-bamboo \
-  --network dev-net \
-  --restart unless-stopped \
-  -p 8085:8085 \
-  -p 8443:8443 \
-  -v /app/bamboo:/var/atlassian/application-data/bamboo \
-  -e ATL_PROXY_NAME=bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov \
-  -e ATL_PROXY_PORT=443 \
-  -e ATL_TOMCAT_SCHEME=https \
-  atlassian/bamboo:10.2.11
+find /app/bitbucket -iname "*AES*" -o -iname "*.key" 2>/dev/null
+find /app/bitbucket/shared -maxdepth 3 -type d
 
 
-docker logs -f dev-bitbucket
+ls -la /app/bitbucket/shared/data/migration/
+find /app/bitbucket/shared/data/migration -type f -exec echo {} \; -exec cat {} \; 2>/dev/null | head -100
 
 
-docker logs -f dev-bamboo
-
-
-----------
-
-docker exec dev-bitbucket cat /var/atlassian/application-data/bitbucket/shared/secrets-config.yaml
-
-
-find /app/bitbucket/shared/data/repositories -maxdepth 1 -type d -iname "ds"
-ls -la /app/bitbucket/shared/data/ | grep -v repositories
-
-
-docker logs cnxs-mgmt-bitbucket 2>&1 | grep -i "NoSuchRepositoryException" | tail -20
