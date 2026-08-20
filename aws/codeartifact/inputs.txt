@@ -1,14 +1,25 @@
+docker run --rm -i --network dev-net \
+  -e PGPASSWORD='B/4$2Aamgrg69R,6' \
+  postgres:16.5 \
+  pg_restore -h dev-postgres -U artifactory -d bitbucket --no-owner --no-privileges \
+  < /app/restore-staging/bitbucket_20260820_021501.dump
+
+docker run --rm -i --network dev-net \
+  -e PGPASSWORD='B/4$2Aamgrg69R,6' \
+  postgres:16.5 \
+  pg_restore -h dev-postgres -U artifactory -d bamboo --no-owner --no-privileges \
+  < /app/restore-staging/bamboo_20260820_021501.dump
+
+
 docker exec dev-postgres psql -U artifactory -d artifactory \
-  -c "CREATE DATABASE bitbucket OWNER artifactory;"
+  -c "CREATE ROLE bitbucketuser LOGIN PASSWORD 'sdifhbIHSDBVipydbfv8345go458g03';"
 docker exec dev-postgres psql -U artifactory -d artifactory \
-  -c "CREATE DATABASE bamboo OWNER artifactory;"
+  -c "GRANT ALL PRIVILEGES ON DATABASE bitbucket TO bitbucketuser;"
+docker exec dev-postgres psql -U artifactory -d bitbucket \
+  -c "GRANT ALL ON ALL TABLES IN SCHEMA public TO bitbucketuser; GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO bitbucketuser;"
 
-docker exec -i dev-postgres pg_restore -U artifactory -d bitbucket \
-  --no-owner --no-privileges < /app/restore-staging/bitbucket_20260820_021501.dump
-
-docker exec -i dev-postgres pg_restore -U artifactory -d bamboo \
-  --no-owner --no-privileges < /app/restore-staging/bamboo_20260820_021501.dump
+sed -i 's#prod-postgres:5432#dev-postgres:5432#' /app/bitbucket/shared/bitbucket.properties
 
 
-cat /app/bamboo/bamboo.cfg.xml
-cat /app/bitbucket/shared/bitbucket.properties
+cat /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+ls -la /app/docker/volumes/bambooVolume/_data/
