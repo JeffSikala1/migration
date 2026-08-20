@@ -1,16 +1,14 @@
-mkdir -p /app/bitbucket /app/bamboo
+docker exec dev-postgres psql -U artifactory -d artifactory \
+  -c "CREATE DATABASE bitbucket OWNER artifactory;"
+docker exec dev-postgres psql -U artifactory -d artifactory \
+  -c "CREATE DATABASE bamboo OWNER artifactory;"
 
-tar -xzf /app/restore-staging/bitbucket_20260820_021501.tar.gz \
-  -C /app/bitbucket --strip-components=6 \
-  var/lib/docker/volumes/bitbucketVolume/_data
+docker exec -i dev-postgres pg_restore -U artifactory -d bitbucket \
+  --no-owner --no-privileges < /app/restore-staging/bitbucket_20260820_021501.dump
 
-tar -xzf /app/restore-staging/bamboo_20260820_021501.tar.gz \
-  -C /app/bamboo --strip-components=6 \
-  var/lib/docker/volumes/bambooVolume/_data
+docker exec -i dev-postgres pg_restore -U artifactory -d bamboo \
+  --no-owner --no-privileges < /app/restore-staging/bamboo_20260820_021501.dump
 
 
-chown -R 2003:2003 /app/bitbucket
-chown -R 2005:2005 /app/bamboo
-
-ls -la /app/bitbucket
-ls -la /app/bamboo
+cat /app/bamboo/bamboo.cfg.xml
+cat /app/bitbucket/shared/bitbucket.properties
