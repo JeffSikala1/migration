@@ -30,3 +30,23 @@ docker logs -f dev-bitbucket
 
 
 docker logs -f dev-bamboo
+
+
+----------
+
+docker exec dev-bitbucket find /var/atlassian/application-data/bitbucket -iname "*secret*" -o -iname "*.key" 2>/dev/null
+grep -rn "secret" /app/bitbucket/shared/bitbucket.properties
+
+
+# does the Mesh storage path actually exist for one of the failing IDs?
+docker exec dev-bitbucket sh -c 'find /var/atlassian/application-data/bitbucket/shared/data/repositories -maxdepth 4 -iname "*62*" 2>/dev/null'
+ls -la /app/bitbucket/shared/data/repositories/ 2>/dev/null | head -30
+
+
+docker exec cnxs-mgmt-bitbucket cat /var/atlassian/application-data/bitbucket/shared/bitbucket.properties | grep -i "mesh\|repository.storage\|migration"
+docker inspect cnxs-mgmt-bitbucket --format '{{json .Mounts}}' | python3 -m json.tool
+
+
+docker logs dev-bamboo 2>&1 | grep -iE "license|serverid|shutting down|fatal|exception" | tail -50
+docker logs dev-bamboo 2>&1 | tail -20
+curl -sk -o /dev/null -w "%{http_code}\n" http://localhost:8085/
