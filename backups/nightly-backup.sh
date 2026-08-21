@@ -82,7 +82,9 @@ sanity_check_tar() {
   fi
 
   if [[ -n "$expect_subpath" ]]; then
-    if ! tar -tzf "$tarfile" | grep -q "${expect_subpath}"; then
+    local listing
+    listing="$(tar -tzf "$tarfile")"
+    if ! grep -q "${expect_subpath}" <<< "$listing"; then
       echo "  WARN: ${tarfile} does NOT contain expected path '*${expect_subpath}*' for volume '${vol}'. This backup may be incomplete — investigate before relying on it for restore."
     else
       echo "  OK: ${tarfile} contains expected path '*${expect_subpath}*'"
@@ -91,6 +93,7 @@ sanity_check_tar() {
 }
 
 # Preflight
+preflight_check_space() {
   local vol_paths=("$@")
   local needed_kb=0 avail_kb path size_kb
 
@@ -188,6 +191,7 @@ tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
   2>/dev/null || true
 
 # ===== 4) Metadata =====
+echo "[4/5] Metadata..."
 if [[ "$have_jq" -eq 1 ]]; then
   cat > "$STAGE/metadata.json" <<JSON
 {
