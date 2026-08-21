@@ -15,6 +15,16 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 PG_CONTAINER="${PG_CONTAINER:-prod-postgres}"
 DB_LIST=(${DB_LIST:-bitbucket bamboo})   # space-separated, override if needed
 
+# Named volumes this script backs up, and which subdir minimally proves the
+# tar actually captured live content (used by the post-backup sanity check).
+declare -A VOLUME_SANITY_PATH=(
+  ["bitbucketVolume"]="shared/keys"
+  ["optbitbucketVolume"]=""
+  ["bambooVolume"]="shared/configuration"
+  ["optbambooVolume"]=""
+  ["nginxVolume"]=""
+)
+
 mkdir -p "$STAGE" "$LOGDIR"
 exec > >(tee -a "$LOG") 2>&1
 
@@ -43,17 +53,50 @@ s3_put_file() {
   aws s3 cp "$src" "$dest"
 }
 
+# Resolve a named Docker volume to its host path, or exit with an error if the volume does not exist. This is
+resolve_volume_path() {
+  local vol="$1"
+  local path
+  if ! path="$(docker volume inspect "$vol" --format '{{.Mountpoint}}' 2>/dev/null)"; then
+    echo "ERROR: docker volume '$vol' not found — cannot resolve mountpoint. Aborting."
+    exit 4
+  fi
+  if [[ -z "$path" || ! -d "$path" ]]; then
+    echo "ERROR: resolved mountpoint for volume '$vol' is empty or does not exist: '$path'. Aborting."
+    exit 4
+  fi
+  echo "$path"
+}
+
+# Post-backup sanity check
+sanity_check_tar() {
+  local tarfile="$1" vol="$2" expect_subpath="$3"
+  local size_bytes
+  size_bytes="$(stat -c '%s' "$tarfile" 2>/dev/null || echo 0)"
+  echo "  - sanity: ${tarfile} = ${size_bytes} bytes"
+
+  if [[ "$size_bytes" -lt 10240 ]]; then
+    echo "  WARN: ${tarfile} is suspiciously small (<10KB) for volume '${vol}' — likely capturing an empty or stale path."
+  fi
+
+  if [[ -n "$expect_subpath" ]]; then
+    if ! tar -tzf "$tarfile" | grep -q "${expect_subpath}"; then
+      echo "  WARN: ${tarfile} does NOT contain expected path '*${expect_subpath}*' for volume '${vol}'. This backup may be incomplete — investigate before relying on it for restore."
+    else
+      echo "  OK: ${tarfile} contains expected path '*${expect_subpath}*'"
+    fi
+  fi
+}
+
 # ===== 1) Postgres dumps (logical) =====
 echo "[1/6] Postgres dumps..."
 mkdir -p "$STAGE/postgres"
 
-# quick sanity check container exists
 if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
   echo "ERROR: Postgres container '$PG_CONTAINER' not running. Aborting."
   exit 3
 fi
 
-# Dump globals (roles, grants) - optional but recommended
 echo "  - dumping globals (roles/grants)"
 docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
   > "$STAGE/postgres/globals_${TS}.sql"
@@ -68,22 +111,35 @@ done
 echo "[2/6] Atlassian volume backups..."
 mkdir -p "$STAGE/apps"
 
-tar -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" \
-  /var/lib/docker/volumes/bitbucketVolume/_data \
-  /var/lib/docker/volumes/optbitbucketVolume/_data
+BITBUCKET_VOL_PATH="$(resolve_volume_path bitbucketVolume)"
+OPTBITBUCKET_VOL_PATH="$(resolve_volume_path optbitbucketVolume)"
+BAMBOO_VOL_PATH="$(resolve_volume_path bambooVolume)"
+OPTBAMBOO_VOL_PATH="$(resolve_volume_path optbambooVolume)"
 
-tar -czf "$STAGE/apps/bamboo_${TS}.tar.gz" \
-  /var/lib/docker/volumes/bambooVolume/_data \
-  /var/lib/docker/volumes/optbambooVolume/_data
+echo "  - bitbucketVolume    -> ${BITBUCKET_VOL_PATH}"
+echo "  - optbitbucketVolume -> ${OPTBITBUCKET_VOL_PATH}"
+echo "  - bambooVolume       -> ${BAMBOO_VOL_PATH}"
+echo "  - optbambooVolume    -> ${OPTBAMBOO_VOL_PATH}"
+
+tar -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" -C / \
+  "${BITBUCKET_VOL_PATH#/}" "${OPTBITBUCKET_VOL_PATH#/}"
+
+tar -czf "$STAGE/apps/bamboo_${TS}.tar.gz" -C / \
+  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}"
+
+sanity_check_tar "$STAGE/apps/bitbucket_${TS}.tar.gz" "bitbucketVolume" "${VOLUME_SANITY_PATH[bitbucketVolume]}"
+sanity_check_tar "$STAGE/apps/bamboo_${TS}.tar.gz"    "bambooVolume"    "${VOLUME_SANITY_PATH[bambooVolume]}"
 
 # ===== 3) NGINX + TLS/certs/config =====
 echo "[3/6] NGINX + TLS backup..."
 mkdir -p "$STAGE/nginx"
 
-# Include common cert locations; ignore missing
+NGINX_VOL_PATH="$(resolve_volume_path nginxVolume)"
+echo "  - nginxVolume -> ${NGINX_VOL_PATH}"
+
 tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
   /etc/nginx \
-  /var/lib/docker/volumes/nginxVolume/_data \
+  "$NGINX_VOL_PATH" \
   /etc/ssl \
   /etc/pki \
   2>/dev/null || true
@@ -92,9 +148,8 @@ tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
 echo "[4/6] Bamboo keystore safety backup..."
 mkdir -p "$STAGE/crypto"
 
-tar -czf "$STAGE/crypto/bamboo_keystores_${TS}.tar.gz" \
-  /var/lib/docker/volumes/bambooVolume/_data \
-  /var/lib/docker/volumes/optbambooVolume/_data \
+tar -czf "$STAGE/crypto/bamboo_keystores_${TS}.tar.gz" -C / \
+  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}" \
   2>/dev/null || true
 
 # ===== 5) Metadata =====
@@ -107,7 +162,15 @@ if [[ "$have_jq" -eq 1 ]]; then
   "host": "${HOSTNAME}",
   "region": "${AWS_REGION}",
   "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
-  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]')
+  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]'),
+  "docker_root_dir": "$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo unknown)",
+  "resolved_volume_paths": {
+    "bitbucketVolume": "${BITBUCKET_VOL_PATH}",
+    "optbitbucketVolume": "${OPTBITBUCKET_VOL_PATH}",
+    "bambooVolume": "${BAMBOO_VOL_PATH}",
+    "optbambooVolume": "${OPTBAMBOO_VOL_PATH}",
+    "nginxVolume": "${NGINX_VOL_PATH}"
+  }
 }
 JSON
 else
@@ -117,7 +180,8 @@ else
   "date": "${DATE}",
   "host": "${HOSTNAME}",
   "region": "${AWS_REGION}",
-  "note": "jq not installed; container/volume inventory omitted"
+  "note": "jq not installed; container/volume inventory omitted",
+  "docker_root_dir": "$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo unknown)"
 }
 JSON
 fi
@@ -143,11 +207,9 @@ AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
 
 REGION="${AZ::-1}"
 
-# Find attached EBS volume IDs
 VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
   --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
 
-# Map volume IDs to mount purpose using NVMe serial mapping
 declare -A VOL_PURPOSE
 VOL_PURPOSE["vol-08f7bca75e08f0d3f"]="root"
 VOL_PURPOSE["vol-05ebadfa92a493533"]="app"
@@ -165,6 +227,5 @@ done
 
 echo "==== Nightly backup completed OK ===="
 
-# Cleanup local staging after successful upload
 echo "Cleaning up local staging..."
 rm -rf "$STAGE"
