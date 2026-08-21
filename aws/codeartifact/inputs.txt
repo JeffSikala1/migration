@@ -111,6 +111,17 @@ sudo rm -rf /backup-staging/2026-08-21
 sudo bash /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
 
 
+sudo sed -i '/^  local vol_paths=("\$@")$/i preflight_check_space() {' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+
+sudo bash -n /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh && echo "syntax OK"
+sudo grep -n "preflight_check_space() {" /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+
+sudo rm -rf /backup-staging/2026-08-21
+sudo bash /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+
+
+
+
 # 1) find the actual EBS volume ID behind /dev/nvme1n1 (the /app disk)
 aws ec2 describe-volumes --region us-east-1 \
   --filters "Name=attachment.instance-id,Values=$(curl -s -H "X-aws-ec2-metadata-token: $(curl -sX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')" http://169.254.169.254/latest/meta-data/instance-id)" \
