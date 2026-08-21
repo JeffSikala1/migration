@@ -104,3 +104,31 @@ for m in "${MODULES[@]}"; do
 done
 
 echo "All 16 ws submodule RC directories removed."
+
+-------------------
+sudo rm -rf /backup-staging/2026-08-21
+# drop in the updated nightly_backup.sh over the existing one, then:
+sudo bash /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+
+
+# 1) find the actual EBS volume ID behind /dev/nvme1n1 (the /app disk)
+aws ec2 describe-volumes --region us-east-1 \
+  --filters "Name=attachment.instance-id,Values=$(curl -s -H "X-aws-ec2-metadata-token: $(curl -sX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')" http://169.254.169.254/latest/meta-data/instance-id)" \
+  --query "Volumes[].{Id:VolumeId,Size:Size,Attachments:Attachments[].Device}" --output table
+
+# 2) resize the volume in AWS (pick the volume ID that maps to /app, size in GiB)
+aws ec2 modify-volume --region us-east-1 --volume-id vol-XXXXXXXX --size 300
+
+# 3) wait for the modification to complete
+aws ec2 describe-volumes-modifications --region us-east-1 --volume-ids vol-XXXXXXXX \
+  --query "VolumesModifications[0].ModificationState"
+# poll until this returns "completed" or "optimizing" (optimizing is safe to proceed on)
+
+# 4) grow the partition to fill the new volume size
+sudo growpart /dev/nvme1n1 1
+
+# 5) grow the XFS filesystem itself (must be mounted, done online)
+sudo xfs_growfs /app
+
+# 6) confirm
+df -h /app

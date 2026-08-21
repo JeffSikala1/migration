@@ -90,12 +90,7 @@ sanity_check_tar() {
   fi
 }
 
-# Preflight: measure the real size of what we're about to tar (all four
-# Atlassian volume dirs) and confirm the staging filesystem has enough
-# headroom, with margin for the compressed dumps + nginx tar too. Aborts
-# loudly BEFORE writing a byte if there isn't room, instead of failing
-# partway through a multi-GB tar and leaving a partial file behind.
-preflight_check_space() {
+# Preflight
   local vol_paths=("$@")
   local needed_kb=0 avail_kb path size_kb
 
@@ -119,8 +114,23 @@ preflight_check_space() {
   fi
 }
 
+# Tar a live application volume tolerantly
+tar_tolerant() {
+  local rc=0
+  tar "$@" || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    return 0
+  elif [[ "$rc" -eq 1 ]]; then
+    echo "  WARN: tar exited 1 (benign - e.g. a live app file changed mid-read). Archive is usable, continuing."
+    return 0
+  else
+    echo "ERROR: tar exited ${rc} (fatal) for: $*"
+    return "$rc"
+  fi
+}
+
 # ===== 1) Postgres dumps (logical) =====
-echo "[1/6] Postgres dumps..."
+echo "[1/5] Postgres dumps..."
 mkdir -p "$STAGE/postgres"
 
 if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
@@ -154,10 +164,10 @@ echo "  - optbambooVolume    -> ${OPTBAMBOO_VOL_PATH}"
 
 preflight_check_space "$BITBUCKET_VOL_PATH" "$OPTBITBUCKET_VOL_PATH" "$BAMBOO_VOL_PATH" "$OPTBAMBOO_VOL_PATH"
 
-tar -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" -C / \
+tar_tolerant -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" -C / \
   "${BITBUCKET_VOL_PATH#/}" "${OPTBITBUCKET_VOL_PATH#/}"
 
-tar -czf "$STAGE/apps/bamboo_${TS}.tar.gz" -C / \
+tar_tolerant -czf "$STAGE/apps/bamboo_${TS}.tar.gz" -C / \
   "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}"
 
 sanity_check_tar "$STAGE/apps/bitbucket_${TS}.tar.gz" "bitbucketVolume" "${VOLUME_SANITY_PATH[bitbucketVolume]}"
@@ -178,11 +188,6 @@ tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
   2>/dev/null || true
 
 # ===== 4) Metadata =====
-# NOTE: the old "crypto" step (a second full tar of bambooVolume +
-# optbambooVolume) was removed here — it fully duplicated step 2's
-# apps/bamboo_*.tar.gz for zero added coverage, at real cost in staging
-# space and upload time on every run. Restores should use apps/bamboo_*.tar.gz.
-echo "[4/5] Metadata..."
 if [[ "$have_jq" -eq 1 ]]; then
   cat > "$STAGE/metadata.json" <<JSON
 {
