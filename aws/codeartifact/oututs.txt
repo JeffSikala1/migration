@@ -1,279 +1,80 @@
----
-version: 2
-plan:
-  project-key: SR
-  key: UISR
-  name: (03b) UI - Start Release
-stages:
-- Default Stage:
-    manual: false
-    final: false
-    jobs:
-    - Gitflow release start
-- Deploy RC:
-    manual: false
-    final: false
-    jobs:
-    - Deploy RC
-- Snapshot Maven Deploy:
-    manual: false
-    final: false
-    jobs:
-    - Snapshot Maven Deploy
-Gitflow release start:
-  key: JOB1
-  tasks:
-  - clean
-  - checkout:
-      force-clean-build: true
-      description: Checkout Default Repository
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
+[sikaj01@ip-10-56-112-34 ~]$ stat -c '%Y %n' /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+1774448997 /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+[sikaj01@ip-10-56-112-34 ~]$ stat -c '%Y %n' /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+stat: cannot statx '/app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml': Permission denied
+[sikaj01@ip-10-56-112-34 ~]$ sudo !!
+sudo stat -c '%Y %n' /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+1786506193 /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+[sikaj01@ip-10-56-112-34 ~]$ diff <(ls -la /var/lib/docker/volumes/bambooVolume/_data/shared/configuration) \
+     <(ls -la /app/docker/volumes/bambooVolume/_data/shared/configuration)
+ls: ls: cannot access '/var/lib/docker/volumes/bambooVolume/_data/shared/configuration'cannot access '/app/docker/volumes/bambooVolume/_data/shared/configuration': Permission denied: Permission denied
 
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        chmod 400 ~/.ssh/id_rsa
-
-        # Configure git to use this key
-
-
-      description: Install SSH key
-  - any-task:
-      plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
-      configuration:
-        variable: currentVersion
-        removeSnapshot: 'true'
-        variableScope: JOB
-      description: Get current version
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-        echo "Checking for tag version ${bamboo_currentVersion}"
-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-
-        # If the currentVersionm, from the previous Maven version variable
-        # extractor, is also a tag version, then the tag version/name will be in
-        # the variable $does_tag_exist
-        # Else $does_tag_exist will be a null string
-        does_tag_exist=$(git tag -l ${bamboo.currentVersion})
-        echo $does_tag_exist
-
-        if [ $does_tag_exist ]; then
-          echo "Deleting the tag $does_tag_exist"
-          echo "git tag -d $does_tag_exist"
-          git tag -d $does_tag_exist
-          echo "git push --delete origin $does_tag_exist"
-          git push --delete origin $does_tag_exist
-        else
-            echo "No tag found"
-        fi
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Delete tag, if it already exists
-  - script:
-      interpreter: SHELL
-      scripts:
-      - "#!/usr/bin/env bash\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\ngit pull\nrelease_branch=$(git branch -r | grep -oP '(?<=origin\\/)release\\/.*')\n\n# Handle the case of more than one release branch\nif [ -n \"${release_branch}\" ]; then\n  for i in \"${release_branch[@]}\"; do\n    echo \"Deleting the release branch $i\"\n        git push origin --delete $i\n        git branch -D $i\n        git fetch\n  done\nelse\n        echo \"No release branch\"\n        exit 0 \nfi"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Delete Release Branch
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        git checkout develop
-        git branch -a
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Pull latest Develop branch
-  - maven:
-      executable: Maven 3
-      jdk: JDK 21
-      goal: -U -B external.atlassian.jgitflow:jgitflow-maven-plugin:release-start -DpushReleases=true -DallowSnapshots=true -DenableSshAgent=true -DdefaultOriginUrl=${bamboo.planRepository.repositoryUrl} -s /usr/share/maven/conf/settings-release.xml
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: GitFlow Release Start
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
-
-        git branch
-
-        find . -type f -name pom.xml -exec sed -i 's/SNAPSHOT/RC/g' {} +
-        git commit -a -m "Updated versions from SNAPSHOT to RC"
-        git config --global push.default simple
-        git push
-        #git push --set-upstream origin $BRANCH_NAME
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Update SNAPSHOT with RC
-  artifact-subscriptions: []
-Deploy RC:
-  key: DR
-  tasks:
-  - checkout:
-      force-clean-build: true
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        chmod 400 ~/.ssh/id_rsa
-
-        # Configure git to use this key
-
-
-      description: Obtain SSH Key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull
-
-        release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
-
-        echo "Release branch is set from grep above is $release_branch"
-
-        if [ -z "${release_branch}" ]; then
-            echo "Failed to match release branch from the following: "
-            git branch -r
-            #exit 1
-        else
-            echo "Checking out ${release_branch}"
-            git checkout "${release_branch}"
-        fi
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Checkout release branch
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-        source ~/.bashrc
-
-        # Install/Update Google Chrome for Headless testing
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
-        yum install -y google-chrome-stable
-
-        npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/
-
-        #SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
-        npm install
-        npm test
-
-
-        # pre angular 14
-        #ng build --prod --build-optimizer --output-hashing=all --vendor-chunk --optimization --progress
-        ng build --configuration production --output-hashing=all --optimization --progress
-
-        # New - needs extra node parameters because source-map generation takes more memory
-        #node --max_old_space_size=8192 \
-        #     node_modules/@angular/cli/bin/ng build \
-        #     --prod --build-optimizer --output-hashing=all --vendor-chunk  --optimization --source-map=true
-      working-dir: web/src/main/
-      description: ng build
-  - maven:
-      executable: Maven 3
-      jdk: JDK 21
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
-      description: Deploy RC to RC repo
-  artifact-subscriptions: []
-Snapshot Maven Deploy:
-  key: SMD
-  tasks:
-  - checkout:
-      force-clean-build: true
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-
-        # Copy in the SSH Key
-        echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        chmod 600 ~/.ssh
-        chmod 400 ~/.ssh/id_rsa
-
-        # Configure git to use this key
-
-
-      description: Obtain SSH Key
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git pull origin develop
-      description: Pull Latest Develop branch
-  - script:
-      interpreter: SHELL
-      scripts:
-      - |-
-        #!/usr/bin/env bash
-        source ~/.bashrc
-
-        # Install/Update Google Chrome for Headless testing
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
-        yum install -y google-chrome-stable
-
-        npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/
-
-        SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
-        npm install
-        npm test
-
-        ng build --optimization --output-hashing=all --progress
-      working-dir: web/src/main/
-      description: ng build
-  - maven:
-      executable: Maven 3
-      jdk: JDK 21
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
-      description: Maven Deploy to Artifactory
-  artifact-subscriptions: []
-repositories:
-- UI:
-    scope: global
-triggers: []
-branches:
-  create: manually
-  delete: never
-  link-to-jira: true
-notifications: []
-labels: []
-dependencies:
-  require-all-stages-passing: false
-  enabled-for-branches: true
-  block-strategy: none
-  plans: []
-other:
-  concurrent-build-plugin:
-    number-of-concurrent-builds: system-default
-    execution-strategy: block-triggering
-  force-stop-build: true
+[sikaj01@ip-10-56-112-34 ~]$ sudo !!
+sudo diff <(ls -la /var/lib/docker/volumes/bambooVolume/_data/shared/configuration)      <(ls -la /app/docker/volumes/bambooVolume/_data/shared/configuration)
+ls: cannot access '/var/lib/docker/volumes/bambooVolume/_data/shared/configuration': Permission denied
+ls: cannot access '/app/docker/volumes/bambooVolume/_data/shared/configuration': Permission denied
+diff: /dev/fd/63: No such file or directory
+diff: /dev/fd/62: No such file or directory
+[sikaj01@ip-10-56-112-34 ~]$ sudo su -
+Last login: Fri Aug 21 14:04:21 UTC 2026 on pts/1
+[root@ip-10-56-112-34 ~]# diff <(ls -la /var/lib/docker/volumes/bambooVolume/_data/shared/configuration) \
+     <(ls -la /app/docker/volumes/bambooVolume/_data/shared/configuration)
+ls: cannot access '/var/lib/docker/volumes/bambooVolume/_data/shared/configuration': No such file or directory
+0a1,13
+> total 44
+> drwxr-x---.  5 2005 2005 4096 Aug 12 03:43 .
+> drwxr-x---. 16 2005 2005 4096 Apr 21 22:06 ..
+> -rw-r-----.  1 2005 2005 4354 Aug 12 03:43 administration.xml
+> -rw-r-----.  1 2005 2005  423 Dec  5  2025 bamboo-mail.cfg.xml
+> -rw-r-----.  1 2005 2005  241 Aug 12 03:43 bamboo-shared.cfg.xml
+> -rw-r-----.  1 2005 2005 4580 Apr 20 22:43 broker.ks
+> -rw-r-----.  1 2005 2005 4492 Dec 16  2025 broker.ks.bak.2026-04-20_224235
+> drwxr-x---.  2 2005 2005   26 Nov 26  2025 cipher
+> drwxr-x---.  2 2005 2005   75 Apr 21 22:05 keys
+> -r--------.  1 2005 2005  165 Apr 21 22:05 secrets-config.yaml
+> drwxr-x---.  2 2005 2005  146 Apr 21 22:06 secured
+> -rw-r-----.  1 2005 2005    0 Nov 26  2025 serialization-whitelist.list
+[root@ip-10-56-112-34 ~]# stat -c '%Y %n' /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+1774448997 /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+[root@ip-10-56-112-34 ~]# stat -c '%Y %n' /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+1786506193 /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
+[root@ip-10-56-112-34 ~]# diff <(ls -la /var/lib/docker/volumes/bambooVolume/_data/shared/configuration) \
+     <(ls -la /app/docker/volumes/bambooVolume/_data/shared/configuration)
+ls: cannot access '/var/lib/docker/volumes/bambooVolume/_data/shared/configuration': No such file or directory
+0a1,13
+> total 44
+> drwxr-x---.  5 2005 2005 4096 Aug 12 03:43 .
+> drwxr-x---. 16 2005 2005 4096 Apr 21 22:06 ..
+> -rw-r-----.  1 2005 2005 4354 Aug 12 03:43 administration.xml
+> -rw-r-----.  1 2005 2005  423 Dec  5  2025 bamboo-mail.cfg.xml
+> -rw-r-----.  1 2005 2005  241 Aug 12 03:43 bamboo-shared.cfg.xml
+> -rw-r-----.  1 2005 2005 4580 Apr 20 22:43 broker.ks
+> -rw-r-----.  1 2005 2005 4492 Dec 16  2025 broker.ks.bak.2026-04-20_224235
+> drwxr-x---.  2 2005 2005   26 Nov 26  2025 cipher
+> drwxr-x---.  2 2005 2005   75 Apr 21 22:05 keys
+> -r--------.  1 2005 2005  165 Apr 21 22:05 secrets-config.yaml
+> drwxr-x---.  2 2005 2005  146 Apr 21 22:06 secured
+> -rw-r-----.  1 2005 2005    0 Nov 26  2025 serialization-whitelist.list
+[root@ip-10-56-112-34 ~]# docker inspect cnxs-mgmt-bamboo --format '{{json .Mounts}}' | python3 -m json.tool
+Error: No such object: cnxs-mgmt-bamboo
+Expecting value: line 2 column 1 (char 1)
+[root@ip-10-56-112-34 ~]# docker ps
+CONTAINER ID   IMAGE                        COMMAND                  CREATED        STATUS      PORTS                                                       NAMES
+f989498245ad   atlassian/bamboo:10.2.11     "/usr/bin/tini -- /e…"   3 months ago   Up 9 days   0.0.0.0:8085->8085/tcp, 0.0.0.0:8443->8443/tcp, 54663/tcp   prod-bamboo
+3d7c479b3814   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   5 months ago   Up 9 days   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp              cnxs-mgmt-bitbucket
+704e46755f36   postgres:16.5                "docker-entrypoint.s…"   8 months ago   Up 9 days   0.0.0.0:32768->5432/tcp                                     prod-postgres
+5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   8 months ago   Up 9 days   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp                    nginx
+[root@ip-10-56-112-34 ~]# docker inspect prod-bamboo --format '{{json .Mounts}}' | python3 -m json.tool
+[
+    {
+        "Type": "volume",
+        "Name": "bambooVolume",
+        "Source": "/app/docker/volumes/bambooVolume/_data",
+        "Destination": "/var/atlassian/application-data/bamboo",
+        "Driver": "local",
+        "Mode": "z",
+        "RW": true,
+        "Propagation": ""
+    }
+]
+[root@ip-10-56
