@@ -1,44 +1,3 @@
-[sikaj01@ip-10-56-112-34 ~]$ ll /app/bamboobackup/
-ls: cannot open directory '/app/bamboobackup/': Permission denied
-[sikaj01@ip-10-56-112-34 ~]$ sudo su -
-Last login: Fri Aug 21 18:39:19 UTC 2026 on pts/1
-[root@ip-10-56-112-34 ~]# bash /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-bash: /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh: No such file or directory
-[root@ip-10-56-112-34 ~]# ls -al /app/bamboobackup/atlassian-backups/bin/
-ls: cannot access '/app/bamboobackup/atlassian-backups/bin/': No such file or directory
-[root@ip-10-56-112-34 ~]# ls -al /app/bamboobackup/
-total 4
-drwxr-x---.  2 root root    6 Aug 21 19:24 .
-dr-xr-xr-x. 23 root root 4096 Jul 27 19:32 ..
-[root@ip-10-56-112-34 ~]# ls /backup-staging/
-[root@ip-10-56-112-34 ~]# exit
-logout
-[sikaj01@ip-10-56-112-34 ~]$ sudo /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh^C
-[sikaj01@ip-10-56-112-34 ~]$ sudo mkdir -p /app/bamboobackup/atlassian-backups/bin
-[sikaj01@ip-10-56-112-34 ~]$ sudo mkdir -p /app/bamboobackup/atlassian-backups/logs
-[sikaj01@ip-10-56-112-34 ~]$ sudo crontab -l
-#Ansible: CIS 1.3.2 - Run aide filesystem integrity check
-0 5 * * * /usr/sbin/aide --check
-
-#0 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/aws_script.sh 2>&1
-#15 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/cnxs_script.sh 2>&1
-#30 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/devops_script.sh 2>&1
-#45 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/docker_script.sh 2>&1
-
-
-# Nightly at 02:15
-15 2 * * * /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-
-# Weekly Sunday at 03:00
-0 3 * * 0 /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
-
-# Daily Secrets Manager backup (encrypted to S3)
-55 1 * * * /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
-
-0 4 * * * find /app/bamboobackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
-
-[sikaj01@ip-10-56-112-34 ~]$ vim /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-[sikaj01@ip-10-56-112-34 ~]$ sudo !!
 sudo vim /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
 [sikaj01@ip-10-56-112-34 ~]$ sudo vim /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
 [sikaj01@ip-10-56-112-34 ~]$ sudo vim /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
@@ -54,147 +13,25 @@ Staging to: /backup-staging/2026-08-21/20260821_193714 (filesystem: /)
   - dumping globals (roles/grants)
   - dumping bitbucket
   - dumping bamboo
-
-
-[sikaj01@ip-10-56-112-34 ~]$ mount | grep -i '/app/var\|/app/home\|/app/opt\|/app/usr\|/app/boot\|/app/etc\|/app/root'
-[sikaj01@ip-10-56-112-34 ~]$ findmnt | grep /app
-├─/app                                                                                           /dev/nvme1n1p1         xfs         rw,relatime,seclabel,attr2,inode64,logbufs=8,logbsize=32k,noquota
-│ ├─/app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/merged overlay                overlay     rw,relatime,seclabel,lowerdir=/app/docker/overlay2/l/MUA3MLRAGVGTRHHXWCBOT53DOT:/app/docker/overlay2/l/FTU4AH7EWJI37LMPQXSKXXJTIE:/app/docker/overlay2/l/OB4J32DON33NVZOA5MJ6AOKJPX:/app/docker/overlay2/l/P23MZEAFONF3VWUWCGMH5M63P3:/app/docker/overlay2/l/JZEIBPQPIICUV6KMLQNVQTQ2RR:/app/docker/overlay2/l/2A4I3D6HX2VPVYRINSMDYRNCA5:/app/docker/overlay2/l/VVG5C7LLHSH4I4LXRORQYGG7C2:/app/docker/overlay2/l/5WYYSKM5WBXUJX7G7GJPTGADBK,upperdir=/app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/diff,workdir=/app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/work
-│ ├─/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged overlay                overlay     rw,relatime,seclabel,lowerdir=/app/docker/overlay2/l/6FMXVB3ZXPKLMQDY5I5OKPGX7C:/app/docker/overlay2/l/MTSHYJ44I4WFHLORAAG2EVWWJZ:/app/docker/overlay2/l/66XU4HEQWMHJB53E4HOJ7XYVYI:/app/docker/overlay2/l/OXCB3GO736XTA25CYORD3SELIE:/app/docker/overlay2/l/LY3DW5PSMZ57TUAS2JIF2IJDEZ:/app/docker/overlay2/l/ZYWG6NBYFL2TWTRDSWOVXWMMRN:/app/docker/overlay2/l/QLPAIM7HXIQSDJJ73V4752AI3X:/app/docker/overlay2/l/46LSLYW6H5ANJDQMQOK75T56X5:/app/docker/overlay2/l/47ZRFZQT4K2B2IY7DPQQUKQDZW:/app/docker/overlay2/l/C3CJ6F53FOOXHEUF35S5WZ46J5:/app/docker/overlay2/l/GO2JWPMOQR3OF7JBWBFGWZUAQQ:/app/docker/overlay2/l/ZIMLKBWDJEUMUOVXPIELK2N6GE:/app/docker/overlay2/l/MVIBPKYURDY3DME3EEECPRDMDC:/app/docker/overlay2/l/2GYKT2DVWE7DMLO2MF4APNM4MQ:/app/docker/overlay2/l/EPIRBQSSK6VFBF4XKPVXGIOO3G,upperdir=/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/diff,workdir=/app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/work
-│ ├─/app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/merged overlay                overlay     rw,relatime,seclabel,lowerdir=/app/docker/overlay2/l/KV7RNA6BHSEY676YWURLSQS2UO:/app/docker/overlay2/l/Z6KLCAEIMCBF3I5SRFJ5B7JFNX:/app/docker/overlay2/l/LFMODMIQFOF6IP7X66JFSUOOBZ:/app/docker/overlay2/l/GJIXEMU4TYXXTFXZ3KWV3W74KE:/app/docker/overlay2/l/LOQ7XNEOV4UVBBDBEZ62EYJOMN:/app/docker/overlay2/l/XPHL2YNTO555KLFXN2F4EJSBCG:/app/docker/overlay2/l/TDKFBCHZGMY6JAHZQ465ELA7N7:/app/docker/overlay2/l/6KATT7AQIVVOOLMZZSCUCT3RNV:/app/docker/overlay2/l/AIY53AYNVKGGNINM2GL3SNPL2M:/app/docker/overlay2/l/UE5L3WHJFX3A2KMWG7TSEZHIX5:/app/docker/overlay2/l/LRN22QQPMHBHRMN4MHDCDZPRPU:/app/docker/overlay2/l/4EAC5T6SB6YOMURJRILWMWZZLP:/app/docker/overlay2/l/6YTJQIINWPMPKUN5BEUXQ7OGNA:/app/docker/overlay2/l/M5BQPOF5VWCLBO2OGKIISJZUKR,upperdir=/app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/diff,workdir=/app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/work
-│ └─/app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5/merged overlay                overlay     rw,relatime,seclabel,lowerdir=/app/docker/overlay2/l/OPS3ELSEWDMGAEXBCXPAOW54OH:/app/docker/overlay2/l/COHWJGWU2ACNRWHFAB4ALM5BFS:/app/docker/overlay2/l/D6557MYDGMIMHT322NFJZ7VOUJ:/app/docker/overlay2/l/BZZXT3BVTBSNCAZTOQQFC74NG3:/app/docker/overlay2/l/WSNXZNZOXBHHU5FRUNOTGRBY2G:/app/docker/overlay2/l/R5Q5S2POXLAKHOAPPKZ6SYGWCN:/app/docker/overlay2/l/FRFO2KZCIDM257DLRLGA6J5PK2:/app/docker/overlay2/l/XR3TAMN4K6POP3FI6XZRO4OFBQ:/app/docker/overlay2/l/NJZETTM6XCHY4SVZOFTMMT73AP:/app/docker/overlay2/l/GRHVHQNLCIX5UGDJXUHHJM3ABO:/app/docker/overlay2/l/KYXMFJA6TXUJQSOSKN6XV3OSXI:/app/docker/overlay2/l/QM3RSMPUI5DGYW6PJEWY27NUBJ:/app/docker/overlay2/l/3DTIIE5LXG4JACIILPSSDJJ564:/app/docker/overlay2/l/BFXAWXHLEXZ4U7HR4TJSXQY6KZ:/app/docker/overlay2/l/HZTBVYWQPUNUZ7LW3VXLMU3TOK:/app/docker/overlay2/l/CESTQNP2ELJASQ5MEOCXBS7RMW:/app/docker/overlay2/l/YIGTP3BKPGISCMHOYTMSHHM6Y3:/app/docker/overlay2/l/7CEEZOHM33ZZVJDHGZUT6DKEHB:/app/docker/overlay2/l/GA4ECDVTDWSH3EQOSMDBAC7QQS,upperdir=/app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5/diff,workdir=/app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5/work
-[sikaj01@ip-10-56-112-34 ~]$ sudo lsof +D /app/var 2>/dev/null | head -20
-[sikaj01@ip-10-56-112-34 ~]$ sudo lsof +D /app/home 2>/dev/null | head -20
-[sikaj01@ip-10-56-112-34 ~]$ sudo lsof +D /app/opt 2>/dev/null | head -20
-[sikaj01@ip-10-56-112-34 ~]$ sudo cat /etc/docker/daemon.json 2>/dev/null
-{
-  "data-root": "/app/docker",
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m",
-    "max-file": "5"
-  }
-}
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -rl "/app/var\|/app/home\|/app/opt\|/app/usr" /etc/systemd/system/ 2>/dev/null
-[sikaj01@ip-10-56-112-34 ~]$ sudo ls -la /app/home/
-total 8
-drwxr-xr-x.  5 root             root                   65 Oct 30  2024 .
-dr-xr-xr-x. 23 root             root                 4096 Jul 27 19:32 ..
-drwx------.  2 systemd-timesync ec2-instance-connect   62 Nov 12  2022 cwagent
-drwx------.  2 libstoragemgmt   systemd-timesync       62 Nov 12  2022 ec2-instance-connect
-drwx------. 16 ec2-user         ec2-user             4096 Sep 24  2025 ec2-user
-[sikaj01@ip-10-56-112-34 ~]$ sudo find /app/opt -maxdepth 2
-/app/opt
-/app/opt/aws
-/app/opt/aws/bin
-/app/opt/aws/apitools
-/app/opt/aws/amazon-cloudwatch-agent
-/app/opt/rh
-/app/opt/nessus_agent
-/app/opt/nessus_agent/bin
-/app/opt/nessus_agent/com
-/app/opt/nessus_agent/etc
-/app/opt/nessus_agent/lib
-/app/opt/nessus_agent/sbin
-/app/opt/nessus_agent/var
-/app/opt/BESClient
-/app/opt/BESClient/bin
-/app/opt/BESClient/tools
-/app/opt/CrowdStrike
-/app/opt/CrowdStrike/KernelModuleArchive
-/app/opt/CrowdStrike/KernelModuleArchive17106
-/app/opt/CrowdStrike/Packages
-/app/opt/CrowdStrike/README
-/app/opt/CrowdStrike/falcon-fx
-/app/opt/CrowdStrike/falcon-fxpredict
-/app/opt/CrowdStrike/falcon-fxpredict17106
-/app/opt/CrowdStrike/falcon-kernel-check
-/app/opt/CrowdStrike/falcon-kernel-check17106
-/app/opt/CrowdStrike/falcon-predict
-/app/opt/CrowdStrike/falcon-sensor
-/app/opt/CrowdStrike/falcon-sensor-bpf
-/app/opt/CrowdStrike/falcon-sensor-bpf17106
-/app/opt/CrowdStrike/falcon-sensor17106
-/app/opt/CrowdStrike/falconctl
-/app/opt/CrowdStrike/falconctl17106
-/app/opt/CrowdStrike/falcond
-/app/opt/CrowdStrike/falcond17106
-/app/opt/CrowdStrike/libelf-sourceware.so.1
-/app/opt/CrowdStrike/libelf-sourceware.so.1-17106
-/app/opt/CrowdStrike/libfalconfxp.so.2
-/app/opt/CrowdStrike/libfalconfxp.so.2-17106
-/app/opt/CrowdStrike/falconstore
-/app/opt/CrowdStrike/Registry.bin
-/app/opt/containerd
-/app/opt/containerd/bin
-/app/opt/containerd/lib
-/app/opt/apache-maven-3.9.9
-/app/opt/apache-maven-3.9.9/README.txt
-/app/opt/apache-maven-3.9.9/LICENSE
-/app/opt/apache-maven-3.9.9/NOTICE
-/app/opt/apache-maven-3.9.9/lib
-/app/opt/apache-maven-3.9.9/boot
-/app/opt/apache-maven-3.9.9/bin
-/app/opt/apache-maven-3.9.9/conf
-/app/opt/datadog-agent
-/app/opt/datadog-agent/LICENSE
-/app/opt/datadog-agent/LICENSES
-/app/opt/datadog-agent/bin
-/app/opt/datadog-agent/embedded
-/app/opt/datadog-agent/final_constraints-py3.txt
-/app/opt/datadog-agent/python-scripts
-/app/opt/datadog-agent/requirements-agent-release.txt
-/app/opt/datadog-agent/run
-/app/opt/datadog-agent/scripts
-/app/opt/datadog-agent/sources
-/app/opt/datadog-agent/version-manifest.json
-/app/opt/datadog-agent/version-manifest.txt
-/app/opt/datadog-agent/.diff_python_installed_packages.txt
-/app/opt/datadog-agent/.post_python_installed_packages.txt
-/app/opt/datadog-packages
-/app/opt/datadog-packages/tmp
-/app/opt/datadog-packages/packages.db
-/app/opt/datadog-packages/run
-/app/opt/datadog-packages/datadog-agent
-[sikaj01@ip-10-56-112-34 ~]$ sudo find /app/root -maxdepth 2
-/app/root
-/app/root/.bash_logout
-/app/root/.bash_profile
-/app/root/.bashrc
-/app/root/.cshrc
-/app/root/.tcshrc
-/app/root/.ssh
-/app/root/.ssh/authorized_keys
-/app/root/.ssh/known_hosts
-/app/root/.ssh/id_rsa
-/app/root/.ssh/id_rsa.pub
-/app/root/.cache
-/app/root/.cache/pip
-/app/root/.local
-/app/root/.local/lib
-/app/root/.local/bin
-/app/root/.gnupg
-/app/root/.gnupg/gpg.conf
-/app/root/.gnupg/pubring.gpg
-/app/root/.fexgt
-/app/root/.fexgt/.origin
-/app/root/.bash_history
-/app/root/history.txt
-/app/root/fullchain.pem
-/app/root/privkey.pem
-/app/root/.rnd
-/app/root/jmsbrokerkey.p12
-/app/root/apache-maven-3.9.9-bin.tar.gz
-/app/root/.viminfo
-/app/root/.lesshst
-/app/root/nginxlog.txt
-/app/root/domain_test
-/app/root/domain_test/domain
-/app/root/.m2
-/app/root/.m2/settings.xml
-/app/root/.m2/repository
-/app/root/.aws
-/app/root/.aws/credentials
-/app/root/.aws/config
-/app/root/quick_test
-/app/root/temp
+[2/5] Atlassian volume backups...
+  - bitbucketVolume    -> /app/docker/volumes/bitbucketVolume/_data
+  - optbitbucketVolume -> /app/docker/volumes/optbitbucketVolume/_data
+  - bambooVolume       -> /app/docker/volumes/bambooVolume/_data
+  - optbambooVolume    -> /app/docker/volumes/optbambooVolume/_data
+  - preflight: source volumes ~43G, need ~65G free on /, have 93G
+tar: app/docker/volumes/bitbucketVolume/_data/tmp/2026_08_11_21_43_14_237/2026_08_21_13_40_40.jfr: file changed as we read it
+[root@ip-10-56-112-34 ~]# df -h
+Filesystem        Size  Used Avail Use% Mounted on
+devtmpfs          4.0M     0  4.0M   0% /dev
+tmpfs              16G     0   16G   0% /dev/shm
+tmpfs             6.3G  8.9M  6.2G   1% /run
+/dev/nvme0n1p1    150G   66G   85G  44% /
+tmpfs              16G  7.7G  7.9G  50% /tmp
+/dev/nvme1n1p1    150G  124G   27G  83% /app
+/dev/nvme0n1p128   10M  1.3M  8.7M  13% /boot/efi
+overlay           150G  124G   27G  83% /app/docker/overlay2/3beab874fec3c5fd9a7c95d1934ffbedd58463743f1721b00fbab56e89e4968b/merged
+overlay           150G  124G   27G  83% /app/docker/overlay2/ca6e98ddff007630f3f1b86d04b0f1e605a5be8e5ee5621b090b6d960b7cab87/merged
+overlay           150G  124G   27G  83% /app/docker/overlay2/b0731c044f33cc6603be42f53e4ea84bdba3139792377ae554348b7fa4815ee5/merged
+overlay           150G  124G   27G  83% /app/docker/overlay2/19b812a9af4922f7415adaacef043d9d0038404bbe4d484fb7c2617f6a2c80e6/merged
+tmpfs             3.2G     0  3.2G   0% /run/user/1002
+[root@ip-10-56-112-34 ~]# 
