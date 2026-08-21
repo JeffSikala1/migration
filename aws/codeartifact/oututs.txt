@@ -1,43 +1,27 @@
-[sikaj01@ip-10-56-112-34 ~]$ sudo sed -i '/^  local vol_paths=("\$@")$/i preflight_check_space() {' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-[sikaj01@ip-10-56-112-34 ~]$ sudo bash -n /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh && echo "syntax OK"
-syntax OK
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -n "preflight_check_space() {" /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-94:preflight_check_space() {
-[sikaj01@ip-10-56-112-34 ~]$ sudo rm -rf /backup-staging/2026-08-21
-[sikaj01@ip-10-56-112-34 ~]$ sudo bash /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-==== Nightly backup start: 20260821_203345 host=ip-10-56-112-34.ec2.internal ====
-Staging to: /backup-staging/2026-08-21/20260821_203345 (filesystem: /)
-[1/5] Postgres dumps...
-  - dumping globals (roles/grants)
-  - dumping bitbucket
-  - dumping bamboo
-[2/5] Atlassian volume backups...
-  - bitbucketVolume    -> /app/docker/volumes/bitbucketVolume/_data
-  - optbitbucketVolume -> /app/docker/volumes/optbitbucketVolume/_data
-  - bambooVolume       -> /app/docker/volumes/bambooVolume/_data
-  - optbambooVolume    -> /app/docker/volumes/optbambooVolume/_data
-  - preflight: source volumes ~43G, need ~65G free on /, have 93G
-  - sanity: /backup-staging/2026-08-21/20260821_203345/apps/bitbucket_20260821_203345.tar.gz = 9621244824 bytes
-  WARN: /backup-staging/2026-08-21/20260821_203345/apps/bitbucket_20260821_203345.tar.gz does NOT contain expected path '*shared/keys*' for volume 'bitbucketVolume'. This backup may be incomplete — investigate before relying on it for restore.
-  - sanity: /backup-staging/2026-08-21/20260821_203345/apps/bamboo_20260821_203345.tar.gz = 14964130383 bytes
-  WARN: /backup-staging/2026-08-21/20260821_203345/apps/bamboo_20260821_203345.tar.gz does NOT contain expected path '*shared/configuration*' for volume 'bambooVolume'. This backup may be incomplete — investigate before relying on it for restore.
-[3/5] NGINX + TLS backup...
-  - nginxVolume -> /app/docker/volumes/nginxVolume/_data
-[5/5] Uploading to S3...
-upload: ../../backup-staging/2026-08-21/20260821_203345/postgres/globals_20260821_203345.sql to s3://cnxs-atlassian-backups/postgres/2026-08-21/globals_20260821_203345.sql
-upload: ../../backup-staging/2026-08-21/20260821_203345/postgres/bitbucket_20260821_203345.dump to s3://cnxs-atlassian-backups/postgres/2026-08-21/bitbucket_20260821_203345.dump
-upload: ../../backup-staging/2026-08-21/20260821_203345/postgres/bamboo_20260821_203345.dump to s3://cnxs-atlassian-backups/postgres/2026-08-21/bamboo_20260821_203345.dump
-upload: ../../backup-staging/2026-08-21/20260821_203345/apps/bitbucket_20260821_203345.tar.gz to s3://cnxs-atlassian-backups/apps/2026-08-21/bitbucket_20260821_203345.tar.gz
-upload: ../../backup-staging/2026-08-21/20260821_203345/apps/bamboo_20260821_203345.tar.gz to s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_203345.tar.gz
-upload: ../../backup-staging/2026-08-21/20260821_203345/nginx/nginx_tls_20260821_203345.tar.gz to s3://cnxs-atlassian-backups/nginx/2026-08-21/nginx_tls_20260821_203345.tar.gz
-upload: ../../backup-staging/2026-08-21/20260821_203345/metadata.json to s3://cnxs-atlassian-backups/metadata/2026-08-21/metadata_20260821_203345.json
-[EXTRA] EBS snapshots...
-  - snapshotting volume vol-08f7bca75e08f0d3f
-    created snapshot: snap-09a356c5264ee7441
-  - snapshotting volume vol-05ebadfa92a493533
-    created snapshot: snap-095a9f43eddc05ad1
-  - snapshotting volume vol-04e3115aea57b5c70
-    created snapshot: snap-09190a6b29d0d07c0
-==== Nightly backup completed OK ====
-Cleaning up local staging...
+[sikaj01@ip-10-56-112-34 ~]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bitbucket_20260821_203345.tar.gz - | tar -tz | grep "shared/keys"
+app/docker/volumes/bitbucketVolume/_data/shared/keys/
+app/docker/volumes/bitbucketVolume/_data/shared/keys/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094
+[sikaj01@ip-10-56-112-34 ~]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_203345.tar.gz - | tar -tz | grep "shared/configuration"
+app/docker/volumes/bambooVolume/_data/shared/configuration/
+app/docker/volumes/bambooVolume/_data/shared/configuration/administration.xml
+app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks
+app/docker/volumes/bambooVolume/_data/shared/configuration/bamboo-mail.cfg.xml
+app/docker/volumes/bambooVolume/_data/shared/configuration/cipher/
+app/docker/volumes/bambooVolume/_data/shared/configuration/cipher/cipher.key_0
+app/docker/volumes/bambooVolume/_data/shared/configuration/serialization-whitelist.list
+app/docker/volumes/bambooVolume/_data/shared/configuration/bamboo-shared.cfg.xml
+app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks.bak.2026-04-20_224235
+app/docker/volumes/bambooVolume/_data/shared/configuration/secured/
+app/docker/volumes/bambooVolume/_data/shared/configuration/secured/636f6d2e61746c61737369616e2e6f617574682e636f6e73756d65722e436f6e73756d6572536572766963653a686f73742e5f5f484f53545f534552564943455f5f
+app/docker/volumes/bambooVolume/_data/shared/configuration/keys/
+app/docker/volumes/bambooVolume/_data/shared/configuration/keys/AES256_2026-04-21-220531_18a03f06-8847-4017-aa17-828fcce740f3
+app/docker/volumes/bambooVolume/_data/shared/configuration/secrets-config.yaml
+app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/
+app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/bamboo-shared.cfg.xml
+app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/serialization-whitelist.list
+app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/broker.ks
+app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/bamboo-mail.cfg.xml
+app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/administration.xml
+app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/cipher/
+app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/cipher/cipher.key_0
 [sikaj01@ip-10-56-112-34 ~]$ 
