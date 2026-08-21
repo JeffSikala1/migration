@@ -1,11 +1,28 @@
-stat -c '%Y %n' /var/lib/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
-stat -c '%Y %n' /app/docker/volumes/bambooVolume/_data/bamboo.cfg.xml
-diff <(ls -la /var/lib/docker/volumes/bambooVolume/_data/shared/configuration) \
-     <(ls -la /app/docker/volumes/bambooVolume/_data/shared/configuration)
-
-
-docker inspect cnxs-mgmt-bamboo --format '{{json .Mounts}}' | python3 -m json.tool
+sudo /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
 
 
 
-The AWS WAFv2 Web ACL is attached directly to the Conexus ALB (regional scope) with a default-allow action, so only traffic matching a rule is blocked. Rules are evaluated in priority order and include rate-based statements (general traffic and SOAP/JSON API traffic), byte-match statements for oversized headers/body, a byte-match BadBot User-Agent filter, and AWS-managed XSS and SQLi match statements. A custom 429 response body is returned for rate-limit blocks. Visibility is enabled per-rule via CloudWatch metrics and sampled requests.
+
+# extract the new tarball's missing pieces into a temp staging dir, then copy in
+tar -xzf bitbucket_<newTS>.tar.gz -C /tmp/bb-patch --strip-components=<N> \
+  var/lib/docker/volumes/bitbucketVolume/_data/shared/keys \
+  var/lib/docker/volumes/bitbucketVolume/_data/shared/data/repositories \
+  var/lib/docker/volumes/bitbucketVolume/_data/shared/data/snapshots
+
+# copy only the new key file in (don't overwrite dev's self-generated one until confirmed)
+cp /tmp/bb-patch/shared/keys/* /app/bitbucket/shared/keys/
+
+# copy only the repo IDs that don't already exist locally
+rsync -av --ignore-existing /tmp/bb-patch/shared/data/repositories/ /app/bitbucket/shared/data/repositories/
+rsync -av --ignore-existing /tmp/bb-patch/shared/data/snapshots/ /app/bitbucket/shared/data/snapshots/
+
+chown -R 2003:2003 /app/bitbucket/shared/keys /app/bitbucket/shared/data/repositories /app/bitbucket/shared/data/snapshots
+
+
+
+sed -i 's#AES_KEY_DIR/AES256_.*#AES_KEY_DIR/<real-key-filename>"#' /app/bitbucket/shared/secrets-config.yaml
+docker restart dev-bitbucket
+
+
+
+docker logs dev-bitbucket 2>&1 | grep -iE "SecretServiceException|NoSuchRepositoryException" | tail -20
