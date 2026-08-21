@@ -5,9 +5,10 @@ set -euo pipefail
 BUCKET="s3://cnxs-atlassian-backups"
 DATE="$(date +%F)"
 TS="$(date +%Y%m%d_%H%M%S)"
-BASE="/app/bamboobackup/atlassian-backups"
-STAGE="${BASE}/staging/${DATE}/${TS}"
-LOGDIR="${BASE}/logs"
+BIN_BASE="/app/bamboobackup/atlassian-backups"     # script + logs stay here (small)
+STAGE_ROOT="${STAGE_ROOT:-/backup-staging}"        # actual tar/dump staging - NOT on /app
+STAGE="${STAGE_ROOT}/${DATE}/${TS}"
+LOGDIR="${BIN_BASE}/logs"
 LOG="${LOGDIR}/nightly-${DATE}.log"
 HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
 AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -29,6 +30,7 @@ mkdir -p "$STAGE" "$LOGDIR"
 exec > >(tee -a "$LOG") 2>&1
 
 echo "==== Nightly backup start: ${TS} host=${HOSTNAME} ===="
+echo "Staging to: ${STAGE} (filesystem: $(df -h --output=target "$STAGE_ROOT" | tail -1))"
 
 # ===== Helpers =====
 need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
@@ -53,7 +55,7 @@ s3_put_file() {
   aws s3 cp "$src" "$dest"
 }
 
-# Resolve a named Docker volume to its host path, or exit with an error if the volume does not exist. This is
+# Resolve a named Docker volume
 resolve_volume_path() {
   local vol="$1"
   local path
@@ -88,6 +90,35 @@ sanity_check_tar() {
   fi
 }
 
+# Preflight: measure the real size of what we're about to tar (all four
+# Atlassian volume dirs) and confirm the staging filesystem has enough
+# headroom, with margin for the compressed dumps + nginx tar too. Aborts
+# loudly BEFORE writing a byte if there isn't room, instead of failing
+# partway through a multi-GB tar and leaving a partial file behind.
+preflight_check_space() {
+  local vol_paths=("$@")
+  local needed_kb=0 avail_kb path size_kb
+
+  for path in "${vol_paths[@]}"; do
+    size_kb="$(du -sk "$path" 2>/dev/null | awk '{print $1}')"
+    needed_kb=$(( needed_kb + ${size_kb:-0} ))
+  done
+
+  # Headroom multiplier: tars are compressed (~smaller) but we're staging
+  # bitbucket + bamboo + postgres dumps + nginx concurrently, so budget
+  # generously rather than cut it close.
+  local needed_with_margin_kb=$(( needed_kb * 3 / 2 ))
+  avail_kb="$(df -k --output=avail "$STAGE_ROOT" | tail -1 | tr -d ' ')"
+
+  echo "  - preflight: source volumes ~$(( needed_kb / 1024 / 1024 ))G, need ~$(( needed_with_margin_kb / 1024 / 1024 ))G free on $(df -h --output=target "$STAGE_ROOT" | tail -1), have $(( avail_kb / 1024 / 1024 ))G"
+
+  if [[ "$avail_kb" -lt "$needed_with_margin_kb" ]]; then
+    echo "ERROR: insufficient free space on staging filesystem (${STAGE_ROOT}). Need ~$(( needed_with_margin_kb / 1024 / 1024 ))G, have $(( avail_kb / 1024 / 1024 ))G. Aborting before writing any tar."
+    echo "        Clean up stale staging dirs under ${STAGE_ROOT}, or free space on that filesystem, then re-run."
+    exit 5
+  fi
+}
+
 # ===== 1) Postgres dumps (logical) =====
 echo "[1/6] Postgres dumps..."
 mkdir -p "$STAGE/postgres"
@@ -108,7 +139,7 @@ for DB in "${DB_LIST[@]}"; do
 done
 
 # ===== 2) Atlassian volumes (tar) =====
-echo "[2/6] Atlassian volume backups..."
+echo "[2/5] Atlassian volume backups..."
 mkdir -p "$STAGE/apps"
 
 BITBUCKET_VOL_PATH="$(resolve_volume_path bitbucketVolume)"
@@ -121,6 +152,8 @@ echo "  - optbitbucketVolume -> ${OPTBITBUCKET_VOL_PATH}"
 echo "  - bambooVolume       -> ${BAMBOO_VOL_PATH}"
 echo "  - optbambooVolume    -> ${OPTBAMBOO_VOL_PATH}"
 
+preflight_check_space "$BITBUCKET_VOL_PATH" "$OPTBITBUCKET_VOL_PATH" "$BAMBOO_VOL_PATH" "$OPTBAMBOO_VOL_PATH"
+
 tar -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" -C / \
   "${BITBUCKET_VOL_PATH#/}" "${OPTBITBUCKET_VOL_PATH#/}"
 
@@ -131,7 +164,7 @@ sanity_check_tar "$STAGE/apps/bitbucket_${TS}.tar.gz" "bitbucketVolume" "${VOLUM
 sanity_check_tar "$STAGE/apps/bamboo_${TS}.tar.gz"    "bambooVolume"    "${VOLUME_SANITY_PATH[bambooVolume]}"
 
 # ===== 3) NGINX + TLS/certs/config =====
-echo "[3/6] NGINX + TLS backup..."
+echo "[3/5] NGINX + TLS backup..."
 mkdir -p "$STAGE/nginx"
 
 NGINX_VOL_PATH="$(resolve_volume_path nginxVolume)"
@@ -144,16 +177,12 @@ tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
   /etc/pki \
   2>/dev/null || true
 
-# ===== 4) Bamboo keystores (explicit safety net) =====
-echo "[4/6] Bamboo keystore safety backup..."
-mkdir -p "$STAGE/crypto"
-
-tar -czf "$STAGE/crypto/bamboo_keystores_${TS}.tar.gz" -C / \
-  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}" \
-  2>/dev/null || true
-
-# ===== 5) Metadata =====
-echo "[5/6] Metadata..."
+# ===== 4) Metadata =====
+# NOTE: the old "crypto" step (a second full tar of bambooVolume +
+# optbambooVolume) was removed here — it fully duplicated step 2's
+# apps/bamboo_*.tar.gz for zero added coverage, at real cost in staging
+# space and upload time on every run. Restores should use apps/bamboo_*.tar.gz.
+echo "[4/5] Metadata..."
 if [[ "$have_jq" -eq 1 ]]; then
   cat > "$STAGE/metadata.json" <<JSON
 {
@@ -186,12 +215,11 @@ else
 JSON
 fi
 
-# ===== 6) Upload to S3 =====
-echo "[6/6] Uploading to S3..."
+# ===== 5) Upload to S3 =====
+echo "[5/5] Uploading to S3..."
 s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
 s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
 s3_put_dir  "$STAGE/nginx"    "${BUCKET}/nginx/${DATE}/"
-s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
 s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
 
 # ===== EBS snapshots (same run) =====
