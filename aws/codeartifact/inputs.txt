@@ -31,32 +31,26 @@ docker logs dev-bitbucket 2>&1 | grep -iE "SecretServiceException|NoSuchReposito
 
 ---------
 
-sudo mkdir -p /app/bamboobackup/atlassian-backups/bin
-sudo mkdir -p /app/bamboobackup/atlassian-backups/logs
-# copy the 3 files into bin/, then:
-sudo chmod +x /app/bamboobackup/atlassian-backups/bin/*.sh
+curl -sS --fail \
+  -H "Content-Type: text/plain" \
+  -u sa_bamboo:${bamboo.artifactory_access_token_secret} \
+  -d 'items.find({"repo":"ws","path":{"$match":"*/02.00.000.160-RC"}}).include("name","repo","path","created")' \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql \
+  || { echo "AQL query against ws repo failed"; exit 1; }
+
+
+curl -sS --fail \
+  -H "Content-Type: text/plain" \
+  -u sa_bamboo:${bamboo.artifactory_access_token_secret} \
+  -d 'items.find({"repo":"conexus-rc-local","path":{"$match":"*/02.00.000.160-RC"}}).include("name","repo","path","created")' \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql \
+  || { echo "AQL query against conexus-rc-local failed"; exit 1; }
 
 
 
-sudo bash /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-
-
-
-
-# 1) is anything currently mounted from these paths, or are they just sitting there?
-mount | grep -i '/app/var\|/app/home\|/app/opt\|/app/usr\|/app/boot\|/app/etc\|/app/root'
-findmnt | grep /app
-
-# 2) does anything have open file handles into them right now?
-sudo lsof +D /app/var 2>/dev/null | head -20
-sudo lsof +D /app/home 2>/dev/null | head -20
-sudo lsof +D /app/opt 2>/dev/null | head -20
-
-# 3) does docker's daemon.json or any systemd unit reference these paths explicitly?
-sudo cat /etc/docker/daemon.json 2>/dev/null
-sudo grep -rl "/app/var\|/app/home\|/app/opt\|/app/usr" /etc/systemd/system/ 2>/dev/null
-
-# 4) sanity-check contents look like genuinely stale/generic OS files, not app-specific data
-sudo ls -la /app/home/
-sudo find /app/opt -maxdepth 2
-sudo find /app/root -maxdepth 2
+curl -sS --fail \
+  -H "Content-Type: text/plain" \
+  -u sa_bamboo:${bamboo.artifactory_access_token_secret} \
+  -d 'items.find({"path":{"$match":"*/02.00.000.160-RC"}}).include("name","repo","path","created")' \
+  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql \
+  || { echo "AQL global search failed"; exit 1; }
