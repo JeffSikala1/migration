@@ -63,3 +63,44 @@ curl -sS --fail \
   -d 'items.find({"repo":"conexus-rc-local","path":{"$match":"*/02.00.000.160-RC"}}).include("name","repo","path","created").offset(50).limit(50)' \
   https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql \
   || { echo "AQL offset query failed"; exit 1; }
+
+
+
+
+
+----------
+
+#!/bin/bash
+set -e
+
+BASE="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local/gov/gsa/cnxs/ws"
+VERSION="02.00.000.160-RC"
+
+MODULES=(
+  ws-common
+  ws-api
+  ws-test-support
+  ws-aggregator
+  ws-services-health-check
+  ws-core
+  ws-services-order-services-impl
+  ws-services-order-services
+  ws-services-aggregator
+  ws-version-war
+  ws-services-ear
+  ws-integration
+  ws-integration-core
+  ws-integration-api
+  ws-integration-test
+  ws-integration-ear
+)
+
+for m in "${MODULES[@]}"; do
+  echo "Deleting ${m}/${VERSION}..."
+  curl -sS --fail -X DELETE \
+    -u admin:${artifactory_admin_api_key_secret} \
+    "${BASE}/${m}/${VERSION}/" \
+    || { echo "DELETE failed for ${m}/${VERSION}"; exit 1; }
+done
+
+echo "All 16 ws submodule RC directories removed."
