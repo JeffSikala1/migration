@@ -35,13 +35,15 @@ Gitflow release start:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 600 ~/.ssh
+        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
         chmod 600 ~/.ssh
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+
+
       description: Install SSH key
   - any-task:
       plugin-key: com.atlassian.bamboo.plugins.variable.updater.variable-updater-generic:variable-extractor
@@ -95,7 +97,7 @@ Gitflow release start:
       description: Pull latest Develop branch
   - maven:
       executable: Maven 3
-      jdk: JDK 17
+      jdk: JDK 21
       goal: -U -B external.atlassian.jgitflow:jgitflow-maven-plugin:release-start -DpushReleases=true -DallowSnapshots=true -DenableSshAgent=true -DdefaultOriginUrl=${bamboo.planRepository.repositoryUrl} -s /usr/share/maven/conf/settings-release.xml
       environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
       description: GitFlow Release Start
@@ -131,13 +133,15 @@ Deploy RC:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 600 ~/.ssh
+        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
         chmod 600 ~/.ssh
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+
+
       description: Obtain SSH Key
   - script:
       interpreter: SHELL
@@ -146,9 +150,9 @@ Deploy RC:
         #!/usr/bin/env bash
 
         git remote set-url origin ${bamboo.planRepository.repositoryUrl}
-        git fetch origin
+        git pull
 
-        release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*' | head -1)
+        release_branch=$(git branch -r | grep -oP '(?<=origin\/)release\/.*')
 
         echo "Release branch is set from grep above is $release_branch"
 
@@ -192,7 +196,7 @@ Deploy RC:
       description: ng build
   - maven:
       executable: Maven 3
-      jdk: JDK 17
+      jdk: JDK 21
       goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
       environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'
       description: Deploy RC to RC repo
@@ -210,13 +214,15 @@ Snapshot Maven Deploy:
 
         # Copy in the SSH Key
         echo "Writing private key"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
+        chmod 600 ~/.ssh
+        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
         chmod 600 ~/.ssh
         chmod 400 ~/.ssh/id_rsa
 
         # Configure git to use this key
-        echo "Host *" > ~/.ssh/config
-        echo "    IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+
+
       description: Obtain SSH Key
   - script:
       interpreter: SHELL
@@ -247,7 +253,7 @@ Snapshot Maven Deploy:
       description: ng build
   - maven:
       executable: Maven 3
-      jdk: JDK 17
+      jdk: JDK 21
       goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
       description: Maven Deploy to Artifactory
   artifact-subscriptions: []
