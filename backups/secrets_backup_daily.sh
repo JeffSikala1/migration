@@ -151,7 +151,6 @@ while :; do
       --arg bdate "$DATE" \
       --arg exportKms "$KMS_KEY_ARN" \
       --arg sourceKms "$SOURCE_KMS" \
-      --arg encCtx "purpose=secrets-backup,secretArn=${ARN},backupDate=${DATE},backupHost=${HOST}" \
       --arg ciphertext "$CIPHERTEXT_B64" \
       '{
         name:$name,
@@ -162,7 +161,6 @@ while :; do
         backupHost:$host,
         exportKmsKey:$exportKms,
         sourceKmsKey:($sourceKms // ""),
-        encryptionContext:$encCtx,
         status:"ok",
         ciphertextB64:$ciphertext
       }' >> "$OUT"
