@@ -1,260 +1,433 @@
+[root@ip-10-56-112-34 sikaj01]# crontab -l
+#Ansible: CIS 1.3.2 - Run aide filesystem integrity check
+0 5 * * * /usr/sbin/aide --check
+
+#0 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/aws_script.sh 2>&1
+#15 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/cnxs_script.sh 2>&1
+#30 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/devops_script.sh 2>&1
+#45 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/docker_script.sh 2>&1
+
+
+# Nightly at 02:15
+15 2 * * * /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+
+# Weekly Sunday at 03:00
+0 3 * * 0 /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
+
+# Daily Secrets Manager backup (encrypted to S3)
+55 1 * * * /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
+
+0 4 * * * find /app/bamboobackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+
+[root@ip-10-56-112-34 sikaj01]# cat /app/bamboobackup/atlassian-backups/bin/*
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ===== Config =====
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+BASE="/app/bamboobackup/atlassian-backups"
+STAGE="${BASE}/staging/${DATE}/${TS}"
+LOGDIR="${BASE}/logs"
+LOG="${LOGDIR}/nightly-${DATE}.log"
+HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+
+PG_CONTAINER="${PG_CONTAINER:-prod-postgres}"
+DB_LIST=(${DB_LIST:-bitbucket bamboo})   # space-separated, override if needed
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+echo "==== Nightly backup start: ${TS} host=${HOSTNAME} ===="
+
+# ===== Helpers =====
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
+need aws
+need docker
+need tar
+
+have_jq=0
+if command -v jq >/dev/null 2>&1; then
+  have_jq=1
+else
+  echo "WARN: jq not found; metadata.json will be minimal."
+fi
+
+s3_put_dir() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest" --recursive
+}
+
+s3_put_file() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest"
+}
+
+# ===== 1) Postgres dumps (logical) =====
+echo "[1/6] Postgres dumps..."
+mkdir -p "$STAGE/postgres"
+
+# quick sanity check container exists
+if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
+  echo "ERROR: Postgres container '$PG_CONTAINER' not running. Aborting."
+  exit 3
+fi
+
+# Dump globals (roles, grants) - optional but recommended
+echo "  - dumping globals (roles/grants)"
+docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
+  > "$STAGE/postgres/globals_${TS}.sql"
+
+for DB in "${DB_LIST[@]}"; do
+  echo "  - dumping ${DB}"
+  docker exec "$PG_CONTAINER" pg_dump -U postgres -Fc "$DB" \
+    > "$STAGE/postgres/${DB}_${TS}.dump"
+done
+
+# ===== 2) Atlassian volumes (tar) =====
+echo "[2/6] Atlassian volume backups..."
+mkdir -p "$STAGE/apps"
+
+tar -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bitbucketVolume/_data \
+  /var/lib/docker/volumes/optbitbucketVolume/_data
+
+tar -czf "$STAGE/apps/bamboo_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bambooVolume/_data \
+  /var/lib/docker/volumes/optbambooVolume/_data
+
+# ===== 3) NGINX + TLS/certs/config =====
+echo "[3/6] NGINX + TLS backup..."
+mkdir -p "$STAGE/nginx"
+
+# Include common cert locations; ignore missing
+tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
+  /etc/nginx \
+  /var/lib/docker/volumes/nginxVolume/_data \
+  /etc/ssl \
+  /etc/pki \
+  2>/dev/null || true
+
+# ===== 4) Bamboo keystores (explicit safety net) =====
+echo "[4/6] Bamboo keystore safety backup..."
+mkdir -p "$STAGE/crypto"
+
+tar -czf "$STAGE/crypto/bamboo_keystores_${TS}.tar.gz" \
+  /var/lib/docker/volumes/bambooVolume/_data \
+  /var/lib/docker/volumes/optbambooVolume/_data \
+  2>/dev/null || true
+
+# ===== 5) Metadata =====
+echo "[5/6] Metadata..."
+if [[ "$have_jq" -eq 1 ]]; then
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
+  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]')
+}
+JSON
+else
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "note": "jq not installed; container/volume inventory omitted"
+}
+JSON
+fi
+
+# ===== 6) Upload to S3 =====
+echo "[6/6] Uploading to S3..."
+s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
+s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
+s3_put_dir  "$STAGE/nginx"    "${BUCKET}/nginx/${DATE}/"
+s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
+s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
+
+# ===== EBS snapshots (same run) =====
+echo "[EXTRA] EBS snapshots..."
+TOKEN_IMDS="$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")"
+
+INSTANCE_ID="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/instance-id)"
+
+AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/placement/availability-zone)"
+
+REGION="${AZ::-1}"
+
+# Find attached EBS volume IDs
+VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
+  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
+
+# Map volume IDs to mount purpose using NVMe serial mapping (common on Nitro)
+# This is best-effort; if it can't map, we still snapshot.
+declare -A VOL_PURPOSE
+VOL_PURPOSE["vol-08f7bca75e08f0d3f"]="root"
+VOL_PURPOSE["vol-05ebadfa92a493533"]="app"
+VOL_PURPOSE["vol-04e3115aea57b5c70"]="backup"
+
+for VOL in $VOL_IDS; do
+  echo "  - snapshotting volume $VOL"
+  PURPOSE_TAG="${VOL_PURPOSE[$VOL]:-unknown}"
+  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
+    --description "Nightly Atlassian backup ${HOSTNAME} ${TS}" \
+    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-atlassian-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=atlassian-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
+    --query SnapshotId --output text)"
+  echo "    created snapshot: $SNAP_ID"
+done
+
+echo "==== Nightly backup completed OK ===="
+
+# Cleanup local staging after successful upload
+echo "Cleaning up local staging..."
+rm -rf "$STAGE"
+#!/usr/bin/env bash
+set -euo pipefail
+
+AWS_REGION="${AWS_REGION:-us-east-1}"
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+HOST="$(hostname -f 2>/dev/null || hostname)"
+
+BASE="/app/bamboobackup/atlassian-backups"
+STAGE="${BASE}/staging/secrets/${DATE}/${TS}"
+LOGDIR="${BASE}/logs"
+LOG="${LOGDIR}/secrets-backup-${DATE}.log"
+
+# KMS key used ONLY to encrypt the exported payload we store in S3
+KMS_KEY_ARN="arn:aws:kms:${AWS_REGION}:339713019047:key/ae797822-83c9-4752-89f1-eb9d3fc53b68"
+
+# Optional: only back up secrets with tag Backup=true
+TAG_FILTER_ENABLED="${TAG_FILTER_ENABLED:-0}"
+TAG_KEY="${TAG_KEY:-Backup}"
+TAG_VALUE="${TAG_VALUE:-true}"
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing $1"; exit 2; }; }
+need aws; need jq; need base64; need gzip
+
+OUT="${STAGE}/secrets_export_${HOST}_${TS}.ndjson"
+: > "$OUT"
+
+echo "==== Secrets backup start TS=${TS} host=${HOST} region=${AWS_REGION} ===="
+echo "Output file: $OUT"
+echo "Tag filter enabled: ${TAG_FILTER_ENABLED} (${TAG_KEY}=${TAG_VALUE})"
+echo "Export KMS key: ${KMS_KEY_ARN}"
+
+# Pagination + counters
+NEXT_TOKEN=""
+count=0
+kept=0
+skipped_tag=0
+failed_read=0
+failed_encrypt=0
+
+# Helper: write a record even when something fails (no plaintext)
+write_error_record() {
+  local name="$1" arn="$2" versionId="$3" errType="$4" errMsg="$5" sourceKms="$6"
+  jq -c -n \
+    --arg name "$name" \
+    --arg arn "$arn" \
+    --arg versionId "$versionId" \
+    --arg ts "$TS" \
+    --arg host "$HOST" \
+    --arg exportKms "$KMS_KEY_ARN" \
+    --arg sourceKms "$sourceKms" \
+    --arg errType "$errType" \
+    --arg errMsg "$errMsg" \
+    '{
+      name:$name,
+      arn:$arn,
+      versionId:($versionId // ""),
+      backedUpAt:$ts,
+      backupHost:$host,
+      exportKmsKey:$exportKms,
+      sourceKmsKey:($sourceKms // ""),
+      status:"error",
+      errorType:$errType,
+      error:$errMsg
+    }' >> "$OUT"
+}
+
+while :; do
+  if [[ -n "$NEXT_TOKEN" ]]; then
+    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100 --next-token "$NEXT_TOKEN")"
+  else
+    RESP="$(aws secretsmanager list-secrets --region "$AWS_REGION" --max-results 100)"
+  fi
+
+  while read -r s; do
+    ((count++)) || true
+    ARN="$(echo "$s" | jq -r '.ARN')"
+    NAME="$(echo "$s" | jq -r '.Name')"
+    SOURCE_KMS="$(echo "$s" | jq -r '.KmsKeyId // empty')"
+
+    # Optional tag filter
+    if [[ "$TAG_FILTER_ENABLED" -eq 1 ]]; then
+      TAG_OK="$(aws secretsmanager describe-secret --region "$AWS_REGION" --secret-id "$ARN" \
+        --query "Tags[?Key=='${TAG_KEY}' && Value=='${TAG_VALUE}'] | length(@)" --output text 2>/dev/null || echo 0)"
+      if [[ "$TAG_OK" == "0" ]]; then
+        echo "SKIP (tag filter) $NAME"
+        ((skipped_tag++)) || true
+        continue
+      fi
+    fi
+
+    echo "BACKUP $NAME"
+
+    # Read secret value (can fail if Secrets Manager cannot decrypt w/ that secret's KMS key)
+    VAL_JSON=""
+    if ! VAL_JSON="$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$ARN" 2>/tmp/secret_err.$$)"; then
+      ERR="$(tr -d '\n' </tmp/secret_err.$$ | sed 's/"/'\''/g')"
+      rm -f /tmp/secret_err.$$
+      echo "  ERROR (GetSecretValue) $NAME -> $ERR"
+      ((failed_read++)) || true
+      write_error_record "$NAME" "$ARN" "" "GetSecretValueFailed" "$ERR" "$SOURCE_KMS"
+      continue
+    fi
+    rm -f /tmp/secret_err.$$
+
+    VERSION_ID="$(echo "$VAL_JSON" | jq -r '.VersionId // empty')"
+    SECRET_STRING="$(echo "$VAL_JSON" | jq -r '.SecretString // empty')"
+    SECRET_BINARY_B64="$(echo "$VAL_JSON" | jq -r '.SecretBinary // empty')"
+
+    # Prepare plaintext payload to encrypt (string or binary)
+    if [[ -n "$SECRET_STRING" ]]; then
+      PLAINTEXT_PAYLOAD="$(jq -n --arg t "string" --arg v "$SECRET_STRING" '{type:$t,value:$v}')"
+    elif [[ -n "$SECRET_BINARY_B64" ]]; then
+      PLAINTEXT_PAYLOAD="$(jq -n --arg t "binary_b64" --arg v "$SECRET_BINARY_B64" '{type:$t,value:$v}')"
+    else
+      echo "  WARN: no SecretString/SecretBinary for $NAME (skipping)"
+      ((failed_read++)) || true
+      write_error_record "$NAME" "$ARN" "$VERSION_ID" "EmptySecretValue" "No SecretString/SecretBinary present" "$SOURCE_KMS"
+      continue
+    fi
+
+    # Encrypt export payload with YOUR export key + encryption context
+    # (context makes ciphertext harder to misuse outside this backup flow)
+    CIPHERTEXT_B64=""
+    if ! CIPHERTEXT_B64="$(printf '%s' "$PLAINTEXT_PAYLOAD" | \
+      aws kms encrypt --region "$AWS_REGION" \
+        --key-id "$KMS_KEY_ARN" \
+        --plaintext fileb:///dev/stdin \
+        --encryption-context "purpose=secrets-backup,secretArn=${ARN},backupDate=${DATE},backupHost=${HOST}" \
+        --query CiphertextBlob --output text 2>/tmp/kms_err.$$)"; then
+      ERR="$(tr -d '\n' </tmp/kms_err.$$ | sed 's/"/'\''/g')"
+      rm -f /tmp/kms_err.$$
+      echo "  ERROR (KMS Encrypt) $NAME -> $ERR"
+      ((failed_encrypt++)) || true
+      write_error_record "$NAME" "$ARN" "$VERSION_ID" "KMSEncryptFailed" "$ERR" "$SOURCE_KMS"
+      continue
+    fi
+    rm -f /tmp/kms_err.$$
+
+    # Write success record (no plaintext)
+    jq -c -n \
+      --arg name "$NAME" \
+      --arg arn "$ARN" \
+      --arg versionId "$VERSION_ID" \
+      --arg ts "$TS" \
+      --arg host "$HOST" \
+      --arg bdate "$DATE" \
+      --arg exportKms "$KMS_KEY_ARN" \
+      --arg sourceKms "$SOURCE_KMS" \
+      --arg ciphertext "$CIPHERTEXT_B64" \
+      '{
+        name:$name,
+        arn:$arn,
+        versionId:$versionId,
+        backedUpAt:$ts,
+        backupDate:$bdate,
+        backupHost:$host,
+        exportKmsKey:$exportKms,
+        sourceKmsKey:($sourceKms // ""),
+        status:"ok",
+        ciphertextB64:$ciphertext
+      }' >> "$OUT"
+
+    ((kept++)) || true
+  done < <(echo "$RESP" | jq -c '.SecretList[]')
+
+  NEXT_TOKEN="$(echo "$RESP" | jq -r '.NextToken // empty')"
+  [[ -z "$NEXT_TOKEN" ]] && break
+done
+
+echo "==== SUMMARY ===="
+echo "Secrets enumerated: ${count}"
+echo "Backed up (ok):     ${kept}"
+echo "Skipped (tag):      ${skipped_tag}"
+echo "Failed (read):      ${failed_read}"
+echo "Failed (encrypt):   ${failed_encrypt}"
+
+# Compress and upload
+GZ="${OUT}.gz"
+gzip -c "$OUT" > "$GZ"
+
+DEST="${BUCKET}/secrets/daily/${DATE}/secrets_export_${HOST}_${TS}.ndjson.gz"
+echo "Uploading: $GZ -> $DEST"
+aws s3 cp "$GZ" "$DEST"
+
+echo "==== Secrets backup completed OK ===="
+
+# Cleanup local staging after successful upload
+echo "Cleaning up local staging..."
+rm -rf "$STAGE"
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%G-W%V)"
+
+aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
+aws s3 sync "${BUCKET}/apps/${DATE}/"     "${BUCKET}/weekly/apps/${DATE}/"
+aws s3 sync "${BUCKET}/nginx/${DATE}/"    "${BUCKET}/weekly/nginx/${DATE}/"
+aws s3 sync "${BUCKET}/metadata/${DATE}/" "${BUCKET}/weekly/metadata/${DATE}/"
+
+
+[root@ip-10-56-112-34 sikaj01]# aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-20/bitbucket_20260820_021501.tar.gz - | tar -tzv | grep "shared/keys/"
+[root@ip-10-56-112-34 sikaj01]# 
+
+
+
+
+[sikaj01@ip-10-56-112-34 ~]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-20/bitbucket_20260820_021501.tar.gz - | tar -tzv | grep "shared/keys/"
+[sikaj01@ip-10-56-112-34 ~]$ aws s3 s3://cnxs-atlassian-backups/secrets/daily/2026-08-20/secrets_export_ip-10-56-112-34.ec2.internal_20260820_015502.ndjson.gz - | tar -tzv | grep "shared/keys/"
+
+aws: [ERROR]: argument subcommand: Found invalid choice 's3://cnxs-atlassian-backups/secrets/daily/2026-08-20/secrets_export_ip-10-56-112-34.ec2.internal_20260820_015502.ndjson.gz'
+
+
+usage: aws [options] <command> <subcommand> [<subcommand> ...] [parameters]
+To see help text, you can run:
+
+  aws help
+  aws <command> help
+  aws <command> <subcommand> help
+
+
+gzip: stdin: unexpected end of file
+tar: Child returned status 1
+tar: Error is not recoverable: exiting now
 [sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/secrets/daily/2026-08-20/
 2026-08-20 01:55:17       6003 secrets_export_ip-10-56-112-34.ec2.internal_20260820_015502.ndjson.gz
-[sikaj01@ip-10-56-112-34 ~]$ 
-
-
-[root@ip-10-56-128-233 ~]# find /app/bitbucket -iname "*AES*" -o -iname "*.key" 2>/dev/null
-/app/bitbucket/shared/keys/AES256_2026-08-20-184224_f4818f86-e3ad-4796-8a6f-88609d750541
-/app/bitbucket/plugins/.osgi-cache/transformed-plugins/cache.key
-/app/bitbucket/tmp/bc-lts-jnic7ueb3mkm-libs/libbc-lts-vaesf.so
-[root@ip-10-56-128-233 ~]# find /app/bitbucket/shared -maxdepth 3 -type d
-/app/bitbucket/shared
-/app/bitbucket/shared/data
-/app/bitbucket/shared/data/avatars
-/app/bitbucket/shared/data/avatars/users
-/app/bitbucket/shared/data/migration
-/app/bitbucket/shared/data/migration/export
-/app/bitbucket/shared/data/migration/import
-/app/bitbucket/shared/data/git-lfs
-/app/bitbucket/shared/data/git-lfs/storage
-/app/bitbucket/shared/data/attachments
-/app/bitbucket/shared/data/hierarchies
-/app/bitbucket/shared/data/repositories
-/app/bitbucket/shared/data/repositories/39
-/app/bitbucket/shared/data/repositories/56
-/app/bitbucket/shared/data/repositories/43
-/app/bitbucket/shared/data/repositories/27
-/app/bitbucket/shared/data/repositories/33
-/app/bitbucket/shared/data/repositories/30
-/app/bitbucket/shared/data/repositories/9
-/app/bitbucket/shared/data/repositories/36
-/app/bitbucket/shared/data/repositories/46
-/app/bitbucket/shared/data/repositories/50
-/app/bitbucket/shared/data/repositories/53
-/app/bitbucket/shared/data/repositories/18
-/app/bitbucket/shared/data/repositories/14
-/app/bitbucket/shared/data/repositories/11
-/app/bitbucket/shared/data/repositories/44
-/app/bitbucket/shared/data/repositories/47
-/app/bitbucket/shared/data/repositories/4
-/app/bitbucket/shared/data/repositories/57
-/app/bitbucket/shared/data/repositories/21
-/app/bitbucket/shared/data/repositories/24
-/app/bitbucket/shared/data/repositories/28
-/app/bitbucket/shared/data/repositories/31
-/app/bitbucket/shared/data/repositories/34
-/app/bitbucket/shared/data/repositories/37
-/app/bitbucket/shared/data/repositories/40
-/app/bitbucket/shared/data/repositories/12
-/app/bitbucket/shared/data/repositories/15
-/app/bitbucket/shared/data/repositories/19
-/app/bitbucket/shared/data/repositories/54
-/app/bitbucket/shared/data/repositories/55
-/app/bitbucket/shared/data/repositories/58
-/app/bitbucket/shared/data/repositories/2
-/app/bitbucket/shared/data/repositories/22
-/app/bitbucket/shared/data/repositories/5
-/app/bitbucket/shared/data/repositories/7
-/app/bitbucket/shared/data/repositories/10
-/app/bitbucket/shared/data/repositories/25
-/app/bitbucket/shared/data/repositories/32
-/app/bitbucket/shared/data/repositories/35
-/app/bitbucket/shared/data/repositories/38
-/app/bitbucket/shared/data/repositories/41
-/app/bitbucket/shared/data/repositories/48
-/app/bitbucket/shared/data/repositories/51
-/app/bitbucket/shared/data/repositories/13
-/app/bitbucket/shared/data/repositories/16
-/app/bitbucket/shared/data/repositories/1
-/app/bitbucket/shared/data/repositories/6
-/app/bitbucket/shared/data/repositories/59
-/app/bitbucket/shared/data/repositories/42
-/app/bitbucket/shared/data/repositories/23
-/app/bitbucket/shared/data/repositories/26
-/app/bitbucket/shared/data/repositories/45
-/app/bitbucket/shared/data/repositories/29
-/app/bitbucket/shared/data/repositories/8
-/app/bitbucket/shared/data/repositories/49
-/app/bitbucket/shared/data/repositories/52
-/app/bitbucket/shared/data/repositories/3
-/app/bitbucket/shared/data/repositories/20
-/app/bitbucket/shared/data/repositories/17
-/app/bitbucket/shared/data/snapshots
-/app/bitbucket/shared/data/snapshots/55
-/app/bitbucket/shared/data/snapshots/23
-/app/bitbucket/shared/data/snapshots/31
-/app/bitbucket/shared/data/snapshots/49
-/app/bitbucket/shared/data/snapshots/47
-/app/bitbucket/shared/data/snapshots/18
-/app/bitbucket/shared/data/snapshots/19
-/app/bitbucket/shared/data/snapshots/54
-/app/bitbucket/shared/data/snapshots/6
-/app/bitbucket/shared/data/snapshots/43
-/app/bitbucket/shared/data/snapshots/33
-/app/bitbucket/shared/data/snapshots/27
-/app/bitbucket/shared/data/snapshots/24
-/app/bitbucket/shared/data/snapshots/5
-/app/bitbucket/shared/data/snapshots/28
-/app/bitbucket/shared/data/snapshots/29
-/app/bitbucket/shared/data/snapshots/39
-/app/bitbucket/shared/data/snapshots/45
-/app/bitbucket/shared/data/snapshots/58
-/app/bitbucket/shared/data/snapshots/2
-/app/bitbucket/shared/data/snapshots/4
-/app/bitbucket/shared/data/snapshots/41
-/app/bitbucket/shared/data/snapshots/10
-/app/bitbucket/shared/data/snapshots/12
-/app/bitbucket/shared/data/snapshots/53
-/app/bitbucket/shared/data/snapshots/26
-/app/bitbucket/shared/data/snapshots/42
-/app/bitbucket/shared/data/snapshots/51
-/app/bitbucket/shared/data/snapshots/1
-/app/bitbucket/shared/data/snapshots/7
-/app/bitbucket/shared/data/snapshots/20
-/app/bitbucket/shared/data/snapshots/34
-/app/bitbucket/shared/data/snapshots/30
-/app/bitbucket/shared/data/snapshots/11
-/app/bitbucket/shared/data/snapshots/16
-/app/bitbucket/shared/data/snapshots/32
-/app/bitbucket/shared/data/snapshots/46
-/app/bitbucket/shared/data/snapshots/3
-/app/bitbucket/shared/data/snapshots/50
-/app/bitbucket/shared/data/snapshots/13
-/app/bitbucket/shared/data/snapshots/14
-/app/bitbucket/shared/data/snapshots/15
-/app/bitbucket/shared/data/snapshots/17
-/app/bitbucket/shared/data/snapshots/21
-/app/bitbucket/shared/data/snapshots/25
-/app/bitbucket/shared/data/snapshots/36
-/app/bitbucket/shared/data/snapshots/37
-/app/bitbucket/shared/data/snapshots/38
-/app/bitbucket/shared/data/snapshots/57
-/app/bitbucket/shared/data/snapshots/44
-/app/bitbucket/shared/data/snapshots/48
-/app/bitbucket/shared/data/snapshots/8
-/app/bitbucket/shared/data/snapshots/52
-/app/bitbucket/shared/data/snapshots/35
-/app/bitbucket/shared/data/snapshots/40
-/app/bitbucket/shared/data/snapshots/9
-/app/bitbucket/shared/data/snapshots/56
-/app/bitbucket/shared/data/snapshots/22
-/app/bitbucket/shared/config
-/app/bitbucket/shared/config/upgrades
-/app/bitbucket/shared/config/git
-/app/bitbucket/shared/config/git/hooks
-/app/bitbucket/shared/config/git/templates
-/app/bitbucket/shared/config/hook-scripts
-/app/bitbucket/shared/search
-/app/bitbucket/shared/search/config
-/app/bitbucket/shared/search/config/jvm.options.d
-/app/bitbucket/shared/search/config/opensearch-security
-/app/bitbucket/shared/search/data
-/app/bitbucket/shared/search/data/nodes
-/app/bitbucket/shared/plugins
-/app/bitbucket/shared/plugins/installed-plugins
-/app/bitbucket/shared/secured
-/app/bitbucket/shared/keys
-[root@ip-10-56-128-233 ~]# ls -la /app/bitbucket/shared/data/migration/
-total 0
-drwxr-xr-x. 4 2003 2003  34 Nov 25  2025 .
-drwxr-xr-x. 9 2003 2003 163 Nov 25  2025 ..
-drwxr-xr-x. 2 2003 2003   6 Nov 25  2025 export
-drwxr-xr-x. 2 2003 2003   6 Nov 25  2025 import
-[root@ip-10-56-128-233 ~]# find /app/bitbucket/shared/data/migration -type f -exec echo {} \; -exec cat {} \; 2>/dev/null | head -100
-[root@ip-10-56-128-233 ~]# ls -la /app/bitbucket/shared/data/migration/import/
-total 0
-drwxr-xr-x. 2 2003 2003  6 Nov 25  2025 .
-drwxr-xr-x. 4 2003 2003 34 Nov 25  2025 ..
-[root@ip-10-56-128-233 ~]# ls -la /app/bitbucket/shared/data/migration/export/
-total 0
-drwxr-xr-x. 2 2003 2003  6 Nov 25  2025 .
-
-
-[root@ip-10-56-128-233 ~]# ls -lh /app/restore-staging/apps/
-ls: cannot access '/app/restore-staging/apps/': No such file or directory
-[root@ip-10-56-128-233 ~]# ls -lh /app/restore-staging/
-total 7.7G
--rw-r-----. 1 sikaj01 users 257M Aug 20 17:53 bamboo_20260820_021501.dump
--rw-r-----. 1 sikaj01 users 400M Aug 20 17:53 bamboo_20260820_021501.tar.gz
--rw-r-----. 1 sikaj01 users  23M Aug 20 17:53 bitbucket_20260820_021501.dump
--rw-r-----. 1 sikaj01 users 7.0G Aug 20 17:54 bitbucket_20260820_021501.tar.gz
--rw-r-----. 1 sikaj01 users 1.1K Aug 20 17:54 globals_20260820_021501.sql
-[root@ip-10-56-128-233 ~]# ls -lh /app/
-total 20K
-drwxr-x---.  5    2005  2005   95 Aug 20 18:07 bamboo
-drwxr-x---. 13    2003  2003  16K Aug 20 18:06 bitbucket
-drwxr-xr-x.  9    1030  1030   94 Aug 20 17:18 jfrog
-drwxr-x---.  4 root    root    40 Jul 30 16:32 nginx
-drwx------. 19      70 root  4.0K Aug 20 17:16 postgres
-drwxr-x---.  2 sikaj01 users  191 Aug 20 17:54 restore-staging
-[root@ip-10-56-128-233 ~]# ls -lh /app/postgres/
-total 68K
--rw-------. 1 70 70    3 Jul 29 15:34 PG_VERSION
-drwx------. 9 70 70   89 Aug 20 18:12 base
-drwx------. 2 70 70 4.0K Aug 20 19:31 global
-drwx------. 2 70 70    6 Jul 29 15:34 pg_commit_ts
-drwx------. 2 70 70    6 Jul 29 15:34 pg_dynshmem
--rw-------. 1 70 70 4.8K Jul 29 15:34 pg_hba.conf
--rw-------. 1 70 70 1.6K Jul 29 15:34 pg_ident.conf
-drwx------. 4 70 70   68 Aug 20 19:55 pg_logical
-drwx------. 4 70 70   36 Jul 29 15:34 pg_multixact
-drwx------. 2 70 70    6 Jul 29 15:34 pg_notify
-drwx------. 2 70 70    6 Jul 29 15:34 pg_replslot
-drwx------. 2 70 70    6 Jul 29 15:34 pg_serial
-drwx------. 2 70 70    6 Jul 29 15:34 pg_snapshots
-drwx------. 2 70 70    6 Aug 20 17:16 pg_stat
-drwx------. 2 70 70    6 Jul 29 15:34 pg_stat_tmp
-drwx------. 2 70 70   18 Aug 20 03:59 pg_subtrans
-drwx------. 2 70 70    6 Jul 29 15:34 pg_tblspc
-drwx------. 2 70 70    6 Jul 29 15:34 pg_twophase
-drwx------. 3 70 70 4.0K Aug 20 19:45 pg_wal
-drwx------. 2 70 70   42 Aug 19 05:59 pg_xact
--rw-------. 1 70 70   88 Jul 29 15:34 postgresql.auto.conf
--rw-------. 1 70 70  29K Jul 29 15:34 postgresql.conf
--rw-------. 1 70 70   24 Aug 20 17:16 postmaster.opts
--rw-------. 1 70 70   94 Aug 20 17:16 postmaster.pid
-[root@ip-10-56-128-233 ~]# ls -lh /app/bamboo/
-total 8.0K
-drwxr-xr-x. 2 2005 2005   48 Aug 20 18:42 __pycache__
--rw-r-----. 1 2005 2005 3.2K Aug 20 18:36 bamboo.cfg.xml
--rw-r--r--. 1 2005 2005    1 Aug 20 18:42 docker-app.pid
-drwxr-x---. 2 2005 2005  138 Nov 25  2025 logs
-drwxr-x---. 2 2005 2005    6 Nov 25  2025 shared
-[root@ip-10-56-128-233 ~]# ls -lh /app/b
-bamboo/    bitbucket/ 
-[root@ip-10-56-128-233 ~]# ls -lh /app/bitbucket/
-total 56K
-drwxr-xr-x.  2 2003 2003 16K Aug 20 18:42 analytics-logs
-drwxr-xr-x.  4 2003 2003  42 Nov 25  2025 bin
-drwxr-xr-x.  6 2003 2003  67 Aug 20 18:42 caches
--rw-r--r--.  1 2003 2003   1 Aug 20 18:42 docker-app.pid
-drwxr-xr-x.  2 2003 2003  55 Nov 25  2025 export
--rw-r--r--.  1 2003 2003  67 Aug 20 18:42 home.properties
-drwxr-xr-x.  3 2003 2003  20 Nov 25  2025 lib
-drwxr-xr-x.  5 2003 2003 16K Aug 20 18:43 log
-drwxr-xr-x.  6 2003 2003 155 Aug 20 18:42 mesh
-drwxr-xr-x.  3 2003 2003  25 Nov 25  2025 plugins
-drwxr-xr-x.  8 2003 2003 156 Aug 20 18:42 shared
-drwxr-xr-x. 12 2003 2003 16K Aug 20 18:43 tmp
-
-[root@ip-10-56-112-34 ~]# docker exec cnxs-mgmt-bitbucket ls -la /var/atlassian/application-data/bitbucket/shared/keys/
-total 4
-drwx------. 2 bitbucket bitbucket  75 Mar 11 20:23 .
-drwxr-xr-x. 9 bitbucket bitbucket 190 Aug 12 03:42 ..
--r--------. 1 bitbucket bitbucket  32 Mar 11 20:23 AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094
-[root@ip-10-56-112-34 ~]# docker exec cnxs-mgmt-bitbucket cat /var/atlassian/application-data/bitbucket/shared/secrets-config.yaml
-default: "defaultAES"
-backends:
-  defaultAES:
-    type: "AES"
-    properties:
-      key: "AES_KEY_DIR/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094"
-[root@ip-10-56-112-34 ~]# ls -lh /app/restore-staging/apps/
-ls: cannot access '/app/restore-staging/apps/': No such file or directory
-[root@ip-10-56-112-34 ~]# 
-
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-20/
-2026-08-20 02:21:07  419276181 bamboo_20260820_021501.tar.gz
-2026-08-20 02:21:07 7460976440 bitbucket_20260820_021501.tar.gz
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-20/bitbucket_20260820_021501.tar.gz - | tar -tz | grep -E "repositories/(6[0-9]|[7-9][0-9]|10[0-9])/" | head -20
-[sikaj01@ip-10-56-112-34 ~]$ 
+[sikaj01@ip-10-56-112-34 ~]$ docker exec cnxs-mgmt-bitbucket find /var/atlassian/application-data/bitbucket -maxdepth 2 -iname "mesh*"
+/var/atlassian/application-data/bitbucket/log/mesh-launcher.log
+/var/atlassian/application-data/bitbucket/mesh
+/var/atlassian/application-data/bitbucket/mesh/mesh.mv.db
+/var/atlassian/application-data/bitbucket/mesh/mesh.trace.db
+/var/atlassian/application-data/bitbucket/mesh/mesh.properties.bak
+/var/atlassian/application-data/bitbucket/mesh/mesh.properties
+[sikaj01@ip-10-56-112-34 ~]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-20/bitbucket_20260820_021501.tar.gz - | tar -tz | grep -c "mesh/"
+29
