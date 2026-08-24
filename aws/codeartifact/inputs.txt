@@ -130,6 +130,15 @@ aws ec2 describe-volumes --region us-east-1 \
   --filters "Name=attachment.instance-id,Values=$(curl -s -H "X-aws-ec2-metadata-token: $(curl -sX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')" http://169.254.169.254/latest/meta-data/instance-id)" \
   --query "Volumes[].{Id:VolumeId,Size:Size,Attachments:Attachments[].Device}" --output table
 
+
+
+sudo nvme id-ctrl /dev/nvme1n1 | grep -i "^sn"
+sudo yum install -y nvme-cli
+sudo /sbin/ebsnvme-id /dev/nvme1n1
+
+
+
+
 # 2) resize the volume in AWS (pick the volume ID that maps to /app, size in GiB)
 aws ec2 modify-volume --region us-east-1 --volume-id vol-XXXXXXXX --size 300
 
