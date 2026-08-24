@@ -1,8 +1,9 @@
-[sikaj01@ip-10-56-112-34 ~]$ sudo nvme id-ctrl /dev/nvme1n1 | grep -i "^sn"
-sn        : vol04e3115aea57b5c70
-[sikaj01@ip-10-56-112-34 ~]$ sudo /sbin/ebsnvme-id /dev/nvme1n1
-Volume ID: vol-04e3115aea57b5c70
-sdc
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 modify-volume --region us-east-1 --volume-id vol-04e3115aea57b5c70 --size 300
+
+An error occurred (UnauthorizedOperation) when calling the ModifyVolume operation: You are not authorized to perform this operation. User: arn:aws:sts::339713019047:assumed-role/mgmt-ssm-role/i-01d7e7fcb80559abb is not authorized to perform: ec2:ModifyVolume on resource: arn:aws:ec2:us-east-1:339713019047:volume/vol-04e3115aea57b5c70 because no identity-based policy allows the ec2:ModifyVolume action. Encoded authorization failure message: -s-MB6MmvbPHeNlhF0AD88NqW4Xhhx4BbkbtABBddwQRIyfM7ZuDdb0nUroJfnktzIGQN0Y0gfk05RnXX7_1rVaOlCOlQcDE03JE9cg_Rn8KLxPcwNl2MGpiqKaO_jJYWrEWWceREMX3nTAT0ckwCVDAJMHbOC0Yrkw52T-teo_gE-QcJgPTwGhDmXoLkJj6kZyiBaAhNdtOrLI_EuROG6sCXtwvkDwYJUlanmHQTOyhdUyu-EJEdYSCV5bNfWv7tzakheBF0xSlMMw2HYac7yIC9dwP0jfRff5A3jA5OnLow_LnNpqQEkTij6ZtUaBGzSqxZvFRNS-X-KZXD6xrrC_3r_x-dHKSt7Q6bEzQwAbN8IU0P3IOEQApHip786Q6hr0rvXjvlJdnWuRVDSDRC64a1Xzqrqx_vt8_3c1zsYjEwHmvbvNqr9XJiRKRERc3d6TaMZZ6TltPxFBc6MZj_CISnTP8lwaIFpfPuK_Ip_nj8fFHuoBTJXAUkKWAzydlAr6VIlho6uDlbIQsL87aeKDZFrXl_6A8c39M59FMK95SXyA1s-iWqiyPB_R5wIKlO0aFwE0EXkDUjYYG4a4WSoJwuII8ag2S80fFh6krVzRDld4K01Sl_EdCVFbcCHMcOvPLa-d6akefYKEaqX9bchaDYX8DKt0rrUdIiNfjgcs6meG-ww2lfsdOJY4lmkFwdhtMuUjDzMmlXm7OLB7bEqwBHZ5aFZRau5zPjozQecsF9C7TpXZLqZB2vp27q_DkRFx1h2xc9tZqd87EURwKsJ2q5joQOLdNsNg43O5Zplg9nONITc_QR7W0gxgHQj08l5CYkmhOQngnhubOqtg_yAQ4MFl40tM4tLj87S6kRuNsKurEGCHlGqU3P7HiXv-AJKu-vHoszbADJoURC4KKrF2-HUk
+[sikaj01@ip-10-56-112-34 ~]$ 
+
+
 [sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-volumes --region us-east-1   --filters "Name=attachment.instance-id,Values=$(curl -s -H "X-aws-ec2-metadata-token: $(curl -sX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')" http://169.254.169.254/latest/meta-data/instance-id)"   --query "Volumes[].{Id:VolumeId,Size:Size,Attachments:Attachments[].Device}" --output table
 -----------------------------------
 |         DescribeVolumes         |
@@ -19,7 +20,7 @@ sdc
 +-------------------------+-------+
 |           Id            | Size  |
 +-------------------------+-------+
-|  vol-04e3115aea57b5c70  |  150  |
+|  vol-04e3115aea57b5c70  |  300  |
 +-------------------------+-------+
 ||          Attachments          ||
 |+-------------------------------+|
@@ -35,3 +36,26 @@ sdc
 |+-------------------------------+|
 ||  /dev/xvda                    ||
 |+-------------------------------+|
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-volumes-modifications --region us-east-1 --volume-ids vol-04e3115aea57b5c70 \
+  --query "VolumesModifications[0].ModificationState"
+# poll until "completed" or "optimizing"
+
+An error occurred (UnauthorizedOperation) when calling the DescribeVolumesModifications operation: You are not authorized to perform this operation. User: arn:aws:sts::339713019047:assumed-role/mgmt-ssm-role/i-01d7e7fcb80559abb is not authorized to perform: ec2:DescribeVolumesModifications because no identity-based policy allows the ec2:DescribeVolumesModifications action
+[sikaj01@ip-10-56-112-34 ~]$ sudo growpart /dev/nvme1n1 1
+CHANGED: partition=1 start=4096 old: size=314568671 end=314572767 new: size=629141471 end=629145567
+[sikaj01@ip-10-56-112-34 ~]$ sudo xfs_growfs /app
+meta-data=/dev/nvme1n1p1         isize=512    agcount=76, agsize=524159 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=1, sparse=0, rmapbt=0
+         =                       reflink=0    bigtime=0 inobtcount=0 nrext64=0
+         =                       exchange=0  
+data     =                       bsize=4096   blocks=39321083, imaxpct=25
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0, ftype=1, parent=0
+log      =internal log           bsize=4096   blocks=2560, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+data blocks changed from 39321083 to 78642683
+[sikaj01@ip-10-56-112-34 ~]$ df -h /app
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme1n1p1  300G  138G  163G  46% /app
