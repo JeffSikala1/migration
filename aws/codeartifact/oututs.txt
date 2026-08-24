@@ -1,61 +1,74 @@
-[sikaj01@ip-10-56-112-34 ~]$ aws ec2 modify-volume --region us-east-1 --volume-id vol-04e3115aea57b5c70 --size 300
-
-An error occurred (UnauthorizedOperation) when calling the ModifyVolume operation: You are not authorized to perform this operation. User: arn:aws:sts::339713019047:assumed-role/mgmt-ssm-role/i-01d7e7fcb80559abb is not authorized to perform: ec2:ModifyVolume on resource: arn:aws:ec2:us-east-1:339713019047:volume/vol-04e3115aea57b5c70 because no identity-based policy allows the ec2:ModifyVolume action. Encoded authorization failure message: -s-MB6MmvbPHeNlhF0AD88NqW4Xhhx4BbkbtABBddwQRIyfM7ZuDdb0nUroJfnktzIGQN0Y0gfk05RnXX7_1rVaOlCOlQcDE03JE9cg_Rn8KLxPcwNl2MGpiqKaO_jJYWrEWWceREMX3nTAT0ckwCVDAJMHbOC0Yrkw52T-teo_gE-QcJgPTwGhDmXoLkJj6kZyiBaAhNdtOrLI_EuROG6sCXtwvkDwYJUlanmHQTOyhdUyu-EJEdYSCV5bNfWv7tzakheBF0xSlMMw2HYac7yIC9dwP0jfRff5A3jA5OnLow_LnNpqQEkTij6ZtUaBGzSqxZvFRNS-X-KZXD6xrrC_3r_x-dHKSt7Q6bEzQwAbN8IU0P3IOEQApHip786Q6hr0rvXjvlJdnWuRVDSDRC64a1Xzqrqx_vt8_3c1zsYjEwHmvbvNqr9XJiRKRERc3d6TaMZZ6TltPxFBc6MZj_CISnTP8lwaIFpfPuK_Ip_nj8fFHuoBTJXAUkKWAzydlAr6VIlho6uDlbIQsL87aeKDZFrXl_6A8c39M59FMK95SXyA1s-iWqiyPB_R5wIKlO0aFwE0EXkDUjYYG4a4WSoJwuII8ag2S80fFh6krVzRDld4K01Sl_EdCVFbcCHMcOvPLa-d6akefYKEaqX9bchaDYX8DKt0rrUdIiNfjgcs6meG-ww2lfsdOJY4lmkFwdhtMuUjDzMmlXm7OLB7bEqwBHZ5aFZRau5zPjozQecsF9C7TpXZLqZB2vp27q_DkRFx1h2xc9tZqd87EURwKsJ2q5joQOLdNsNg43O5Zplg9nONITc_QR7W0gxgHQj08l5CYkmhOQngnhubOqtg_yAQ4MFl40tM4tLj87S6kRuNsKurEGCHlGqU3P7HiXv-AJKu-vHoszbADJoURC4KKrF2-HUk
+[sikaj01@ip-10-56-112-34 ~]$ sudo blkid /dev/nvme2n1
+/dev/nvme2n1: UUID="78f25dfb-fb65-4ce6-9f62-b92b4553e824" BLOCK_SIZE="4096" TYPE="ext4"
+[sikaj01@ip-10-56-112-34 ~]$ sudo file -s /dev/nvme2n1
+/dev/nvme2n1: Linux rev 1.0 ext4 filesystem data, UUID=78f25dfb-fb65-4ce6-9f62-b92b4553e824 (extents) (64bit) (large files) (huge files)
+[sikaj01@ip-10-56-112-34 ~]$ sudo lsblk -f /dev/nvme2n1
+NAME    FSTYPE FSVER LABEL UUID                                 FSAVAIL FSUSE% MOUNTPOINTS
+nvme2n1 ext4   1.0         78f25dfb-fb65-4ce6-9f62-b92b4553e824                
+[sikaj01@ip-10-56-112-34 ~]$ sudo dd if=/dev/nvme2n1 bs=512 count=4 status=none | hexdump -C | head -20
+00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+*
+00000400  00 00 96 00 00 00 58 02  00 00 1e 00 2c ad 45 01  |......X.....,.E.|
+00000410  64 d8 8d 00 00 00 00 00  02 00 00 00 02 00 00 00  |d...............|
+00000420  00 80 00 00 00 80 00 00  00 20 00 00 44 06 c4 69  |......... ..D..i|
+00000430  63 eb 7b 6a 09 00 ff ff  53 ef 01 00 01 00 00 00  |c.{j....S.......|
+00000440  39 ae d4 68 00 00 00 00  00 00 00 00 01 00 00 00  |9..h............|
+00000450  00 00 00 00 0b 00 00 00  00 01 00 00 3c 00 00 00  |............<...|
+00000460  c2 02 00 00 7b 00 00 00  78 f2 5d fb fb 65 4c e6  |....{...x.]..eL.|
+00000470  9f 62 b9 2b 45 53 e8 24  00 00 00 00 00 00 00 00  |.b.+ES.$........|
+00000480  00 00 00 00 00 00 00 00  2f 6d 6e 74 2f 74 65 6d  |......../mnt/tem|
+00000490  70 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |p...............|
+000004a0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+*
+000004c0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 04  |................|
+000004d0  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+000004e0  08 00 00 00 00 00 00 00  00 00 00 00 f5 7f 70 c9  |..............p.|
+000004f0  67 89 42 87 86 c9 b0 08  7c 46 c5 6c 01 01 40 00  |g.B.....|F.l..@.|
+00000500  0c 00 00 00 00 00 00 00  39 ae d4 68 0a f3 02 00  |........9..h....|
+00000510  04 00 00 00 00 00 00 00  00 00 00 00 ff 7f 00 00  |................|
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-volumes --region us-east-1 --volume-ids vol-05ebadfa92a493533 \
+  --query "Volumes[0].{Created:CreateTime,SnapshotId:SnapshotId,Tags:Tags,State:State}"
+{
+    "Created": "2025-09-25T02:30:56.381000+00:00",
+    "SnapshotId": "",
+    "Tags": [
+        {
+            "Key": "Env",
+            "Value": "Mgmt"
+        },
+        {
+            "Key": "ResourceClass",
+            "Value": "FileStorage"
+        },
+        {
+            "Key": "Description",
+            "Value": "Atlassian docker temp mount volume /mnt/temp"
+        },
+        {
+            "Key": "Team",
+            "Value": "Ops"
+        },
+        {
+            "Key": "Host",
+            "Value": "Atlassian"
+        },
+        {
+            "Key": "Name",
+            "Value": "Almond"
+        },
+        {
+            "Key": "Service",
+            "Value": "CICDServer"
+        },
+        {
+            "Key": "IP",
+            "Value": "10.56.112.34"
+        },
+        {
+            "Key": "ResourceRole",
+            "Value": "Storage for CICD docker volumes"
+        }
+    ],
+    "State": "in-use"
+}
 [sikaj01@ip-10-56-112-34 ~]$ 
-
-
-[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-volumes --region us-east-1   --filters "Name=attachment.instance-id,Values=$(curl -s -H "X-aws-ec2-metadata-token: $(curl -sX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')" http://169.254.169.254/latest/meta-data/instance-id)"   --query "Volumes[].{Id:VolumeId,Size:Size,Attachments:Attachments[].Device}" --output table
------------------------------------
-|         DescribeVolumes         |
-+-------------------------+-------+
-|           Id            | Size  |
-+-------------------------+-------+
-|  vol-05ebadfa92a493533  |  150  |
-+-------------------------+-------+
-||          Attachments          ||
-|+-------------------------------+|
-||  /dev/sdb                     ||
-|+-------------------------------+|
-|         DescribeVolumes         |
-+-------------------------+-------+
-|           Id            | Size  |
-+-------------------------+-------+
-|  vol-04e3115aea57b5c70  |  300  |
-+-------------------------+-------+
-||          Attachments          ||
-|+-------------------------------+|
-||  /dev/sdc                     ||
-|+-------------------------------+|
-|         DescribeVolumes         |
-+-------------------------+-------+
-|           Id            | Size  |
-+-------------------------+-------+
-|  vol-08f7bca75e08f0d3f  |  150  |
-+-------------------------+-------+
-||          Attachments          ||
-|+-------------------------------+|
-||  /dev/xvda                    ||
-|+-------------------------------+|
-[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-volumes-modifications --region us-east-1 --volume-ids vol-04e3115aea57b5c70 \
-  --query "VolumesModifications[0].ModificationState"
-# poll until "completed" or "optimizing"
-
-An error occurred (UnauthorizedOperation) when calling the DescribeVolumesModifications operation: You are not authorized to perform this operation. User: arn:aws:sts::339713019047:assumed-role/mgmt-ssm-role/i-01d7e7fcb80559abb is not authorized to perform: ec2:DescribeVolumesModifications because no identity-based policy allows the ec2:DescribeVolumesModifications action
-[sikaj01@ip-10-56-112-34 ~]$ sudo growpart /dev/nvme1n1 1
-CHANGED: partition=1 start=4096 old: size=314568671 end=314572767 new: size=629141471 end=629145567
-[sikaj01@ip-10-56-112-34 ~]$ sudo xfs_growfs /app
-meta-data=/dev/nvme1n1p1         isize=512    agcount=76, agsize=524159 blks
-         =                       sectsz=512   attr=2, projid32bit=1
-         =                       crc=1        finobt=1, sparse=0, rmapbt=0
-         =                       reflink=0    bigtime=0 inobtcount=0 nrext64=0
-         =                       exchange=0  
-data     =                       bsize=4096   blocks=39321083, imaxpct=25
-         =                       sunit=0      swidth=0 blks
-naming   =version 2              bsize=4096   ascii-ci=0, ftype=1, parent=0
-log      =internal log           bsize=4096   blocks=2560, version=2
-         =                       sectsz=512   sunit=0 blks, lazy-count=1
-realtime =none                   extsz=4096   blocks=0, rtextents=0
-data blocks changed from 39321083 to 78642683
-[sikaj01@ip-10-56-112-34 ~]$ df -h /app
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/nvme1n1p1  300G  138G  163G  46% /app
