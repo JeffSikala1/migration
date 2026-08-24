@@ -155,3 +155,24 @@ sudo xfs_growfs /app
 
 # 6) confirm
 df -h /app
+
+
+
+
+
+# resize the actual /app-backing volume (confirmed via nvme id-ctrl + ebsnvme-id)
+aws ec2 modify-volume --region us-east-1 --volume-id vol-04e3115aea57b5c70 --size 300
+
+# wait for it to complete
+aws ec2 describe-volumes-modifications --region us-east-1 --volume-ids vol-04e3115aea57b5c70 \
+  --query "VolumesModifications[0].ModificationState"
+# poll until "completed" or "optimizing"
+
+# grow the partition on nvme1n1 (the device backing /app)
+sudo growpart /dev/nvme1n1 1
+
+# grow the XFS filesystem itself (online, no downtime)
+sudo xfs_growfs /app
+
+# confirm
+df -h /app
