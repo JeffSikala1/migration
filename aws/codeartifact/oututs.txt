@@ -1,27 +1,101 @@
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bitbucket_20260821_203345.tar.gz - | tar -tz | grep "shared/keys"
-app/docker/volumes/bitbucketVolume/_data/shared/keys/
-app/docker/volumes/bitbucketVolume/_data/shared/keys/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_203345.tar.gz - | tar -tz | grep "shared/configuration"
-app/docker/volumes/bambooVolume/_data/shared/configuration/
-app/docker/volumes/bambooVolume/_data/shared/configuration/administration.xml
-app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks
-app/docker/volumes/bambooVolume/_data/shared/configuration/bamboo-mail.cfg.xml
-app/docker/volumes/bambooVolume/_data/shared/configuration/cipher/
-app/docker/volumes/bambooVolume/_data/shared/configuration/cipher/cipher.key_0
-app/docker/volumes/bambooVolume/_data/shared/configuration/serialization-whitelist.list
-app/docker/volumes/bambooVolume/_data/shared/configuration/bamboo-shared.cfg.xml
-app/docker/volumes/bambooVolume/_data/shared/configuration/broker.ks.bak.2026-04-20_224235
-app/docker/volumes/bambooVolume/_data/shared/configuration/secured/
-app/docker/volumes/bambooVolume/_data/shared/configuration/secured/636f6d2e61746c61737369616e2e6f617574682e636f6e73756d65722e436f6e73756d6572536572766963653a686f73742e5f5f484f53545f534552564943455f5f
-app/docker/volumes/bambooVolume/_data/shared/configuration/keys/
-app/docker/volumes/bambooVolume/_data/shared/configuration/keys/AES256_2026-04-21-220531_18a03f06-8847-4017-aa17-828fcce740f3
-app/docker/volumes/bambooVolume/_data/shared/configuration/secrets-config.yaml
-app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/
-app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/bamboo-shared.cfg.xml
-app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/serialization-whitelist.list
-app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/broker.ks
-app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/bamboo-mail.cfg.xml
-app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/administration.xml
-app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/cipher/
-app/docker/volumes/bambooVolume/_data/shared/configuration.bak.2025-12-16_0100/cipher/cipher.key_0
-[sikaj01@ip-10-56-112-34 ~]$ 
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-volumes --region us-east-1 \
+  --filters "Name=attachment.instance-id,Values=$(curl -s -H "X-aws-ec2-metadata-token: $(curl -sX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')" http://169.254.169.254/latest/meta-data/instance-id)" \
+  --query "Volumes[].{Id:VolumeId,Size:Size,Attachments:Attachments[].Device}" --output table
+-----------------------------------
+|         DescribeVolumes         |
++-------------------------+-------+
+|           Id            | Size  |
++-------------------------+-------+
+|  vol-05ebadfa92a493533  |  150  |
++-------------------------+-------+
+||          Attachments          ||
+|+-------------------------------+|
+||  /dev/sdb                     ||
+|+-------------------------------+|
+|         DescribeVolumes         |
++-------------------------+-------+
+|           Id            | Size  |
++-------------------------+-------+
+|  vol-04e3115aea57b5c70  |  150  |
++-------------------------+-------+
+||          Attachments          ||
+|+-------------------------------+|
+||  /dev/sdc                     ||
+|+-------------------------------+|
+|         DescribeVolumes         |
++-------------------------+-------+
+|           Id            | Size  |
++-------------------------+-------+
+|  vol-08f7bca75e08f0d3f  |  150  |
++-------------------------+-------+
+||          Attachments          ||
+|+-------------------------------+|
+||  /dev/xvda                    ||
+|+-------------------------------+|
+[sikaj01@ip-10-56-112-34 ~]$ df -h /app
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme1n1p1  150G  138G   13G  92% /app
+[sikaj01@ip-10-56-112-34 ~]$ lsblk
+NAME          MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+nvme1n1       259:0    0  150G  0 disk 
+├─nvme1n1p1   259:3    0  150G  0 part /app
+└─nvme1n1p128 259:4    0    1M  0 part 
+nvme2n1       259:1    0  150G  0 disk 
+nvme0n1       259:2    0  150G  0 disk 
+├─nvme0n1p1   259:5    0  150G  0 part /
+├─nvme0n1p127 259:6    0    1M  0 part 
+└─nvme0n1p128 259:7    0   10M  0 part /boot/efi
+[sikaj01@ip-10-56-112-34 ~]$ mnt --help
+-bash: mnt: command not found
+[sikaj01@ip-10-56-112-34 ~]$ man mnt
+No manual entry for mnt
+[sikaj01@ip-10-56-112-34 ~]$ man mount
+[sikaj01@ip-10-56-112-34 ~]$ mount -l /app
+mount: /app: must be superuser to use mount.
+[sikaj01@ip-10-56-112-34 ~]$ sudo !!
+sudo mount -l /app
+mount: /app: /dev/nvme1n1p1 already mounted on /app.
+[sikaj01@ip-10-56-112-34 ~]$ fsdisk -l
+-bash: fsdisk: command not found
+[sikaj01@ip-10-56-112-34 ~]$ fdisk -l
+fdisk: cannot open /dev/nvme1n1: Permission denied
+fdisk: cannot open /dev/nvme2n1: Permission denied
+fdisk: cannot open /dev/nvme0n1: Permission denied
+[sikaj01@ip-10-56-112-34 ~]$ sudo !!
+sudo fdisk -l
+Disk /dev/nvme1n1: 150 GiB, 161061273600 bytes, 314572800 sectors
+Disk model: Amazon Elastic Block Store              
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+Disklabel type: gpt
+Disk identifier: A5EB8E0A-FC09-4423-BB29-047980350BDD
+
+Device           Start       End   Sectors  Size Type
+/dev/nvme1n1p1    4096 314572766 314568671  150G Linux filesystem
+/dev/nvme1n1p128  2048      4095      2048    1M BIOS boot
+
+Partition table entries are not in disk order.
+
+
+Disk /dev/nvme2n1: 150 GiB, 161061273600 bytes, 314572800 sectors
+Disk model: Amazon Elastic Block Store              
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+
+
+Disk /dev/nvme0n1: 150 GiB, 161061273600 bytes, 314572800 sectors
+Disk model: Amazon Elastic Block Store              
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+Disklabel type: gpt
+Disk identifier: 5DBF46BD-F807-41AE-8B58-9775A1036DF7
+
+Device           Start       End   Sectors  Size Type
+/dev/nvme0n1p1   24576 314572766 314548191  150G Linux filesystem
+/dev/nvme0n1p127 22528     24575      2048    1M BIOS boot
+/dev/nvme0n1p128  2048     22527     20480   10M EFI System
+
+Partition table entries are not in disk order.
