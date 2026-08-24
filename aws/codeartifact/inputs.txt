@@ -31,15 +31,6 @@ docker logs dev-bitbucket 2>&1 | grep -iE "SecretServiceException|NoSuchReposito
 
 ---------
 
-# check for any filesystem signature directly on the raw device (no partition needed)
-sudo blkid /dev/nvme2n1
-sudo file -s /dev/nvme2n1
-sudo lsblk -f /dev/nvme2n1
-
-# peek at the raw header bytes, purely read-only
-sudo dd if=/dev/nvme2n1 bs=512 count=4 status=none | hexdump -C | head -20
-
-# check the volume's own AWS metadata for provenance clues — when it was
-# created, whether it came from a snapshot, and any tags describing intent
-aws ec2 describe-volumes --region us-east-1 --volume-ids vol-05ebadfa92a493533 \
-  --query "Volumes[0].{Created:CreateTime,SnapshotId:SnapshotId,Tags:Tags,State:State}"
+grep -i "temp\|78f25dfb" /etc/fstab
+ls -la /mnt/temp 2>/dev/null
+sudo mount | grep nvme2n1
