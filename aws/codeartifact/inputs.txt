@@ -1,47 +1,26 @@
-docker exec dev-bamboo grep -i url /var/atlassian/application-data/bamboo/bamboo.cfg.xml
-docker exec dev-bamboo ls -la /var/atlassian/application-data/bamboo/bamboo.cfg.xml
+docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "\dt" | grep -iE "setting|bandana|config"
+docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "SELECT * FROM bandana WHERE bandana_key ILIKE '%url%' OR bandana_key ILIKE '%baseurl%';"
 
-sudo tee /app/nginx/conf.d/bamboo.conf > /dev/null <<'CONF'
-server {
-  listen 80;
-  server_name bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov;
-  return 301 https://$host$request_uri;
+
+cat > /tmp/route53-bamboo-test.json <<'JSON'
+{
+  "Comment": "Add bamboo-test.dev alias, mirroring artifactory-test/bitbucket-test.dev pattern (NLB TCP passthrough to nginx host-based routing)",
+  "Changes": [
+    {
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+          "HostedZoneId": "Z26RNL4JYFTOTI",
+          "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+          "EvaluateTargetHealth": true
+        }
+      }
+    }
+  ]
 }
+JSON
 
-server {
-  listen 443 ssl;
-  server_name bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov;
-
-  ssl_certificate     /etc/nginx/certificates/dev_wildcard.pem;
-  ssl_certificate_key /etc/nginx/certificates/dev_privatekey.key;
-
-  client_max_body_size 0;
-
-  proxy_read_timeout 900;
-  proxy_send_timeout 900;
-  proxy_connect_timeout 60;
-
-  location / {
-    proxy_set_header Host              $host;
-    proxy_set_header X-Real-IP         $remote_addr;
-    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto https;
-    proxy_set_header X-Forwarded-Host  $host;
-    proxy_set_header X-Forwarded-Port  443;
-
-    proxy_pass http://dev-bamboo:8085;
-  }
-}
-CONF
-
-sudo chmod 640 /app/nginx/conf.d/bamboo.conf
-sudo chown root:root /app/nginx/conf.d/bamboo.conf
-
-docker exec dev-nginx nginx -t
-docker exec dev-nginx nginx -s reload
-
-curl -sk -o /dev/null -w "%{http_code}\n" -H "Host: bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov" https://localhost/
-
-
-docker exec dev-bamboo grep -i url /var/atlassian/application-data/bamboo/bamboo.cfg.xml
-docker exec dev-bamboo ls -la /var/atlassian/application-data/bamboo/bamboo.cfg.xml
+aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/route53-bamboo-test.json
+aws route53 change-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --change-batch file:///tmp/route53-bamboo-test.json
