@@ -1,32 +1,8 @@
-sudo su -
-cd /home/sikaj01
-mkdir -p /tmp/mesh-extract
-tar -xzf mesh-patch.tar.gz -C /tmp/mesh-extract app/docker/volumes/bitbucketVolume/_data/mesh/mesh.mv.db app/docker/volumes/bitbucketVolume/_data/mesh/mesh.trace.db app/docker/volumes/bitbucketVolume/_data/mesh/mesh.properties app/docker/volumes/bitbucketVolume/_data/mesh/mesh.properties.bak app/docker/volumes/bitbucketVolume/_data/mesh/.lock
+docker logs dev-bitbucket --since 2026-08-25T14:08:38 2>&1 | grep -iE "SecretServiceException|NoSuchRepositoryException" | sort | uniq -c | sort -rn
 
-# backup current mesh db files before overwriting
-mkdir -p /root/mesh-db-backup-$(date +%Y%m%d_%H%M%S)
-BKDIR=$(ls -d /root/mesh-db-backup-* | tail -1)
-cp -a /app/bitbucket/mesh/mesh.mv.db "$BKDIR"/ 2>/dev/null || true
-cp -a /app/bitbucket/mesh/mesh.trace.db "$BKDIR"/ 2>/dev/null || true
-cp -a /app/bitbucket/mesh/mesh.properties "$BKDIR"/ 2>/dev/null || true
-cp -a /app/bitbucket/mesh/mesh.properties.bak "$BKDIR"/ 2>/dev/null || true
-cp -a /app/bitbucket/mesh/.lock "$BKDIR"/ 2>/dev/null || true
-ls -la "$BKDIR"
+docker logs dev-bitbucket --since 2026-08-25T14:08:38 2>&1 | grep -B5 "SecretServiceException" | grep -iE "AES256|key|alias" | sort -u
 
-# copy patched files in
-SRC=/tmp/mesh-extract/app/docker/volumes/bitbucketVolume/_data/mesh
-cp -a "$SRC"/mesh.mv.db /app/bitbucket/mesh/mesh.mv.db
-cp -a "$SRC"/mesh.trace.db /app/bitbucket/mesh/mesh.trace.db
-cp -a "$SRC"/mesh.properties /app/bitbucket/mesh/mesh.properties
-cp -a "$SRC"/mesh.properties.bak /app/bitbucket/mesh/mesh.properties.bak
-rm -f /app/bitbucket/mesh/.lock   # stale lock from prod snapshot, must not carry over
-
-chown 2003:2003 /app/bitbucket/mesh/mesh.mv.db /app/bitbucket/mesh/mesh.trace.db /app/bitbucket/mesh/mesh.properties /app/bitbucket/mesh/mesh.properties.bak
-ls -la /app/bitbucket/mesh/
-
-exit
-docker start dev-bitbucket
+cat /app/bitbucket/shared/secrets-config.yaml
 
 
-docker logs dev-bitbucket --tail 50
-docker logs dev-bitbucket | grep -iE 'SecretServiceException|NoSuchRepositoryException'
+
