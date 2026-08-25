@@ -1,32 +1,9 @@
-sudo ls -la /etc/cron.d/ | grep -i bamboo
-sudo grep -rl "nightly_backup" /etc/cron.d/ /etc/crontab 2>/dev/null
-sudo crontab -u root -l | grep -n nightly_backup
+# Pull the raw license.string value and check for embedded whitespace/newlines that would break base64 decoding
+docker exec dev-bamboo grep -A1 'license.string' /var/atlassian/application-data/bamboo/bamboo.cfg.xml
+
+# Check byte length and look for anything non-base64 (spaces, newlines, XML entities)
+docker exec dev-bamboo sh -c "grep -oP '(?<=license.string\">).*(?=</property>)' /var/atlassian/application-data/bamboo/bamboo.cfg.xml | wc -c"
+docker exec dev-bamboo sh -c "grep -oP '(?<=license.string\">).*(?=</property>)' /var/atlassian/application-data/bamboo/bamboo.cfg.xml | od -c | grep -E ' \\\\n| +' | head -5"
 
 
-sudo chmod 750 /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-sudo ls -la /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-
-sudo /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-
-
-----------
-
-docker exec prod-bamboo cat /var/atlassian/application-data/bamboo/shared/configuration/bamboo-shared.cfg.xml > /tmp/bamboo-shared.cfg.xml
-cat /tmp/bamboo-shared.cfg.xml
-
-
-docker stop dev-bamboo
-
-sudo mkdir -p /app/bamboo/shared/configuration
-sudo cp /path/to/relayed/bamboo-shared.cfg.xml /app/bamboo/shared/configuration/bamboo-shared.cfg.xml
-sudo chown 2005:2005 /app/bamboo/shared/configuration/bamboo-shared.cfg.xml
-sudo chmod 640 /app/bamboo/shared/configuration/bamboo-shared.cfg.xml
-sudo chown 2005:2005 /app/bamboo/shared/configuration
-sudo chmod 750 /app/bamboo/shared/configuration
-
-ls -la /app/bamboo/shared/configuration/
-
-docker start dev-bamboo
-
-
-docker logs -f dev-bamboo
+docker exec prod-bamboo grep -i 'license.string\|serverId\|serverKey' /var/atlassian/application-data/bamboo/bamboo.cfg.xml
