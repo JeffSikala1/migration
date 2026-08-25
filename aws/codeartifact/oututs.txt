@@ -1,57 +1,31 @@
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-groups --target-group-arns arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc --query "TargetGroups[0].{HealthCheckPort:HealthCheckPort,HealthCheckProtocol:HealthCheckProtocol,HealthCheckPath:HealthCheckPath,TargetType:TargetType}" --output json
+[sikaj01@ip-10-56-128-233 ~]$ curl -s http://169.254.169.254/latest/api/token -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" > /tmp/imds_token
+[sikaj01@ip-10-56-128-233 ~]$ INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $(cat /tmp/imds_token)" http://169.254.169.254/latest/meta-data/instance-id)
+[sikaj01@ip-10-56-128-233 ~]$ echo "This instance (.233) ID: $INSTANCE_ID"
+This instance (.233) ID: i-0dd6e0c7c4fcc27f9
+[sikaj01@ip-10-56-128-233 ~]$ aws route53 get-hosted-zone --id Z00469081L8WP3FVPM748 --query "{Config:HostedZone.Config,VPCs:VPCs}" --output json
 {
-    "HealthCheckPort": "443",
-    "HealthCheckProtocol": "HTTPS",
-    "HealthCheckPath": "/healthcheck",
-    "TargetType": "instance"
+    "Config": {
+        "Comment": "Managed by Terraform",
+        "PrivateZone": false
+    },
+    "VPCs": null
 }
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc --output table
--------------------------------------------------------------------------------------------------------
-|                                        DescribeTargetHealth                                         |
-+-----------------------------------------------------------------------------------------------------+
-||                                     TargetHealthDescriptions                                      ||
-|+---------------------------------------------------------------------------------------------------+|
-||                                          HealthCheckPort                                          ||
-|+---------------------------------------------------------------------------------------------------+|
-||  443                                                                                              ||
-|+---------------------------------------------------------------------------------------------------+|
-|||                                     AdministrativeOverride                                      |||
-||+--------------------------------------------+-------------------------------------+--------------+||
-|||                 Description                |               Reason                |    State     |||
-||+--------------------------------------------+-------------------------------------+--------------+||
-|||  No override is currently active on target |  AdministrativeOverride.NoOverride  |  no_override |||
-||+--------------------------------------------+-------------------------------------+--------------+||
-|||                                             Target                                              |||
-||+-----------------------------------------------------------------------+-------------------------+||
-|||                                  Id                                   |          Port           |||
-||+-----------------------------------------------------------------------+-------------------------+||
-|||  i-0dd6e0c7c4fcc27f9                                                  |  443                    |||
-||+-----------------------------------------------------------------------+-------------------------+||
-|||                                          TargetHealth                                           |||
-||+-------------------------------------------+-----------------------------------------------------+||
-|||  State                                    |  healthy                                            |||
-||+-------------------------------------------+-----------------------------------------------------+||
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 list-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --query "ResourceRecordSets[?contains(Name, \`artifactory-test\`)]" --output json
-[
-    {
-        "Name": "artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-            "HostedZoneId": "Z26RNL4JYFTOTI",
-            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-            "EvaluateTargetHealth": true
+[sikaj01@ip-10-56-128-233 ~]$ aws route53 get-hosted-zone --id Z0302955A48RKPB320IR --query "{Config:HostedZone.Config,VPCs:VPCs}" --output json
+{
+    "Config": {
+        "Comment": "Managed by Terraform",
+        "PrivateZone": true
+    },
+    "VPCs": [
+        {
+            "VPCRegion": "us-east-1",
+            "VPCId": "vpc-01904aded9648a4e1"
+        },
+        {
+            "VPCRegion": "us-east-1",
+            "VPCId": "vpc-58076d3c"
         }
-    }
-]
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --query "ResourceRecordSets[?contains(Name, \`artifactory-test\`)]" --output json
-[
-    {
-        "Name": "artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-            "HostedZoneId": "Z26RNL4JYFTOTI",
-            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-            "EvaluateTargetHealth": true
-        }
-    }
-]
+    ]
+}
+[sikaj01@ip-10-56-128-233 ~]$ 
+
