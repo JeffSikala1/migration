@@ -1,12 +1,13 @@
-docker exec prod-bamboo ls -la /var/atlassian/application-data/bamboo/shared/configuration/ 2>&1
-docker exec prod-bamboo ls -la /var/atlassian/application-data/bamboo/shared/ 2>&1
-docker exec prod-bamboo find /var/atlassian/application-data/bamboo -maxdepth 2 -iname "*shared*" 2>&1
-docker exec prod-bamboo cat /var/atlassian/application-data/bamboo/bamboo.cfg.xml 2>&1 | grep -i bambooSharedHome
+mkdir -p /tmp/bamboo-shared-check
+cd /tmp/bamboo-shared-check
+
+# Confirm the file exists in this archive before extracting (avoid pulling the whole 419MB unnecessarily)
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_021502.tar.gz - | tar -tzf - | grep -i "shared/configuration/bamboo-shared.cfg.xml"
 
 
+# Extract just that one file
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_021502.tar.gz - | \
+  tar -xzf - --wildcards '*shared/configuration/bamboo-shared.cfg.xml' -C /tmp/bamboo-shared-check
 
-# List top-level backup structure to confirm Bamboo backups exist and how they're organized
-aws s3 ls s3://cnxs-atlassian-backups/
-
-# Drill into whatever bamboo-specific prefix shows up (adjust path once you see the listing above)
-aws s3 ls s3://cnxs-atlassian-backups/bamboo/ --recursive | tail -50
+find /tmp/bamboo-shared-check -iname "bamboo-shared.cfg.xml"
+cat "$(find /tmp/bamboo-shared-check -iname bamboo-shared.cfg.xml)"
