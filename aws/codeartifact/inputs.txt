@@ -1,26 +1,4 @@
-docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "\dt" | grep -iE "setting|bandana|config"
-docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "SELECT * FROM bandana WHERE bandana_key ILIKE '%url%' OR bandana_key ILIKE '%baseurl%';"
+docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "SELECT * FROM bandana WHERE bandana_key ILIKE '%server%' OR bandana_key ILIKE '%base%';"
 
-
-cat > /tmp/route53-bamboo-test.json <<'JSON'
-{
-  "Comment": "Add bamboo-test.dev alias, mirroring artifactory-test/bitbucket-test.dev pattern (NLB TCP passthrough to nginx host-based routing)",
-  "Changes": [
-    {
-      "Action": "CREATE",
-      "ResourceRecordSet": {
-        "Name": "bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-          "HostedZoneId": "Z26RNL4JYFTOTI",
-          "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-          "EvaluateTargetHealth": true
-        }
-      }
-    }
-  ]
-}
-JSON
-
-aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/route53-bamboo-test.json
-aws route53 change-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --change-batch file:///tmp/route53-bamboo-test.json
+dig +short bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov
+curl -sk -o /dev/null -w "%{http_code}\n" https://bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov/
