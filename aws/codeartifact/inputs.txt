@@ -31,6 +31,17 @@ docker logs dev-bitbucket 2>&1 | grep -iE "SecretServiceException|NoSuchReposito
 
 ---------
 
-grep -i "temp\|78f25dfb" /etc/fstab
-ls -la /mnt/temp 2>/dev/null
-sudo mount | grep nvme2n1
+sudo mkdir -p /mnt/verify-temp
+sudo mount -o ro /dev/nvme2n1 /mnt/verify-temp
+sudo ls -la /mnt/verify-temp
+sudo du -sh /mnt/verify-temp/* 2>/dev/null | sort -rh | head -20
+sudo find /mnt/verify-temp -maxdepth 3 -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -10
+
+
+sudo umount /mnt/verify-temp
+
+
+
+aws ec2 create-snapshot --region us-east-1 --volume-id vol-05ebadfa92a493533 \
+  --description "Pre-decommission snapshot - orphaned /mnt/temp volume, unused since docker data-root migration to /app/docker" \
+  --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=vol-05ebadfa92a493533-final-snapshot},{Key=Purpose,Value=pre-decommission}]"
