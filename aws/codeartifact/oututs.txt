@@ -1,62 +1,56 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres env | grep -iE "POSTGRES_"
-POSTGRES_PASSWORD=B/4$2Aamgrg69R,6
-POSTGRES_DB=artifactory
-POSTGRES_USER=artifactory
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U postgres -l 2>&1
-psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "postgres" does not exist
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U artifactory -l 2>&1
-                                                       List of databases
-    Name     |    Owner    | Encoding |  Collate   |   Ctype    | ICU Locale | Locale Provider |       Access privileges       
--------------+-------------+----------+------------+------------+------------+-----------------+-------------------------------
- artifactory | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
- bamboo      | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
-             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
-             |             |          |            |            |            |                 | bamboouser=CTc/artifactory
- bitbucket   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
-             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
-             |             |          |            |            |            |                 | bitbucketuser=CTc/artifactory
- postgres    | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
- template0   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
-             |             |          |            |            |            |                 | artifactory=CTc/artifactory
- template1   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
-             |             |          |            |            |            |                 | artifactory=CTc/artifactory
-(6 rows)
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U artifactory -d bitbucket -c "\dt" | grep -iE "secret|prop|config"
+ public | AO_02A6C0_SYNC_CONFIG          | table | artifactory
+ public | AO_4789DD_PROPERTIES           | table | artifactory
+ public | AO_4C6A26_JIRA_HOOK_CONFIG     | table | artifactory
+ public | AO_616D7B_BRANCH_MODEL_CONFIG  | table | artifactory
+ public | AO_616D7B_BRANCH_TYPE_CONFIG   | table | artifactory
+ public | AO_723324_CLIENT_CONFIG        | table | artifactory
+ public | AO_777666_JIRA_SITE_CONFIG     | table | artifactory
+ public | AO_811463_GIT_LFS_REPO_CONFIG  | table | artifactory
+ public | AO_8752F1_DATA_PIPELINE_CONFIG | table | artifactory
+ public | AO_A0B856_WEBHOOK_CONFIG       | table | artifactory
+ public | AO_ED669C_IDP_CONFIG           | table | artifactory
+ public | AO_F4ED3A_ADD_ON_PROPERTY_AO   | table | artifactory
+ public | app_property                   | table | artifactory
+ public | bb_hook_script_config          | table | artifactory
+ public | bb_proj_merge_config           | table | artifactory
+ public | bb_repo_merge_config           | table | artifactory
+ public | bb_scm_merge_config            | table | artifactory
+ public | bb_sealed_secret               | table | artifactory
+ public | bb_secret_allowlist_rule       | table | artifactory
+ public | bb_secret_scan_rule            | table | artifactory
+ public | cwd_application_saml_config    | table | artifactory
+ public | cwd_property                   | table | artifactory
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U artifactory -d bitbucket -c "SELECT * FROM application_properties WHERE property_name ILIKE '%password%' OR property_name ILIKE '%passphrase%';" 2>&1
+ERROR:  relation "application_properties" does not exist
+LINE 1: SELECT * FROM application_properties WHERE property_name ILI...
 
 
-
-
-
-
-
-
-
-
-
-
-[sikaj01@ip-10-56-112-34 ~]$ docker ps
-CONTAINER ID   IMAGE                        COMMAND                  CREATED        STATUS             PORTS                                                       NAMES
-f989498245ad   atlassian/bamboo:10.2.11     "/usr/bin/tini -- /e…"   3 months ago   Up About an hour   0.0.0.0:8085->8085/tcp, 0.0.0.0:8443->8443/tcp, 54663/tcp   prod-bamboo
-3d7c479b3814   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   5 months ago   Up About an hour   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp              cnxs-mgmt-bitbucket
-704e46755f36   postgres:16.5                "docker-entrypoint.s…"   8 months ago   Up About an hour   0.0.0.0:32768->5432/tcp                                     prod-postgres
-5ae53572e094   nginx:1.29.3                 "/docker-entrypoint.…"   8 months ago   Up About an hour   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp                    nginx
-[sikaj01@ip-10-56-112-34 ~]$ docker exec -it prod-postgres psql -U bitbucket -d bitbucket -c "\dt" | grep -iE "secret|prop|config"
-[sikaj01@ip-10-56-112-34 ~]$ docker exec -it prod-postgres psql -U bitbucket -d bitbucket -c "SELECT * FROM application_properties WHERE property_name IN ('mail.host.password','plugin.search.password') LIMIT 5;" 2>&1
-psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "bitbucket" does not exist
-[sikaj01@ip-10-56-112-34 ~]$ docker exec -it prod-postgres psql -U bitbucket -d bitbucket -c "SELECT table_name, column_name FROM information_schema.columns WHERE column_name ILIKE '%key%' OR column_name ILIKE '%alias%';" 2>&1
-psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "bitbucket" does not exist
-[sikaj01@ip-10-56-112-34 ~]$ docker exec dev-postgres env | grep -iE "POSTGRES_"
+[sikaj01@ip-10-56-112-34 ~]$ docker exec dev-postgres psql -U artifactory -d bitbucket -c "\dt" | grep -iE "secret|prop|config"
 Error response from daemon: No such container: dev-postgres
-[sikaj01@ip-10-56-112-34 ~]$ docker exec prod-postgres env | grep -iE "POSTGRES_"
-POSTGRES_PASSWORD=KIgregyfibUH
-[sikaj01@ip-10-56-112-34 ~]$ docker exec prod-postgres psql -U postgres -l 2>&1
-                                                         List of databases
-   Name    |     Owner     | Encoding | Locale Provider |  Collate   |   Ctype    | ICU Locale | ICU Rules |   Access privileges   
------------+---------------+----------+-----------------+------------+------------+------------+-----------+-----------------------
- bamboo    | bamboouser    | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | 
- bitbucket | bitbucketuser | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | 
- postgres  | postgres      | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | 
- template0 | postgres      | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =c/postgres          +
-           |               |          |                 |            |            |            |           | postgres=CTc/postgres
- template1 | postgres      | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =c/postgres          +
-           |               |          |                 |            |            |            |           | postgres=CTc/postgres
-(5 rows)
+[sikaj01@ip-10-56-112-34 ~]$ docker exec prod-postgres psql -U bitbucketuser -d bitbucket -c "\dt" | grep -iE "secret|prop|config"
+ public | AO_02A6C0_SYNC_CONFIG          | table | bitbucketuser
+ public | AO_4789DD_PROPERTIES           | table | bitbucketuser
+ public | AO_4C6A26_JIRA_HOOK_CONFIG     | table | bitbucketuser
+ public | AO_616D7B_BRANCH_MODEL_CONFIG  | table | bitbucketuser
+ public | AO_616D7B_BRANCH_TYPE_CONFIG   | table | bitbucketuser
+ public | AO_723324_CLIENT_CONFIG        | table | bitbucketuser
+ public | AO_777666_JIRA_SITE_CONFIG     | table | bitbucketuser
+ public | AO_811463_GIT_LFS_REPO_CONFIG  | table | bitbucketuser
+ public | AO_8752F1_DATA_PIPELINE_CONFIG | table | bitbucketuser
+ public | AO_A0B856_WEBHOOK_CONFIG       | table | bitbucketuser
+ public | AO_ED669C_IDP_CONFIG           | table | bitbucketuser
+ public | AO_F4ED3A_ADD_ON_PROPERTY_AO   | table | bitbucketuser
+ public | app_property                   | table | bitbucketuser
+ public | bb_hook_script_config          | table | bitbucketuser
+ public | bb_proj_merge_config           | table | bitbucketuser
+ public | bb_repo_merge_config           | table | bitbucketuser
+ public | bb_scm_merge_config            | table | bitbucketuser
+ public | bb_sealed_secret               | table | bitbucketuser
+ public | bb_secret_allowlist_rule       | table | bitbucketuser
+ public | bb_secret_scan_rule            | table | bitbucketuser
+ public | cwd_application_saml_config    | table | bitbucketuser
+ public | cwd_property                   | table | bitbucketuser
+[sikaj01@ip-10-56-112-34 ~]$ docker exec prod-postgres psql -U bitbucketuser -d bitbucket -c "SELECT * FROM application_properties WHERE property_name ILIKE '%password%' OR property_name ILIKE '%passphrase%';" 2>&1
+ERROR:  relation "application_properties" does not exist
+LINE 1: SELECT * FROM application_properties WHERE property_name ILI...
