@@ -1,13 +1,9 @@
 sudo su -
-cat /app/bitbucket/shared/keys/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094 | base64
-sha256sum /app/bitbucket/shared/keys/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094
-exit
-docker logs prod-bitbucket 2>&1 | grep -c SecretServiceException
-
-
-
-
-sudo su -
-cat /app/bitbucket/shared/keys/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094 | base64
-sha256sum /app/bitbucket/shared/keys/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094
+docker inspect cnxs-mgmt-bitbucket --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}" | grep -i shared
+BBSHARED=$(docker inspect cnxs-mgmt-bitbucket --format "{{range .Mounts}}{{if eq .Destination \"/var/atlassian/application-data/bitbucket/shared\"}}{{.Source}}{{end}}{{end}}")
+echo "Shared dir: $BBSHARED"
+ls -la "$BBSHARED/keys/"
+sha256sum "$BBSHARED"/keys/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094
+cat "$BBSHARED"/keys/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094 | base64
+cat "$BBSHARED"/secrets-config.yaml
 exit
