@@ -1,5 +1,8 @@
-# Get full stack trace context to identify which subsystem/secret is involved
-docker logs dev-bitbucket --since 2026-08-25T14:08:38 2>&1 | grep -A3 -B15 "SecretServiceException" | head -80
+# connect into the actual postgres container
+docker exec -it dev-postgres psql -U bitbucket -d bitbucket -c "\dt" | grep -iE "secret|prop|config"
 
-# List running containers so we can find the actual postgres container name (guessing is unreliable)
-docker ps -a --format "{{.Names}}"
+# find the specific table storing these secure values and whether they reference a key ID/alias
+docker exec -it dev-postgres psql -U bitbucket -d bitbucket -c "SELECT * FROM application_properties WHERE property_name IN ('mail.host.password','plugin.search.password') LIMIT 5;" 2>&1
+
+# broader: find any table/column that looks like it stores a key identifier alongside ciphertext
+docker exec -it dev-postgres psql -U bitbucket -d bitbucket -c "SELECT table_name, column_name FROM information_schema.columns WHERE column_name ILIKE '%key%' OR column_name ILIKE '%alias%';" 2>&1
