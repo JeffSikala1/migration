@@ -1,7 +1,7 @@
-# What targets (IP/instance + port) does artifactory-test-tg actually have registered?
-aws elbv2 describe-target-groups --target-group-arns arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc --query "TargetGroups[0].{HealthCheckPort:HealthCheckPort,HealthCheckProtocol:HealthCheckProtocol,HealthCheckPath:HealthCheckPath,TargetType:TargetType}" --output json
-aws elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc --output table
+curl -s http://169.254.169.254/latest/api/token -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" > /tmp/imds_token
+INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $(cat /tmp/imds_token)" http://169.254.169.254/latest/meta-data/instance-id)
+echo "This instance (.233) ID: $INSTANCE_ID"
 
-# Which hosted zone actually has the artifactory-test record (check both zone IDs)
-aws route53 list-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --query "ResourceRecordSets[?contains(Name, \`artifactory-test\`)]" --output json
-aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --query "ResourceRecordSets[?contains(Name, \`artifactory-test\`)]" --output json
+# check hosted zone VPC associations to know if both Route53 zones are needed (private vs public)
+aws route53 get-hosted-zone --id Z00469081L8WP3FVPM748 --query "{Config:HostedZone.Config,VPCs:VPCs}" --output json
+aws route53 get-hosted-zone --id Z0302955A48RKPB320IR --query "{Config:HostedZone.Config,VPCs:VPCs}" --output json
