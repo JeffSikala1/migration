@@ -1,32 +1,6 @@
-sudo python3 <<'PYEOF'
-import re
+docker exec dev-bamboo tail -150 /opt/atlassian/bamboo/logs/catalina.out
 
-with open('/app/bamboo/bamboo.cfg.xml') as f:
-    dev_content = f.read()
 
-with open('/home/sikaj01/prod-bamboo.cfg.xml') as f:
-    prod_content = f.read()
+docker exec dev-bamboo tail -150 /var/atlassian/application-data/bamboo/logs/atlassian-bamboo.log
 
-prod_license_line = re.search(r'\s*<property name="license\.string">.*?</property>', prod_content, re.DOTALL).group(0)
 
-new_content, n = re.subn(
-    r'\s*<property name="license\.string">.*?</property>',
-    prod_license_line,
-    dev_content,
-    count=1,
-    flags=re.DOTALL,
-)
-
-assert n == 1, f"expected exactly 1 replacement, got {n}"
-
-with open('/app/bamboo/bamboo.cfg.xml', 'w') as f:
-    f.write(new_content)
-
-print("Replaced license.string line successfully")
-PYEOF
-
-# Verify byte length now matches prod's 690 (container is stopped, so read the file directly)
-sudo grep -oP '(?<=license.string">).*(?=</property>)' /app/bamboo/bamboo.cfg.xml | wc -c
-
-docker start dev-bamboo
-docker logs -f dev-bamboo
