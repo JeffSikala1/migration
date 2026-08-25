@@ -1,242 +1,57 @@
-[sikaj01@ip-10-56-128-233 ~]$ curl -sk -o /dev/null -w "HTTP %{http_code}\n" -H "Host: bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov" https://localhost/
-HTTP 302
-[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 640 /app/nginx/conf.d/bitbucket.conf
-[sikaj01@ip-10-56-128-233 ~]$ sudo chown root:root /app/nginx/conf.d/bitbucket.conf
-[sikaj01@ip-10-56-128-233 ~]$ sudo ls -la /app/nginx/conf.d/
-total 8
-drwxr-x---. 2 root root  52 Aug 25 15:51 .
-drwxr-x---. 4 root root  40 Jul 30 16:32 ..
--rw-r-----. 1 root root 820 Jul 30 16:33 artifactory.conf
--rw-r-----. 1 root root 814 Aug 25 15:51 bitbucket.conf
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --query "LoadBalancers[].{Name:LoadBalancerName,DNS:DNSName,Arn:LoadBalancerArn,Type:Type,Scheme:Scheme}" --output table
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-|                                                                                                                           DescribeLoadBalancers                                                                                                                          |
-+-------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+-----------------------------------+-----------+--------------+
-|                                                           Arn                                                           |                                       DNS                                       |               Name                |  Scheme   |    Type      |
-+-------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+-----------------------------------+-----------+--------------+
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/ace14fa09ce30462ba59168c38f04c93/0433bda0b7d06f69 |  ace14fa09ce30462ba59168c38f04c93-0433bda0b7d06f69.elb.us-east-1.amazonaws.com  |  ace14fa09ce30462ba59168c38f04c93 |  internal |  network     |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712         |  fcs-conexus-dev-D-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com          |  fcs-conexus-dev-D-outnlb         |  internal |  network     |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/ad7fecba9c5c64a318acc3807778f26b/2c9ca1f582460205 |  ad7fecba9c5c64a318acc3807778f26b-2c9ca1f582460205.elb.us-east-1.amazonaws.com  |  ad7fecba9c5c64a318acc3807778f26b |  internal |  network     |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2       |  fcs-conexus-dev-D-outuinlb-7e5ced0483d329d2.elb.us-east-1.amazonaws.com        |  fcs-conexus-dev-D-outuinlb       |  internal |  network     |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/ace010ad32b4f407e95d88c43e98e8e2/a5b1a432a0f0f6e6 |  ace010ad32b4f407e95d88c43e98e8e2-a5b1a432a0f0f6e6.elb.us-east-1.amazonaws.com  |  ace010ad32b4f407e95d88c43e98e8e2 |  internal |  network     |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/app/fcs-conexus-dev-D-wafalb/70d62c9fbe2a3b2a         |  internal-fcs-conexus-dev-D-wafalb-374788130.us-east-1.elb.amazonaws.com        |  fcs-conexus-dev-D-wafalb         |  internal |  application |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/app/fcs-conexus-dev-D-uialb/2e25762409948ffd          |  internal-fcs-conexus-dev-D-uialb-439872116.us-east-1.elb.amazonaws.com         |  fcs-conexus-dev-D-uialb          |  internal |  application |
-+-------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------+-----------------------------------+-----------+--------------+
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --query "LoadBalancers[].LoadBalancerArn" --output text | tr "\t" "\n" | while read lb; do
-  echo "=== $lb ==="
-  aws elbv2 describe-listeners --load-balancer-arn "$lb" --query "Listeners[].{Port:Port,Proto:Protocol,DefaultActions:DefaultActions}" --output json
-done
-=== arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/ace14fa09ce30462ba59168c38f04c93/0433bda0b7d06f69 ===
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-groups --target-group-arns arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc --query "TargetGroups[0].{HealthCheckPort:HealthCheckPort,HealthCheckProtocol:HealthCheckProtocol,HealthCheckPath:HealthCheckPath,TargetType:TargetType}" --output json
+{
+    "HealthCheckPort": "443",
+    "HealthCheckProtocol": "HTTPS",
+    "HealthCheckPath": "/healthcheck",
+    "TargetType": "instance"
+}
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc --output table
+-------------------------------------------------------------------------------------------------------
+|                                        DescribeTargetHealth                                         |
++-----------------------------------------------------------------------------------------------------+
+||                                     TargetHealthDescriptions                                      ||
+|+---------------------------------------------------------------------------------------------------+|
+||                                          HealthCheckPort                                          ||
+|+---------------------------------------------------------------------------------------------------+|
+||  443                                                                                              ||
+|+---------------------------------------------------------------------------------------------------+|
+|||                                     AdministrativeOverride                                      |||
+||+--------------------------------------------+-------------------------------------+--------------+||
+|||                 Description                |               Reason                |    State     |||
+||+--------------------------------------------+-------------------------------------+--------------+||
+|||  No override is currently active on target |  AdministrativeOverride.NoOverride  |  no_override |||
+||+--------------------------------------------+-------------------------------------+--------------+||
+|||                                             Target                                              |||
+||+-----------------------------------------------------------------------+-------------------------+||
+|||                                  Id                                   |          Port           |||
+||+-----------------------------------------------------------------------+-------------------------+||
+|||  i-0dd6e0c7c4fcc27f9                                                  |  443                    |||
+||+-----------------------------------------------------------------------+-------------------------+||
+|||                                          TargetHealth                                           |||
+||+-------------------------------------------+-----------------------------------------------------+||
+|||  State                                    |  healthy                                            |||
+||+-------------------------------------------+-----------------------------------------------------+||
+[sikaj01@ip-10-56-128-233 ~]$ aws route53 list-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --query "ResourceRecordSets[?contains(Name, \`artifactory-test\`)]" --output json
 [
     {
-        "Port": 80,
-        "Proto": "TCP",
-        "DefaultActions": [
-            {
-                "Type": "forward",
-                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-ciliumga-ed7db0921d/a847f0125bcac5a0",
-                "ForwardConfig": {
-                    "TargetGroups": [
-                        {
-                            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-ciliumga-ed7db0921d/a847f0125bcac5a0"
-                        }
-                    ],
-                    "TargetGroupStickinessConfig": {
-                        "Enabled": false
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "Port": 443,
-        "Proto": "TCP",
-        "DefaultActions": [
-            {
-                "Type": "forward",
-                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-ciliumga-f2c0a40fdb/ec8d00aae96f6834",
-                "ForwardConfig": {
-                    "TargetGroups": [
-                        {
-                            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-ciliumga-f2c0a40fdb/ec8d00aae96f6834"
-                        }
-                    ],
-                    "TargetGroupStickinessConfig": {
-                        "Enabled": false
-                    }
-                }
-            }
-        ]
+        "Name": "artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+            "HostedZoneId": "Z26RNL4JYFTOTI",
+            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+            "EvaluateTargetHealth": true
+        }
     }
 ]
-=== arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outnlb/19f9b0da7ae75712 ===
+[sikaj01@ip-10-56-128-233 ~]$ aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --query "ResourceRecordSets[?contains(Name, \`artifactory-test\`)]" --output json
 [
     {
-        "Port": 443,
-        "Proto": "TCP",
-        "DefaultActions": [
-            {
-                "Type": "forward",
-                "Order": 1,
-                "ForwardConfig": {
-                    "TargetGroups": [
-                        {
-                            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc",
-                            "Weight": 1
-                        },
-                        {
-                            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outnlbtoalbtargetgroup/4a5dadca551e29c5",
-                            "Weight": 1
-                        }
-                    ],
-                    "TargetGroupStickinessConfig": {
-                        "Enabled": false
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "Port": 80,
-        "Proto": "TCP",
-        "DefaultActions": [
-            {
-                "Type": "forward",
-                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outnlbtoalbtargetgrouphttp/d764548d3b0e4db5",
-                "Order": 1,
-                "ForwardConfig": {
-                    "TargetGroups": [
-                        {
-                            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outnlbtoalbtargetgrouphttp/d764548d3b0e4db5"
-                        }
-                    ],
-                    "TargetGroupStickinessConfig": {
-                        "Enabled": false
-                    }
-                }
-            }
-        ]
+        "Name": "artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+            "HostedZoneId": "Z26RNL4JYFTOTI",
+            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+            "EvaluateTargetHealth": true
+        }
     }
 ]
-=== arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/ad7fecba9c5c64a318acc3807778f26b/2c9ca1f582460205 ===
-[
-    {
-        "Port": 443,
-        "Proto": "TCP",
-        "DefaultActions": [
-            {
-                "Type": "forward",
-                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-apiciliu-11d164d673/38e192706d2d64f4",
-                "ForwardConfig": {
-                    "TargetGroups": [
-                        {
-                            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-apiciliu-11d164d673/38e192706d2d64f4"
-                        }
-                    ],
-                    "TargetGroupStickinessConfig": {
-                        "Enabled": false
-                    }
-                }
-            }
-        ]
-    }
-]
-=== arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-outuinlb/7e5ced0483d329d2 ===
-[
-    {
-        "Port": 80,
-        "Proto": "TCP",
-        "DefaultActions": [
-            {
-                "Type": "forward",
-                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgrouphttp/40cdc6e1a7240730",
-                "Order": 1,
-                "ForwardConfig": {
-                    "TargetGroups": [
-                        {
-                            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgrouphttp/40cdc6e1a7240730"
-                        }
-                    ],
-                    "TargetGroupStickinessConfig": {
-                        "Enabled": false
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "Port": 22,
-        "Proto": "TCP",
-        "DefaultActions": [
-            {
-                "Type": "forward",
-                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroupsftp/f178a3ccb3ba3125",
-                "Order": 1,
-                "ForwardConfig": {
-                    "TargetGroups": [
-                        {
-                            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroupsftp/f178a3ccb3ba3125"
-                        }
-                    ],
-                    "TargetGroupStickinessConfig": {
-                        "Enabled": false
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "Port": 443,
-        "Proto": "TCP",
-        "DefaultActions": [
-            {
-                "Type": "forward",
-                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroup/d96dfbe2ad719fdf",
-                "Order": 1,
-                "ForwardConfig": {
-                    "TargetGroups": [
-                        {
-                            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroup/d96dfbe2ad719fdf"
-                        }
-                    ],
-                    "TargetGroupStickinessConfig": {
-                        "Enabled": false
-                    }
-                }
-            }
-        ]
-    }
-]
-(END)
-
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-groups --query "TargetGroups[].{Name:TargetGroupName,Arn:TargetGroupArn,Port:Port,Proto:Protocol,VpcId:VpcId}" --output table
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-|                                                                                        DescribeTargetGroups                                                                                        |
-+--------------------------------------------------------------------------------------------------------------------+-----------------------------------+--------+--------+-------------------------+
-|                                                         Arn                                                        |               Name                | Port   | Proto  |          VpcId          |
-+--------------------------------------------------------------------------------------------------------------------+-----------------------------------+--------+--------+-------------------------+
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/albtoingressnlbtargetgroup/c5313601c33baeea       |  albtoingressnlbtargetgroup       |  443   |  HTTPS |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc              |  artifactory-test-tg              |  443   |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-apiciliu-11d164d673/38e192706d2d64f4 |  k8s-ingressn-apiciliu-11d164d673 |  30681 |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-ciliumga-34b6fbc020/765c03af4b837789 |  k8s-ingressn-ciliumga-34b6fbc020 |  30648 |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-ciliumga-b7a35988a9/0e9d2d78346a6fe9 |  k8s-ingressn-ciliumga-b7a35988a9 |  30450 |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-ciliumga-ed7db0921d/a847f0125bcac5a0 |  k8s-ingressn-ciliumga-ed7db0921d |  30363 |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/k8s-ingressn-ciliumga-f2c0a40fdb/ec8d00aae96f6834 |  k8s-ingressn-ciliumga-f2c0a40fdb |  31221 |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outnlbtoalbtargetgroup/4a5dadca551e29c5           |  outnlbtoalbtargetgroup           |  443   |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outnlbtoalbtargetgrouphttp/d764548d3b0e4db5       |  outnlbtoalbtargetgrouphttp       |  80    |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroup/d96dfbe2ad719fdf       |  outuinlbtouialbtargetgroup       |  443   |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgrouphttp/40cdc6e1a7240730   |  outuinlbtouialbtargetgrouphttp   |  80    |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/outuinlbtouialbtargetgroupsftp/f178a3ccb3ba3125   |  outuinlbtouialbtargetgroupsftp   |  22    |  TCP   |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/uialbtoingressuinlbtargetgroup/460ae5b609c10656   |  uialbtoingressuinlbtargetgroup   |  443   |  HTTPS |  vpc-0cb2efc594903069d  |
-|  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/uialbtoingressuinlbtghttp/a0f9b8b4a4923f1f        |  uialbtoingressuinlbtghttp        |  80    |  HTTP  |  vpc-0cb2efc594903069d  |
-+--------------------------------------------------------------------------------------------------------------------+-----------------------------------+--------+--------+-------------------------+
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 list-hosted-zones --query "HostedZones[].{Id:Id,Name:Name}" --output table
------------------------------------------------------------------------
-|                           ListHostedZones                           |
-+------------------------------------+--------------------------------+
-|                 Id                 |             Name               |
-+------------------------------------+--------------------------------+
-|  /hostedzone/Z00469081L8WP3FVPM748 |  dev.cnxs.vpcaas.fcs.gsa.gov.  |
-|  /hostedzone/Z0302955A48RKPB320IR  |  dev.cnxs.vpcaas.fcs.gsa.gov.  |
-|  /hostedzone/Z0298916KDC57WOT334Z  |  conexus.                      |
-+------------------------------------+--------------------------------+
