@@ -1,7 +1,22 @@
-curl -s http://169.254.169.254/latest/api/token -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" > /tmp/imds_token
-INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $(cat /tmp/imds_token)" http://169.254.169.254/latest/meta-data/instance-id)
-echo "This instance (.233) ID: $INSTANCE_ID"
+cat > /tmp/route53-bitbucket-test.json <<'EOF'
+{
+  "Comment": "Add bitbucket-test.dev alias, mirroring artifactory-test.dev pattern (NLB TCP passthrough to nginx host-based routing)",
+  "Changes": [
+    {
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+          "HostedZoneId": "Z26RNL4JYFTOTI",
+          "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+          "EvaluateTargetHealth": true
+        }
+      }
+    }
+  ]
+}
+EOF
 
-# check hosted zone VPC associations to know if both Route53 zones are needed (private vs public)
-aws route53 get-hosted-zone --id Z00469081L8WP3FVPM748 --query "{Config:HostedZone.Config,VPCs:VPCs}" --output json
-aws route53 get-hosted-zone --id Z0302955A48RKPB320IR --query "{Config:HostedZone.Config,VPCs:VPCs}" --output json
+aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/route53-bitbucket-test.json
+aws route53 change-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --change-batch file:///tmp/route53-bitbucket-test.json
