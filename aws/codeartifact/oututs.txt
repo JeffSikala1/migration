@@ -1,30 +1,42 @@
-[sikaj01@ip-10-56-112-34 bamboo-shared-check]$ docker exec prod-bamboo grep -i 'license.string\|serverId\|serverKey' /var/atlassian/application-data/bamboo/bamboo.cfg.xml
-    <property name="license.string">AAABxw0ODAoPeNqVkl1v2jAUhu/zKyztplNFG8I3kqWlTgpMgVCg0zQhTSfuKXi1Y+Y4UPbrlw/Sq tJu5stzfM77vo/9aZMjibkl3pC4o3F3NHY7hAUb4rlez2EGwQqdBmCRlpVW2215IyfAjBtxKFv0D lSiNbkq7gBhmFo0n4nXIytU2iLxd0Up244J00qh4QIk2aBRJBIc0wydOYhiJoWUY/h6EObciPVLs U7bSSqBm0WuEjTxc623lJBmtPXWBW7FEak1Of57INIcZG2mHLuo/4dineeyoWAj6w3f0GQlBs9Z5 8k7lcpIeASZVwDpM8jszdlFfHM+4AIUUhbP5+GKzfyouVHCrFnWm2Kzg1Rk9a47rf8QX0pMyRSUk FanhN9qMln7DtOpLViEBVVJwRzF7ifkNlfplwT2N1yrxvcUsj2dsxO7v++eoq9PU//Hr+vR7x37L uDaeNFQwrzr7x86ySqfPbIXFT8+QMDNpCdORk1i+epv6ZY2IGcBjWbBOly0uoNhvziDJsragilz1 ARe8NwQa/ddd+AOOwXwZW74HjL88M/eH6J5rCdR5Q8Xm3C1XM3WYRO3ouhXOYlfhnYKJ/SDm787Y /pRMC0CFQCKbSwjnOj4tkaBg3yI1VCrL4dz6AIUQTGXipRh0WbGCchMImzxzHw/X3Y=X02lp</property>
-    <property name="serverId">BWYS-YSIX-16XX-WHYB</property>
-    <property name="serverKey">732</property>
-[sikaj01@ip-10-56-112-34 bamboo-shared-check]$ docker exec prod-bamboo grep -A1 'license.string' /var/atlassian/application-data/bamboo/bamboo.cfg.xml
-    <property name="license.string">AAABxw0ODAoPeNqVkl1v2jAUhu/zKyztplNFG8I3kqWlTgpMgVCg0zQhTSfuKXi1Y+Y4UPbrlw/Sq tJu5stzfM77vo/9aZMjibkl3pC4o3F3NHY7hAUb4rlez2EGwQqdBmCRlpVW2215IyfAjBtxKFv0D lSiNbkq7gBhmFo0n4nXIytU2iLxd0Up244J00qh4QIk2aBRJBIc0wydOYhiJoWUY/h6EObciPVLs U7bSSqBm0WuEjTxc623lJBmtPXWBW7FEak1Of57INIcZG2mHLuo/4dineeyoWAj6w3f0GQlBs9Z5 8k7lcpIeASZVwDpM8jszdlFfHM+4AIUUhbP5+GKzfyouVHCrFnWm2Kzg1Rk9a47rf8QX0pMyRSUk FanhN9qMln7DtOpLViEBVVJwRzF7ifkNlfplwT2N1yrxvcUsj2dsxO7v++eoq9PU//Hr+vR7x37L uDaeNFQwrzr7x86ySqfPbIXFT8+QMDNpCdORk1i+epv6ZY2IGcBjWbBOly0uoNhvziDJsragilz1 ARe8NwQa/ddd+AOOwXwZW74HjL88M/eH6J5rCdR5Q8Xm3C1XM3WYRO3ouhXOYlfhnYKJ/SDm787Y /pRMC0CFQCKbSwjnOj4tkaBg3yI1VCrL4dz6AIUQTGXipRh0WbGCchMImzxzHw/X3Y=X02lp</property>
-    <property name="serverId">BWYS-YSIX-16XX-WHYB</property>
-[sikaj01@ip-10-56-112-34 bamboo-shared-check]$ docker exec prod-bamboo sh -c "grep -oP '(?<=license.string\">).*(?=</property>)' /var/atlassian/application-data/bamboo/bamboo.cfg.xml | wc -c"
-690
-[sikaj01@ip-10-56-112-34 bamboo-shared-check]$ docker exec prod-bamboo sh -c "grep -oP '(?<=license.string\">).*(?=</property>)' /var/atlassian/application-data/bamboo/bamboo.cfg.xml | od -c | grep -E ' \\\\n| +' | head -5"
-0000000   A   A   A   B   x   w   0   O   D   A   o   P   e   N   q   V
-0000020   k   l   1   v   2   j   A   U   h   u   /   z   K   y   z   t
-0000040   p   l   N   F   G   8   I   3   k   q   W   l   T   g   p   M
-0000060   g   V   C   g   0   z   Q   h   T   S   f   u   K   X   i   1
-0000100   Y   +   Y   4   U   P   b   r   l   w   /   S   q       t   J
-[sikaj01@ip-10-56-112-34 bamboo-shared-check]$ 
+[sikaj01@ip-10-56-128-233 ~]$ docker stop dev-bamboo
+dev-bamboo
+[sikaj01@ip-10-56-128-233 ~]$ python3 <<'PYEOF'
+import re
 
+with open('/app/bamboo/bamboo.cfg.xml') as f:
+    dev_content = f.read()
 
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bamboo grep -A1 'license.string' /var/atlassian/application-data/bamboo/bamboo.cfg.xml
-    <property name="license.string">AAABxw0ODAoPeNqVkl1v2jAUhu/zKyztplNFG8I3kqWlTgpMgVCg0zQhTSfuKXi1Y+Y4UPbrlw/Sq tJu5stzfM77vo/9aZMjibkl3pC4o3F3NHY7hAUb4rlez2EGwQqdBmCRlpVW2215IyfAjBtxKFv0D lSiNbkq7gBhmFo0n4nXIytU2iLxd0Up244J00qh4QIk2aBRJBIc0wydOYhiJoWUY/h6EObciPVLs U7bSSqBm0WuEjTxc623lJBmtPXWBW7FEak1Of57INIcZG2mHLuo/4dineeyoWAj6w3f0GQlBs9Z5 8k7lcpIeASZVwDpM8jszdlFfHM+4AIUUhbP5+GKzfyouVHCrFnWm2Kzg1Rk9a47rf8QX0pMyRSUk FanhN9qMln7DtOpLViEBVVJwRzF7ifkNlfplwT2N1yrxvcUsj2dsxO7v++eoq9PU//Hr+vR7x37L uDaeNFQwrzr7x86ySqfPbIXFT8+QMDNpCdORk1i+82RhE22NLYgS7oTS4pE2C0uoNhvziDJsragilz1 ARe8NwQa/ddd+AOOwXwZW74HjL88M/eH6J5rCdR5Q8Xm3C1XM3WYRO3ouhXOYlfhnYKJ/SDm787Y /pRMC0CFQCKbSwjnOj4tkaBg3yI1VCrL4dz6AIUQTGXipRh0WbGCchMImzxzHw/X3Y=X02lp</property>
-    <property name="serverId">BWYS-YSIX-16XX-WHYB</property>
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bamboo sh -c "grep -oP '(?<=license.string\">).*(?=</property>)' /var/atlassian/application-data/bamboo/bamboo.cfg.xml | wc -c"
-693
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bamboo sh -c "grep -oP '(?<=license.string\">).*(?=</property>)' /var/atlassian/application-data/bamboo/bamboo.cfg.xml | od -c | grep -E ' \\\\n| +' | head -5"
-0000000   A   A   A   B   x   w   0   O   D   A   o   P   e   N   q   V
-0000020   k   l   1   v   2   j   A   U   h   u   /   z   K   y   z   t
-0000040   p   l   N   F   G   8   I   3   k   q   W   l   T   g   p   M
-0000060   g   V   C   g   0   z   Q   h   T   S   f   u   K   X   i   1
-0000100   Y   +   Y   4   U   P   b   r   l   w   /   S   q       t   J
-[sikaj01@ip-10-56-128-233 ~]$ 
+with open('/path/to/relayed/prod-bamboo.cfg.xml') as f:
+    prod_content = f.read()
+
+prod_license_line = re.search(r'\s*<property name="license\.string">.*?</property>', prod_content, re.DOTALL).group(0)
+
+new_content, n = re.subn(
+    r'\s*<property name="license\.string">.*?</property>',
+    prod_license_line,
+    dev_content,
+    count=1,
+    flags=re.DOTALL,
+)
+
+assert n == 1, f"expected exactly 1 replacement, got {n}"
+
+with open('/app/bamboo/bamboo.cfg.xml', 'w') as f:
+    f.write(new_content)
+
+print("Replaced license.string line successfully")
+PYEOF
+
+# Confirm the swap and byte length now match prod (690)
+docker exec dev-bamboo sh -c "grep -oP '(?<=license.string\">).*(?=</property>)' /var/atlassian/application-data/bamboo/bamboo.cfg.xml | wc -c" 2>/dev/null || \
+  grep -oP '(?<=license.string\">).*(?=</property>)' /app/bamboo/bamboo.cfg.xml | wc -c
+Traceback (most recent call last):
+  File "<stdin>", line 3, in <module>
+PermissionError: [Errno 13] Permission denied: '/app/bamboo/bamboo.cfg.xml'
+grep: /app/bamboo/bamboo.cfg.xml: Permission denied
+0
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-bamboo sh -c "grep -oP '(?<=license.string\">).*(?=</property>)' /var/atlassian/application-data/bamboo/bamboo.
+cfg.xml | wc -c" 2>/dev/null ||   grep -oP '(?<=license.string\">).*(?=</property>)' /app/bamboo/bamboo.cfg.xml | wc -c
+[sudo] password for sikaj01: 
+grep: /app/bamboo/bamboo.cfg.xml: Permission denied
+0
