@@ -1,6 +1,19 @@
-You cannot access Bamboo at present. Look at the table below to identify the reasons:
-
-Time	Level	Type	Description	Exception
-2026-08-20 18:42:58	fatal	bootstrap	Bamboo bootstrap failed: Shared configuration at /var/atlassian/application-data/bamboo/shared/configuration/bamboo-shared.cfg.xml does not exist or is not accessible.	
-
-Please contact us at https://support.atlassian.com/ if you have any queries.
+[sikaj01@ip-10-56-128-233 ~]$ dig +short bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov
+10.56.133.26
+10.56.131.182
+[sikaj01@ip-10-56-128-233 ~]$ curl -sk -o /dev/null -w "%{http_code}\n" https://bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov/
+000
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bamboo ls -la /var/atlassian/application-data/bamboo/shared/configuration/ 2>&1
+ls: cannot access '/var/atlassian/application-data/bamboo/shared/configuration/': No such file or directory
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bamboo ls -la /var/atlassian/application-data/bamboo/shared/ 2>&1
+total 0
+drwxr-x---. 2 bamboo bamboo  6 Nov 25  2025 .
+drwxr-x---. 5 bamboo bamboo 95 Aug 20 18:07 ..
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bamboo find /var/atlassian/application-data/bamboo -maxdepth 2 -iname "*shared*" 2>&1
+/var/atlassian/application-data/bamboo/shared
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bamboo cat /var/atlassian/application-data/bamboo/bamboo.cfg.xml 2>&1 | grep -i bambooSharedHome
+    <property name="bamboo.artifacts.directory">${bambooSharedHome}/artifacts</property>
+    <property name="bamboo.config.directory">${bambooSharedHome}/configuration</property>
+    <property name="bamboo.project.directory">${bambooSharedHome}/builds</property>
+    <property name="bamboo.repository.logs.directory">${bambooSharedHome}/repository-specs</property>
+[sikaj01@ip-10-56-128-233 ~]$ 
