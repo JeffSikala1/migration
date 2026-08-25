@@ -1,9 +1,36 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U bitbucket -d bitbucket -c "\dt" | grep -iE "secret|prop|config"
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U bitbucket -d bitbucket -c "SELECT * FROM application_properties WHERE property_name IN ('mail.host.password','plugin.search.password') LIMIT 5;" 2>&1
-psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "bitbucket" does not exist
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U bitbucket -d bitbucket -c "SELECT table_name, column_name FROM information_schema.columns WHERE column_name ILIKE '%key%' OR column_name ILIKE '%alias%';" 2>&1
-psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "bitbucket" does not exist
-[sikaj01@ip-10-56-128-233 ~]$ 
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres env | grep -iE "POSTGRES_"
+POSTGRES_PASSWORD=B/4$2Aamgrg69R,6
+POSTGRES_DB=artifactory
+POSTGRES_USER=artifactory
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U postgres -l 2>&1
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "postgres" does not exist
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U artifactory -l 2>&1
+                                                       List of databases
+    Name     |    Owner    | Encoding |  Collate   |   Ctype    | ICU Locale | Locale Provider |       Access privileges       
+-------------+-------------+----------+------------+------------+------------+-----------------+-------------------------------
+ artifactory | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
+ bamboo      | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
+             |             |          |            |            |            |                 | bamboouser=CTc/artifactory
+ bitbucket   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
+             |             |          |            |            |            |                 | bitbucketuser=CTc/artifactory
+ postgres    | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
+ template0   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory
+ template1   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory
+(6 rows)
+
+
+
+
+
+
+
+
+
+
 
 
 [sikaj01@ip-10-56-112-34 ~]$ docker ps
@@ -17,4 +44,19 @@ f989498245ad   atlassian/bamboo:10.2.11     "/usr/bin/tini -- /e…"   3 months 
 psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "bitbucket" does not exist
 [sikaj01@ip-10-56-112-34 ~]$ docker exec -it prod-postgres psql -U bitbucket -d bitbucket -c "SELECT table_name, column_name FROM information_schema.columns WHERE column_name ILIKE '%key%' OR column_name ILIKE '%alias%';" 2>&1
 psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "bitbucket" does not exist
-[sikaj01@ip-10-56-112-34 ~]$ 
+[sikaj01@ip-10-56-112-34 ~]$ docker exec dev-postgres env | grep -iE "POSTGRES_"
+Error response from daemon: No such container: dev-postgres
+[sikaj01@ip-10-56-112-34 ~]$ docker exec prod-postgres env | grep -iE "POSTGRES_"
+POSTGRES_PASSWORD=KIgregyfibUH
+[sikaj01@ip-10-56-112-34 ~]$ docker exec prod-postgres psql -U postgres -l 2>&1
+                                                         List of databases
+   Name    |     Owner     | Encoding | Locale Provider |  Collate   |   Ctype    | ICU Locale | ICU Rules |   Access privileges   
+-----------+---------------+----------+-----------------+------------+------------+------------+-----------+-----------------------
+ bamboo    | bamboouser    | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | 
+ bitbucket | bitbucketuser | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | 
+ postgres  | postgres      | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | 
+ template0 | postgres      | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =c/postgres          +
+           |               |          |                 |            |            |            |           | postgres=CTc/postgres
+ template1 | postgres      | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =c/postgres          +
+           |               |          |                 |            |            |            |           | postgres=CTc/postgres
+(5 rows)
