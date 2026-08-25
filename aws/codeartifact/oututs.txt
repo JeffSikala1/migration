@@ -1,70 +1,20 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket find /var/atlassian/application-data/bitbucket -maxdepth 1 -type f 2>/dev/null
-/var/atlassian/application-data/bitbucket/docker-app.pid
-/var/atlassian/application-data/bitbucket/.lock
-/var/atlassian/application-data/bitbucket/.version
-/var/atlassian/application-data/bitbucket/home.properties
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket cat /var/atlassian/application-data/bitbucket/bitbucket.properties 2>/dev/null
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket cat /var/atlassian/application-data/bitbucket/shared/bitbucket.properties 2>/dev/null
-#>*******************************************************
-#> Migrated to database at jdbc:postgresql://dev-postgres:5432/bitbucket?targetServerType=master
-#> Updated on 2025-11-25T14:42:05.295-07:00
-#>*******************************************************
-jdbc.driver=org.postgresql.Driver
-jdbc.url=jdbc:postgresql://dev-postgres:5432/bitbucket?targetServerType=master
-jdbc.user=bitbucketuser
-jdbc.password=sdifhbIHSDBVipydbfv8345go458g03
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket cat /var/atlassian/application-data/bitbucket/home.properties
-#Thu Aug 20 18:42:29 UTC 2026
-home.build=9.4.17
-home.layout=12.0.0
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket cat /entrypoint.py 2>/dev/null | grep -iA3 -B3 "ATL_TOMCAT_SCHEME\|ATL_PROXY_NAME\|proxyName\|scheme"
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket find / -maxdepth 2 -iname "entrypoint*" 2>/dev/null
-/entrypoint.py
-/entrypoint_helpers.py
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket cat /entrypoint.py
-#!/usr/bin/python3 -B
-
-from entrypoint_helpers import env, str2bool, exec_app
-import logging
-
-RUN_USER = env['run_user']
-RUN_GROUP = env['run_group']
-BITBUCKET_INSTALL_DIR = env['bitbucket_install_dir']
-BITBUCKET_HOME = env['bitbucket_home']
-SEARCH_ENABLED = env.get('elasticsearch_enabled') or env.get('search_enabled')
-APPLICATION_MODE = env.get('application_mode')
-BITBUCKET_VERSION = env.get('bitbucket_version')
-
-def is_version_less_than_10(version_str):
-    """Check if Bitbucket version is less than 10.0.0"""
-    if not version_str:
-        return False
-    
-    try:
-        # Split version string and convert to integers for comparison
-        version_parts = version_str.split('.')
-        major_version = int(version_parts[0])
-        return major_version < 10
-    except (ValueError, IndexError):
-        # If version parsing fails, assume it's a newer version
-        return False
-
-if str2bool(SEARCH_ENABLED) is False or APPLICATION_MODE == 'mirror':
-    # When running standalone use a stripped version of the startup
-    # scripts to ensure shutdown works correctly. See the script for
-    # details.
-    start_cmd = [f"{BITBUCKET_INSTALL_DIR}/bin/exec-bitbucket-node.sh"]
-else:
-    # Only show warning for Bitbucket versions < 10, as only those versions include embedded search
-    if is_version_less_than_10(BITBUCKET_VERSION):
-        logging.warning("######################################################################")
-        logging.warning("Starting Bitbucket with embedded search service. Note that this is\n" \
-                        "not a recommended configuration and is known to have issues with\n" \
-                        "clean shutdown. Ideally OpenSearch (previously Elasticsearch) should\n" \
-                        "be started in a separate container/pod.")
-        logging.warning("######################################################################")
-
-    start_cmd = [f"{BITBUCKET_INSTALL_DIR}/bin/start-bitbucket.sh", "-fg"]
-
-exec_app(start_cmd, BITBUCKET_HOME, name='Bitbucket')
-[sikaj01@ip-10-56-128-233 ~]$ 
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket grep -rl "ATL_TOMCAT_SCHEME" / --include="*.sh" --include="*.py" --include="*.conf" --include="*.xml" 2>/dev/null
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket sh -c "grep -rl ATL_TOMCAT_SCHEME /opt/atlassian/bitbucket/bin/*.sh /opt/atlassian/bitbucket/app/bin/*.sh 2>/dev/null"
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket ls -la /opt/atlassian/bitbucket/bin/ | head -30
+total 80
+dr-xr-x---. 1 bitbucket root 16384 Aug  1 17:17 .
+dr-xr-x---. 1 bitbucket root    24 Aug  1 17:17 ..
+-r-xr-x---. 1 bitbucket root  2917 Aug  1 17:14 exec-bitbucket-node.sh
+-r-xr-x---. 1 bitbucket root  2872 Aug  1 17:14 _exec-webapp.sh
+-r-xr-x---. 1 bitbucket root  3443 Feb  9  2026 h2-migrate-db-file.sh
+-r-xr-x---. 1 bitbucket root  3511 Feb  9  2026 install_linux_service.sh
+-r-xr-x---. 1 bitbucket root  1612 Feb  9  2026 set-bitbucket-home.sh
+-r-xr-x---. 1 bitbucket root   173 Feb  9  2026 set-bitbucket-user.sh
+-r-xr-x---. 1 bitbucket root  5409 Feb  9  2026 set-jmx-opts.sh
+-r-xr-x---. 1 bitbucket root  1979 Feb  9  2026 set-jre-home.sh
+-r-xr-x---. 1 bitbucket root  3030 Aug  1 17:17 start-bitbucket.sh
+-r-xr-x---. 1 bitbucket root  2489 Feb  9  2026 _start-search.sh
+-r-xr-x---. 1 bitbucket root  5782 Feb  9  2026 _start-webapp.sh
+-r-xr-x---. 1 bitbucket root  1601 Feb  9  2026 stop-bitbucket.sh
+-r-xr-x---. 1 bitbucket root  1840 Feb  9  2026 _stop-search.sh
+-r-xr-x---. 1 bitbucket root  1939 Feb  9  2026 _stop-webapp.sh
