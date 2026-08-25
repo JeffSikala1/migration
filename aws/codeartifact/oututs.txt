@@ -1,80 +1,13 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "\dt" | grep -iE "setting|bandana|config"
- public | AO_723324_CLIENT_CONFIG        | table | artifactory
-
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "\dt" | grep -iE "setting|bandana|config"
- public | AO_723324_CLIENT_CONFIG        | table | artifactory
- public | AO_A0B856_WEBHOOK_CONFIG       | table | artifactory
- public | AO_AC3877_SETTINGS_VERSION     | table | artifactory
- public | AO_AC3877_SYSTEM_RL_SETTINGS   | table | artifactory
- public | AO_AC3877_USER_RL_SETTINGS     | table | artifactory
- public | AO_ED669C_IDP_CONFIG           | table | artifactory
- public | bandana                        | table | artifactory
- public | deployment_env_config          | table | artifactory
-[sikaj01@ip-10-56-128-233 ~]$ 
-
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "SELECT * FROM bandana WHERE bandana_key ILIKE '%url%' OR bandana_key ILIKE '%baseurl%';"
- bandana_id | build_id | chain_id |                           bandana_key                           |                         serialized_data                         
-------------+----------+----------+-----------------------------------------------------------------+-----------------------------------------------------------------
-     851971 |        0 |        0 | applinks.admin.2693540c-2815-3e80-ae81-c9778cc1aebc.display.url | <string>https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov</string>
-     851972 |        0 |        0 | applinks.admin.2693540c-2815-3e80-ae81-c9778cc1aebc.rpc.url     | <string>https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov</string>
-   10944514 |        0 |        0 | default-repository-urls-already-whitelisted                     | <boolean>true</boolean>
+[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "SELECT * FROM bandana WHERE bandana_key ILIKE '%server%' OR bandana_key ILIKE '%base%';"
+ bandana_id | build_id | chain_id |                               bandana_key                                |                                                                                                                                                                   serialized_data                                                                                                                                                                    
+------------+----------+----------+--------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+     360485 |        0 |        0 | com.atlassian.analytics.client.configuration.serverid                    | <string></string>
+     360487 |        0 |        0 | com.atlassian.analytics.client.configuration..logged_base_analytics_data | <string>true</string>
+    3997716 |        0 |        0 | org.jfrog.bamboo.server.configurations.v2                                | <string>&lt;List&gt;&lt;ServerConfig&gt;&lt;id&gt;MA==&lt;/id&gt;&lt;url&gt;aHR0cHM6Ly9hcnRpZmFjdG9yeS5tZ210LmNueHMudnBjYWFzLmZjcy5nc2EuZ292&lt;/url&gt;&lt;username&gt;c2FfYmFtYm9v&lt;/username&gt;&lt;password&gt;eWQvYkFzT2ZFTzR1VlpMakhPYzNyQT09&lt;/password&gt;&lt;timeout&gt;MzAw&lt;/timeout&gt;&lt;/ServerConfig&gt;&lt;/List&gt;</string>
 (3 rows)
 
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "\dt" | grep -iE "setting|bandana|config"
- public | AO_723324_CLIENT_CONFIG        | table | artifactory
- public | AO_A0B856_WEBHOOK_CONFIG       | table | artifactory
- public | AO_AC3877_SETTINGS_VERSION     | table | artifactory
- public | AO_AC3877_SYSTEM_RL_SETTINGS   | table | artifactory
- public | AO_AC3877_USER_RL_SETTINGS     | table | artifactory
- public | AO_ED669C_IDP_CONFIG           | table | artifactory
- public | bandana                        | table | artifactory
- public | deployment_env_config          | table | artifactory
-[sikaj01@ip-10-56-128-233 ~]$ docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "SELECT * FROM bandana WHERE bandana_key ILIKE '%url%' OR bandana_key ILIKE '%baseurl%';"
- bandana_id | build_id | chain_id |                           bandana_key                           |                         serialized_data                         
-------------+----------+----------+-----------------------------------------------------------------+-----------------------------------------------------------------
-     851971 |        0 |        0 | applinks.admin.2693540c-2815-3e80-ae81-c9778cc1aebc.display.url | <string>https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov</string>
-     851972 |        0 |        0 | applinks.admin.2693540c-2815-3e80-ae81-c9778cc1aebc.rpc.url     | <string>https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov</string>
-   10944514 |        0 |        0 | default-repository-urls-already-whitelisted                     | <boolean>true</boolean>
-(3 rows)
-
-[sikaj01@ip-10-56-128-233 ~]$ cat > /tmp/route53-bamboo-test.json <<'JSON'
-{
-  "Comment": "Add bamboo-test.dev alias, mirroring artifactory-test/bitbucket-test.dev pattern (NLB TCP passthrough to nginx host-based routing)",
-  "Changes": [
-    {
-      "Action": "CREATE",
-      "ResourceRecordSet": {
-        "Name": "bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-          "HostedZoneId": "Z26RNL4JYFTOTI",
-          "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-          "EvaluateTargetHealth": true
-        }
-      }
-    }
-  ]
-}
-JSON
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/route53-bamboo-test.json
-{
-    "ChangeInfo": {
-        "Id": "/change/C05083133TB5HODC8OLR8",
-        "Status": "PENDING",
-        "SubmittedAt": "2026-08-25T20:34:07.145000+00:00",
-        "Comment": "Add bamboo-test.dev alias, mirroring artifactory-test/bitbucket-test.dev pattern (NLB TCP passthrough to nginx host-based routing)"
-    }
-}
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 change-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --change-batch file:///tmp/route53-bamboo-test.json
-{
-    "ChangeInfo": {
-        "Id": "/change/C051518723YMNPTVBZG82",
-        "Status": "PENDING",
-        "SubmittedAt": "2026-08-25T20:34:14.738000+00:00",
-        "Comment": "Add bamboo-test.dev alias, mirroring artifactory-test/bitbucket-test.dev pattern (NLB TCP passthrough to nginx host-based routing)"
-    }
-}
-[sikaj01@ip-10-56-128-233 ~]$ 
+[sikaj01@ip-10-56-128-233 ~]$ dig +short bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov
+10.56.133.26
+10.56.131.182
+[sikaj01@ip-10-56-128-233 ~]$ curl -sk -o /dev/null -w "%{http_code}\n" https://bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov/
+000
