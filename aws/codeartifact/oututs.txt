@@ -1,13 +1,31 @@
-[sikaj01@ip-10-56-128-233 ~]$ sudo find / -iname "*.conf" 2>/dev/null | xargs grep -l "artifactory" 2>/dev/null
-[sudo] password for sikaj01: 
-[sikaj01@ip-10-56-128-233 ~]$ sudo find / -iname "*.conf" 2>/dev/null | xargs grep -l "artifactory" 2>/dev/null
-[sikaj01@ip-10-56-128-233 ~]$ docker inspect dev-nginx --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}"
-/app/nginx/certificates -> /etc/nginx/certificates
-/app/nginx/conf.d -> /etc/nginx/conf.d
+[sikaj01@ip-10-56-128-233 ~]$ sudo cat /app/nginx/conf.d/artifactory.conf
+server {
+  listen 80;
+  server_name artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov;
+  return 301 https://$host$request_uri;
+}
 
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-nginx ls -la /etc/nginx/certs/ 2>/dev/null || sudo find / -iname "*.crt" -path "*nginx*" 2>/dev/null
-[sikaj01@ip-10-56-128-233 ~]$ sudo ls -al /app/nginx/conf.d
-total 4
-drwxr-x---. 2 root root  30 Jul 30 16:33 .
-drwxr-x---. 4 root root  40 Jul 30 16:32 ..
--rw-r-----. 1 root root 820 Jul 30 16:33 artifactory.conf
+server {
+  listen 443 ssl;
+  server_name artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov;
+
+  ssl_certificate     /etc/nginx/certificates/dev_wildcard.pem;
+  ssl_certificate_key /etc/nginx/certificates/dev_privatekey.key;
+
+  client_max_body_size 0;
+
+  proxy_read_timeout 900;
+  proxy_send_timeout 900;
+  proxy_connect_timeout 60;
+
+  location / {
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Port  443;
+
+    proxy_pass http://dev-artifactory:8082;
+  }
+}
