@@ -1,11 +1,12 @@
-aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_021502.tar.gz - | tar -tzf - | grep -i "configuration" | head -30
-aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_021502.tar.gz - | tar -tzf - | head -20
+sudo cat /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-24.log
 
+# Confirm cron actually attempted to fire on the missing days
+sudo grep -i "nightly_backup" /var/log/cron 2>/dev/null | tail -30
+sudo journalctl -u crond --since "2026-08-21 00:00:00" | grep -i nightly
 
-grep -A3 "sanity: " /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-21.log
+# Confirm the script itself is still valid/executable and hasn't been touched
+ls -la /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
 
-
-sudo crontab -l | grep -i backup
-systemctl status crond 2>&1 | head -5
-tail -50 /app/bamboobackup/atlassian-backups/logs/nightly-$(date +%F).log 2>&1
-ls -la /app/bamboobackup/atlassian-backups/logs/ | tail -15
+# Check staging disk space - the script aborts early (exit 5) if insufficient space, which would explain a tiny log
+df -h /backup-staging 2>&1
+df -h / 2>&1
