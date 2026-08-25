@@ -1,13 +1,8 @@
-sudo su -
-echo "--- .bak.2026-03-19-0456 ---"
-find /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456 -iname "*AES256*" 2>/dev/null
-find /var/lib/docker/volumes/bitbucketVolume/_data.bak.2026-03-19-0456/shared -maxdepth 2 -type d 2>/dev/null
+# find the existing working Artifactory vhost config to use as the pattern
+sudo find / -iname "*.conf" 2>/dev/null | xargs grep -l "artifactory" 2>/dev/null
 
-echo "--- .pre-restore.2026-03-25-142508 ---"
-find /var/lib/docker/volumes/bitbucketVolume/_data.pre-restore.2026-03-25-142508 -iname "*AES256*" 2>/dev/null
-find /var/lib/docker/volumes/bitbucketVolume/_data.pre-restore.2026-03-25-142508/shared -maxdepth 2 -type d 2>/dev/null
+# confirm nginx container and its config mount
+docker inspect dev-nginx --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}"
 
-echo "--- current live shared/ mtime (did anything touch it recently) ---"
-stat /var/lib/docker/volumes/bitbucketVolume/_data/shared
-stat /var/lib/docker/volumes/bitbucketVolume/_data/shared/config
-exit
+# check what cert dev is currently using (need the cert/key filenames to reuse)
+docker exec dev-nginx ls -la /etc/nginx/certs/ 2>/dev/null || sudo find / -iname "*.crt" -path "*nginx*" 2>/dev/null
