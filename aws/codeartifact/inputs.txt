@@ -1,8 +1,39 @@
-# find the existing working Artifactory vhost config to use as the pattern
-sudo find / -iname "*.conf" 2>/dev/null | xargs grep -l "artifactory" 2>/dev/null
+sudo tee /app/nginx/conf.d/bitbucket.conf > /dev/null <<'EOF'
+server {
+  listen 80;
+  server_name bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov;
+  return 301 https://$host$request_uri;
+}
 
-# confirm nginx container and its config mount
-docker inspect dev-nginx --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}"
+server {
+  listen 443 ssl;
+  server_name bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov;
 
-# check what cert dev is currently using (need the cert/key filenames to reuse)
-docker exec dev-nginx ls -la /etc/nginx/certs/ 2>/dev/null || sudo find / -iname "*.crt" -path "*nginx*" 2>/dev/null
+  ssl_certificate     /etc/nginx/certificates/dev_wildcard.pem;
+  ssl_certificate_key /etc/nginx/certificates/dev_privatekey.key;
+
+  client_max_body_size 0;
+
+  proxy_read_timeout 900;
+  proxy_send_timeout 900;
+  proxy_connect_timeout 60;
+
+  location / {
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Port  443;
+
+    proxy_pass http://dev-bitbucket:7990;
+  }
+}
+EOF
+
+# sanity check the file landed correctly and cert exists
+cat /app/nginx/conf.d/bitbucket.conf
+sudo ls -la /app/nginx/certificates/
+
+# test nginx config syntax before reloading — don't reload yet if this fails
+docker exec dev-nginx nginx -t
