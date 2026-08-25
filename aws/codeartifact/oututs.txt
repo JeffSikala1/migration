@@ -1,98 +1,26 @@
-[sikaj01@ip-10-56-112-34 ~]$ docker exec prod-bamboo tar -czf - -C /var/atlassian/application-data/bamboo/shared/configuration cipher keys secrets-config.yaml > /tmp/prod-bamboo-crypto.tar.gz
-[sikaj01@ip-10-56-112-34 ~]$ docker exec prod-bamboo tar -czf - -C /var/atlassian/application-data/bamboo/shared/configuration cipher keys secrets-config.yaml > /home/sikaj01/prod-bamboo-crypto.tar.gz
-[sikaj01@ip-10-56-112-34 ~]$ 
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bamboo sed -n '87195,87215p' /var/atlassian/application-data/bamboo/logs/atlassian-bamboo.log
+        at org.apache.catalina.core.StandardService.startInternal(StandardService.java:410) [catalina.jar:9.0.111]
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164) [catalina.jar:9.0.111]
+        at org.apache.catalina.core.StandardServer.startInternal(StandardServer.java:872) [catalina.jar:9.0.111]
+        at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164) [catalina.jar:9.0.111]
+        at org.apache.catalina.startup.Catalina.start(Catalina.java:736) [catalina.jar:9.0.111]
+        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[?:?]
+        at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[?:?]
+        at org.apache.catalina.startup.Bootstrap.start(Bootstrap.java:342) [bootstrap.jar:9.0.111]
+        at org.apache.catalina.startup.Bootstrap.main(Bootstrap.java:473) [bootstrap.jar:9.0.111]
+Caused by: java.lang.RuntimeException: java.lang.IllegalArgumentException: Unable to read cipher data for 0. Reason: Filesystem part of instance key is unavailable
+        at com.atlassian.bamboo.crypto.instance.SecretEncryptionServiceInternalImpl.lambda$new$0(SecretEncryptionServiceInternalImpl.java:33) ~[atlassian-bamboo-core-10.2.11.jar:?]
+        at com.atlassian.bamboo.util.concurrent.ResetOnFailureResettableLazyReference$1.create(ResetOnFailureResettableLazyReference.java:21) ~[atlassian-bamboo-core-10.2.11.jar:?]
+        at io.atlassian.util.concurrent.ResettableLazyReference$InternalReference.create(ResettableLazyReference.java:185) ~[atlassian-util-concurrent-4.1.0.jar:?]
+        at io.atlassian.util.concurrent.LazyReference$Sync.run(LazyReference.java:332) ~[atlassian-util-concurrent-4.1.0.jar:?]
+        at io.atlassian.util.concurrent.LazyReference.getInterruptibly(LazyReference.java:150) ~[atlassian-util-concurrent-4.1.0.jar:?]
+        ... 39 more
+Caused by: java.lang.IllegalArgumentException: Unable to read cipher data for 0. Reason: Filesystem part of instance key is unavailable
+        at com.atlassian.bamboo.crypto.instance.InstanceSecretStorage.readKeyAndIv(InstanceSecretStorage.java:58) ~[atlassian-bamboo-core-10.2.11.jar:?]
+        at com.atlassian.bamboo.crypto.instance.InstanceSecretStorage.loadCipherData(InstanceSecretStorage.java:121) ~[atlassian-bamboo-core-10.2.11.jar:?]
+        at com.atlassian.bamboo.crypto.instance.InstanceSecretStorage.getCipherData(InstanceSecretStorage.java:127) ~[atlassian-bamboo-core-10.2.11.jar:?]
+        at com.atlassian.bamboo.crypto.instance.InstanceSecretStorage.getOrCreateCipherData(InstanceSecretStorage.java:106) ~[atlassian-bamboo-core-10.2.11.jar:?]
+[sikaj01@ip-10-56-128-233 ~]$ docker inspect dev-bamboo --format "{{.State.StartedAt}}"
+2026-08-25T22:19:21.888660791Z
+[sikaj01@ip-10-56-128-233 ~]$ 
 
-
-[sikaj01@ip-10-56-112-33 bamboo-specs]$  scp sikaj01@10.56.112.34:/home/sikaj01/prod-bamboo-crypto.tar.gz /home/sikaj01/atlassian-restore-relay/
-Authorized uses only. All activity may be monitored and reported.
-prod-bamboo-crypto.tar.gz                                                                                                       100%  462   393.9KB/s   00:00    
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ scp /home/sikaj01/atlassian-restore-relay/prod-bamboo-crypto.tar.gz sikaj01@10.56.128.233:/home/sikaj01
-Authorized uses only. All activity may be monitored and reported.
-prod-bamboo-crypto.tar.gz                                                                                                       100%  462   343.3KB/s   00:00    
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
-
-
-[sikaj01@ip-10-56-128-233 ~]$ ls -la /app/bamboo/shared/configuration/
-ls: cannot access '/app/bamboo/shared/configuration/': Permission denied
-[sikaj01@ip-10-56-128-233 ~]$ sudo !!
-sudo ls -la /app/bamboo/shared/configuration/
-[sudo] password for sikaj01: 
-Sorry, try again.
-[sudo] password for sikaj01: 
-total 16
-drwxr-x---. 4 2005 2005  169 Aug 25 22:10 .
-drwxr-x---. 9 2005 2005  123 Aug 25 21:47 ..
--rw-r-----. 1 2005 2005   56 Aug 25 21:47 bamboo-mail.cfg.xml
--rw-r-----. 1 2005 2005  241 Aug 25 22:10 bamboo-shared.cfg.xml
--rw-r-----. 1 2005 2005 2580 Aug 25 21:47 broker.ks
-drwxr-x---. 2 2005 2005   75 Aug 25 21:47 keys
--r--------. 1 2005 2005  165 Aug 25 21:47 secrets-config.yaml
-drwxr-x---. 2 2005 2005    6 Aug 25 21:47 secured
--rw-r-----. 1 2005 2005    0 Aug 25 21:47 serialization-whitelist.list
-[sikaj01@ip-10-56-128-233 ~]$ sudo cat /app/bamboo/shared/configuration/secrets-config.yaml
-default: "defaultAES"
-backends:
-  defaultAES:
-    type: "AES"
-    properties:
-      key: "AES_KEY_DIR/AES256_2026-08-25-214744_f17f9aed-fe7e-4541-8b6d-8edb2287a4dc"
-[sikaj01@ip-10-56-128-233 ~]$ sudo ls -la /app/bamboo/shared/configuration/keys
-total 4
-drwxr-x---. 2 2005 2005  75 Aug 25 21:47 .
-drwxr-x---. 4 2005 2005 169 Aug 25 22:11 ..
--r--------. 1 2005 2005  32 Aug 25 21:47 AES256_2026-08-25-214744_f17f9aed-fe7e-4541-8b6d-8edb2287a4dc
-[sikaj01@ip-10-56-128-233 ~]$ docker stop dev-bamboo
-dev-bamboo
-[sikaj01@ip-10-56-128-233 ~]$ sudo rm -rf /app/bamboo/shared/configuration/keys /app/bamboo/shared/configuration/secrets-config.yaml /app/bamboo/shared/configuration/cipher
-[sikaj01@ip-10-56-128-233 ~]$ ll
-total 4956
-drwxr-x---. 7 sikaj01 users   16384 Aug 14 14:17 artifactory-migration
--rw-r--r--. 1 sikaj01 users  290502 Aug  3 17:17 artifactory_pre_admin_reset_20260803.dump
--rw-r--r--. 1 sikaj01 users  293881 Aug 10 15:11 artifactory_pre_repo_insert_20260810.dump
--rw-r-----. 1 sikaj01 users   10560 Aug 19 18:04 ec2_investigate.sh
--rw-r-----. 1 sikaj01 users   52283 Aug 19 18:10 ec2_report_ip-10-56-128-233.ec2.internal_2026-08-19_1807.txt
--rw-r-----. 1 sikaj01 users 4398025 Aug 25 14:00 mesh-patch.tar.gz
--rw-r-----. 1 sikaj01 users     462 Aug 25 22:16 prod-bamboo-crypto.tar.gz
--rw-r-----. 1 sikaj01 users    3227 Aug 25 21:38 prod-bamboo.cfg.xml
-[sikaj01@ip-10-56-128-233 ~]$ sudo tar -xzf /path/to/relayed/prod-bamboo-crypto.tar.gz -C /app/bamboo/shared/configuration
-tar (child): /path/to/relayed/prod-bamboo-crypto.tar.gz: Cannot open: No such file or directory
-tar (child): Error is not recoverable: exiting now
-tar: Child returned status 2
-tar: Error is not recoverable: exiting now
-[sikaj01@ip-10-56-128-233 ~]$ sudo tar -xzf prod-bamboo-crypto.tar.gz -C /app/bamboo/shared/configuration
-[sikaj01@ip-10-56-128-233 ~]$ sudo chown -R 2005:2005 /app/bamboo/shared/configuration/keys /app/bamboo/shared/configuration/cipher /app/bamboo/shared/configuration/secrets-config.yaml
-[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 750 /app/bamboo/shared/configuration/keys /app/bamboo/shared/configuration/cipher
-[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 400 /app/bamboo/shared/configuration/secrets-config.yaml
-[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 400 /app/bamboo/shared/configuration/keys/AES256_2026-04-21-220531_18a03f06-8847-4017-aa17-828fcce740f3
-[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 640 /app/bamboo/shared/configuration/cipher/cipher.key_0
-[sikaj01@ip-10-56-128-233 ~]$ sudo ls -la /app/bamboo/shared/configuration/keys/ /app/bamboo/shared/configuration/cipher/
-/app/bamboo/shared/configuration/cipher/:
-total 4
-drwxr-x---. 2 2005 2005  26 Nov 26  2025 .
-drwxr-x---. 5 2005 2005 183 Aug 25 22:18 ..
--rw-r-----. 1 2005 2005  32 Nov 26  2025 cipher.key_0
-
-/app/bamboo/shared/configuration/keys/:
-total 4
-drwxr-x---. 2 2005 2005  75 Apr 21 22:05 .
-drwxr-x---. 5 2005 2005 183 Aug 25 22:18 ..
--r--------. 1 2005 2005  32 Apr 21 22:05 AES256_2026-04-21-220531_18a03f06-8847-4017-aa17-828fcce740f3
-[sikaj01@ip-10-56-128-233 ~]$ sudo cat /app/bamboo/shared/configuration/secrets-config.yaml
-default: "defaultAES"
-backends:
-  defaultAES:
-    type: "AES"
-    properties:
-      key: "AES_KEY_DIR/AES256_2026-04-21-220531_18a03f06-8847-4017-aa17-828fcce740f3"
-[sikaj01@ip-10-56-128-233 ~]$ docker start dev-bamboo
-dev-bamboo
-[sikaj01@ip-10-56-128-233 ~]$ sleep 90
-[sikaj01@ip-10-56-128-233 ~]$ docker ps --filter name=dev-bamboo
-CONTAINER ID   IMAGE                      COMMAND                  CREATED      STATUS         PORTS                                                       NAMES
-cb866c3043c4   atlassian/bamboo:10.2.11   "/usr/bin/tini -- /e…"   5 days ago   Up 2 minutes   0.0.0.0:8085->8085/tcp, 0.0.0.0:8443->8443/tcp, 54663/tcp   dev-bamboo
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bamboo grep -an "Unable to read cipher data" /var/atlassian/application-data/bamboo/logs/atlassian-bamboo.log | tail -5
-87204:Caused by: java.lang.RuntimeException: java.lang.IllegalArgumentException: Unable to read cipher data for 0. Reason: Filesystem part of instance key is unavailable
-87211:Caused by: java.lang.IllegalArgumentException: Unable to read cipher data for 0. Reason: Filesystem part of instance key is unavailable
-87238:io.atlassian.util.concurrent.LazyReference$InitializationException: java.lang.RuntimeException: java.lang.IllegalArgumentException: Unable to read cipher data for 0. Reason: Filesystem part of instance key is unavailable
-87279:Caused by: java.lang.RuntimeException: java.lang.IllegalArgumentException: Unable to read cipher data for 0. Reason: Filesystem part of instance key is unavailable
-87286:Caused by: java.lang.IllegalArgumentException: Unable to read cipher data for 0. Reason: Filesystem part of instance key is unavailable
