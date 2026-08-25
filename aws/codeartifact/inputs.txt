@@ -1,1 +1,8 @@
-docker exec dev-bamboo sed -n '87150,87200p' /var/atlassian/application-data/bamboo/logs/atlassian-bamboo.log
+# On .34 — reproduce the exact tar invocation the script uses, but capture its real exit code and see what (if anything) it complains about on stderr
+docker volume inspect bambooVolume --format '{{.Mountpoint}}'
+
+sudo tar -czf /tmp/bamboo-test.tar.gz -C / "$(docker volume inspect bambooVolume --format '{{.Mountpoint}}' | sed 's|^/||')" 2>&1 | tee /tmp/bamboo-tar-stderr.log
+echo "exit code: $?"
+
+grep -c "changed as we read it\|Removing leading" /tmp/bamboo-tar-stderr.log
+tar -tzf /tmp/bamboo-test.tar.gz | grep -c "shared/configuration"
