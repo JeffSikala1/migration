@@ -17,4 +17,54 @@ jdbc.password=sdifhbIHSDBVipydbfv8345go458g03
 #Thu Aug 20 18:42:29 UTC 2026
 home.build=9.4.17
 home.layout=12.0.0
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket cat /entrypoint.py 2>/dev/null | grep -iA3 -B3 "ATL_TOMCAT_SCHEME\|ATL_PROXY_NAME\|proxyName\|scheme"
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket find / -maxdepth 2 -iname "entrypoint*" 2>/dev/null
+/entrypoint.py
+/entrypoint_helpers.py
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket cat /entrypoint.py
+#!/usr/bin/python3 -B
+
+from entrypoint_helpers import env, str2bool, exec_app
+import logging
+
+RUN_USER = env['run_user']
+RUN_GROUP = env['run_group']
+BITBUCKET_INSTALL_DIR = env['bitbucket_install_dir']
+BITBUCKET_HOME = env['bitbucket_home']
+SEARCH_ENABLED = env.get('elasticsearch_enabled') or env.get('search_enabled')
+APPLICATION_MODE = env.get('application_mode')
+BITBUCKET_VERSION = env.get('bitbucket_version')
+
+def is_version_less_than_10(version_str):
+    """Check if Bitbucket version is less than 10.0.0"""
+    if not version_str:
+        return False
+    
+    try:
+        # Split version string and convert to integers for comparison
+        version_parts = version_str.split('.')
+        major_version = int(version_parts[0])
+        return major_version < 10
+    except (ValueError, IndexError):
+        # If version parsing fails, assume it's a newer version
+        return False
+
+if str2bool(SEARCH_ENABLED) is False or APPLICATION_MODE == 'mirror':
+    # When running standalone use a stripped version of the startup
+    # scripts to ensure shutdown works correctly. See the script for
+    # details.
+    start_cmd = [f"{BITBUCKET_INSTALL_DIR}/bin/exec-bitbucket-node.sh"]
+else:
+    # Only show warning for Bitbucket versions < 10, as only those versions include embedded search
+    if is_version_less_than_10(BITBUCKET_VERSION):
+        logging.warning("######################################################################")
+        logging.warning("Starting Bitbucket with embedded search service. Note that this is\n" \
+                        "not a recommended configuration and is known to have issues with\n" \
+                        "clean shutdown. Ideally OpenSearch (previously Elasticsearch) should\n" \
+                        "be started in a separate container/pod.")
+        logging.warning("######################################################################")
+
+    start_cmd = [f"{BITBUCKET_INSTALL_DIR}/bin/start-bitbucket.sh", "-fg"]
+
+exec_app(start_cmd, BITBUCKET_HOME, name='Bitbucket')
 [sikaj01@ip-10-56-128-233 ~]$ 
