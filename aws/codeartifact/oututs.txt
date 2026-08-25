@@ -1,56 +1,629 @@
-[root@ip-10-56-128-233 ~]# ls -la /app/bitbucket/shared/keys/
-total 8
-drwx------. 2 2003 2003 144 Aug 25 12:59 .
-drwxr-xr-x. 8 2003 2003 156 Aug 25 13:01 ..
--r--------. 1 2003 2003  32 Aug 25 12:59 AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094
--r--------. 1 2003 2003  32 Aug 20 18:42 AES256_2026-08-20-184224_f4818f86-e3ad-4796-8a6f-88609d750541
-timed out waiting for input: auto-logout
-[sikaj01@ip-10-56-128-233 ~]$ docker stop dev-bitbucket
+[sikaj01@ip-10-56-128-233 ~]$ sudo su -
+Last login: Tue Aug 25 13:46:20 UTC 2026 on pts/1
+[root@ip-10-56-128-233 ~]# cd /home/sikaj01
+[root@ip-10-56-128-233 sikaj01]# mkdir -p /tmp/mesh-extract
+[root@ip-10-56-128-233 sikaj01]# tar -xzf mesh-patch.tar.gz -C /tmp/mesh-extract app/docker/volumes/bitbucketVolume/_data/mesh/mesh.mv.db app/docker/volumes/bitbucketVolume/_data/mesh/mesh.trace.db app/docker/volumes/bitbucketVolume/_data/mesh/mesh.properties app/docker/volumes/bitbucketVolume/_data/mesh/mesh.properties.bak app/docker/volumes/bitbucketVolume/_data/mesh/.lock
+[root@ip-10-56-128-233 sikaj01]# mkdir -p /root/mesh-db-backup-$(date +%Y%m%d_%H%M%S)
+[root@ip-10-56-128-233 sikaj01]# BKDIR=$(ls -d /root/mesh-db-backup-* | tail -1)
+[root@ip-10-56-128-233 sikaj01]# cp -a /app/bitbucket/mesh/mesh.mv.db "$BKDIR"/ 2>/dev/null || true
+[root@ip-10-56-128-233 sikaj01]# cp -a /app/bitbucket/mesh/mesh.trace.db "$BKDIR"/ 2>/dev/null || true
+[root@ip-10-56-128-233 sikaj01]# cp -a /app/bitbucket/mesh/mesh.properties "$BKDIR"/ 2>/dev/null || true
+[root@ip-10-56-128-233 sikaj01]# cp -a /app/bitbucket/mesh/mesh.properties.bak "$BKDIR"/ 2>/dev/null || true
+[root@ip-10-56-128-233 sikaj01]# cp -a /app/bitbucket/mesh/.lock "$BKDIR"/ 2>/dev/null || true
+[root@ip-10-56-128-233 sikaj01]# ls -la "$BKDIR"
+total 72
+drwxr-x---. 2 root root   108 Aug 25 14:07 .
+dr-xr-x---. 8 root root   234 Aug 25 14:06 ..
+-rw-r--r--. 1 2003 2003    17 Aug 25 13:01 .lock
+-rw-r--r--. 1 2003 2003 40960 Aug 25 13:01 mesh.mv.db
+-rw-------. 1 2003 2003   142 Aug 25 13:01 mesh.properties
+-rw-------. 1 2003 2003   142 Aug 25 13:01 mesh.properties.bak
+-rw-r--r--. 1 2003 2003 20297 Aug 25 13:01 mesh.trace.db
+[root@ip-10-56-128-233 sikaj01]# SRC=/tmp/mesh-extract/app/docker/volumes/bitbucketVolume/_data/mesh
+[root@ip-10-56-128-233 sikaj01]# cp -a "$SRC"/mesh.mv.db /app/bitbucket/mesh/mesh.mv.db
+cp: overwrite '/app/bitbucket/mesh/mesh.mv.db'? y
+[root@ip-10-56-128-233 sikaj01]# cp -a "$SRC"/mesh.trace.db /app/bitbucket/mesh/mesh.trace.db
+cp: overwrite '/app/bitbucket/mesh/mesh.trace.db'? y
+[root@ip-10-56-128-233 sikaj01]# cp -a "$SRC"/mesh.properties /app/bitbucket/mesh/mesh.properties
+cp: overwrite '/app/bitbucket/mesh/mesh.properties'? y
+[root@ip-10-56-128-233 sikaj01]# cp -a "$SRC"/mesh.properties.bak /app/bitbucket/mesh/mesh.properties.bak
+cp: overwrite '/app/bitbucket/mesh/mesh.properties.bak'? y
+[root@ip-10-56-128-233 sikaj01]# rm -f /app/bitbucket/mesh/.lock 
+[root@ip-10-56-128-233 sikaj01]# chown 2003:2003 /app/bitbucket/mesh/mesh.mv.db /app/bitbucket/mesh/mesh.trace.db /app/bitbucket/mesh/mesh.properties /app/bitbucket/mesh/mesh.properties.bak
+[root@ip-10-56-128-233 sikaj01]# ls -la /app/bitbucket/mesh/
+total 172
+drwxr-xr-x.  6 2003 2003   142 Aug 25 14:08 .
+drwxr-x---. 13 2003 2003 16384 Aug 20 18:06 ..
+drwxr-xr-x.  3 2003 2003    25 Nov 25  2025 bin
+drwxr-xr-x.  2 2003 2003    54 Nov 25  2025 config
+drwxr-xr-x.  2 2003 2003 16384 Aug 25 13:01 log
+-rw-r--r--.  1 2003 2003 45056 Aug 12 03:43 mesh.mv.db
+-rw-------.  1 2003 2003   142 Aug 12 03:42 mesh.properties
+-rw-------.  1 2003 2003   142 Aug 12 03:42 mesh.properties.bak
+-rw-r--r--.  1 2003 2003 89995 Aug 12 03:42 mesh.trace.db
+drwxr-xr-x.  3 2003 2003    24 Aug 25 13:01 tmp
+[root@ip-10-56-128-233 sikaj01]# exit
+logout
+[sikaj01@ip-10-56-128-233 ~]$ docker start dev-bitbucket
 dev-bitbucket
-[sikaj01@ip-10-56-128-233 ~]$ sudo tar -tzvf /home/sikaj01/mesh-patch.tar.gz
-drwxr-x--- root/root         0 2026-08-25 13:54 app/
-drwxr-x--- root/root         0 2026-08-25 13:54 app/docker/
-drwxr-x--- root/root         0 2026-08-25 13:54 app/docker/volumes/
-drwxr-x--- root/root         0 2026-08-25 13:54 app/docker/volumes/bitbucketVolume/
-drwxr-x--- root/root         0 2026-08-25 13:54 app/docker/volumes/bitbucketVolume/_data/
-drwxr-x--- root/root         0 2026-08-25 13:54 app/docker/volumes/bitbucketVolume/_data/mesh/
-drwxr-xr-x 2003/2003         0 2025-11-25 19:44 app/docker/volumes/bitbucketVolume/_data/mesh/bin/
-drwxr-xr-x 2003/2003         0 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/bin/git-scripts/
--rwxr--r-- 2003/2003       664 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/bin/git-scripts/pack-objects.sh
--rwxr--r-- 2003/2003      3065 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/bin/git-scripts/signing-callback
--rwxr--r-- 2003/2003       654 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/bin/git-scripts/ssh-git.sh
--rwxr--r-- 2003/2003       321 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/bin/git-scripts/ask-pass.pl
-drwxr-xr-x 2003/2003         0 2025-11-25 19:44 app/docker/volumes/bitbucketVolume/_data/mesh/config/
--rw------- 2003/2003       451 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/config/control-plane.pem
--rw------- 2003/2003      1679 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/config/signing-key.pem
-drwxr-xr-x 2003/2003         0 2026-08-21 14:18 app/docker/volumes/bitbucketVolume/_data/mesh/log/
--rw-r--r-- 2003/2003         0 2025-11-25 19:44 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-profiler.log
--rw-r--r-- 2003/2003      8636 2026-08-10 23:43 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-10.0.log
--rw-r--r-- 2003/2003   7055249 2026-08-11 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-11.0.log
--rw-r--r-- 2003/2003      5171 2026-08-11 23:43 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-11.0.log
--rw-r--r-- 2003/2003      6935 2026-08-13 23:17 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-13.0.log
--rw-r--r-- 2003/2003   5864164 2026-08-16 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-16.0.log
--rw-r--r-- 2003/2003   6763312 2026-08-18 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-18.0.log
--rw-r--r-- 2003/2003      4183 2026-08-18 23:09 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-18.0.log
--rw-r--r-- 2003/2003   6762111 2026-08-20 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-20.0.log
--rw-r--r-- 2003/2003   7041489 2026-08-21 20:35 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access.log
--rw-r--r-- 2003/2003   7733699 2026-08-12 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-12.0.log
--rw-r--r-- 2003/2003     10351 2026-08-12 22:41 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-12.0.log
--rw-r--r-- 2003/2003   7042412 2026-08-13 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-13.0.log
--rw-r--r-- 2003/2003   6816081 2026-08-14 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-14.0.log
--rw-r--r-- 2003/2003   5847422 2026-08-15 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-15.0.log
--rw-r--r-- 2003/2003   6256944 2026-08-17 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-17.0.log
--rw-r--r-- 2003/2003       645 2026-08-17 22:11 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-17.0.log
--rw-r--r-- 2003/2003   7009228 2026-08-19 23:59 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-access-2026-08-19.0.log
--rw-r--r-- 2003/2003      6040 2026-08-19 22:10 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-19.0.log
--rw-r--r-- 2003/2003      2539 2026-08-20 22:57 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-20.0.log
--rw-r--r-- 2003/2003      6119 2026-08-07 19:40 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-07.0.log
--rw-r--r-- 2003/2003      3189 2026-08-14 22:05 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh-2026-08-14.0.log
--rw-r--r-- 2003/2003     15526 2026-08-21 20:31 app/docker/volumes/bitbucketVolume/_data/mesh/log/atlassian-mesh.log
-drwxr-xr-x 2003/2003         0 2026-08-21 20:31 app/docker/volumes/bitbucketVolume/_data/mesh/tmp/
-drwxr-xr-x 2003/2003         0 2025-11-25 19:44 app/docker/volumes/bitbucketVolume/_data/mesh/tmp/work-trees/
--rw-r--r-- 2003/2003     45056 2026-08-12 03:43 app/docker/volumes/bitbucketVolume/_data/mesh/mesh.mv.db
--rw-r--r-- 2003/2003     89995 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/mesh.trace.db
--rw-r--r-- 2003/2003        14 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/.lock
--rw------- 2003/2003       142 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/mesh.properties.bak
--rw------- 2003/2003       142 2026-08-12 03:42 app/docker/volumes/bitbucketVolume/_data/mesh/mesh.properties
+[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket --tail 50
+        at java.base/java.util.concurrent.ConcurrentSkipListMap$KeySpliterator.tryAdvance(ConcurrentSkipListMap.java:3200)
+        at java.base/java.util.stream.ReferencePipeline.forEachWithCancel(ReferencePipeline.java:129)
+        at java.base/java.util.stream.AbstractPipeline.copyIntoWithCancel(AbstractPipeline.java:527)
+        at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:513)
+        at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
+        at java.base/java.util.stream.FindOps$FindOp.evaluateSequential(FindOps.java:150)
+        at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
+        at java.base/java.util.stream.ReferencePipeline.findFirst(ReferencePipeline.java:647)
+        at com.atlassian.bitbucket.internal.search.common.jobs.checks.HealthCheckRunner.runJob(HealthCheckRunner.java:114)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService$JobRunnerWithStats.runJob(CaesiumSchedulerService.java:787)
+        at com.atlassian.scheduler.core.JobLauncher.runJob(JobLauncher.java:145)
+        at com.atlassian.scheduler.core.JobLauncher.launchAndBuildResponse(JobLauncher.java:117)
+        at com.atlassian.scheduler.core.JobLauncher.launch(JobLauncher.java:99)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService.launchJob(CaesiumSchedulerService.java:578)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService.executeClusteredJob(CaesiumSchedulerService.java:572)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService.executeClusteredJobWithRecoveryGuard(CaesiumSchedulerService.java:601)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService.executeQueuedJob(CaesiumSchedulerService.java:463)
+        at com.atlassian.scheduler.caesium.impl.SchedulerQueueWorker.executeJob(SchedulerQueueWorker.java:66)
+        at com.atlassian.scheduler.caesium.impl.SchedulerQueueWorker.executeNextJob(SchedulerQueueWorker.java:60)
+        at com.atlassian.scheduler.caesium.impl.SchedulerQueueWorker.run(SchedulerQueueWorker.java:35)
+        at java.base/java.lang.Thread.run(Thread.java:1583)
+        ... 29 frames trimmed
+INFO:root:User is currently root. Will downgrade run user to bitbucket
+INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
+Starting Atlassian Bitbucket as the current user
+
+Starting the bundled search server
+        Hint: Run start-bitbucket.sh --no-search to skip starting the bundled search server
+Bundled search server started successfully
+
+Bitbucket is being run with a umask that contains potentially unsafe settings.
+The following issues were found with the mask "u=rwx,g=rx,o=rx" (0022):
+ - Access is allowed to 'others'. It is recommended that 'others' be denied
+   all access for security reasons.
+The recommended umask for Bitbucket is "u=,g=w,o=rwx" (0027) and can be
+configured in _start-webapp.sh
+
+Starting Bitbucket webapp at http://localhost:7990
+WARNING: Using incubator modules: jdk.incubator.vector
+14:08:38.494 [main] INFO com.atlassian.security.serialfilter.DeserializationFilterConfigurator -- Global serial filter set to JDK 11 DeserializationFilter
+Aug 25, 2026 2:08:38 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
+WARNING: COMPAT locale provider will be removed in a future release
+2026-08-25 14:08:39,555 INFO  [main]  c.a.b.i.b.BitbucketServerApplication Starting BitbucketServerApplication v9.4.17 using Java 21.0.11 on 25e224bef038 with PID 260 (/opt/atlassian/bitbucket/app/WEB-INF/classes started by bitbucket in /var/atlassian/application-data/bitbucket)
+2026-08-25 14:08:39,556 INFO  [main]  c.a.b.i.b.BitbucketServerApplication No active profile set, falling back to 1 default profile: "default"
+2026-08-25 14:08:40,179 INFO  [main]  c.a.b.i.boot.log.BuildInfoLogger Starting Bitbucket 9.4.17 (e570242 built on Mon Feb 09 04:42:25 UTC 2026)
+2026-08-25 14:08:40,179 INFO  [main]  c.a.b.i.boot.log.BuildInfoLogger JVM: Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.11+10-LTS
+2026-08-25 14:08:41,234 INFO  [main]  c.a.b.i.b.BitbucketServerApplication Started BitbucketServerApplication in 2.652 seconds (JVM running for 3.244)
+2026-08-25 14:08:43,136 INFO  [spring-startup]  c.a.s.internal.home.HomeLockAcquirer Successfully acquired lock on home directory /var/atlassian/application-data/bitbucket
+2026-08-25 14:08:45,149 INFO  [spring-startup]  c.a.s.internal.home.HomeLockAcquirer Successfully acquired lock on home directory /var/atlassian/application-data/bitbucket/shared
+2026-08-25 14:08:45,953 WARN  [spring-startup]  com.hazelcast.instance.impl.Node [172.18.0.5]:5701 [bitbucket] [5.4.3] No join method is enabled! Starting standalone.
+[sikaj01@ip-10-56-128-233 ~]$ 
+
+
+[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket --tail 50
+        at com.atlassian.bitbucket.internal.search.common.clientutil.DefaultSearchClientFactory.create(DefaultSearchClientFactory.java:61)
+        at com.atlassian.bitbucket.internal.search.search.client.SearchClientLifecycleManager.refreshClient(SearchClientLifecycleManager.java:143)
+        at com.atlassian.bitbucket.internal.search.search.client.SearchClientLifecycleManager.onStart(SearchClientLifecycleManager.java:128)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager$1.accept(PatchedLifecycleManager.java:291)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager$1.accept(PatchedLifecycleManager.java:288)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyLifecycleAware(PatchedLifecycleManager.java:317)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyOnStartIfStartedAndEnabled(PatchedLifecycleManager.java:287)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyLifecycleAwares(PatchedLifecycleManager.java:272)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyStartableLifecycleAwares(PatchedLifecycleManager.java:249)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyStartableLifecycleAwaresForPlugin(PatchedLifecycleManager.java:240)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyStartableLifecycleAwares(PatchedLifecycleManager.java:216)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.startIfApplicationSetup(PatchedLifecycleManager.java:199)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.onPluginFrameworkStarted(PatchedLifecycleManager.java:140)
+        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+        at com.atlassian.stash.internal.event.SynchronousAwareSingleParameterMethodListenerInvoker.invoke(SynchronousAwareSingleParameterMethodListenerInvoker.java:66)
+        at com.atlassian.diagnostics.internal.platform.monitor.event.EventSystemMonitor.invokeMonitored(EventSystemMonitor.java:105)
+        at com.atlassian.diagnostics.internal.platform.monitor.event.MonitoredListenerInvoker.invoke(MonitoredListenerInvoker.java:38)
+        at com.atlassian.event.internal.ComparableListenerInvoker.invoke(ComparableListenerInvoker.java:48)
+        at com.atlassian.event.internal.AsynchronousAbleEventDispatcher.lambda$static$0(AsynchronousAbleEventDispatcher.java:38)
+        at com.atlassian.event.internal.AsynchronousAbleEventDispatcher.dispatch(AsynchronousAbleEventDispatcher.java:89)
+        at com.atlassian.stash.internal.event.SynchronousAwareEventDispatcher.dispatch(SynchronousAwareEventDispatcher.java:31)
+        at com.atlassian.diagnostics.internal.platform.monitor.event.MonitoredEventDispatcher.dispatch(MonitoredEventDispatcher.java:36)
+        at com.atlassian.event.internal.EventPublisherImpl.publish(EventPublisherImpl.java:103)
+        at com.atlassian.stash.internal.event.TransactionAwareEventPublisher.internalPublish(TransactionAwareEventPublisher.java:175)
+        at com.atlassian.stash.internal.event.TransactionAwareEventPublisher.publish(TransactionAwareEventPublisher.java:108)
+        at com.atlassian.plugin.event.impl.DefaultPluginEventManager.broadcast(DefaultPluginEventManager.java:91)
+        at com.atlassian.plugin.manager.DefaultPluginManager.broadcastIgnoreError(DefaultPluginManager.java:2069)
+        at com.atlassian.plugin.manager.DefaultPluginManager.lambda$lateStartup$6(DefaultPluginManager.java:702)
+        at com.atlassian.plugin.manager.PluginTransactionContext.wrap(PluginTransactionContext.java:64)
+        at com.atlassian.plugin.manager.DefaultPluginManager.lateStartup(DefaultPluginManager.java:674)
+        at com.atlassian.plugin.manager.DefaultPluginManager.lambda$init$3(DefaultPluginManager.java:529)
+        at com.atlassian.plugin.manager.PluginTransactionContext.wrap(PluginTransactionContext.java:64)
+        at com.atlassian.plugin.manager.DefaultPluginManager.init(DefaultPluginManager.java:527)
+        at com.atlassian.stash.internal.plugin.StashPluginManager.lambda$init$0(StashPluginManager.java:60)
+        at com.atlassian.stash.internal.plugin.PluginUpgradeHelper.withUpgrade(PluginUpgradeHelper.java:76)
+        at com.atlassian.stash.internal.plugin.StashPluginManager.init(StashPluginManager.java:60)
+        at com.atlassian.stash.internal.plugin.SpringPluginSystemLifecycle.start(SpringPluginSystemLifecycle.java:35)
+        at org.springframework.context.support.DefaultLifecycleProcessor.doStart(DefaultLifecycleProcessor.java:183)
+        at org.springframework.context.support.DefaultLifecycleProcessor.access$200(DefaultLifecycleProcessor.java:58)
+        at org.springframework.context.support.DefaultLifecycleProcessor$LifecycleGroup.start(DefaultLifecycleProcessor.java:365)
+        at java.base/java.lang.Iterable.forEach(Iterable.java:75)
+        at org.springframework.context.support.DefaultLifecycleProcessor.startBeans(DefaultLifecycleProcessor.java:160)
+        at org.springframework.context.support.DefaultLifecycleProcessor.onRefresh(DefaultLifecycleProcessor.java:128)
+        at org.springframework.context.support.AbstractApplicationContext.finishRefresh(AbstractApplicationContext.java:949)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:594)
+        at javax.servlet.GenericServlet.init(GenericServlet.java:143)
+        at java.base/java.lang.Thread.run(Thread.java:1583)
+        ... 38 frames trimmed
+2026-08-25 14:09:13,729 INFO  [spring-startup]  c.a.b.i.s.c.j.c.HealthCheckRunner New health check registered: KnownIssueCheck
+2026-08-25 14:09:13,729 INFO  [spring-startup]  c.a.b.i.s.c.c.DefaultClusterJobManager Registering job for SearchSynchronizeJob
+
+[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket | grep -iE 'SecretServiceException|NoSuchRepositoryException'
+INFO:root:User is currently root. Will downgrade run user to bitbucket
+INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
+WARNING: Using incubator modules: jdk.incubator.vector
+Aug 20, 2026 6:42:24 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
+WARNING: COMPAT locale provider will be removed in a future release
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/b3e5c341444d4890248a/r/112
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d6245acabe6b5f1276b1/r/113
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/b3e5c341444d4890248a/r/112
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d6245acabe6b5f1276b1/r/113
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/b3e5c341444d4890248a/r/112
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d6245acabe6b5f1276b1/r/113
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/b3e5c341444d4890248a/r/112
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d6245acabe6b5f1276b1/r/113
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/b3e5c341444d4890248a/r/112
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d6245acabe6b5f1276b1/r/113
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/5c4bf2e31e8442d87a08/r/62
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/b3e5c341444d4890248a/r/112
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d6245acabe6b5f1276b1/r/113
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/72
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7b2d4fcf2c0599f4fb6b/r/73
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/cebde52b84fa787f61a5/r/74
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ddb0da26c9cb6a61695f/r/75
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e14e58f25c924e7fb9e0/r/76
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/8d5c86ac267f8ab7dd44/r/77
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/717080cba97e75a5a2ab/r/78
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6d7ee72fd9d412abbba8/r/79
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1725bd0363c0a0fb49a3/r/80
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9a62d1b4dbcf09c8470d/r/81
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/d19d19df4dfc33074922/r/82
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/dd0e80c72e0eebe8d887/r/83
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e3b2886b41872ee6c8b7/r/84
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/eeb6a64d25db30508644/r/85
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/9aff32147b15207069fc/r/86
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/a1287152449cb4e1c114/r/87
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/bea0f16b4aa63a65db9b/r/88
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/7d81b0c4f0c4dd18fcf1/r/89
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/203393e0d0c6ea921cff/r/90
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/41133376e9cca00d565c/r/91
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/95e368c8a47080928705/r/92
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/74a75755d1a2ea50628c/r/93
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/40e23fa76b62bf82faf3/r/94
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/77e9650cb5bd0e9ba19d/r/95
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/6da08f1b975874a69da7/r/96
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/1e8af42c02c9f524e938/r/97
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/c32d4913c8b8695e1be7/r/98
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/73d0624e03691c3f75bd/r/99
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/e2acee541cc438ebb1f7/r/100
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/27c538a456d09c5f6281/r/101
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/3ce1877d8351bcb216cb/r/102
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/ec9850872282fbce2e92/r/103
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/22c231372f6a053581cd/r/104
+com.atlassian.bitbucket.repository.NoSuchRepositoryException: There is no repository with ID ds/0/h/0190b79414c05989c12b/r/105
+ANTLR Tool version 4.5.3 used for code generation does not match the current runtime version 4.6ANTLR Runtime version 4.5.3 used for parser compilation does not match the current runtime version 4.6ANTLR Tool version 4.5.3 used for code generation does not match the current runtime version 4.6ANTLR Runtime version 4.5.3 used for parser compilation does not match the current runtime version 4.6INFO:root:User is currently root. Will downgrade run user to bitbucket
+INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
+WARNING: Using incubator modules: jdk.incubator.vector
+Aug 25, 2026 1:00:54 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
+WARNING: COMPAT locale provider will be removed in a future release
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+INFO:root:User is currently root. Will downgrade run user to bitbucket
+INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
+WARNING: Using incubator modules: jdk.incubator.vector
+Aug 25, 2026 2:08:38 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
+WARNING: COMPAT locale provider will be removed in a future release
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+[sikaj01@ip-10-56-128-233 ~]$ 
