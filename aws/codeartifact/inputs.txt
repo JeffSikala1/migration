@@ -1,14 +1,7 @@
-# Find the existing NLB fronting artifactory-test.dev, to mirror its setup
-aws elbv2 describe-load-balancers --query "LoadBalancers[].{Name:LoadBalancerName,DNS:DNSName,Arn:LoadBalancerArn,Type:Type,Scheme:Scheme}" --output table
+# What targets (IP/instance + port) does artifactory-test-tg actually have registered?
+aws elbv2 describe-target-groups --target-group-arns arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc --query "TargetGroups[0].{HealthCheckPort:HealthCheckPort,HealthCheckProtocol:HealthCheckProtocol,HealthCheckPath:HealthCheckPath,TargetType:TargetType}" --output json
+aws elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc --output table
 
-# Find its listeners
-aws elbv2 describe-load-balancers --query "LoadBalancers[].LoadBalancerArn" --output text | tr "\t" "\n" | while read lb; do
-  echo "=== $lb ==="
-  aws elbv2 describe-listeners --load-balancer-arn "$lb" --query "Listeners[].{Port:Port,Proto:Protocol,DefaultActions:DefaultActions}" --output json
-done
-
-# Find target groups and their current targets, to see the artifactory-test pattern
-aws elbv2 describe-target-groups --query "TargetGroups[].{Name:TargetGroupName,Arn:TargetGroupArn,Port:Port,Proto:Protocol,VpcId:VpcId}" --output table
-
-# Find the Route53 hosted zone + existing artifactory-test record for the pattern
-aws route53 list-hosted-zones --query "HostedZones[].{Id:Id,Name:Name}" --output table
+# Which hosted zone actually has the artifactory-test record (check both zone IDs)
+aws route53 list-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --query "ResourceRecordSets[?contains(Name, \`artifactory-test\`)]" --output json
+aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --query "ResourceRecordSets[?contains(Name, \`artifactory-test\`)]" --output json
