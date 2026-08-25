@@ -1,12 +1,9 @@
-sudo cat /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-24.log
+sudo ls -la /etc/cron.d/ | grep -i bamboo
+sudo grep -rl "nightly_backup" /etc/cron.d/ /etc/crontab 2>/dev/null
+sudo crontab -u root -l | grep -n nightly_backup
 
-# Confirm cron actually attempted to fire on the missing days
-sudo grep -i "nightly_backup" /var/log/cron 2>/dev/null | tail -30
-sudo journalctl -u crond --since "2026-08-21 00:00:00" | grep -i nightly
 
-# Confirm the script itself is still valid/executable and hasn't been touched
-ls -la /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+sudo chmod 750 /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+sudo ls -la /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
 
-# Check staging disk space - the script aborts early (exit 5) if insufficient space, which would explain a tiny log
-df -h /backup-staging 2>&1
-df -h / 2>&1
+sudo /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
