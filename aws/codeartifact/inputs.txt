@@ -41,3 +41,32 @@ cat /app/bitbucket/shared/secrets-config.yaml
 docker restart dev-bitbucket
 sleep 30
 docker logs dev-bitbucket 2>&1 | grep -iE "SecretServiceException|NoSuchRepositoryException" | tail -20
+
+
+------------
+
+rm -rf /tmp/bb-patch /tmp/bb-patch.tar.gz
+
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bitbucket_20260821_203345.tar.gz - | \
+  tar -tz | grep -oP 'shared/data/repositories/\K[0-9]+(?=/)' | sort -un > /tmp/source_repo_ids.txt
+wc -l /tmp/source_repo_ids.txt
+
+
+mkdir -p /app/restore-staging/bb-patch
+: > /app/restore-staging/tar_members.txt
+while read -r id; do
+  if [ "$id" -gt 59 ]; then
+    echo "app/docker/volumes/bitbucketVolume/_data/shared/data/repositories/$id" >> /app/restore-staging/tar_members.txt
+    echo "app/docker/volumes/bitbucketVolume/_data/shared/data/snapshots/$id" >> /app/restore-staging/tar_members.txt
+  fi
+done < /tmp/source_repo_ids.txt
+
+wc -l /app/restore-staging/tar_members.txt
+
+
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bitbucket_20260821_203345.tar.gz - | \
+  tar -xz -C /app/restore-staging/bb-patch \
+  -T /app/restore-staging/tar_members.txt \
+  app/docker/volumes/bitbucketVolume/_data/shared/keys
+
+du -sh /app/restore-staging/bb-patch
