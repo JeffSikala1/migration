@@ -1,10 +1,17 @@
-# on .34, check if mesh.mv.db is even included, and roughly how big
-aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bitbucket_20260821_203345.tar.gz - | \
-  tar -tzv | grep "mesh/mesh.mv.db"
+sudo su -
+mkdir -p /app/restore-staging/mesh-patch
+cd /app/restore-staging/mesh-patch
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bitbucket_20260821_203345.tar.gz - | tar -xz --wildcards 'app/docker/volumes/bitbucketVolume/_data/mesh/*'
+find . -type f
+tar -czf /home/sikaj01/mesh-patch.tar.gz -C /app/restore-staging/mesh-patch app
+exit
+ls -la /home/sikaj01/mesh-patch.tar.gz
 
 
 
-docker logs --since 2m dev-bitbucket 2>&1 | grep -iE "SecretServiceException" | tail -20
+scp sikaj01@10.56.112.34:/home/sikaj01/mesh-patch.tar.gz /home/sikaj01/atlassian-restore-relay/
+scp /home/sikaj01/atlassian-restore-relay/mesh-patch.tar.gz sikaj01@10.56.112.233:/home/sikaj01/
 
 
-ls -la /app/bitbucket/shared/keys/
+docker stop dev-bitbucket
+sudo tar -tzvf /home/sikaj01/mesh-patch.tar.gz   # sanity check contents before touching live mesh/
