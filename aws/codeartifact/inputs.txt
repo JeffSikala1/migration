@@ -1,3 +1,6 @@
-docker exec dev-bitbucket grep -rl "ATL_TOMCAT_SCHEME" / --include="*.sh" --include="*.py" --include="*.conf" --include="*.xml" 2>/dev/null
-docker exec dev-bitbucket sh -c "grep -rl ATL_TOMCAT_SCHEME /opt/atlassian/bitbucket/bin/*.sh /opt/atlassian/bitbucket/app/bin/*.sh 2>/dev/null"
-docker exec dev-bitbucket ls -la /opt/atlassian/bitbucket/bin/ | head -30
+docker exec dev-bitbucket grep -A10 "RemoteIpValve\|internalProxies" /opt/atlassian/bitbucket/app/conf/*.xml 2>/dev/null
+docker exec dev-bitbucket find /opt/atlassian/bitbucket/app -iname "*.xml" 2>/dev/null | xargs grep -l "RemoteIp\|Connector" 2>/dev/null
+docker exec dev-bitbucket ps aux | grep java | head -5
+
+# what IP does nginx actually appear as, from Tomcat/webapp perspective
+docker network inspect $(docker inspect dev-nginx --format "{{range \$net,\$v := .NetworkSettings.Networks}}{{\$net}}{{end}}") --format "{{range .Containers}}{{.Name}}: {{.IPv4Address}}{{println}}{{end}}"
