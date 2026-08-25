@@ -1,55 +1,87 @@
-[sikaj01@ip-10-56-112-34 ~]$ sudo mkdir -p /mnt/verify-temp
-[sikaj01@ip-10-56-112-34 ~]$ sudo mount -o ro /dev/nvme2n1 /mnt/verify-temp
-[sikaj01@ip-10-56-112-34 ~]$ sudo ls -la /mnt/verify-temp
-total 156
-drwx--x---.  18 root     root      4096 Mar 11 20:12 .
-drwxr-xr-x.   7 root     root        90 Aug 25 10:49 ..
-drwxr-x---.   5 root     root      4096 Jan  6  2026 atlassian-backups
-drwx--x--x.   4 root     root      4096 Nov 22  2024 buildkit
-drwx--x---.  10 root     root      4096 Nov 25  2025 containers
-drwx------.  16 ec2-user ec2-user  4096 Sep 24  2025 ec2-user
--rw-------.   1 root     root        36 Nov 22  2024 engine-id
--rw-r-----.   1 root     root       186 Sep 25  2025 fstab
-drwx------.   3 root     root      4096 Nov 22  2024 image
-drwx------.   2 root     root     16384 Sep 25  2025 lost+found
-drwxr-x---.   3 root     root      4096 Mar 11 20:12 manual
-drwxr-x---.   3 root     root      4096 Nov 22  2024 network
-drwx--x---. 156 root     root     20480 Nov 25  2025 overlay2
-drwx------.   4 root     root      4096 Nov 22  2024 plugins
-dr-xr-x---.  11 root     root      4096 Sep 25  2025 root
--rw-r-----.   1 root     root       418 Sep 25  2025 rootcron
-drwxr-x---.   3 root     root      4096 Sep 25  2025 rootdocker
--rw-r-----.   1 root     root     45391 Sep 25  2025 roothistory
-drwx------.   2 root     root      4096 Nov 25  2025 runtimes
-drwx------.   2 root     root      4096 Nov 22  2024 swarm
-drwx------.   2 root     root      4096 Nov 25  2025 tmp
-drwx-----x.  15 root     root      4096 Nov 25  2025 volumes
-[sikaj01@ip-10-56-112-34 ~]$ sudo du -sh /mnt/verify-temp/* 2>/dev/null | sort -rh | head -20
-[sikaj01@ip-10-56-112-34 ~]$ 
-[sikaj01@ip-10-56-112-34 ~]$ sudo du -sh /mnt/verify-temp/* | sort -rh | head -20
-du: cannot access '/mnt/verify-temp/*': No such file or directory
-[sikaj01@ip-10-56-112-34 ~]$ ls sudo find /mnt/verify-temp -maxdepth 3 -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -10
-[sikaj01@ip-10-56-112-34 ~]$ sudo ls -alh /mnt/verify-temp/
-total 156K
-drwx--x---.  18 root     root     4.0K Mar 11 20:12 .
-drwxr-xr-x.   7 root     root       90 Aug 25 10:49 ..
-drwxr-x---.   5 root     root     4.0K Jan  6  2026 atlassian-backups
-drwx--x--x.   4 root     root     4.0K Nov 22  2024 buildkit
-drwx--x---.  10 root     root     4.0K Nov 25  2025 containers
-drwx------.  16 ec2-user ec2-user 4.0K Sep 24  2025 ec2-user
--rw-------.   1 root     root       36 Nov 22  2024 engine-id
--rw-r-----.   1 root     root      186 Sep 25  2025 fstab
-drwx------.   3 root     root     4.0K Nov 22  2024 image
-drwx------.   2 root     root      16K Sep 25  2025 lost+found
-drwxr-x---.   3 root     root     4.0K Mar 11 20:12 manual
-drwxr-x---.   3 root     root     4.0K Nov 22  2024 network
-drwx--x---. 156 root     root      20K Nov 25  2025 overlay2
-drwx------.   4 root     root     4.0K Nov 22  2024 plugins
-dr-xr-x---.  11 root     root     4.0K Sep 25  2025 root
--rw-r-----.   1 root     root      418 Sep 25  2025 rootcron
-drwxr-x---.   3 root     root     4.0K Sep 25  2025 rootdocker
--rw-r-----.   1 root     root      45K Sep 25  2025 roothistory
-drwx------.   2 root     root     4.0K Nov 25  2025 runtimes
-drwx------.   2 root     root     4.0K Nov 22  2024 swarm
-drwx------.   2 root     root     4.0K Nov 25  2025 tmp
-drwx-----x.  15 root     root     4.0K Nov 25  2025 volumes
+[sikaj01@ip-10-56-112-34 ~]$ sudo umount /mnt/verify-temp
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 create-snapshot --region us-east-1 --volume-id vol-05ebadfa92a493533 \
+  --description "Final snapshot before decommission - orphaned pre-migration /mnt/temp volume (old docker data-root + manual root/fstab/atlassian-backups snapshot from before /app/docker migration)" \
+  --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=vol-05ebadfa92a493533-decommission-snapshot},{Key=Purpose,Value=pre-decommission},{Key=Host,Value=ip-10-56-112-34}]"
+{
+    "Tags": [
+        {
+            "Key": "Name",
+            "Value": "vol-05ebadfa92a493533-decommission-snapshot"
+        },
+        {
+            "Key": "Purpose",
+            "Value": "pre-decommission"
+        },
+        {
+            "Key": "Host",
+            "Value": "ip-10-56-112-34"
+        }
+    ],
+    "SnapshotId": "snap-074577e61f711486f",
+    "VolumeId": "vol-05ebadfa92a493533",
+    "State": "pending",
+    "StartTime": "2026-08-25T11:25:42.846000+00:00",
+    "Progress": "",
+    "OwnerId": "339713019047",
+    "Description": "Final snapshot before decommission - orphaned pre-migration /mnt/temp volume (old docker data-root + manual root/fstab/atlassian-backups snapshot from before /app/docker migration)",
+    "VolumeSize": 150,
+    "Encrypted": true
+}
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-snapshots --region us-east-1 --snapshot-ids snap-074577e61f711486f \
+  --query "Snapshots[0].{State:State,Progress:Progress}"
+{
+    "State": "completed",
+    "Progress": "100%"
+}
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 detach-volume --region us-east-1 --volume-id vol-05ebadfa92a493533
+
+An error occurred (UnauthorizedOperation) when calling the DetachVolume operation: You are not authorized to perform this operation. User: arn:aws:sts::339713019047:assumed-role/mgmt-ssm-role/i-01d7e7fcb80559abb is not authorized to perform: ec2:DetachVolume on resource: arn:aws:ec2:us-east-1:339713019047:volume/vol-05ebadfa92a493533 because no identity-based policy allows the ec2:DetachVolume action. Encoded authorization failure message: PjFxiBG1Z1QdbJqnZXv7B0WAuhHq5-epV8FGOnmjBWT5VGVJUv-mq10ajbNtd8z0OosDQCF3yH4Me9AdGIPRzQZyiV0sT27q3H8djzchlbTdMWNc9IP3kDItCEa9qBz8fnk_nq3TuKMWefgWhmsj6Y2-DBAQhsUkN-MCI_FmzGWWPSjoRf-zrJtoixrofGLPReWfBQsrXYSwxNt64MTCJe6z4rRB6XpL2ZNCpOUSuob__j9BCknFrTAJWOZC68f1-z3HrMWom1fpkWLU3NFYF83E8KYoK4LiuVhxYCdTunhN4-NtlE2kmUZRtQZwkPPi4kOUChoBUdyYK7hRA9OpWKG3i5n6ROfh9rXzSWdCZjtZ4zVvaw8wFLk7gsxIdTDATyJuk1QWywA9Bl3R31W4Y-PRbIMp8uzlTBIEvPPSEWfML3tBizc5nHia91E4H7CyW7Caex16c4lmn7VFby5NTTwn6Rp29G1qSQa_BdSC88UDInlyl2MkdhBzfr6KZp6clQ1T6YgumueTC_s3tXIIwFhIrgrSdpXpyCgbXzn4HTnQW0o2szKiplCxfL9BQ1WldN9H5mHgR1UP3aKPwPai8CExu3PtLO4D2FhkKL0x5YjpSRbqTnW8XgtOPDd8Agt3-OZ4WFvlJ9YkGUiplgHaeOhQZw8D6BWmHpLmDpdmqP-qtUsZ147pWByaZoLtErhMaXjAtANYJkn_8SPPm-tJp8gTTCfjTLhT-amJNRxOjLW9XrVc8NBwVTR4KytZXUCK9cNhM556wXdHkiW-8cguRRkXUXZh8vxslPoExebLU6rLcsQOEuyI2HusaPm_-14hgbzbqhj-MqNt4ODVIE-ee58Fg9YHfiz76Hl_ngr605lsxXOaC_C4HN82kpyv-3XOGJBDbeWOfxI5p3s0EOtP2TVbBZ2w-E2SSkwOhVFhmKTHRLBWVvzt4FjY_aja_QLEPOT5Mc4MsXgRpqJWyaBGhUwS8QEkeRQB2aeLM5l0
+[sikaj01@ip-10-56-112-34 ~]$ sudo sed -i '/#\/dev\/nvme1n1 \/var\/lib\/docker ext4 defaults 0 2/d' /etc/fstab
+[sikaj01@ip-10-56-112-34 ~]$ cat /etc/fstab
+#
+UUID=e1f0d2ec-93af-4d46-8039-6fd7a938a4de     /           xfs    defaults,noatime  1   1
+UUID=E147-FCAD        /boot/efi       vfat    defaults,noatime,uid=0,gid=0,umask=0077,shortname=winnt,x-systemd.automount 0 2
+tmpfs /dev/shm tmpfs defaults,nodev,noexec,nosuid 0 0
+# For docker volumes at /app/docker/volumes
+/dev/nvme1n1p1 /app xfs defaults 0 2
+[sikaj01@ip-10-56-112-34 ~]$ sudo lsblk
+NAME          MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+nvme1n1       259:0    0  300G  0 disk 
+├─nvme1n1p1   259:3    0  300G  0 part /app
+└─nvme1n1p128 259:4    0    1M  0 part 
+nvme0n1       259:2    0  150G  0 disk 
+├─nvme0n1p1   259:5    0  150G  0 part /
+├─nvme0n1p127 259:6    0    1M  0 part 
+└─nvme0n1p128 259:7    0   10M  0 part /boot/efi
+[sikaj01@ip-10-56-112-34 ~]$ sudo fsdisk -l
+sudo: fsdisk: command not found
+[sikaj01@ip-10-56-112-34 ~]$ sudo fdisk -l
+Disk /dev/nvme1n1: 300 GiB, 322122547200 bytes, 629145600 sectors
+Disk model: Amazon Elastic Block Store              
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+Disklabel type: gpt
+Disk identifier: A5EB8E0A-FC09-4423-BB29-047980350BDD
+
+Device           Start       End   Sectors  Size Type
+/dev/nvme1n1p1    4096 629145566 629141471  300G Linux filesystem
+/dev/nvme1n1p128  2048      4095      2048    1M BIOS boot
+
+Partition table entries are not in disk order.
+
+
+Disk /dev/nvme0n1: 150 GiB, 161061273600 bytes, 314572800 sectors
+Disk model: Amazon Elastic Block Store              
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+Disklabel type: gpt
+Disk identifier: 5DBF46BD-F807-41AE-8B58-9775A1036DF7
+
+Device           Start       End   Sectors  Size Type
+/dev/nvme0n1p1   24576 314572766 314548191  150G Linux filesystem
+/dev/nvme0n1p127 22528     24575      2048    1M BIOS boot
+/dev/nvme0n1p128  2048     22527     20480   10M EFI System
+
+Partition table entries are not in disk order.
