@@ -1,4 +1,47 @@
-docker exec dev-bamboo cat /opt/atlassian/bamboo/conf/server.xml
-docker exec dev-bamboo grep -A5 -i remoteip /opt/atlassian/bamboo/conf/server.xml
-docker exec dev-bamboo ps aux | grep java
-docker exec dev-bamboo grep -i baseurl /var/atlassian/application-data/bamboo/bamboo.cfg.xml
+docker exec dev-bamboo grep -i url /var/atlassian/application-data/bamboo/bamboo.cfg.xml
+docker exec dev-bamboo ls -la /var/atlassian/application-data/bamboo/bamboo.cfg.xml
+
+sudo tee /app/nginx/conf.d/bamboo.conf > /dev/null <<'CONF'
+server {
+  listen 80;
+  server_name bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov;
+  return 301 https://$host$request_uri;
+}
+
+server {
+  listen 443 ssl;
+  server_name bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov;
+
+  ssl_certificate     /etc/nginx/certificates/dev_wildcard.pem;
+  ssl_certificate_key /etc/nginx/certificates/dev_privatekey.key;
+
+  client_max_body_size 0;
+
+  proxy_read_timeout 900;
+  proxy_send_timeout 900;
+  proxy_connect_timeout 60;
+
+  location / {
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host  $host;
+    proxy_set_header X-Forwarded-Port  443;
+
+    proxy_pass http://dev-bamboo:8085;
+  }
+}
+CONF
+
+sudo chmod 640 /app/nginx/conf.d/bamboo.conf
+sudo chown root:root /app/nginx/conf.d/bamboo.conf
+
+docker exec dev-nginx nginx -t
+docker exec dev-nginx nginx -s reload
+
+curl -sk -o /dev/null -w "%{http_code}\n" -H "Host: bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov" https://localhost/
+
+
+docker exec dev-bamboo grep -i url /var/atlassian/application-data/bamboo/bamboo.cfg.xml
+docker exec dev-bamboo ls -la /var/atlassian/application-data/bamboo/bamboo.cfg.xml
