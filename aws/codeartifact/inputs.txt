@@ -1,17 +1,32 @@
 sudo su -
-mkdir -p /app/restore-staging/mesh-patch
-cd /app/restore-staging/mesh-patch
-aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bitbucket_20260821_203345.tar.gz - | tar -xz --wildcards 'app/docker/volumes/bitbucketVolume/_data/mesh/*'
-find . -type f
-tar -czf /home/sikaj01/mesh-patch.tar.gz -C /app/restore-staging/mesh-patch app
+cd /home/sikaj01
+mkdir -p /tmp/mesh-extract
+tar -xzf mesh-patch.tar.gz -C /tmp/mesh-extract app/docker/volumes/bitbucketVolume/_data/mesh/mesh.mv.db app/docker/volumes/bitbucketVolume/_data/mesh/mesh.trace.db app/docker/volumes/bitbucketVolume/_data/mesh/mesh.properties app/docker/volumes/bitbucketVolume/_data/mesh/mesh.properties.bak app/docker/volumes/bitbucketVolume/_data/mesh/.lock
+
+# backup current mesh db files before overwriting
+mkdir -p /root/mesh-db-backup-$(date +%Y%m%d_%H%M%S)
+BKDIR=$(ls -d /root/mesh-db-backup-* | tail -1)
+cp -a /app/bitbucket/mesh/mesh.mv.db "$BKDIR"/ 2>/dev/null || true
+cp -a /app/bitbucket/mesh/mesh.trace.db "$BKDIR"/ 2>/dev/null || true
+cp -a /app/bitbucket/mesh/mesh.properties "$BKDIR"/ 2>/dev/null || true
+cp -a /app/bitbucket/mesh/mesh.properties.bak "$BKDIR"/ 2>/dev/null || true
+cp -a /app/bitbucket/mesh/.lock "$BKDIR"/ 2>/dev/null || true
+ls -la "$BKDIR"
+
+# copy patched files in
+SRC=/tmp/mesh-extract/app/docker/volumes/bitbucketVolume/_data/mesh
+cp -a "$SRC"/mesh.mv.db /app/bitbucket/mesh/mesh.mv.db
+cp -a "$SRC"/mesh.trace.db /app/bitbucket/mesh/mesh.trace.db
+cp -a "$SRC"/mesh.properties /app/bitbucket/mesh/mesh.properties
+cp -a "$SRC"/mesh.properties.bak /app/bitbucket/mesh/mesh.properties.bak
+rm -f /app/bitbucket/mesh/.lock   # stale lock from prod snapshot, must not carry over
+
+chown 2003:2003 /app/bitbucket/mesh/mesh.mv.db /app/bitbucket/mesh/mesh.trace.db /app/bitbucket/mesh/mesh.properties /app/bitbucket/mesh/mesh.properties.bak
+ls -la /app/bitbucket/mesh/
+
 exit
-ls -la /home/sikaj01/mesh-patch.tar.gz
+docker start dev-bitbucket
 
 
-
-scp sikaj01@10.56.112.34:/home/sikaj01/mesh-patch.tar.gz /home/sikaj01/atlassian-restore-relay/
-scp /home/sikaj01/atlassian-restore-relay/mesh-patch.tar.gz sikaj01@10.56.112.233:/home/sikaj01/
-
-
-docker stop dev-bitbucket
-sudo tar -tzvf /home/sikaj01/mesh-patch.tar.gz   # sanity check contents before touching live mesh/
+docker logs dev-bitbucket --tail 50
+docker logs dev-bitbucket | grep -iE 'SecretServiceException|NoSuchRepositoryException'
