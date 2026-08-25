@@ -31,17 +31,36 @@ docker logs dev-bitbucket 2>&1 | grep -iE "SecretServiceException|NoSuchReposito
 
 ---------
 
-sudo mkdir -p /mnt/verify-temp
-sudo mount -o ro /dev/nvme2n1 /mnt/verify-temp
-sudo ls -la /mnt/verify-temp
-sudo du -sh /mnt/verify-temp/* 2>/dev/null | sort -rh | head -20
-sudo find /mnt/verify-temp -maxdepth 3 -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -10
-
-
+# 1) unmount the read-only verification mount
 sudo umount /mnt/verify-temp
 
-
-
+# 2) snapshot the volume before touching it — this is the rollback path,
+#    cheap insurance for a one-way deletion
 aws ec2 create-snapshot --region us-east-1 --volume-id vol-05ebadfa92a493533 \
-  --description "Pre-decommission snapshot - orphaned /mnt/temp volume, unused since docker data-root migration to /app/docker" \
-  --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=vol-05ebadfa92a493533-final-snapshot},{Key=Purpose,Value=pre-decommission}]"
+  --description "Final snapshot before decommission - orphaned pre-migration /mnt/temp volume (old docker data-root + manual root/fstab/atlassian-backups snapshot from before /app/docker migration)" \
+  --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=vol-05ebadfa92a493533-decommission-snapshot},{Key=Purpose,Value=pre-decommission},{Key=Host,Value=ip-10-56-112-34}]"
+
+# 3) wait for it to complete before proceeding
+aws ec2 describe-snapshots --region us-east-1 --snapshot-ids <snap-id-from-above> \
+  --query "Snapshots[0].{State:State,Progress:Progress}"
+# poll until State is "completed"
+
+
+
+
+
+
+# 4) detach the volume from the instance
+aws ec2 detach-volume --region us-east-1 --volume-id vol-05ebadfa92a493533
+
+# confirm it's fully detached before deleting
+aws ec2 describe-volumes --region us-east-1 --volume-ids vol-05ebadfa92a493533 \
+  --query "Volumes[0].State"
+# poll until "available"
+
+# 5) delete the volume
+aws ec2 delete-volume --region us-east-1 --volume-id vol-05ebadfa92a493533
+
+
+sudo sed -i '/#\/dev\/nvme1n1 \/var\/lib\/docker ext4 defaults 0 2/d' /etc/fstab
+cat /etc/fstab
