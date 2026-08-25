@@ -1,6 +1,14 @@
-curl -sk -o /dev/null -w "HTTP %{http_code}\n" -H "Host: bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov" https://localhost/
+# Find the existing NLB fronting artifactory-test.dev, to mirror its setup
+aws elbv2 describe-load-balancers --query "LoadBalancers[].{Name:LoadBalancerName,DNS:DNSName,Arn:LoadBalancerArn,Type:Type,Scheme:Scheme}" --output table
 
-# match file perms/ownership to the working artifactory.conf pattern (640, root:root)
-sudo chmod 640 /app/nginx/conf.d/bitbucket.conf
-sudo chown root:root /app/nginx/conf.d/bitbucket.conf
-sudo ls -la /app/nginx/conf.d/
+# Find its listeners
+aws elbv2 describe-load-balancers --query "LoadBalancers[].LoadBalancerArn" --output text | tr "\t" "\n" | while read lb; do
+  echo "=== $lb ==="
+  aws elbv2 describe-listeners --load-balancer-arn "$lb" --query "Listeners[].{Port:Port,Proto:Protocol,DefaultActions:DefaultActions}" --output json
+done
+
+# Find target groups and their current targets, to see the artifactory-test pattern
+aws elbv2 describe-target-groups --query "TargetGroups[].{Name:TargetGroupName,Arn:TargetGroupArn,Port:Port,Proto:Protocol,VpcId:VpcId}" --output table
+
+# Find the Route53 hosted zone + existing artifactory-test record for the pattern
+aws route53 list-hosted-zones --query "HostedZones[].{Id:Id,Name:Name}" --output table
