@@ -1,1 +1,23 @@
-docker exec dev-postgres psql -U artifactory -d bitbucket -c "SELECT * FROM app_property;"
+docker stop dev-bitbucket
+docker rm dev-bitbucket
+
+docker run -d \
+  --name dev-bitbucket \
+  --network dev-net \
+  --restart unless-stopped \
+  -p 7990:7990 \
+  -p 7999:7999 \
+  -v /app/bitbucket:/var/atlassian/application-data/bitbucket \
+  -e ATL_PROXY_PORT=443 \
+  -e ATL_TOMCAT_SCHEME=https \
+  -e ATL_TOMCAT_SECURE=true \
+  -e ATL_PROXY_NAME=bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov \
+  -e JVM_MINIMUM_MEMORY=1g \
+  -e JVM_MAXIMUM_MEMORY=2g \
+  -e SEARCH_ENABLED=true \
+  -e APPLICATION_MODE=default \
+  -e JVM_SUPPORT_RECOMMENDED_ARGS="-Dserver.forward-headers-strategy=native" \
+  atlassian/bitbucket:9.4.17
+
+# watch it come up (Ctrl+C once you see it fully started, doesn't stop the container)
+docker logs -f dev-bitbucket
