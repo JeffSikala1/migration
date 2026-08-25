@@ -1,4 +1,8 @@
-docker exec dev-postgres psql -U artifactory -d bitbucket -c "SELECT * FROM app_property WHERE prop_key ILIKE '%url%' OR prop_key ILIKE '%base%';"
+docker stop dev-bitbucket
 
-sudo grep -i "base" /app/bitbucket/bitbucket.properties 2>/dev/null
-sudo find /app/bitbucket -maxdepth 2 -iname "*.properties" 2>/dev/null
+docker exec dev-postgres psql -U artifactory -d bitbucket -c "UPDATE app_property SET prop_value = 'https://bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov' WHERE prop_key = 'instance.url';"
+
+# confirm the update
+docker exec dev-postgres psql -U artifactory -d bitbucket -c "SELECT * FROM app_property WHERE prop_key = 'instance.url';"
+
+docker start dev-bitbucket
