@@ -1,39 +1,6 @@
-sudo tee /app/nginx/conf.d/bitbucket.conf > /dev/null <<'EOF'
-server {
-  listen 80;
-  server_name bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov;
-  return 301 https://$host$request_uri;
-}
+curl -sk -o /dev/null -w "HTTP %{http_code}\n" -H "Host: bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov" https://localhost/
 
-server {
-  listen 443 ssl;
-  server_name bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov;
-
-  ssl_certificate     /etc/nginx/certificates/dev_wildcard.pem;
-  ssl_certificate_key /etc/nginx/certificates/dev_privatekey.key;
-
-  client_max_body_size 0;
-
-  proxy_read_timeout 900;
-  proxy_send_timeout 900;
-  proxy_connect_timeout 60;
-
-  location / {
-    proxy_set_header Host              $host;
-    proxy_set_header X-Real-IP         $remote_addr;
-    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto https;
-    proxy_set_header X-Forwarded-Host  $host;
-    proxy_set_header X-Forwarded-Port  443;
-
-    proxy_pass http://dev-bitbucket:7990;
-  }
-}
-EOF
-
-# sanity check the file landed correctly and cert exists
-cat /app/nginx/conf.d/bitbucket.conf
-sudo ls -la /app/nginx/certificates/
-
-# test nginx config syntax before reloading — don't reload yet if this fails
-docker exec dev-nginx nginx -t
+# match file perms/ownership to the working artifactory.conf pattern (640, root:root)
+sudo chmod 640 /app/nginx/conf.d/bitbucket.conf
+sudo chown root:root /app/nginx/conf.d/bitbucket.conf
+sudo ls -la /app/nginx/conf.d/
