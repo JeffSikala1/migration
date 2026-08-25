@@ -1,15 +1,10 @@
-docker exec prod-bamboo cat /var/atlassian/application-data/bamboo/bamboo.cfg.xml > /tmp/prod-bamboo.cfg.xml
-
-
-docker stop dev-bamboo
-
-python3 <<'PYEOF'
+sudo python3 <<'PYEOF'
 import re
 
 with open('/app/bamboo/bamboo.cfg.xml') as f:
     dev_content = f.read()
 
-with open('/path/to/relayed/prod-bamboo.cfg.xml') as f:
+with open('/ACTUAL/PATH/TO/prod-bamboo.cfg.xml') as f:
     prod_content = f.read()
 
 prod_license_line = re.search(r'\s*<property name="license\.string">.*?</property>', prod_content, re.DOTALL).group(0)
@@ -30,9 +25,8 @@ with open('/app/bamboo/bamboo.cfg.xml', 'w') as f:
 print("Replaced license.string line successfully")
 PYEOF
 
-# Confirm the swap and byte length now match prod (690)
-docker exec dev-bamboo sh -c "grep -oP '(?<=license.string\">).*(?=</property>)' /var/atlassian/application-data/bamboo/bamboo.cfg.xml | wc -c" 2>/dev/null || \
-  grep -oP '(?<=license.string\">).*(?=</property>)' /app/bamboo/bamboo.cfg.xml | wc -c
+# Verify byte length now matches prod's 690 (container is stopped, so read the file directly)
+sudo grep -oP '(?<=license.string">).*(?=</property>)' /app/bamboo/bamboo.cfg.xml | wc -c
 
 docker start dev-bamboo
 docker logs -f dev-bamboo
