@@ -1,66 +1,43 @@
-sudo /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+mkdir -p /tmp/bb-patch
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bitbucket_20260821_203345.tar.gz - | \
+  tar -xz -C /tmp/bb-patch \
+  app/docker/volumes/bitbucketVolume/_data/shared/keys \
+  app/docker/volumes/bitbucketVolume/_data/shared/data/repositories \
+  app/docker/volumes/bitbucketVolume/_data/shared/data/snapshots
+
+du -sh /tmp/bb-patch
+
+
+tar -czf /tmp/bb-patch.tar.gz -C /tmp/bb-patch app
+ls -lh /tmp/bb-patch.tar.gz
 
 
 
+scp -i ~/.ssh/id_rsa /tmp/bb-patch.tar.gz sikaj01@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:/home/sikaj01/atlassian-restore-relay/
 
-# extract the new tarball's missing pieces into a temp staging dir, then copy in
-tar -xzf bitbucket_<newTS>.tar.gz -C /tmp/bb-patch --strip-components=<N> \
-  var/lib/docker/volumes/bitbucketVolume/_data/shared/keys \
-  var/lib/docker/volumes/bitbucketVolume/_data/shared/data/repositories \
-  var/lib/docker/volumes/bitbucketVolume/_data/shared/data/snapshots
+scp /home/sikaj01/atlassian-restore-relay/bb-patch.tar.gz sikaj01@10.56.128.233:/app/restore-staging/
 
-# copy only the new key file in (don't overwrite dev's self-generated one until confirmed)
-cp /tmp/bb-patch/shared/keys/* /app/bitbucket/shared/keys/
 
-# copy only the repo IDs that don't already exist locally
-rsync -av --ignore-existing /tmp/bb-patch/shared/data/repositories/ /app/bitbucket/shared/data/repositories/
-rsync -av --ignore-existing /tmp/bb-patch/shared/data/snapshots/ /app/bitbucket/shared/data/snapshots/
+
+sudo su -
+mkdir -p /tmp/bb-patch
+tar -xzf /app/restore-staging/bb-patch.tar.gz -C /tmp/bb-patch
+
+# copy in the real key (leave dev's self-generated one in place alongside it — harmless)
+cp /tmp/bb-patch/app/docker/volumes/bitbucketVolume/_data/shared/keys/* /app/bitbucket/shared/keys/
+
+# copy in only the repo IDs / snapshots that don't already exist locally
+rsync -av --ignore-existing /tmp/bb-patch/app/docker/volumes/bitbucketVolume/_data/shared/data/repositories/ /app/bitbucket/shared/data/repositories/
+rsync -av --ignore-existing /tmp/bb-patch/app/docker/volumes/bitbucketVolume/_data/shared/data/snapshots/ /app/bitbucket/shared/data/snapshots/
 
 chown -R 2003:2003 /app/bitbucket/shared/keys /app/bitbucket/shared/data/repositories /app/bitbucket/shared/data/snapshots
 
 
 
-sed -i 's#AES_KEY_DIR/AES256_.*#AES_KEY_DIR/<real-key-filename>"#' /app/bitbucket/shared/secrets-config.yaml
+sed -i 's#AES_KEY_DIR/AES256_.*#AES_KEY_DIR/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094"#' /app/bitbucket/shared/secrets-config.yaml
+cat /app/bitbucket/shared/secrets-config.yaml
+
+
 docker restart dev-bitbucket
-
-
-
+sleep 30
 docker logs dev-bitbucket 2>&1 | grep -iE "SecretServiceException|NoSuchRepositoryException" | tail -20
-
-
-
----------
-
-# 1) unmount the read-only verification mount
-sudo umount /mnt/verify-temp
-
-# 2) snapshot the volume before touching it — this is the rollback path,
-#    cheap insurance for a one-way deletion
-aws ec2 create-snapshot --region us-east-1 --volume-id vol-05ebadfa92a493533 \
-  --description "Final snapshot before decommission - orphaned pre-migration /mnt/temp volume (old docker data-root + manual root/fstab/atlassian-backups snapshot from before /app/docker migration)" \
-  --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=vol-05ebadfa92a493533-decommission-snapshot},{Key=Purpose,Value=pre-decommission},{Key=Host,Value=ip-10-56-112-34}]"
-
-# 3) wait for it to complete before proceeding
-aws ec2 describe-snapshots --region us-east-1 --snapshot-ids snap-074577e61f711486f \
-  --query "Snapshots[0].{State:State,Progress:Progress}"
-# poll until State is "completed"
-
-
-
-
-
-
-# 4) detach the volume from the instance
-aws ec2 detach-volume --region us-east-1 --volume-id vol-05ebadfa92a493533
-
-# confirm it's fully detached before deleting
-aws ec2 describe-volumes --region us-east-1 --volume-ids vol-05ebadfa92a493533 \
-  --query "Volumes[0].State"
-# poll until "available"
-
-# 5) delete the volume
-aws ec2 delete-volume --region us-east-1 --volume-id vol-05ebadfa92a493533
-
-
-sudo sed -i '/#\/dev\/nvme1n1 \/var\/lib\/docker ext4 defaults 0 2/d' /etc/fstab
-cat /etc/fstab
