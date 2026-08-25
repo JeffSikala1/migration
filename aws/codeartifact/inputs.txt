@@ -1,13 +1,11 @@
-mkdir -p /tmp/bamboo-shared-check
-cd /tmp/bamboo-shared-check
-
-# Confirm the file exists in this archive before extracting (avoid pulling the whole 419MB unnecessarily)
-aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_021502.tar.gz - | tar -tzf - | grep -i "shared/configuration/bamboo-shared.cfg.xml"
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_021502.tar.gz - | tar -tzf - | grep -i "configuration" | head -30
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_021502.tar.gz - | tar -tzf - | head -20
 
 
-# Extract just that one file
-aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-21/bamboo_20260821_021502.tar.gz - | \
-  tar -xzf - --wildcards '*shared/configuration/bamboo-shared.cfg.xml' -C /tmp/bamboo-shared-check
+grep -A3 "sanity: " /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-21.log
 
-find /tmp/bamboo-shared-check -iname "bamboo-shared.cfg.xml"
-cat "$(find /tmp/bamboo-shared-check -iname bamboo-shared.cfg.xml)"
+
+sudo crontab -l | grep -i backup
+systemctl status crond 2>&1 | head -5
+tail -50 /app/bamboobackup/atlassian-backups/logs/nightly-$(date +%F).log 2>&1
+ls -la /app/bamboobackup/atlassian-backups/logs/ | tail -15
