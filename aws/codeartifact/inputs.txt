@@ -1,12 +1,17 @@
-sudo ls -la /app/bamboobackup/atlassian-backups/logs/ | tail -10
-
-sudo grep -A3 "sanity: " /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-26.log
-sudo grep -A3 "sanity: " /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-27.log
-
-sudo tail -5 /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-26.log
-sudo tail -5 /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-27.log
+tar_tolerant -czf "$STAGE/apps/bamboo_${TS}.tar.gz" -C / \
+  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}"
 
 
+BAMBOO_VOL_PATH="$(docker volume inspect bambooVolume --format '{{.Mountpoint}}')"
+OPTBAMBOO_VOL_PATH="$(docker volume inspect optbambooVolume --format '{{.Mountpoint}}')"
 
-aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-26/
-aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-27/
+echo "bambooVolume:    $BAMBOO_VOL_PATH"
+echo "optbambooVolume: $OPTBAMBOO_VOL_PATH"
+
+sudo tar -czf /tmp/bamboo-repro-test.tar.gz -C / \
+  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}" 2>&1 | tee /tmp/bamboo-repro-stderr.log
+echo "exit code: $?"
+
+sudo tar -tzf /tmp/bamboo-repro-test.tar.gz | grep -c "shared/configuration"
+wc -l /tmp/bamboo-repro-stderr.log
+cat /tmp/bamboo-repro-stderr.log
