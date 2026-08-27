@@ -1,22 +1,28 @@
-[sikaj01@ip-10-56-112-34 ~]$ BAMBOO_VOL_PATH="$(docker volume inspect bambooVolume --format '{{.Mountpoint}}')"
+[sikaj01@ip-10-56-112-34 ~]$ cd /tmp
+[sikaj01@ip-10-56-112-34 tmp]$ BAMBOO_VOL_PATH="$(docker volume inspect bambooVolume --format '{{.Mountpoint}}')"
 OPTBAMBOO_VOL_PATH="$(docker volume inspect optbambooVolume --format '{{.Mountpoint}}')"
-
-echo "bambooVolume:    $BAMBOO_VOL_PATH"
-echo "optbambooVolume: $OPTBAMBOO_VOL_PATH"
-bambooVolume:    /app/docker/volumes/bambooVolume/_data
-optbambooVolume: /app/docker/volumes/optbambooVolume/_data
-[sikaj01@ip-10-56-112-34 ~]$ sudo tar -czf /tmp/bamboo-repro-test.tar.gz -C / \
-  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}" 2>&1 | tee /tmp/bamboo-repro-stderr.log
-echo "exit code: $?"
-tar: app/docker/volumes/bambooVolume/_data/logs/atlassian-bamboo.log: file changed as we read it
-^C
-exit code: 130
-[sikaj01@ip-10-56-112-34 ~]$ sudo tar -tzf /tmp/bamboo-repro-test.tar.gz | grep -c "shared/configuration"
+[sikaj01@ip-10-56-112-34 tmp]$ sudo rm -f /tmp/bamboo-repro-test.tar.gz /tmp/bamboo-repro-stderr.log
+[sikaj01@ip-10-56-112-34 tmp]$ sudo nohup tar -czf /tmp/bamboo-repro-test.tar.gz -C / \
+  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}" \
+  > /tmp/bamboo-repro-stderr.log 2>&1 &
+[1] 3791881
+[sikaj01@ip-10-56-112-34 tmp]$ echo "Started as PID $!"
+Started as PID 3791881
+[sikaj01@ip-10-56-112-34 tmp]$ ps -p 3791881 -o pid,etime,cmd
+    PID     ELAPSED CMD
+3791881       00:33 sudo nohup tar -czf /tmp/bamboo-repro-test.tar.gz -C / app/docker/volumes/bambooVolume/_data app/docker/volumes/optbambooVolume/_data
+[sikaj01@ip-10-56-112-34 tmp]$ ls -la /tmp/bamboo-repro-test.tar.gz
+-rw-r-----. 1 root root 336068608 Aug 27 17:01 /tmp/bamboo-repro-test.tar.gz
+[sikaj01@ip-10-56-112-34 tmp]$ sudo tar -tzf /tmp/bamboo-repro-test.tar.gz | grep -c "shared/configuration"
 
 gzip: stdin: unexpected end of file
 tar: Unexpected EOF in archive
 tar: Error is not recoverable: exiting now
-22
-[sikaj01@ip-10-56-112-34 ~]$ wc -l /tmp/bamboo-repro-stderr.log
-1 /tmp/bamboo-repro-stderr.log
-[sikaj01@ip-10-56-112-34 ~]$ cat /tmp/bamboo-repro-stderr.log
+14
+[sikaj01@ip-10-56-112-34 tmp]$ grep -c "changed as we read it" /tmp/bamboo-repro-stderr.log
+0
+[sikaj01@ip-10-56-112-34 tmp]$ cat /tmp/bamboo-repro-stderr.log
+nohup: ignoring input
+[sikaj01@ip-10-56-112-34 tmp]$ echo "actual tar exit code was: $(cat /tmp/bamboo-repro-stderr.log | grep -c 'Error is not recoverable')"
+actual tar exit code was: 0
+[sikaj01@ip-10-56-112-34 tmp]$ 
