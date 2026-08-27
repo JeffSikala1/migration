@@ -1,44 +1,22 @@
-[sikaj01@ip-10-56-112-34 ~]$ sudo ls -la /app/bamboobackup/atlassian-backups/logs/ | tail -10
--rw-r-----. 1 root root 1632433 Aug 21 20:59 nightly-2026-08-21.log
--rw-r-----. 1 root root     234 Aug 24 16:41 nightly-2026-08-24.log
--rw-r--r--. 1 root root 1604966 Aug 26 02:41 nightly-2026-08-26.log
--rw-r--r--. 1 root root 1611991 Aug 27 02:40 nightly-2026-08-27.log
--rw-r--r--. 1 root root    1748 Aug 22 01:55 secrets-backup-2026-08-22.log
--rw-r--r--. 1 root root    1748 Aug 23 01:55 secrets-backup-2026-08-23.log
--rw-r--r--. 1 root root    1748 Aug 24 01:55 secrets-backup-2026-08-24.log
--rw-r--r--. 1 root root    1748 Aug 25 01:55 secrets-backup-2026-08-25.log
--rw-r--r--. 1 root root    1748 Aug 26 01:55 secrets-backup-2026-08-26.log
--rw-r--r--. 1 root root    1748 Aug 27 01:55 secrets-backup-2026-08-27.log
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -A3 "sanity: " /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-26.log
-  - sanity: /backup-staging/2026-08-26/20260826_021501/apps/bitbucket_20260826_021501.tar.gz = 9181945091 bytes
-  WARN: /backup-staging/2026-08-26/20260826_021501/apps/bitbucket_20260826_021501.tar.gz does NOT contain expected path '*shared/keys*' for volume 'bitbucketVolume'. This backup may be incomplete — investigate before relying on it for restore.
-  - sanity: /backup-staging/2026-08-26/20260826_021501/apps/bamboo_20260826_021501.tar.gz = 14964611990 bytes
-  WARN: /backup-staging/2026-08-26/20260826_021501/apps/bamboo_20260826_021501.tar.gz does NOT contain expected path '*shared/configuration*' for volume 'bambooVolume'. This backup may be incomplete — investigate before relying on it for restore.
-[3/5] NGINX + TLS backup...
-  - nginxVolume -> /app/docker/volumes/nginxVolume/_data
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -A3 "sanity: " /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-27.log
-  - sanity: /backup-staging/2026-08-27/20260827_021502/apps/bitbucket_20260827_021502.tar.gz = 9295584095 bytes
-  WARN: /backup-staging/2026-08-27/20260827_021502/apps/bitbucket_20260827_021502.tar.gz does NOT contain expected path '*shared/keys*' for volume 'bitbucketVolume'. This backup may be incomplete — investigate before relying on it for restore.
-  - sanity: /backup-staging/2026-08-27/20260827_021502/apps/bamboo_20260827_021502.tar.gz = 14969527173 bytes
-  WARN: /backup-staging/2026-08-27/20260827_021502/apps/bamboo_20260827_021502.tar.gz does NOT contain expected path '*shared/configuration*' for volume 'bambooVolume'. This backup may be incomplete — investigate before relying on it for restore.
-[3/5] NGINX + TLS backup...
-  - nginxVolume -> /app/docker/volumes/nginxVolume/_data
-[sikaj01@ip-10-56-112-34 ~]$ sudo tail -5 /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-26.log
-    created snapshot: snap-02aafc0aa78a22126
-  - snapshotting volume vol-04e3115aea57b5c70
-    created snapshot: snap-02d3f0c412b21e731
-==== Nightly backup completed OK ====
-Cleaning up local staging...
-[sikaj01@ip-10-56-112-34 ~]$ sudo tail -5 /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-27.log
-    created snapshot: snap-0871e19af97d93c19
-  - snapshotting volume vol-04e3115aea57b5c70
-    created snapshot: snap-00d1b8da9676ed447
-==== Nightly backup completed OK ====
-Cleaning up local staging...
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-26/
-2026-08-26 02:38:09 14964611990 bamboo_20260826_021501.tar.gz
-2026-08-26 02:38:09 9181945091 bitbucket_20260826_021501.tar.gz
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-27/
-2026-08-27 02:37:38 14969527173 bamboo_20260827_021502.tar.gz
-2026-08-27 02:37:38 9295584095 bitbucket_20260827_021502.tar.gz
-[sikaj01@ip-10-56-112-34 ~]$ 
+[sikaj01@ip-10-56-112-34 ~]$ BAMBOO_VOL_PATH="$(docker volume inspect bambooVolume --format '{{.Mountpoint}}')"
+OPTBAMBOO_VOL_PATH="$(docker volume inspect optbambooVolume --format '{{.Mountpoint}}')"
+
+echo "bambooVolume:    $BAMBOO_VOL_PATH"
+echo "optbambooVolume: $OPTBAMBOO_VOL_PATH"
+bambooVolume:    /app/docker/volumes/bambooVolume/_data
+optbambooVolume: /app/docker/volumes/optbambooVolume/_data
+[sikaj01@ip-10-56-112-34 ~]$ sudo tar -czf /tmp/bamboo-repro-test.tar.gz -C / \
+  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}" 2>&1 | tee /tmp/bamboo-repro-stderr.log
+echo "exit code: $?"
+tar: app/docker/volumes/bambooVolume/_data/logs/atlassian-bamboo.log: file changed as we read it
+^C
+exit code: 130
+[sikaj01@ip-10-56-112-34 ~]$ sudo tar -tzf /tmp/bamboo-repro-test.tar.gz | grep -c "shared/configuration"
+
+gzip: stdin: unexpected end of file
+tar: Unexpected EOF in archive
+tar: Error is not recoverable: exiting now
+22
+[sikaj01@ip-10-56-112-34 ~]$ wc -l /tmp/bamboo-repro-stderr.log
+1 /tmp/bamboo-repro-stderr.log
+[sikaj01@ip-10-56-112-34 ~]$ cat /tmp/bamboo-repro-stderr.log
