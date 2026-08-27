@@ -1,23 +1,6 @@
-cd /tmp
-BAMBOO_VOL_PATH="$(docker volume inspect bambooVolume --format '{{.Mountpoint}}')"
-OPTBAMBOO_VOL_PATH="$(docker volume inspect optbambooVolume --format '{{.Mountpoint}}')"
-
-sudo rm -f /tmp/bamboo-repro-test.tar.gz /tmp/bamboo-repro-stderr.log
-
-sudo nohup tar -czf /tmp/bamboo-repro-test.tar.gz -C / \
-  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}" \
-  > /tmp/bamboo-repro-stderr.log 2>&1 &
-
-echo "Started as PID $!"
-
-
-
 ps -p 3791881 -o pid,etime,cmd
 ls -la /tmp/bamboo-repro-test.tar.gz
 
 
-
 sudo tar -tzf /tmp/bamboo-repro-test.tar.gz | grep -c "shared/configuration"
-grep -c "changed as we read it" /tmp/bamboo-repro-stderr.log
 cat /tmp/bamboo-repro-stderr.log
-echo "actual tar exit code was: $(cat /tmp/bamboo-repro-stderr.log | grep -c 'Error is not recoverable')"
