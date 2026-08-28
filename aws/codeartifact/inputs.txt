@@ -1,5 +1,11 @@
-curl -sk -v https://localhost -H "Host: bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov" 2>&1 | grep -i "^< location\|^> \|^< HTTP"
-curl -s http://localhost:7990/status
+# from .233 itself, hit the real hostname (not localhost) to exercise real DNS + SNI
+curl -sk -v https://bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov/ 2>&1 | grep -iE "^\* |^< HTTP|^< location"
+
+# check the NLB target group health for .233
+aws elbv2 describe-target-health --target-group-arn <bitbucket-target-group-arn>
+
+# confirm nginx cert being served matches expected SAN
+echo | openssl s_client -connect bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 -servername bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov 2>/dev/null | openssl x509 -noout -subject -dates
 
 
-dig +short bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov
+aws elbv2 describe-target-groups --query "TargetGroups[?contains(TargetGroupName,'bitbucket') || contains(TargetGroupName,'outnlb')].TargetGroupArn" --output text
