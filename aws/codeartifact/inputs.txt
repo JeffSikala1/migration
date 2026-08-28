@@ -9,3 +9,31 @@ echo | openssl s_client -connect bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov:443 
 
 
 aws elbv2 describe-target-groups --query "TargetGroups[?contains(TargetGroupName,'bitbucket') || contains(TargetGroupName,'outnlb')].TargetGroupArn" --output text
+
+
+
+
+
+
+
+# is nginx still actually up and healthy?
+docker ps --filter name=dev-nginx
+docker logs dev-nginx --tail 50
+
+# NLB target health — is .233 even registered/healthy right now?
+aws elbv2 describe-target-groups --query "TargetGroups[?contains(TargetGroupName,'outnlb') || contains(TargetGroupName,'D-outnlb')].TargetGroupArn" --output text
+
+
+aws elbv2 describe-target-health --target-group-arn <arn>
+
+
+dig +short bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov
+curl -skv https://bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov/ 2>&1 | head -30
+
+
+
+# from your own machine — does it resolve to the SAME IPs .233 sees, or something else?
+nslookup bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov
+curl -skv https://bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov/ 2>&1 | head -30
+nslookup bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+curl -skv https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/ 2>&1 | head -30
