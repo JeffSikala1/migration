@@ -1,29 +1,13 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket 2>&1 | grep -n "Server startup\|Tomcat started\|Application is available"
-[sikaj01@ip-10-56-128-233 ~]$ curl -sk -o /dev/null -w "%{http_code}\n" https://localhost -H "Host: bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov"
-302
-[sikaj01@ip-10-56-128-233 ~]$ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:7990/status
-200
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket 2>&1 | tail -60 | grep -iE "xsrf|csrf|refused|timeout|address already in use"
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-nginx nginx -t
-nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
-nginx: configuration file /etc/nginx/nginx.conf test is successful
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket sh -c 'echo $AES_KEY_DIR'
-
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket | grep -n "Server startup\|Tomcat started\|Application is available"
-INFO:root:User is currently root. Will downgrade run user to bitbucket
-INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
-WARNING: Using incubator modules: jdk.incubator.vector
-Aug 28, 2026 4:43:43 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
-WARNING: COMPAT locale provider will be removed in a future release
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket | tail -60 | grep -iE "xsrf|csrf|refused|timeout|address already in use"
-INFO:root:User is currently root. Will downgrade run user to bitbucket
-INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
-WARNING: Using incubator modules: jdk.incubator.vector
-Aug 28, 2026 4:43:43 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
-WARNING: COMPAT locale provider will be removed in a future release
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket sh -c 'echo $AES_KEY_DIR'
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket find / -iname "AES256_2026-03-11-202310_2ae817a8*" 2>/dev/null
-/var/atlassian/application-data/bitbucket/shared/keys/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094
+[sikaj01@ip-10-56-128-233 ~]$ curl -sk -v https://localhost -H "Host: bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov" 2>&1 | grep -i "^< location\|^> \|^< HTTP"
+> GET / HTTP/1.1
+> Host: bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov
+> User-Agent: curl/8.17.0
+> Accept: */*
+> 
+< HTTP/1.1 302 
+< Location: https://bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov/dashboard
+[sikaj01@ip-10-56-128-233 ~]$ curl -s http://localhost:7990/status
+{"state":"RUNNING"}[sikaj01@ipdig +short bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov.vpcaas.fcs.gsa.gov
+10.56.133.26
+10.56.131.182
 [sikaj01@ip-10-56-128-233 ~]$ 
-
