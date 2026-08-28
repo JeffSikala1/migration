@@ -1,33 +1,64 @@
-[sikaj01@ip-10-56-128-233 ~]$ docker ps --filter name=opensearch
-CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket 2>&1 | grep -iE "opensearch|elasticsearch" | tail -20
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket 2>&1 | grep -iE "opensearch|elasticsearch" | tail -200
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket 2>&1 | grep -iE "opensearch|elasticsearch"
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket | grep -iE "opensearch|elasticsearch"
-INFO:root:User is currently root. Will downgrade run user to bitbucket
-INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
-WARNING: Using incubator modules: jdk.incubator.vector
-Aug 28, 2026 4:43:43 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
-WARNING: COMPAT locale provider will be removed in a future release
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket | grep -iE "opensearch|elasticsearch" | tail -200
-INFO:root:User is currently root. Will downgrade run user to bitbucket
-INFO:root:Running Bitbucket with command '/opt/atlassian/bitbucket/bin/start-bitbucket.sh', arguments ['/opt/atlassian/bitbucket/bin/start-bitbucket.sh', '-fg']
-WARNING: Using incubator modules: jdk.incubator.vector
-Aug 28, 2026 4:43:43 PM sun.util.locale.provider.LocaleProviderAdapter <clinit>
-WARNING: COMPAT locale provider will be removed in a future release
-[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket 2>&1 | grep -n "getUsernamePassword\|Caused by\|SecretServiceException\|Exception:" | head -30
+[sikaj01@ip-10-56-128-233 ~]$ docker ps --filter name=dev-bitbucket
+CONTAINER ID   IMAGE                        COMMAND                  CREATED          STATUS          PORTS                                            NAMES
+98702243060b   atlassian/bitbucket:9.4.17   "/usr/bin/tini -- /e…"   11 minutes ago   Up 11 minutes   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp   dev-bitbucket
+[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket 2>&1 | grep -n "SecretServiceException" | tail -5
+308:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+399:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+469:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+532:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+600:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket 2>&1 | grep -n "SecretServiceException" | tail -100
 31:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
 102:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
 220:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
-256:    at com.atlassian.bitbucket.internal.search.common.settings.DefaultSearchSettingsService.getUsernamePassword(DefaultSearchSettingsService.java:143)
-257:    at com.atlassian.bitbucket.internal.search.search.client.SearchClientLifecycleManager.getUsernamePassword(SearchClientLifecycleManager.java:102)
 308:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
-344:    at com.atlassian.bitbucket.internal.search.common.settings.DefaultSearchSettingsService.getUsernamePassword(DefaultSearchSettingsService.java:143)
-345:    at com.atlassian.bitbucket.internal.search.indexing.client.IndexingClientLifecycleManager.getUsernamePassword(IndexingClientLifecycleManager.java:108)
 399:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
-435:    at com.atlassian.bitbucket.internal.search.common.settings.DefaultSearchSettingsService.getUsernamePassword(DefaultSearchSettingsService.java:143)
 469:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
-505:    at com.atlassian.bitbucket.internal.search.common.settings.DefaultSearchSettingsService.getUsernamePassword(DefaultSearchSettingsService.java:143)
 532:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
-568:    at com.atlassian.bitbucket.internal.search.common.settings.DefaultSearchSettingsService.getUsernamePassword(DefaultSearchSettingsService.java:143)
+600:com.atlassian.secrets.api.SecretServiceException: This secret cannot be decrypted with the configured encryption key
+[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket --tail 30
+        at org.eclipse.gemini.blueprint.service.util.internal.aop.ServiceTCCLInterceptor.invokeUnprivileged(ServiceTCCLInterceptor.java:70)
+        at org.eclipse.gemini.blueprint.service.util.internal.aop.ServiceTCCLInterceptor.invoke(ServiceTCCLInterceptor.java:53)
+        at org.eclipse.gemini.blueprint.service.importer.support.LocalBundleContextAdvice.invoke(LocalBundleContextAdvice.java:57)
+        at jdk.proxy101/jdk.proxy101.$Proxy2098.get(Unknown Source)
+        at com.atlassian.bitbucket.internal.search.common.settings.DefaultSearchSettingsService.getPluginPropertyValue(DefaultSearchSettingsService.java:123)
+        at com.atlassian.bitbucket.internal.search.common.settings.DefaultSearchSettingsService.getUsernamePassword(DefaultSearchSettingsService.java:143)
+        at com.atlassian.bitbucket.internal.search.indexing.jobs.checks.AuthenticationCheck.test(AuthenticationCheck.java:112)
+        at java.base/java.util.stream.ReferencePipeline$2$1.accept(ReferencePipeline.java:178)
+        at java.base/java.util.concurrent.ConcurrentSkipListMap$KeySpliterator.tryAdvance(ConcurrentSkipListMap.java:3200)
+        at java.base/java.util.stream.ReferencePipeline.forEachWithCancel(ReferencePipeline.java:129)
+        at java.base/java.util.stream.AbstractPipeline.copyIntoWithCancel(AbstractPipeline.java:527)
+        at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:513)
+        at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
+        at java.base/java.util.stream.FindOps$FindOp.evaluateSequential(FindOps.java:150)
+        at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
+        at java.base/java.util.stream.ReferencePipeline.findFirst(ReferencePipeline.java:647)
+        at com.atlassian.bitbucket.internal.search.common.jobs.checks.HealthCheckRunner.runJob(HealthCheckRunner.java:114)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService$JobRunnerWithStats.runJob(CaesiumSchedulerService.java:787)
+        at com.atlassian.scheduler.core.JobLauncher.runJob(JobLauncher.java:145)
+        at com.atlassian.scheduler.core.JobLauncher.launchAndBuildResponse(JobLauncher.java:117)
+        at com.atlassian.scheduler.core.JobLauncher.launch(JobLauncher.java:99)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService.launchJob(CaesiumSchedulerService.java:578)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService.executeClusteredJob(CaesiumSchedulerService.java:572)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService.executeClusteredJobWithRecoveryGuard(CaesiumSchedulerService.java:601)
+        at com.atlassian.scheduler.caesium.impl.CaesiumSchedulerService.executeQueuedJob(CaesiumSchedulerService.java:463)
+        at com.atlassian.scheduler.caesium.impl.SchedulerQueueWorker.executeJob(SchedulerQueueWorker.java:66)
+        at com.atlassian.scheduler.caesium.impl.SchedulerQueueWorker.executeNextJob(SchedulerQueueWorker.java:60)
+        at com.atlassian.scheduler.caesium.impl.SchedulerQueueWorker.run(SchedulerQueueWorker.java:35)
+        at java.base/java.lang.Thread.run(Thread.java:1583)
+        ... 29 frames trimmed
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket find /var/atlassian/application-data/bitbucket -iname "*secrets-config*" -o -iname "*cipher*" 2>/dev/null
+/var/atlassian/application-data/bitbucket/shared/secrets-config.yaml
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-bitbucket cat /var/atlassian/application-data/bitbucket/shared/secrets-config.yaml
+default: "defaultAES"
+backends:
+  defaultAES:
+    type: "AES"
+    properties:
+      key: "AES_KEY_DIR/AES256_2026-03-11-202310_2ae817a8-4db9-4cbe-97b7-ec2fc4bae094"
 [sikaj01@ip-10-56-128-233 ~]$ 
+
+
+
+
+I can not get to bitbucket via the browser any more
