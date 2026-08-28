@@ -1,71 +1,434 @@
-[sikaj01@ip-10-56-112-34 ~]$ cd /tmp
-[sikaj01@ip-10-56-112-34 tmp]$ BAMBOO_VOL_PATH="$(docker volume inspect bambooVolume --format '{{.Mountpoint}}')"
-OPTBAMBOO_VOL_PATH="$(docker volume inspect optbambooVolume --format '{{.Mountpoint}}')"
-[sikaj01@ip-10-56-112-34 tmp]$ sudo rm -f /tmp/bamboo-repro-test.tar.gz /tmp/bamboo-repro-stderr.log
-[sikaj01@ip-10-56-112-34 tmp]$ sudo nohup tar -czf /tmp/bamboo-repro-test.tar.gz -C / \
-  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}" \
-  > /tmp/bamboo-repro-stderr.log 2>&1 &
-[1] 3791881
-[sikaj01@ip-10-56-112-34 tmp]$ echo "Started as PID $!"
-Started as PID 3791881
-[sikaj01@ip-10-56-112-34 tmp]$ ps -p 3791881 -o pid,etime,cmd
-    PID     ELAPSED CMD
-3791881       00:33 sudo nohup tar -czf /tmp/bamboo-repro-test.tar.gz -C / app/docker/volumes/bambooVolume/_data app/docker/volumes/optbambooVolume/_data
-[sikaj01@ip-10-56-112-34 tmp]$ ls -la /tmp/bamboo-repro-test.tar.gz
--rw-r-----. 1 root root 336068608 Aug 27 17:01 /tmp/bamboo-repro-test.tar.gz
-[sikaj01@ip-10-56-112-34 tmp]$ sudo tar -tzf /tmp/bamboo-repro-test.tar.gz | grep -c "shared/configuration"
+[sikaj01@ip-10-56-112-34 ~]$ sudo tee /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.new > /dev/null <<'EOF'
+#!/usr/bin/env bash               cp /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh         /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.$(date +%Y%m%d_%H%M%S)
+                             grep -c "changed as we read it" /tmp/bamboo-repro-stderr.log^C
+[sikaj01@ip-10-56-112-34 ~]$ ^C
+[sikaj01@ip-10-56-112-34 ~]$ sudo cp /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh \
+        /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.$(date +%Y%m%d_%H%M%S)
+[sikaj01@ip-10-56-112-34 ~]$ diff /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.* \
+     /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.new
+diff: /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.*: Permission denied
+diff: /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.new: Permission denied
+[sikaj01@ip-10-56-112-34 ~]$ sudo diff /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.* \
+     /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.new
+diff: /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.*: No such file or directory
+[sikaj01@ip-10-56-112-34 ~]$ ls -alh /app/b
+bamboobackup/    bin/             boot/            build-artifacts/ 
+[sikaj01@ip-10-56-112-34 ~]$ ls -alh /app/b
+bamboobackup/    bin/             boot/            build-artifacts/ 
+[sikaj01@ip-10-56-112-34 ~]$ ls -alh /app/bamboobackup/atl*
+ls: cannot access '/app/bamboobackup/atl*': Permission denied
+[sikaj01@ip-10-56-112-34 ~]$ sudo ls -alh /app/bamboobackup/atl*
+ls: cannot access '/app/bamboobackup/atl*': No such file or directory
+[sikaj01@ip-10-56-112-34 ~]$ sudo ls -alh /app/bamboobackup/atlassian-backups
+total 8.0K
+drwxr-x---. 5 root root   44 Aug 22 01:55 .
+drwxr-x---. 3 root root   31 Aug 21 19:33 ..
+drwxr-x---. 2 root root 4.0K Aug 28 16:35 bin
+drwxr-x---. 2 root root 4.0K Aug 28 02:15 logs
+drwxr-xr-x. 3 root root   21 Aug 22 01:55 staging
+[sikaj01@ip-10-56-112-34 ~]$ sudo ls -alh /app/bamboobackup/atlassian-backups/bin
+total 64K
+drwxr-x---. 2 root root 4.0K Aug 28 16:35 .
+drwxr-x---. 5 root root   44 Aug 22 01:55 ..
+-rwxr-x---. 1 root root 9.2K Aug 21 20:32 nightly_backup.sh
+-rwxr-x---. 1 root root 9.2K Aug 28 16:33 nightly_backup.sh.bak.20260828_163302
+-rwxr-x---. 1 root root 9.2K Aug 28 16:35 nightly_backup.sh.bak.20260828_163555
+-rw-r-----. 1 root root 9.3K Aug 28 16:33 nightly_backup.sh.new
+-rwxr-x---. 1 root root 6.4K Aug 21 19:36 secrets_backup_daily.sh
+-rwxr-x---. 1 root root  409 Aug 21 19:35 weekly_backup.sh
+[sikaj01@ip-10-56-112-34 ~]$ sudo ls -alh /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.20260828_163555
+-rwxr-x---. 1 root root 9.2K Aug 28 16:35 /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.20260828_163555
+[sikaj01@ip-10-56-112-34 ~]$ sudo diff /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.20260828_163555      /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.new
+85c85,87
+<     if ! tar -tzf "$tarfile" | grep -q "${expect_subpath}"; then
+---
+>     local match_count
+>     match_count="$(tar -tzf "$tarfile" 2>/dev/null | grep -c "${expect_subpath}" || true)"
+>     if [[ "${match_count:-0}" -eq 0 ]]; then
+88c90
+<       echo "  OK: ${tarfile} contains expected path '*${expect_subpath}*'"
+---
+>       echo "  OK: ${tarfile} contains expected path '*${expect_subpath}*' (${match_count} matches)"
+191a194
+> echo "[4/5] Metadata..."
+[sikaj01@ip-10-56-112-34 ~]$ sudo mv /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.new \
+        /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+[sikaj01@ip-10-56-112-34 ~]$ sudo chown root:root /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+[sikaj01@ip-10-56-112-34 ~]$ sudo chmod 750 /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+[sikaj01@ip-10-56-112-34 ~]$ sudo bash -n /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh && echo "syntax OK"
+syntax OK
+[sikaj01@ip-10-56-112-34 ~]$ rm -f /tmp/bamboo-repro-test.tar.gz /tmp/bamboo-repro-stderr.log
+rm: cannot remove '/tmp/bamboo-repro-test.tar.gz': Operation not permitted
+[sikaj01@ip-10-56-112-34 ~]$ sudo !!
+sudo rm -f /tmp/bamboo-repro-test.tar.gz /tmp/bamboo-repro-stderr.log
 
-gzip: stdin: unexpected end of file
-tar: Unexpected EOF in archive
-tar: Error is not recoverable: exiting now
-14
-[sikaj01@ip-10-56-112-34 tmp]$ grep -c "changed as we read it" /tmp/bamboo-repro-stderr.log
-0
-[sikaj01@ip-10-56-112-34 tmp]$ cat /tmp/bamboo-repro-stderr.log
-nohup: ignoring input
-[sikaj01@ip-10-56-112-34 tmp]$ echo "actual tar exit code was: $(cat /tmp/bamboo-repro-stderr.log | grep -c 'Error is not recoverable')"
-actual tar exit code was: 0
-[sikaj01@ip-10-56-112-34 tmp]$ 
-
-[sikaj01@ip-10-56-112-34 ~]$ sudo tar -tzf /tmp/bamboo-repro-test.tar.gz | grep -c "shared/configuration"^C
-[sikaj01@ip-10-56-112-34 ~]$ ls -alh /tmp/
-total 14G
-drwxrwxrwt. 13 root    root  380 Aug 28 14:39 .
-dr-xr-xr-x. 24 root    root  16K Aug 21 19:24 ..
-drwxrwxrwt.  2 root    root   40 Aug 25 13:11 .ICE-unix
-drwxrwxrwt.  2 root    root   40 Aug 25 13:11 .X11-unix
-drwxrwxrwt.  2 root    root   40 Aug 25 13:11 .XIM-unix
-drwxrwxrwt.  2 root    root   40 Aug 25 13:11 .font-unix
-drwxr-xr-x.  3 root    root   60 Aug 25 13:11 BES
--rw-r-----.  1 sikaj01 users  22 Aug 27 17:00 bamboo-repro-stderr.log
--rw-r-----.  1 root    root  14G Aug 27 17:14 bamboo-repro-test.tar.gz
--rw-r--r--.  1 root    root  128 Aug 26 15:35 find_output
-srw-------.  1 root    root    0 Aug 25 13:11 nmh_msg_bus.sock
--rw-r--r--.  1 root    root  127 Aug 26 15:35 passwd_filtered
--rw-r--r--.  1 root    root   19 Aug 26 15:35 stat_output
-drwx------.  3 root    root   60 Aug 25 13:11 systemd-private-043cd5fee7ca4ec2aa7df8a27dc17952-chronyd.service-vvwsxQ
-drwx------.  3 root    root   60 Aug 25 13:11 systemd-private-043cd5fee7ca4ec2aa7df8a27dc17952-dbus-broker.service-r2ILaP
-drwx------.  3 root    root   60 Aug 25 13:11 systemd-private-043cd5fee7ca4ec2aa7df8a27dc17952-policy-routes@ens5.service-00nSH8
-drwx------.  3 root    root   60 Aug 28 14:39 systemd-private-043cd5fee7ca4ec2aa7df8a27dc17952-systemd-hostnamed.service-dTcX80
-drwx------.  3 root    root   60 Aug 25 13:11 systemd-private-043cd5fee7ca4ec2aa7df8a27dc17952-systemd-logind.service-6vxtBQ
-drwx------.  3 root    root   60 Aug 25 13:11 systemd-private-043cd5fee7ca4ec2aa7df8a27dc17952-systemd-resolved.service-oNLkzk
-[sikaj01@ip-10-56-112-34 ~]$ ps -p 3791881 -o pid,etime,cmd
-    PID     ELAPSED CMD
-[sikaj01@ip-10-56-112-34 ~]$ ls -la /tmp/bamboo-repro-test.tar.gz
--rw-r-----. 1 root root 14976530711 Aug 27 17:14 /tmp/bamboo-repro-test.tar.gz
-[sikaj01@ip-10-56-112-34 ~]$ cat /tmp/bamboo-repro-stderr.log
-nohup: ignoring input
-[sikaj01@ip-10-56-112-34 ~]$ sudo tar -tzf /tmp/bamboo-repro-test.tar.gz | grep -c "shared/configuration"
-22
-timed out waiting for input: auto-logout
-Connection to 10.56.112.34 closed.
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
 
 
-[sikaj01@ip-10-56-112-34 ~]$ cat /tmp/bamboo-repro-stderr.log
-nohup: ignoring input
-[sikaj01@ip-10-56-112-34 ~]$ grep -c "changed as we read it" /tmp/bamboo-repro-stderr.log
-0
-[sikaj01@ip-10-56-112-34 ~]$ echo "actual tar exit code was: $(cat /tmp/bamboo-repro-stderr.log | grep -c 'Error is not recoverable')"
-actual tar exit code was: 0
-[sikaj01@ip-10-56-112-34 ~]$ 
+
+[sikaj01@ip-10-56-128-233 ~]$ docker inspect dev-bitbucket
+[
+    {
+        "Id": "71ff5dd2c792f074a92b73313266fb944e7efc6c45bd31e0a0689266b84e3bb2",
+        "Created": "2026-08-25T19:43:40.128979941Z",
+        "Path": "/usr/bin/tini",
+        "Args": [
+            "--",
+            "/entrypoint.py",
+            "--log=INFO"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 564380,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-08-25T19:43:40.609549963Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:be744f11c88eaa9cb132154c9c21b715f361c1395f11c340c11ab9c2c2dd066c",
+        "ResolvConfPath": "/var/lib/docker/containers/71ff5dd2c792f074a92b73313266fb944e7efc6c45bd31e0a0689266b84e3bb2/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/71ff5dd2c792f074a92b73313266fb944e7efc6c45bd31e0a0689266b84e3bb2/hostname",
+        "HostsPath": "/var/lib/docker/containers/71ff5dd2c792f074a92b73313266fb944e7efc6c45bd31e0a0689266b84e3bb2/hosts",
+        "LogPath": "/var/lib/docker/containers/71ff5dd2c792f074a92b73313266fb944e7efc6c45bd31e0a0689266b84e3bb2/71ff5dd2c792f074a92b73313266fb944e7efc6c45bd31e0a0689266b84e3bb2-json.log",
+        "Name": "/dev-bitbucket",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/app/bitbucket:/var/atlassian/application-data/bitbucket"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "dev-net",
+            "PortBindings": {
+                "7990/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "7990"
+                    }
+                ],
+                "7999/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "7999"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                51,
+                162
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [
+                {
+                    "Name": "nofile",
+                    "Hard": 65536,
+                    "Soft": 32768
+                }
+            ],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/asound",
+                "/proc/acpi",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/sys/firmware",
+                "/sys/devices/virtual/powercap"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/25071eec8542aa39988bf02ba9c2c17ca1511d689b5e537421752c6d33c51bc9-init/diff:/var/lib/docker/overlay2/51b6c0c6acb06299b9fbb686c6aa05a7ea22038f6b5780ad9f9ae2268fbff82e/diff:/var/lib/docker/overlay2/b5de189b9e359148c22d3408d305118f7c2b05c247333c1b28e30cf87f360157/diff:/var/lib/docker/overlay2/ec30266276d5e8212de803171a42d14d80d5b377c6f6780ac5a8660879f95604/diff:/var/lib/docker/overlay2/a30551d74cb852632ae5c56e85e21538d15ff2f5f466d27247046cf469a30b35/diff:/var/lib/docker/overlay2/6304339d8bd86cb30c3c23c74b7e2154c03f412f9dfa00494cbd41521f51c546/diff:/var/lib/docker/overlay2/2d6d493a114d4b58f24c6cb762bda4d07532db918339934e3ff18617ed8821cc/diff:/var/lib/docker/overlay2/f5372054e4fdca0876082e2a49c0e988878ff391d319651fd6de61705ae9359e/diff:/var/lib/docker/overlay2/4ebe006975ea3d886b016b87c71193c9b5ea6cac92dbbad050eb10f4971ed1b6/diff:/var/lib/docker/overlay2/948cd249c9ef1df2cf6e979364ee23ffe8b7cc072ee2adb5f09046745d3686b2/diff:/var/lib/docker/overlay2/fee6260db29cf3e230b8b17971ea507941c43e53731933c4f316135f5c2a0d05/diff:/var/lib/docker/overlay2/f6a8b4bbc0963d45da4a8602ebf6860fa9d60cdd7029ccfd604e5251d96fe6c4/diff:/var/lib/docker/overlay2/fceda6ea13571a89ff610ce8280acfd16d85d5d8f90c55380d60bdca0053bc8a/diff:/var/lib/docker/overlay2/fdf900b9fe2e33a1310bd26e83967dfcaeb8c6448d985ca5ac0aae783fcbb108/diff",
+                "MergedDir": "/var/lib/docker/overlay2/25071eec8542aa39988bf02ba9c2c17ca1511d689b5e537421752c6d33c51bc9/merged",
+                "UpperDir": "/var/lib/docker/overlay2/25071eec8542aa39988bf02ba9c2c17ca1511d689b5e537421752c6d33c51bc9/diff",
+                "WorkDir": "/var/lib/docker/overlay2/25071eec8542aa39988bf02ba9c2c17ca1511d689b5e537421752c6d33c51bc9/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/app/bitbucket",
+                "Destination": "/var/atlassian/application-data/bitbucket",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "71ff5dd2c792",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "7990/tcp": {},
+                "7999/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "ATL_PROXY_PORT=443",
+                "ATL_TOMCAT_SECURE=true",
+                "ATL_PROXY_NAME=bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov",
+                "JVM_MINIMUM_MEMORY=1g",
+                "SEARCH_ENABLED=true",
+                "ATL_TOMCAT_SCHEME=https",
+                "JVM_MAXIMUM_MEMORY=2g",
+                "APPLICATION_MODE=default",
+                "JVM_SUPPORT_RECOMMENDED_ARGS=-Dserver.forward-headers-strategy=native",
+                "PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "JAVA_HOME=/opt/java/openjdk",
+                "LANG=en_US.UTF-8",
+                "LANGUAGE=en_US:en",
+                "LC_ALL=en_US.UTF-8",
+                "JAVA_VERSION=jdk-21.0.11+10",
+                "APP_NAME=bitbucket",
+                "RUN_USER=bitbucket",
+                "RUN_GROUP=bitbucket",
+                "RUN_UID=2003",
+                "RUN_GID=2003",
+                "BITBUCKET_HOME=/var/atlassian/application-data/bitbucket",
+                "BITBUCKET_INSTALL_DIR=/opt/atlassian/bitbucket",
+                "JRE_HOME=/opt/java/openjdk",
+                "JAVA_BINARY=/opt/java/openjdk/bin/java"
+            ],
+            "Cmd": [
+                "/entrypoint.py",
+                "--log=INFO"
+            ],
+            "Image": "atlassian/bitbucket:9.4.17",
+            "Volumes": {
+                "/var/atlassian/application-data/bitbucket": {}
+            },
+            "WorkingDir": "/var/atlassian/application-data/bitbucket",
+            "Entrypoint": [
+                "/usr/bin/tini",
+                "--"
+            ],
+            "OnBuild": null,
+            "Labels": {
+                "maintainer": "dc-deployments@atlassian.com",
+                "org.opencontainers.image.version": "24.04",
+                "securitytxt": "https://www.atlassian.com/.well-known/security.txt"
+            }
+        },
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "4b7cc21cf65cc884ba6bacfa25b8be23eb925a0e78568a94c7b792b972f18a9b",
+            "SandboxKey": "/var/run/docker/netns/4b7cc21cf65c",
+            "Ports": {
+                "7990/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "7990"
+                    }
+                ],
+                "7999/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "7999"
+                    }
+                ]
+            },
+            "HairpinMode": false,
+            "LinkLocalIPv6Address": "",
+            "LinkLocalIPv6PrefixLen": 0,
+            "SecondaryIPAddresses": null,
+            "SecondaryIPv6Addresses": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "MacAddress": "",
+            "Networks": {
+                "dev-net": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "71ff5dd2c792"
+                    ],
+                    "MacAddress": "02:42:ac:12:00:05",
+                    "NetworkID": "7e224dda37c4bd4afaefaef480316ccbfb09f030cb9d299be27fce76efc8eb09",
+                    "EndpointID": "6708445cd1ca7549ae4c5738f09462f2a1ae26b8ba9212607a769f35c963487b",
+                    "Gateway": "172.18.0.1",
+                    "IPAddress": "172.18.0.5",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DriverOpts": null,
+                    "DNSNames": [
+                        "dev-bitbucket",
+                        "71ff5dd2c792"
+                    ]
+                }
+            }
+        }
+    }
+]
+
+
+[sikaj01@ip-10-56-128-233 ~]$ docker stop dev-bitbucket
+dev-bitbucket
+[sikaj01@ip-10-56-128-233 ~]$ docker rm dev-bitbucket
+dev-bitbucket
+[sikaj01@ip-10-56-128-233 ~]$ docker run -d \
+  --name dev-bitbucket \
+  --network dev-net \
+  --restart unless-stopped \
+  -p 7990:7990 -p 7999:7999 \
+  -v /app/bitbucket:/var/atlassian/application-data/bitbucket \
+  -e JVM_SUPPORT_RECOMMENDED_ARGS="-Duser.timezone=America/Denver -Dserver.forward-headers-strategy=native" \
+  -e ATL_PROXY_NAME=bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov \
+  -e ATL_PROXY_PORT=443 \
+  -e ATL_TOMCAT_SCHEME=https \
+  -e ATL_TOMCAT_SECURE=true \
+  atlassian/bitbucket:9.4.17
+98702243060b9e5d21d7c35adf2c8afc120ede5a5b7ad2713938b7a7e83975a0
+[sikaj01@ip-10-56-128-233 ~]$ docker ps
+CONTAINER ID   IMAGE                                                     COMMAND                  CREATED         STATUS         PORTS                                                       NAMES
+98702243060b   atlassian/bitbucket:9.4.17                                "/usr/bin/tini -- /e…"   3 seconds ago   Up 2 seconds   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp              dev-bitbucket
+cb866c3043c4   atlassian/bamboo:10.2.11                                  "/usr/bin/tini -- /e…"   7 days ago      Up 2 days      0.0.0.0:8085->8085/tcp, 0.0.0.0:8443->8443/tcp, 54663/tcp   dev-bamboo
+05ccbc52a0ba   nginx:1.29.3                                              "/docker-entrypoint.…"   4 weeks ago     Up 7 days      0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp                    dev-nginx
+bbe9824ab941   releases-docker.jfrog.io/jfrog/artifactory-oss:7.104.14   "/entrypoint-artifac…"   4 weeks ago     Up 7 days      0.0.0.0:8081-8082->8081-8082/tcp                            dev-artifactory
+32baf1b78df2   postgres:15-alpine                                        "docker-entrypoint.s…"   4 weeks ago     Up 7 days      5432/tcp                                                    dev-postgres
+[sikaj01@ip-10-56-128-233 ~]$ 
+
+
+[sikaj01@ip-10-56-128-233 ~]$ docker logs dev-bitbucket --tail 50
+        at com.atlassian.bitbucket.internal.search.common.settings.DefaultSearchSettingsService.getUsernamePassword(DefaultSearchSettingsService.java:143)
+        at com.atlassian.bitbucket.internal.search.indexing.client.IndexingClientLifecycleManager.getUsernamePassword(IndexingClientLifecycleManager.java:108)
+        at com.atlassian.bitbucket.internal.search.common.clientutil.DefaultSearchClientFactory.create(DefaultSearchClientFactory.java:61)
+        at com.atlassian.bitbucket.internal.search.indexing.client.IndexingClientLifecycleManager.refreshClient(IndexingClientLifecycleManager.java:153)
+        at com.atlassian.bitbucket.internal.search.indexing.client.IndexingClientLifecycleManager.onStart(IndexingClientLifecycleManager.java:138)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager$1.accept(PatchedLifecycleManager.java:291)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager$1.accept(PatchedLifecycleManager.java:288)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyLifecycleAware(PatchedLifecycleManager.java:317)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyOnStartIfStartedAndEnabled(PatchedLifecycleManager.java:287)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyLifecycleAwares(PatchedLifecycleManager.java:272)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyStartableLifecycleAwares(PatchedLifecycleManager.java:249)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyStartableLifecycleAwaresForPlugin(PatchedLifecycleManager.java:240)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.notifyStartableLifecycleAwares(PatchedLifecycleManager.java:216)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.startIfApplicationSetup(PatchedLifecycleManager.java:199)
+        at com.atlassian.stash.sal.api.lifecycle.PatchedLifecycleManager.onPluginFrameworkStarted(PatchedLifecycleManager.java:140)
+        at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+        at com.atlassian.stash.internal.event.SynchronousAwareSingleParameterMethodListenerInvoker.invoke(SynchronousAwareSingleParameterMethodListenerInvoker.java:66)
+        at com.atlassian.diagnostics.internal.platform.monitor.event.EventSystemMonitor.invokeMonitored(EventSystemMonitor.java:105)
+        at com.atlassian.diagnostics.internal.platform.monitor.event.MonitoredListenerInvoker.invoke(MonitoredListenerInvoker.java:38)
+        at com.atlassian.event.internal.ComparableListenerInvoker.invoke(ComparableListenerInvoker.java:48)
+        at com.atlassian.event.internal.AsynchronousAbleEventDispatcher.lambda$static$0(AsynchronousAbleEventDispatcher.java:38)
+        at com.atlassian.event.internal.AsynchronousAbleEventDispatcher.dispatch(AsynchronousAbleEventDispatcher.java:89)
+        at com.atlassian.stash.internal.event.SynchronousAwareEventDispatcher.dispatch(SynchronousAwareEventDispatcher.java:31)
+        at com.atlassian.diagnostics.internal.platform.monitor.event.MonitoredEventDispatcher.dispatch(MonitoredEventDispatcher.java:36)
+        at com.atlassian.event.internal.EventPublisherImpl.publish(EventPublisherImpl.java:103)
+        at com.atlassian.stash.internal.event.TransactionAwareEventPublisher.internalPublish(TransactionAwareEventPublisher.java:175)
+        at com.atlassian.stash.internal.event.TransactionAwareEventPublisher.publish(TransactionAwareEventPublisher.java:108)
+        at com.atlassian.plugin.event.impl.DefaultPluginEventManager.broadcast(DefaultPluginEventManager.java:91)
+        at com.atlassian.plugin.manager.DefaultPluginManager.broadcastIgnoreError(DefaultPluginManager.java:2069)
+        at com.atlassian.plugin.manager.DefaultPluginManager.lambda$lateStartup$6(DefaultPluginManager.java:702)
+        at com.atlassian.plugin.manager.PluginTransactionContext.wrap(PluginTransactionContext.java:64)
+        at com.atlassian.plugin.manager.DefaultPluginManager.lateStartup(DefaultPluginManager.java:674)
+        at com.atlassian.plugin.manager.DefaultPluginManager.lambda$init$3(DefaultPluginManager.java:529)
+        at com.atlassian.plugin.manager.PluginTransactionContext.wrap(PluginTransactionContext.java:64)
+        at com.atlassian.plugin.manager.DefaultPluginManager.init(DefaultPluginManager.java:527)
+        at com.atlassian.stash.internal.plugin.StashPluginManager.lambda$init$0(StashPluginManager.java:60)
+        at com.atlassian.stash.internal.plugin.PluginUpgradeHelper.withUpgrade(PluginUpgradeHelper.java:76)
+        at com.atlassian.stash.internal.plugin.StashPluginManager.init(StashPluginManager.java:60)
+        at com.atlassian.stash.internal.plugin.SpringPluginSystemLifecycle.start(SpringPluginSystemLifecycle.java:35)
+        at org.springframework.context.support.DefaultLifecycleProcessor.doStart(DefaultLifecycleProcessor.java:183)
+        at org.springframework.context.support.DefaultLifecycleProcessor.access$200(DefaultLifecycleProcessor.java:58)
+        at org.springframework.context.support.DefaultLifecycleProcessor$LifecycleGroup.start(DefaultLifecycleProcessor.java:365)
+        at java.base/java.lang.Iterable.forEach(Iterable.java:75)
+        at org.springframework.context.support.DefaultLifecycleProcessor.startBeans(DefaultLifecycleProcessor.java:160)
+        at org.springframework.context.support.DefaultLifecycleProcessor.onRefresh(DefaultLifecycleProcessor.java:128)
+        at org.springframework.context.support.AbstractApplicationContext.finishRefresh(AbstractApplicationContext.java:949)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:594)
+        at javax.servlet.GenericServlet.init(GenericServlet.java:143)
+        at java.base/java.lang.Thread.run(Thread.java:1583)
+        ... 38 frames trimmed
+[sikaj01@ip-10-56-128-233 ~]$ 
