@@ -82,12 +82,12 @@ sanity_check_tar() {
   fi
 
   if [[ -n "$expect_subpath" ]]; then
-    local listing
-    listing="$(tar -tzf "$tarfile")"
-    if ! grep -q "${expect_subpath}" <<< "$listing"; then
+    local match_count
+    match_count="$(tar -tzf "$tarfile" 2>/dev/null | grep -c "${expect_subpath}" || true)"
+    if [[ "${match_count:-0}" -eq 0 ]]; then
       echo "  WARN: ${tarfile} does NOT contain expected path '*${expect_subpath}*' for volume '${vol}'. This backup may be incomplete — investigate before relying on it for restore."
     else
-      echo "  OK: ${tarfile} contains expected path '*${expect_subpath}*'"
+      echo "  OK: ${tarfile} contains expected path '*${expect_subpath}*' (${match_count} matches)"
     fi
   fi
 }
