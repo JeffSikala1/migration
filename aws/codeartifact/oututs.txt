@@ -1,164 +1,23 @@
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U bamboouser -d bamboo -c \
+  "SELECT bandana_key, serialized_data FROM bandana WHERE serialized_data LIKE '%bamboo-test%' OR serialized_data LIKE '%bitbucket-test%' OR serialized_data LIKE '%artifactory-test%';"
+ bandana_key | serialized_data 
+-------------+-----------------
+(0 rows)
 
-An error occurred (ValidationError) when calling the DescribeTargetHealth operation: A target group ARN must be specified
-[sikaj01@ip-10-56-128-233 ~]$ TG443_ARN=$(aws elbv2 describe-target-groups --names fcs-atlnlb-tg-443 --query "TargetGroups[0].TargetGroupArn" --output text)
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
-{
-    "TargetHealthDescriptions": [
-        {
-            "Target": {
-                "Id": "i-0dd6e0c7c4fcc27f9",
-                "Port": 443
-            },
-            "HealthCheckPort": "443",
-            "TargetHealth": {
-                "State": "healthy"
-            },
-            "AdministrativeOverride": {
-                "State": "no_override",
-                "Reason": "AdministrativeOverride.NoOverride",
-                "Description": "No override is currently active on target"
-            }
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn "$TG80_ARN"
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c \
+  "SELECT * FROM app_property WHERE prop_value LIKE '%bitbucket-test%' OR prop_value LIKE '%bamboo-test%' OR prop_value LIKE '%artifactory-test%';"
+   prop_key   |                     prop_value                     
+--------------+----------------------------------------------------
+ instance.url | https://bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov
+(1 row)
 
-An error occurred (ValidationError) when calling the DescribeTargetHealth operation: A target group ARN must be specified
-[sikaj01@ip-10-56-128-233 ~]$ TG80_ARN=$(aws elbv2 describe-target-groups --names fcs-atlnlb-tg-80 --query "TargetGroups[0].TargetGroupArn" --output text)
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn "$TG80_ARN"
-{
-    "TargetHealthDescriptions": [
-        {
-            "Target": {
-                "Id": "i-0dd6e0c7c4fcc27f9",
-                "Port": 80
-            },
-            "HealthCheckPort": "80",
-            "TargetHealth": {
-                "State": "healthy"
-            },
-            "AdministrativeOverride": {
-                "State": "no_override",
-                "Reason": "AdministrativeOverride.NoOverride",
-                "Description": "No override is currently active on target"
-            }
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 list-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 \
-  --query "ResourceRecordSets[?contains(Name, 'bitbucket-test') || contains(Name, 'bamboo-test') || contains(Name, 'artifactory-test')]"
-[
-    {
-        "Name": "artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-            "HostedZoneId": "Z26RNL4JYFTOTI",
-            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-            "EvaluateTargetHealth": true
-        }
-    },
-    {
-        "Name": "bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-            "HostedZoneId": "Z26RNL4JYFTOTI",
-            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-            "EvaluateTargetHealth": true
-        }
-    },
-    {
-        "Name": "bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-            "HostedZoneId": "Z26RNL4JYFTOTI",
-            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-            "EvaluateTargetHealth": true
-        }
-    }
-]
+[sikaj01@ip-10-56-128-233 ~]$ echo "token set: $([ -n "$ARTIFACTORY_ADMIN_TOKEN" ] && echo yes || echo no)"
+token set: no
+[sikaj01@ip-10-56-128-233 ~]$ curl -sS -u admin:${ARTIFACTORY_ADMIN_TOKEN} https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/configuration | grep -i "baseUrl\|customUrlBase" -A2
+curl: (60) SSL certificate OpenSSL verify result: unable to get local issuer certificate (20)
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the webpage mentioned above.
 [sikaj01@ip-10-56-128-233 ~]$ 
-aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR \
-  --query "ResourceRecordSets[?contains(Name, 'bitbucket-test') || contains(Name, 'bamboo-test') || contains(Name, 'artifactory-test')]"
-[
-    {
-        "Name": "artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-            "HostedZoneId": "Z26RNL4JYFTOTI",
-            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-            "EvaluateTargetHealth": true
-        }
-    },
-    {
-        "Name": "bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-            "HostedZoneId": "Z26RNL4JYFTOTI",
-            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-            "EvaluateTargetHealth": true
-        }
-    },
-    {
-        "Name": "bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "A",
-        "AliasTarget": {
-            "HostedZoneId": "Z26RNL4JYFTOTI",
-            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
-            "EvaluateTargetHealth": true
-        }
-    }
-]
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U postgres -c "\du"
-psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "postgres" does not exist
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U artifactory -c "\du"
-                                     List of roles
-   Role name   |                         Attributes                         | Member of 
----------------+------------------------------------------------------------+-----------
- artifactory   | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
- bamboouser    |                                                            | {}
- bitbucketuser |                                                            | {}
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U bamboouser -c "\du"
-psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  database "bamboouser" does not exist
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -l
-psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "root" does not exist
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U artifactory -l
-                                                       List of databases
-    Name     |    Owner    | Encoding |  Collate   |   Ctype    | ICU Locale | Locale Provider |       Access privileges       
--------------+-------------+----------+------------+------------+------------+-----------------+-------------------------------
- artifactory | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
- bamboo      | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
-             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
-             |             |          |            |            |            |                 | bamboouser=CTc/artifactory
- bitbucket   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
-             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
-             |             |          |            |            |            |                 | bitbucketuser=CTc/artifactory
- postgres    | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
- template0   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
-             |             |          |            |            |            |                 | artifactory=CTc/artifactory
- template1   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
-             |             |          |            |            |            |                 | artifactory=CTc/artifactory
-(6 rows)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U bamboouser -d bamboo -c "\d bandana"
-                          Table "public.bandana"
-     Column      |          Type          | Collation | Nullable | Default 
------------------+------------------------+-----------+----------+---------
- bandana_id      | bigint                 |           | not null | 
- build_id        | bigint                 |           |          | 
- chain_id        | bigint                 |           | not null | 0
- bandana_key     | character varying(255) |           |          | 
- serialized_data | text                   |           |          | 
-Indexes:
-    "bandana_pkey" PRIMARY KEY, btree (bandana_id)
-    "band_key_idx" btree (build_id, bandana_key)
-
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c "\d app_property"
-                      Table "public.app_property"
-   Column   |          Type           | Collation | Nullable | Default 
-------------+-------------------------+-----------+----------+---------
- prop_key   | character varying(50)   |           | not null | 
- prop_value | character varying(2000) |           | not null | 
-Indexes:
-    "app_property_pkey" PRIMARY KEY, btree (prop_key)
