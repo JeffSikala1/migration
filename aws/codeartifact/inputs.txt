@@ -29,6 +29,17 @@ sudo cat /app/nginx/conf.d/artifactory.conf
 
 --------
 
-sleep 60
-aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
-aws elbv2 describe-target-health --target-group-arn "$TG80_ARN"
+aws route53 list-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 \
+  --query "ResourceRecordSets[?contains(Name, 'bitbucket-test') || contains(Name, 'bamboo-test') || contains(Name, 'artifactory-test')]"
+
+aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR \
+  --query "ResourceRecordSets[?contains(Name, 'bitbucket-test') || contains(Name, 'bamboo-test') || contains(Name, 'artifactory-test')]"
+
+
+# find the correct bamboo DB role/user
+docker exec dev-postgres psql -U postgres -c "\du"
+docker exec dev-postgres psql -l
+
+# once you have the right role name, e.g.:
+docker exec dev-postgres psql -U <bamboo_role> -d bamboo -c "\d bandana"
+docker exec dev-postgres psql -U <bitbucket_role> -d bitbucket -c "\d app_property"
