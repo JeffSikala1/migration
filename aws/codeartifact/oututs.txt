@@ -1,48 +1,7 @@
-[sikaj01@ip-10-56-128-233 ~]$ dig +short bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
-10.56.131.136
-[sikaj01@ip-10-56-128-233 ~]$ dig +short fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com
-10.56.131.136
-[sikaj01@ip-10-56-128-233 ~]$ curl -sk -o /dev/null -w "%{http_code}\n" https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping
-^C
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --load-balancer-arns "$ATLNLB_ARN" --query "LoadBalancers[0].State"
-
-An error occurred (ValidationError) when calling the DescribeLoadBalancers operation: A load balancer ARN must be specified
-[sikaj01@ip-10-56-128-233 ~]$ export ATLNLB_ARN=arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --load-balancer-arns "$ATLNLB_ARN" --query "LoadBalancers[0].State"
-{
-    "Code": "active"
-}
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
-{
-    "TargetHealthDescriptions": [
-        {
-            "Target": {
-                "Id": "i-0dd6e0c7c4fcc27f9",
-                "Port": 443
-            },
-            "HealthCheckPort": "443",
-            "TargetHealth": {
-                "State": "healthy"
-            },
-            "AdministrativeOverride": {
-                "State": "no_override",
-                "Reason": "AdministrativeOverride.NoOverride",
-                "Description": "No override is currently active on target"
-            }
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ curl -sk -v --connect-timeout 5 --max-time 10 https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/status 2>&1 | head -20
-* Host bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:443 was resolved.
-* IPv6: (none)
-* IPv4: 10.56.131.136
-*   Trying 10.56.131.136:443...
-* Connection timed out after 5002 milliseconds
-* closing connection #0
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-network-interfaces --filters "Name=description,Values=*atlnlb*" --query "NetworkInterfaces[].PrivateIpAddress" --output text
-10.56.133.61    10.56.131.136
-[sikaj01@ip-10-56-128-233 ~]$ timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.56.133.61/443" && echo "TCP OK" || echo "TCP FAILED/TIMEOUT"
-TCP FAILED/TIMEOUT
-[sikaj01@ip-10-56-128-233 ~]$ timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.56.131.136/443" && echo "TCP OK" || echo "TCP FAILED/TIMEOUT"
-TCP FAILED/TIMEOUT
-[sikaj01@ip-10-56-128-233 ~]$ 
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sk -o /dev/null -w "%{http_code}\n" https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/status
+200
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sk -o /dev/null -w "%{http_code}\n" https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/
+302
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ curl -sk -o /dev/null -w "%{http_code}\n" https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping
+200
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
