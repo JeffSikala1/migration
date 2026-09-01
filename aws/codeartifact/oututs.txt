@@ -1,90 +1,48 @@
-[sikaj01@ip-10-56-128-233 ~]$ curl -sSk -u admin:${artifactory_dev_admin_token} \
-  -H "Host: artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov" \
-  https://localhost/artifactory/api/system/configuration \
-  -o /home/sikaj01/artifactory-config-current.xml
-[sikaj01@ip-10-56-128-233 ~]$ echo "exit: $?"
-ls -la /home/sikaj01/artifactory-config-current.xml
-grep -i "url" /home/sikaj01/artifactory-config-current.xml
-exit: 0
--rw-r-----. 1 sikaj01 users 14743 Sep  1 19:45 /home/sikaj01/artifactory-config-current.xml
-    <urlBase>https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov</urlBase>
-    <signedUrlConfig>
-    </signedUrlConfig>
-[sikaj01@ip-10-56-128-233 ~]$ cat > /tmp/route53-cutover.json <<'EOF'
-{
-  "Changes": [
-    {"Action": "DELETE", "ResourceRecordSet": {"Name": "artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.", "Type": "A", "AliasTarget": {"HostedZoneId": "Z26RNL4JYFTOTI", "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.", "EvaluateTargetHealth": true}}},
-    {"Action": "DELETE", "ResourceRecordSet": {"Name": "bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov.", "Type": "A", "AliasTarget": {"HostedZoneId": "Z26RNL4JYFTOTI", "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.", "EvaluateTargetHealth": true}}},
-    {"Action": "DELETE", "ResourceRecordSet": {"Name": "bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov.", "Type": "A", "AliasTarget": {"HostedZoneId": "Z26RNL4JYFTOTI", "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.", "EvaluateTargetHealth": true}}},
-    {"Action": "CREATE", "ResourceRecordSet": {"Name": "artifactory.dev.cnxs.vpcaas.fcs.gsa.gov.", "Type": "A", "AliasTarget": {"HostedZoneId": "Z26RNL4JYFTOTI", "DNSName": "fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com.", "EvaluateTargetHealth": true}}},
-    {"Action": "CREATE", "ResourceRecordSet": {"Name": "bamboo.dev.cnxs.vpcaas.fcs.gsa.gov.", "Type": "A", "AliasTarget": {"HostedZoneId": "Z26RNL4JYFTOTI", "DNSName": "fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com.", "EvaluateTargetHealth": true}}},
-    {"Action": "CREATE", "ResourceRecordSet": {"Name": "bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov.", "Type": "A", "AliasTarget": {"HostedZoneId": "Z26RNL4JYFTOTI", "DNSName": "fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com.", "EvaluateTargetHealth": true}}}
-  ]
-}
-EOF
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/route53-cutover.json
-{
-    "ChangeInfo": {
-        "Id": "/change/C05008211XVTQQSMEAJ6I",
-        "Status": "PENDING",
-        "SubmittedAt": "2026-09-01T19:54:26.071000+00:00"
-    }
-}
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 change-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR --change-batch file:///tmp/route53-cutover.json
-{
-    "ChangeInfo": {
-        "Id": "/change/C049561325S7RH8V5MJBS",
-        "Status": "PENDING",
-        "SubmittedAt": "2026-09-01T19:54:34.433000+00:00"
-    }
-}
-[sikaj01@ip-10-56-128-233 ~]$ sudo sed -i 's/artifactory-test\.dev/artifactory.dev/g' /app/nginx/conf.d/artifactory.conf
-[sudo] password for sikaj01: 
-[sikaj01@ip-10-56-128-233 ~]$ sudo sed -i 's/bamboo-test\.dev/bamboo.dev/g' /app/nginx/conf.d/bamboo.conf
-[sikaj01@ip-10-56-128-233 ~]$ sudo sed -i 's/bitbucket-test\.dev/bitbucket.dev/g' /app/nginx/conf.d/bitbucket.conf
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-nginx nginx -t && docker exec dev-nginx nginx -s reload
-nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
-nginx: configuration file /etc/nginx/nginx.conf test is successful
-2026/09/01 19:55:43 [notice] 110#110: signal process started
-[sikaj01@ip-10-56-128-233 ~]$ docker stop dev-bamboo
-dev-bamboo
-[sikaj01@ip-10-56-128-233 ~]$ docker rm dev-bamboo
-dev-bamboo
-[sikaj01@ip-10-56-128-233 ~]$ docker run -d \
-  --name dev-bamboo \
-  --network dev-net \
-  --restart unless-stopped \
-  -p 8085:8085 -p 8443:8443 \
-  -v /app/bamboo:/var/atlassian/application-data/bamboo \
-  -e ATL_PROXY_PORT=443 \
-  -e ATL_TOMCAT_SCHEME=https \
-  -e ATL_PROXY_NAME=bamboo.dev.cnxs.vpcaas.fcs.gsa.gov \
-  atlassian/bamboo:10.2.11
-3e31878e1d2c20bb4d1b3ee71df049e976e76039188c216a9daf8d3fadeef4d6
-[sikaj01@ip-10-56-128-233 ~]$ docker stop dev-bitbucket
-dev-bitbucket
-[sikaj01@ip-10-56-128-233 ~]$ docker rm dev-bitbucket
-dev-bitbucket
-[sikaj01@ip-10-56-128-233 ~]$ docker run -d \
-  --name dev-bitbucket \
-  --network dev-net \
-  --restart unless-stopped \
-  -p 7990:7990 -p 7999:7999 \
-  -v /app/bitbucket:/var/atlassian/application-data/bitbucket \
-  -e JVM_SUPPORT_RECOMMENDED_ARGS="-Duser.timezone=America/Denver -Dserver.forward-headers-strategy=native" \
-  -e ATL_PROXY_NAME=bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov \
-  -e ATL_PROXY_PORT=443 \
-  -e ATL_TOMCAT_SCHEME=https \
-  -e ATL_TOMCAT_SECURE=true \
-  -e SEARCH_ENABLED=true \
-  -e APPLICATION_MODE=default \
-  atlassian/bitbucket:9.4.17
-fac41a7f340bfe525675ab652d4ee388f66b7dd0f035154ca96b8ff46579d740
-[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c \
-  "UPDATE app_property SET prop_value = 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov' WHERE prop_key = 'instance.url';"
-UPDATE 1
-[sikaj01@ip-10-56-128-233 ~]$ curl -sk -o /dev/null -w "%{http_code}\n" https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/status
-^C
-[sikaj01@ip-10-56-128-233 ~]$ curl -sk -o /dev/null -w "%{http_code}\n" https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/
-^C
+[sikaj01@ip-10-56-128-233 ~]$ dig +short bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+10.56.131.136
+[sikaj01@ip-10-56-128-233 ~]$ dig +short fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com
+10.56.131.136
 [sikaj01@ip-10-56-128-233 ~]$ curl -sk -o /dev/null -w "%{http_code}\n" https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping
+^C
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --load-balancer-arns "$ATLNLB_ARN" --query "LoadBalancers[0].State"
+
+An error occurred (ValidationError) when calling the DescribeLoadBalancers operation: A load balancer ARN must be specified
+[sikaj01@ip-10-56-128-233 ~]$ export ATLNLB_ARN=arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --load-balancer-arns "$ATLNLB_ARN" --query "LoadBalancers[0].State"
+{
+    "Code": "active"
+}
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
+{
+    "TargetHealthDescriptions": [
+        {
+            "Target": {
+                "Id": "i-0dd6e0c7c4fcc27f9",
+                "Port": 443
+            },
+            "HealthCheckPort": "443",
+            "TargetHealth": {
+                "State": "healthy"
+            },
+            "AdministrativeOverride": {
+                "State": "no_override",
+                "Reason": "AdministrativeOverride.NoOverride",
+                "Description": "No override is currently active on target"
+            }
+        }
+    ]
+}
+[sikaj01@ip-10-56-128-233 ~]$ curl -sk -v --connect-timeout 5 --max-time 10 https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/status 2>&1 | head -20
+* Host bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:443 was resolved.
+* IPv6: (none)
+* IPv4: 10.56.131.136
+*   Trying 10.56.131.136:443...
+* Connection timed out after 5002 milliseconds
+* closing connection #0
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-network-interfaces --filters "Name=description,Values=*atlnlb*" --query "NetworkInterfaces[].PrivateIpAddress" --output text
+10.56.133.61    10.56.131.136
+[sikaj01@ip-10-56-128-233 ~]$ timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.56.133.61/443" && echo "TCP OK" || echo "TCP FAILED/TIMEOUT"
+TCP FAILED/TIMEOUT
+[sikaj01@ip-10-56-128-233 ~]$ timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.56.131.136/443" && echo "TCP OK" || echo "TCP FAILED/TIMEOUT"
+TCP FAILED/TIMEOUT
+[sikaj01@ip-10-56-128-233 ~]$ 
