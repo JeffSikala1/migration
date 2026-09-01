@@ -27,3 +27,15 @@ sudo ls -la /app/nginx/conf.d/
 sudo cat /app/nginx/conf.d/artifactory.conf
 
 
+--------
+
+NLB_ARN=$(aws elbv2 describe-load-balancers --names fcs-conexus-dev-D-outnlb --query "LoadBalancers[0].LoadBalancerArn" --output text)
+echo "NLB ARN: $NLB_ARN"
+
+aws elbv2 describe-listeners --load-balancer-arn "$NLB_ARN"
+
+aws elbv2 describe-target-groups --names outnlbtoalbtargetgroup outnlbtoalbtargetgrouphttp
+
+aws elbv2 describe-target-health --target-group-arn $(aws elbv2 describe-target-groups --names outnlbtoalbtargetgroup --query "TargetGroups[0].TargetGroupArn" --output text)
+
+aws elbv2 describe-target-health --target-group-arn $(aws elbv2 describe-target-groups --names outnlbtoalbtargetgrouphttp --query "TargetGroups[0].TargetGroupArn" --output text)
