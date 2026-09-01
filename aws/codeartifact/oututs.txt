@@ -1,238 +1,3 @@
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 create-load-balancer \
-  --name fcs-conexus-dev-D-atlnlb \
-  --type network \
-  --scheme internal \
-  --subnets subnet-0fa28a398cb662a71 subnet-0826111a038991700 \
-  --ip-address-type ipv4
-{
-    "LoadBalancers": [
-        {
-            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc",
-            "DNSName": "fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com",
-            "CanonicalHostedZoneId": "Z26RNL4JYFTOTI",
-            "CreatedTime": "2026-09-01T18:48:56.203000+00:00",
-            "LoadBalancerName": "fcs-conexus-dev-D-atlnlb",
-            "Scheme": "internal",
-            "VpcId": "vpc-0cb2efc594903069d",
-            "State": {
-                "Code": "provisioning"
-            },
-            "Type": "network",
-            "AvailabilityZones": [
-                {
-                    "ZoneName": "us-east-1b",
-                    "SubnetId": "subnet-0826111a038991700",
-                    "LoadBalancerAddresses": []
-                },
-                {
-                    "ZoneName": "us-east-1a",
-                    "SubnetId": "subnet-0fa28a398cb662a71",
-                    "LoadBalancerAddresses": []
-                }
-            ],
-            "IpAddressType": "ipv4",
-            "EnablePrefixForIpv6SourceNat": "off"
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ ATLNLB_ARN=$(aws elbv2 describe-load-balancers --names fcs-conexus-dev-D-atlnlb --query "LoadBalancers[0].LoadBalancerArn" --output text)
-[sikaj01@ip-10-56-128-233 ~]$ echo "$ATLNLB_ARN"
-arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 create-target-group \
-  --name fcs-atlnlb-tg-443 \
-  --protocol TCP \
-  --port 443 \
-  --vpc-id vpc-0cb2efc594903069d \
-  --target-type instance \
-  --health-check-protocol TCP \
-  --health-check-port 443 \
-  --health-check-interval-seconds 30 \
-  --healthy-threshold-count 3 \
-  --unhealthy-threshold-count 3
-{
-    "TargetGroups": [
-        {
-            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b",
-            "TargetGroupName": "fcs-atlnlb-tg-443",
-            "Protocol": "TCP",
-            "Port": 443,
-            "VpcId": "vpc-0cb2efc594903069d",
-            "HealthCheckProtocol": "TCP",
-            "HealthCheckPort": "443",
-            "HealthCheckEnabled": true,
-            "HealthCheckIntervalSeconds": 30,
-            "HealthCheckTimeoutSeconds": 10,
-            "HealthyThresholdCount": 3,
-            "UnhealthyThresholdCount": 3,
-            "TargetType": "instance",
-            "IpAddressType": "ipv4"
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ TG443_ARN=$(aws elbv2 describe-target-groups --names fcs-atlnlb-tg-443 --query "TargetGroups[0].TargetGroupArn" --output text)
-[sikaj01@ip-10-56-128-233 ~]$ echo "$TG443_ARN"
-arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 create-target-group \
-  --name fcs-atlnlb-tg-80 \
-  --protocol TCP \
-  --port 80 \
-  --vpc-id vpc-0cb2efc594903069d \
-  --target-type instance \
-  --health-check-protocol TCP \
-  --health-check-port 80 \
-  --health-check-interval-seconds 30 \
-  --healthy-threshold-count 3 \
-  --unhealthy-threshold-count 3
-{
-    "TargetGroups": [
-        {
-            "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-80/5933359e55ed1fb4",
-            "TargetGroupName": "fcs-atlnlb-tg-80",
-            "Protocol": "TCP",
-            "Port": 80,
-            "VpcId": "vpc-0cb2efc594903069d",
-            "HealthCheckProtocol": "TCP",
-            "HealthCheckPort": "80",
-            "HealthCheckEnabled": true,
-            "HealthCheckIntervalSeconds": 30,
-            "HealthCheckTimeoutSeconds": 10,
-            "HealthyThresholdCount": 3,
-            "UnhealthyThresholdCount": 3,
-            "TargetType": "instance",
-            "IpAddressType": "ipv4"
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ TG80_ARN=$(aws elbv2 describe-target-groups --names fcs-atlnlb-tg-80 --query "TargetGroups[0].TargetGroupArn" --output text)
-[sikaj01@ip-10-56-128-233 ~]$ echo "$TG80_ARN"
-arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-80/5933359e55ed1fb4
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 register-targets --target-group-arn "$TG443_ARN" --targets Id=i-0dd6e0c7c4fcc27f9,Port=443
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 register-targets --target-group-arn "$TG80_ARN" --targets Id=i-0dd6e0c7c4fcc27f9,Port=80
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 create-listener \
-  --load-balancer-arn "$ATLNLB_ARN" \
-  --protocol TCP --port 443 \
-  --default-actions Type=forward,TargetGroupArn="$TG443_ARN"
-{
-    "Listeners": [
-        {
-            "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:listener/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc/b524f7d7281123f9",
-            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc",
-            "Port": 443,
-            "Protocol": "TCP",
-            "DefaultActions": [
-                {
-                    "Type": "forward",
-                    "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b",
-                    "ForwardConfig": {
-                        "TargetGroups": [
-                            {
-                                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b"
-                            }
-                        ],
-                        "TargetGroupStickinessConfig": {
-                            "Enabled": false
-                        }
-                    }
-                }
-            ]
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 create-listener \
-  --load-balancer-arn "$ATLNLB_ARN" \
-  --protocol TCP --port 80 \
-  --default-actions Type=forward,TargetGroupArn="$TG80_ARN"
-{
-    "Listeners": [
-        {
-            "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:listener/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc/63ba46e8d98fff96",
-            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc",
-            "Port": 80,
-            "Protocol": "TCP",
-            "DefaultActions": [
-                {
-                    "Type": "forward",
-                    "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-80/5933359e55ed1fb4",
-                    "ForwardConfig": {
-                        "TargetGroups": [
-                            {
-                                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-80/5933359e55ed1fb4"
-                            }
-                        ],
-                        "TargetGroupStickinessConfig": {
-                            "Enabled": false
-                        }
-                    }
-                }
-            ]
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ sleep 35
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
-{
-    "TargetHealthDescriptions": [
-        {
-            "Target": {
-                "Id": "i-0dd6e0c7c4fcc27f9",
-                "Port": 443
-            },
-            "HealthCheckPort": "443",
-            "TargetHealth": {
-                "State": "initial",
-                "Reason": "Elb.InitialHealthChecking",
-                "Description": "Initial health checks in progress"
-            },
-            "AdministrativeOverride": {
-                "State": "no_override",
-                "Reason": "AdministrativeOverride.NoOverride",
-                "Description": "No override is currently active on target"
-            }
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn "$TG80_ARN"
-{
-    "TargetHealthDescriptions": [
-        {
-            "Target": {
-                "Id": "i-0dd6e0c7c4fcc27f9",
-                "Port": 80
-            },
-            "HealthCheckPort": "80",
-            "TargetHealth": {
-                "State": "initial",
-                "Reason": "Elb.InitialHealthChecking",
-                "Description": "Initial health checks in progress"
-            },
-            "AdministrativeOverride": {
-                "State": "no_override",
-                "Reason": "AdministrativeOverride.NoOverride",
-                "Description": "No override is currently active on target"
-            }
-        }
-    ]
-}
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --load-balancer-arns "$ATLNLB_ARN" --query "LoadBalancers[0].[DNSName,CanonicalHostedZoneId]" --output text
-fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com   Z26RNL4JYFTOTI
-timed out waiting for input: auto-logout
-Connection to 10.56.128.233 closed.
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
-^C
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ ssh sikaj01@10.56.128.233
-Authorized uses only. All activity may be monitored and reported.
-Authorized uses only. All activity may be monitored and reported.
-   ,     #_
-   ~\_  ####_        Amazon Linux 2023
-  ~~  \_#####\
-  ~~     \###|
-  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
-   ~~       V~' '->
-    ~~~         /
-      ~~._.   _/
-         _/ _/
-       _/m/'
-Last login: Tue Sep  1 18:45:42 2026 from 10.56.112.33
 [sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
 
 An error occurred (ValidationError) when calling the DescribeTargetHealth operation: A target group ARN must be specified
@@ -281,3 +46,119 @@ An error occurred (ValidationError) when calling the DescribeTargetHealth operat
         }
     ]
 }
+[sikaj01@ip-10-56-128-233 ~]$ aws route53 list-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 \
+  --query "ResourceRecordSets[?contains(Name, 'bitbucket-test') || contains(Name, 'bamboo-test') || contains(Name, 'artifactory-test')]"
+[
+    {
+        "Name": "artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+            "HostedZoneId": "Z26RNL4JYFTOTI",
+            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+            "EvaluateTargetHealth": true
+        }
+    },
+    {
+        "Name": "bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+            "HostedZoneId": "Z26RNL4JYFTOTI",
+            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+            "EvaluateTargetHealth": true
+        }
+    },
+    {
+        "Name": "bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+            "HostedZoneId": "Z26RNL4JYFTOTI",
+            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+            "EvaluateTargetHealth": true
+        }
+    }
+]
+[sikaj01@ip-10-56-128-233 ~]$ 
+aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR \
+  --query "ResourceRecordSets[?contains(Name, 'bitbucket-test') || contains(Name, 'bamboo-test') || contains(Name, 'artifactory-test')]"
+[
+    {
+        "Name": "artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+            "HostedZoneId": "Z26RNL4JYFTOTI",
+            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+            "EvaluateTargetHealth": true
+        }
+    },
+    {
+        "Name": "bamboo-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+            "HostedZoneId": "Z26RNL4JYFTOTI",
+            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+            "EvaluateTargetHealth": true
+        }
+    },
+    {
+        "Name": "bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "A",
+        "AliasTarget": {
+            "HostedZoneId": "Z26RNL4JYFTOTI",
+            "DNSName": "fcs-conexus-dev-d-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com.",
+            "EvaluateTargetHealth": true
+        }
+    }
+]
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U postgres -c "\du"
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "postgres" does not exist
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U artifactory -c "\du"
+                                     List of roles
+   Role name   |                         Attributes                         | Member of 
+---------------+------------------------------------------------------------+-----------
+ artifactory   | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+ bamboouser    |                                                            | {}
+ bitbucketuser |                                                            | {}
+
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U bamboouser -c "\du"
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  database "bamboouser" does not exist
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -l
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "root" does not exist
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U artifactory -l
+                                                       List of databases
+    Name     |    Owner    | Encoding |  Collate   |   Ctype    | ICU Locale | Locale Provider |       Access privileges       
+-------------+-------------+----------+------------+------------+------------+-----------------+-------------------------------
+ artifactory | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
+ bamboo      | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
+             |             |          |            |            |            |                 | bamboouser=CTc/artifactory
+ bitbucket   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
+             |             |          |            |            |            |                 | bitbucketuser=CTc/artifactory
+ postgres    | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
+ template0   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory
+ template1   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory
+(6 rows)
+
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U bamboouser -d bamboo -c "\d bandana"
+                          Table "public.bandana"
+     Column      |          Type          | Collation | Nullable | Default 
+-----------------+------------------------+-----------+----------+---------
+ bandana_id      | bigint                 |           | not null | 
+ build_id        | bigint                 |           |          | 
+ chain_id        | bigint                 |           | not null | 0
+ bandana_key     | character varying(255) |           |          | 
+ serialized_data | text                   |           |          | 
+Indexes:
+    "bandana_pkey" PRIMARY KEY, btree (bandana_id)
+    "band_key_idx" btree (build_id, bandana_key)
+
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c "\d app_property"
+                      Table "public.app_property"
+   Column   |          Type           | Collation | Nullable | Default 
+------------+-------------------------+-----------+----------+---------
+ prop_key   | character varying(50)   |           | not null | 
+ prop_value | character varying(2000) |           | not null | 
+Indexes:
+    "app_property_pkey" PRIMARY KEY, btree (prop_key)
