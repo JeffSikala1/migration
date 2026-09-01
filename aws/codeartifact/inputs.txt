@@ -29,6 +29,69 @@ sudo cat /app/nginx/conf.d/artifactory.conf
 
 --------
 
-aws elbv2 describe-target-groups --target-group-arns arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc
+# 1. Create the new internal NLB, same VPC/subnets as the existing one
+aws elbv2 create-load-balancer \
+  --name fcs-conexus-dev-D-atlnlb \
+  --type network \
+  --scheme internal \
+  --subnets subnet-0fa28a398cb662a71 subnet-0826111a038991700 \
+  --ip-address-type ipv4
 
-aws elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/artifactory-test-tg/3a629245fdf96acc
+# capture its ARN
+ATLNLB_ARN=$(aws elbv2 describe-load-balancers --names fcs-conexus-dev-D-atlnlb --query "LoadBalancers[0].LoadBalancerArn" --output text)
+echo "$ATLNLB_ARN"
+
+# 2. Create target group for 443 — TCP protocol, TCP health check on 443
+aws elbv2 create-target-group \
+  --name fcs-atlnlb-tg-443 \
+  --protocol TCP \
+  --port 443 \
+  --vpc-id vpc-0cb2efc594903069d \
+  --target-type instance \
+  --health-check-protocol TCP \
+  --health-check-port 443 \
+  --health-check-interval-seconds 30 \
+  --healthy-threshold-count 3 \
+  --unhealthy-threshold-count 3
+
+TG443_ARN=$(aws elbv2 describe-target-groups --names fcs-atlnlb-tg-443 --query "TargetGroups[0].TargetGroupArn" --output text)
+echo "$TG443_ARN"
+
+# 3. Create target group for 80 — TCP protocol, TCP health check on 80
+aws elbv2 create-target-group \
+  --name fcs-atlnlb-tg-80 \
+  --protocol TCP \
+  --port 80 \
+  --vpc-id vpc-0cb2efc594903069d \
+  --target-type instance \
+  --health-check-protocol TCP \
+  --health-check-port 80 \
+  --health-check-interval-seconds 30 \
+  --healthy-threshold-count 3 \
+  --unhealthy-threshold-count 3
+
+TG80_ARN=$(aws elbv2 describe-target-groups --names fcs-atlnlb-tg-80 --query "TargetGroups[0].TargetGroupArn" --output text)
+echo "$TG80_ARN"
+
+# 4. Register .233 to both target groups
+aws elbv2 register-targets --target-group-arn "$TG443_ARN" --targets Id=i-0dd6e0c7c4fcc27f9,Port=443
+aws elbv2 register-targets --target-group-arn "$TG80_ARN" --targets Id=i-0dd6e0c7c4fcc27f9,Port=80
+
+# 5. Create listeners on the new NLB
+aws elbv2 create-listener \
+  --load-balancer-arn "$ATLNLB_ARN" \
+  --protocol TCP --port 443 \
+  --default-actions Type=forward,TargetGroupArn="$TG443_ARN"
+
+aws elbv2 create-listener \
+  --load-balancer-arn "$ATLNLB_ARN" \
+  --protocol TCP --port 80 \
+  --default-actions Type=forward,TargetGroupArn="$TG80_ARN"
+
+# 6. Confirm health
+sleep 35
+aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
+aws elbv2 describe-target-health --target-group-arn "$TG80_ARN"
+
+# grab the new NLB's DNS name + hosted zone for the Route53 change we'll do next
+aws elbv2 describe-load-balancers --load-balancer-arns "$ATLNLB_ARN" --query "LoadBalancers[0].[DNSName,CanonicalHostedZoneId]" --output text
