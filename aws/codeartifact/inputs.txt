@@ -1,45 +1,9 @@
-# Artifactory config backup, timestamped
-curl -sf -u admin:${ARTIFACTORY_ADMIN_TOKEN} \
-  https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/configuration \
-  -o /home/sikaj01/artifactory-config-backup-$(date +%Y%m%d_%H%M%S).xml || { echo "backup failed"; exit 1; }
+docker exec dev-postgres psql -U bamboouser -d bamboo -c \
+  "SELECT bandana_key, serialized_data FROM bandana WHERE serialized_data LIKE '%bamboo-test%' OR serialized_data LIKE '%bitbucket-test%' OR serialized_data LIKE '%artifactory-test%';"
 
-# nginx vhosts backup
-sudo cp -r /app/nginx/conf.d /app/nginx/conf.d.bak.$(date +%Y%m%d_%H%M%S)
+docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c \
+  "SELECT * FROM app_property WHERE prop_value LIKE '%bitbucket-test%' OR prop_value LIKE '%bamboo-test%' OR prop_value LIKE '%artifactory-test%';"
 
 
-# Bamboo: any bandana values containing "-test" hostnames
-docker exec dev-postgres psql -U bamboo -d bamboo -c \
-  "SELECT plugin_key, bandana_key, bandana_value FROM bandana WHERE bandana_value LIKE '%bamboo-test%' OR bandana_value LIKE '%bitbucket-test%' OR bandana_value LIKE '%artifactory-test%';"
-
-# Bitbucket: any app_property rows containing "-test" hostnames
-docker exec dev-postgres psql -U bitbucket -d bitbucket -c \
-  "SELECT * FROM app_property WHERE property_value LIKE '%bitbucket-test%' OR property_value LIKE '%bamboo-test%' OR property_value LIKE '%artifactory-test%';"
-
-# Artifactory: current customBaseUrl / proxy settings
-curl -sf -u admin:${ARTIFACTORY_ADMIN_TOKEN} https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/configuration | grep -i "baseUrl\|customUrlBase" -A2
-
-# current full env for both containers, so I don't drop anything on recreate
-docker inspect dev-bamboo --format '{{range .Config.Env}}{{println .}}{{end}}'
-docker inspect dev-bitbucket --format '{{range .Config.Env}}{{println .}}{{end}}'
-
-# current nginx vhosts, to confirm exact file/server_name pattern for artifactory too
-sudo ls -la /app/nginx/conf.d/
-sudo cat /app/nginx/conf.d/artifactory.conf
-
-
---------
-
-aws route53 list-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 \
-  --query "ResourceRecordSets[?contains(Name, 'bitbucket-test') || contains(Name, 'bamboo-test') || contains(Name, 'artifactory-test')]"
-
-aws route53 list-resource-record-sets --hosted-zone-id Z0302955A48RKPB320IR \
-  --query "ResourceRecordSets[?contains(Name, 'bitbucket-test') || contains(Name, 'bamboo-test') || contains(Name, 'artifactory-test')]"
-
-
-# find the correct bamboo DB role/user
-docker exec dev-postgres psql -U artifactory -c "\du"
-docker exec dev-postgres psql -U artifactory -l
-
-# once you have the right role name, e.g.:
-docker exec dev-postgres psql -U bamboouser -d bamboo -c "\d bandana"
-docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c "\d app_property"
+echo "token set: $([ -n "$ARTIFACTORY_ADMIN_TOKEN" ] && echo yes || echo no)"
+curl -sS -u admin:${ARTIFACTORY_ADMIN_TOKEN} https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/configuration | grep -i "baseUrl\|customUrlBase" -A2
