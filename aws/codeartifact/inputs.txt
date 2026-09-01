@@ -1,9 +1,5 @@
-docker exec dev-postgres psql -U bamboouser -d bamboo -c \
-  "SELECT bandana_key, serialized_data FROM bandana WHERE serialized_data LIKE '%bamboo-test%' OR serialized_data LIKE '%bitbucket-test%' OR serialized_data LIKE '%artifactory-test%';"
+# retry with -k (internal/private CA, matches the -sk pattern used elsewhere in this environment)
+curl -sSk -u admin:${ARTIFACTORY_ADMIN_TOKEN} https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/configuration | grep -i "baseUrl\|customUrlBase" -A2
 
 docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c \
-  "SELECT * FROM app_property WHERE prop_value LIKE '%bitbucket-test%' OR prop_value LIKE '%bamboo-test%' OR prop_value LIKE '%artifactory-test%';"
-
-
-echo "token set: $([ -n "$ARTIFACTORY_ADMIN_TOKEN" ] && echo yes || echo no)"
-curl -sS -u admin:${ARTIFACTORY_ADMIN_TOKEN} https://artifactory-test.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/configuration | grep -i "baseUrl\|customUrlBase" -A2
+  "UPDATE app_property SET prop_value = 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov' WHERE prop_key = 'instance.url';"
