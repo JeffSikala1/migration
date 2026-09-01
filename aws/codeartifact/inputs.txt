@@ -1,20 +1,4 @@
-# 1. does DNS even resolve to the new NLB from .233 itself?
-dig +short bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
-dig +short fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com
-
-# 2. is the NLB actually Active (not still provisioning)?
-aws elbv2 describe-load-balancers --load-balancer-arns "$ATLNLB_ARN" --query "LoadBalancers[0].State"
-
-# 3. re-check target health hasn't flapped
-aws elbv2 describe-target-health --target-group-arn "$TG443_ARN"
-
-# 4. isolate where curl actually stalls — DNS, connect, or TLS
-curl -sk -v --connect-timeout 5 --max-time 10 https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/status 2>&1 | head -20
-
-
-
-# get the NLB's actual ENI IPs in the two subnets
-aws ec2 describe-network-interfaces --filters "Name=description,Values=*atlnlb*" --query "NetworkInterfaces[].PrivateIpAddress" --output text
-
-# then test raw TCP reachability to one of those IPs
-timeout 5 bash -c "cat < /dev/null > /dev/tcp/10.56.131.136/443" && echo "TCP OK" || echo "TCP FAILED/TIMEOUT"
+# from .34 or .33 instead of .233
+curl -sk -o /dev/null -w "%{http_code}\n" https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/status
+curl -sk -o /dev/null -w "%{http_code}\n" https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/
+curl -sk -o /dev/null -w "%{http_code}\n" https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping
