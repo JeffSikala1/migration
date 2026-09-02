@@ -1,13 +1,8 @@
-sudo certbot certonly --manual --preferred-challenges dns \
-  --cert-name dev.cnxs.vpcaas.fcs.gsa.gov \
-  -d "*.dev.cnxs.vpcaas.fcs.gsa.gov"
-
-
-cat > /tmp/acme-challenge.json <<EOF
+cat > /tmp/acme-cleanup.json <<'EOF'
 {
   "Changes": [
     {
-      "Action": "UPSERT",
+      "Action": "DELETE",
       "ResourceRecordSet": {
         "Name": "_acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov.",
         "Type": "TXT",
@@ -18,15 +13,9 @@ cat > /tmp/acme-challenge.json <<EOF
   ]
 }
 EOF
-
-aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/acme-challenge.json
-
-
-dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov @8.8.8.8
+aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/acme-cleanup.json
 
 
-# use the default resolver instead of forcing an external one directly
-dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov
-
-# or confirm Route53 itself finished propagating the change (INSYNC vs PENDING)
-aws route53 get-change --id C01571702I52S512XQ3AB
+# on .233 — check what's currently there and its expiry, to confirm it's the OLD cert we're replacing
+sudo ls -la /app/nginx/conf.d/certificates/ 2>/dev/null || sudo find / -name "dev_wildcard.pem" 2>/dev/null
+sudo openssl x509 -in <path found above> -noout -enddate
