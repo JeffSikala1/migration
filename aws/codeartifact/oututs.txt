@@ -1,84 +1,33 @@
-[sikaj01@ip-10-56-128-233 ~]$ cat > /tmp/acme-challenge.json <<EOF
-{
-  "Changes": [
-    {
-      "Action": "UPSERT",
-      "ResourceRecordSet": {
-        "Name": "_acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "TXT",
-        "TTL": 60,
-        "ResourceRecords": [{"Value": "\"9gyRND9xe_ft8Lc8_L7Iv-dVYfwD5EDwdD-E3JWxqPE\""}]
-      }
-    }
-  ]
-}
-EOF
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/acme-challenge.json
-{
-    "ChangeInfo": {
-        "Id": "/change/C01571702I52S512XQ3AB",
-        "Status": "PENDING",
-        "SubmittedAt": "2026-09-02T14:29:05.449000+00:00"
-    }
-}
-[sikaj01@ip-10-56-128-233 ~]$ dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov @8.8.8.8
-;; communications error to 8.8.8.8#53: timed out
-;; communications error to 8.8.8.8#53: timed out
-;; communications error to 8.8.8.8#53: timed out
-;; no servers could be reached
-[sikaj01@ip-10-56-128-233 ~]$ dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov @8.8.8.8
-;; communications error to 8.8.8.8#53: timed out
-;; communications error to 8.8.8.8#53: timed out
-;; communications error to 8.8.8.8#53: timed out
-;; no servers could be reached
-[sikaj01@ip-10-56-128-233 ~]$ dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov @8.8.8.8
-;; communications error to 8.8.8.8#53: timed out
-;; communications error to 8.8.8.8#53: timed out
-;; communications error to 8.8.8.8#53: timed out
-;; no servers could be reached
-[sikaj01@ip-10-56-128-233 ~]$ dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 get-change --id C01571702I52S512XQ3AB
-{
-    "ChangeInfo": {
-        "Id": "/change/C01571702I52S512XQ3AB",
-        "Status": "INSYNC",
-        "SubmittedAt": "2026-09-02T14:29:05.449000+00:00"
-    }
-}
-[sikaj01@ip-10-56-128-233 ~]$ dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 get-change --id C01571702I52S512XQ3AB
-{
-    "ChangeInfo": {
-        "Id": "/change/C01571702I52S512XQ3AB",
-        "Status": "INSYNC",
-        "SubmittedAt": "2026-09-02T14:29:05.449000+00:00"
-    }
-}
-[sikaj01@ip-10-56-128-233 ~]$ cat > /tmp/acme-cleanup.json <<'EOF'
-{
-  "Changes": [
-    {
-      "Action": "DELETE",
-      "ResourceRecordSet": {
-        "Name": "_acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "TXT",
-        "TTL": 60,
-        "ResourceRecords": [{"Value": "\"9gyRND9xe_ft8Lc8_L7Iv-dVYfwD5EDwdD-E3JWxqPE\""}]
-      }
-    }
-  ]
-}
-EOF
-[sikaj01@ip-10-56-128-233 ~]$ aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/acme-cleanup.json
-{
-    "ChangeInfo": {
-        "Id": "/change/C03577642QP7H0YC5D6QJ",
-        "Status": "PENDING",
-        "SubmittedAt": "2026-09-02T14:43:04.552000+00:00"
-    }
-}
-[sikaj01@ip-10-56-128-233 ~]$ sudo ls -la /app/nginx/conf.d/certificates/ 2>/dev/null || sudo find / -name "dev_wildcard.pem" 2>/dev/null
-[sudo] password for sikaj01: 
-/app/nginx/certificates/dev_wildcard.pem
+[sikaj01@ip-10-56-112-33 ~]$ sudo cp /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem /tmp/dev_wildcard_new.pem
+[sikaj01@ip-10-56-112-33 ~]$ sudo cp /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/privkey.pem /tmp/dev_privatekey_new.key
+[sikaj01@ip-10-56-112-33 ~]$ sudo chown sikaj01:sikaj01 /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key
+[sikaj01@ip-10-56-112-33 ~]$ sudo chmod 640 /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key
+[sikaj01@ip-10-56-112-33 ~]$ scp /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key sikaj01@10.56.128.233:/tmp/
+Authorized uses only. All activity may be monitored and reported.
+dev_wildcard_new.pem                                                                                                            100% 5692     5.6MB/s   00:00    
+dev_privatekey_new.key                                                                                                          100% 1704     1.9MB/s   00:00    
+[sikaj01@ip-10-56-112-33 ~]$ rm -f /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key
+[sikaj01@ip-10-56-112-33 ~]$ 
+
+
+[sikaj01@ip-10-56-128-233 ~]$ sudo cp /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem /tmp/dev_wildcard_new.pem
+cp: cannot stat '/etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem': No such file or directory
+[sikaj01@ip-10-56-128-233 ~]$ sudo cp /app/nginx/certificates/dev_wildcard.pem /app/nginx/certificates/dev_wildcard.pem.bak.$(date +%Y%m%d_%H%M%S)
+[sikaj01@ip-10-56-128-233 ~]$ sudo cp /app/nginx/certificates/dev_privatekey.key /app/nginx/certificates/dev_privatekey.key.bak.$(date +%Y%m%d_%H%M%S)
+[sikaj01@ip-10-56-128-233 ~]$ sudo cp /tmp/dev_wildcard_new.pem /app/nginx/certificates/dev_wildcard.pem
+[sikaj01@ip-10-56-128-233 ~]$ sudo cp /tmp/dev_privatekey_new.key /app/nginx/certificates/dev_privatekey.key
+[sikaj01@ip-10-56-128-233 ~]$ sudo chown root:root /app/nginx/certificates/dev_wildcard.pem /app/nginx/certificates/dev_privatekey.key
+[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 640 /app/nginx/certificates/dev_wildcard.pem
+[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 600 /app/nginx/certificates/dev_privatekey.key
+[sikaj01@ip-10-56-128-233 ~]$ rm -f /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key
+[sikaj01@ip-10-56-128-233 ~]$ docker exec dev-nginx nginx -t && docker exec dev-nginx nginx -s reload
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+2026/09/02 14:50:38 [notice] 138#138: signal process started
 [sikaj01@ip-10-56-128-233 ~]$ sudo openssl x509 -in /app/nginx/certificates/dev_wildcard.pem -noout -enddate
-notAfter=Sep  7 14:30:53 2026 GMT
+notAfter=Dec  1 13:37:21 2026 GMT
+[sikaj01@ip-10-56-128-233 ~]$ echo | openssl s_client -connect localhost:443 -servername bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov 2>/dev/null | openssl x509 -noout -enddate
+notAfter=Dec  1 13:37:21 2026 GMT
+[sikaj01@ip-10-56-128-233 ~]$
+
+
