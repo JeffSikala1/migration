@@ -1,2 +1,25 @@
-sudo openssl x509 -in /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem -noout -text | grep -A2 "Subject Alternative Name"
-sudo openssl x509 -in /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem -noout -subject -enddate
+sudo certbot certonly --manual --preferred-challenges dns \
+  --cert-name dev.cnxs.vpcaas.fcs.gsa.gov \
+  -d "*.dev.cnxs.vpcaas.fcs.gsa.gov"
+
+
+cat > /tmp/acme-challenge.json <<EOF
+{
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "_acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "TXT",
+        "TTL": 60,
+        "ResourceRecords": [{"Value": "\"<PASTE_THE_EXACT_VALUE_CERTBOT_SHOWED>\""}]
+      }
+    }
+  ]
+}
+EOF
+
+aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/acme-challenge.json
+
+
+dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov @8.8.8.8
