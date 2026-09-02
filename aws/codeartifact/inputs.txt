@@ -1,21 +1,33 @@
-cat > /tmp/acme-cleanup.json <<'EOF'
-{
-  "Changes": [
-    {
-      "Action": "DELETE",
-      "ResourceRecordSet": {
-        "Name": "_acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov.",
-        "Type": "TXT",
-        "TTL": 60,
-        "ResourceRecords": [{"Value": "\"9gyRND9xe_ft8Lc8_L7Iv-dVYfwD5EDwdD-E3JWxqPE\""}]
-      }
-    }
-  ]
-}
-EOF
-aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/acme-cleanup.json
+sudo cp /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem /tmp/dev_wildcard_new.pem
+sudo cp /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/privkey.pem /tmp/dev_privatekey_new.key
+sudo chown sikaj01:sikaj01 /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key
+sudo chmod 640 /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key
+
+scp /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key sikaj01@10.56.128.233:/tmp/
+
+# clean up local temp copies immediately after transfer
+rm -f /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key
 
 
-# on .233 — check what's currently there and its expiry, to confirm it's the OLD cert we're replacing
-sudo ls -la /app/nginx/conf.d/certificates/ 2>/dev/null || sudo find / -name "dev_wildcard.pem" 2>/dev/null
+# on .233
+
+# back up the current (soon-to-expire) cert files first
+sudo cp /app/nginx/certificates/dev_wildcard.pem /app/nginx/certificates/dev_wildcard.pem.bak.$(date +%Y%m%d_%H%M%S)
+sudo cp /app/nginx/certificates/dev_privatekey.key /app/nginx/certificates/dev_privatekey.key.bak.$(date +%Y%m%d_%H%M%S)
+
+# replace with the renewed cert, preserving ownership/permission pattern of the originals
+sudo cp /tmp/dev_wildcard_new.pem /app/nginx/certificates/dev_wildcard.pem
+sudo cp /tmp/dev_privatekey_new.key /app/nginx/certificates/dev_privatekey.key
+sudo chown root:root /app/nginx/certificates/dev_wildcard.pem /app/nginx/certificates/dev_privatekey.key
+sudo chmod 640 /app/nginx/certificates/dev_wildcard.pem
+sudo chmod 600 /app/nginx/certificates/dev_privatekey.key
+
+# clean up the transferred temp files
+rm -f /tmp/dev_wildcard_new.pem /tmp/dev_privatekey_new.key
+
+# validate and reload
+docker exec dev-nginx nginx -t && docker exec dev-nginx nginx -s reload
+
+# confirm the new expiry is actually live
 sudo openssl x509 -in /app/nginx/certificates/dev_wildcard.pem -noout -enddate
+echo | openssl s_client -connect localhost:443 -servername bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov 2>/dev/null | openssl x509 -noout -enddate
