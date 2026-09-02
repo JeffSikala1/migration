@@ -5,4 +5,78 @@
 [sikaj01@ip-10-56-112-33 ~]$ sudo openssl x509 -in /etc/letsencrypt/live/dev.cnxs.vpcaas.fcs.gsa.gov/fullchain.pem -noout -subject -enddate
 subject=CN=*.dev.cnxs.vpcaas.fcs.gsa.gov
 notAfter=Sep  7 14:30:53 2026 GMT
-[sikaj01@ip-10-56-112-33 ~]$ 
+[sikaj01@ip-10-56-112-33 ~]$ sudo certbot certonly --manual --preferred-challenges dns \
+  --cert-name dev.cnxs.vpcaas.fcs.gsa.gov \
+  -d "*.dev.cnxs.vpcaas.fcs.gsa.gov"
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+An RSA certificate named dev.cnxs.vpcaas.fcs.gsa.gov already exists. Do you want
+to update its key type to ECDSA?
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+(U)pdate key type/(K)eep existing key type: K
+Renewing an existing certificate for *.dev.cnxs.vpcaas.fcs.gsa.gov
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Please deploy a DNS TXT record under the name:
+
+_acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov.
+
+with the following value:
+
+9gyRND9xe_ft8Lc8_L7Iv-dVYfwD5EDwdD-E3JWxqPE
+
+Before continuing, verify the TXT record has been deployed. Depending on the DNS
+provider, this may take some time, from a few seconds to multiple minutes. You can
+check if it has finished deploying with aid of online tools, such as the Google
+Admin Toolbox: https://toolbox.googleapps.com/apps/dig/#TXT/_acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov.
+Look for one or more bolded line(s) below the line ';ANSWER'. It should show the
+value(s) you've just added.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Press Enter to Continue
+
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ ssh sikaj01@10.56.128.233
+Authorized uses only. All activity may be monitored and reported.
+Authorized uses only. All activity may be monitored and reported.
+   ,     #_
+   ~\_  ####_        Amazon Linux 2023
+  ~~  \_#####\
+  ~~     \###|
+  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+Last login: Tue Sep  1 21:11:09 2026 from 10.56.112.33
+[sikaj01@ip-10-56-128-233 ~]$ cat > /tmp/acme-challenge.json <<EOF
+{
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "_acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov.",
+        "Type": "TXT",
+        "TTL": 60,
+        "ResourceRecords": [{"Value": "\"9gyRND9xe_ft8Lc8_L7Iv-dVYfwD5EDwdD-E3JWxqPE\""}]
+      }
+    }
+  ]
+}
+EOF
+[sikaj01@ip-10-56-128-233 ~]$ aws route53 change-resource-record-sets --hosted-zone-id Z00469081L8WP3FVPM748 --change-batch file:///tmp/acme-challenge.json
+{
+    "ChangeInfo": {
+        "Id": "/change/C01571702I52S512XQ3AB",
+        "Status": "PENDING",
+        "SubmittedAt": "2026-09-02T14:29:05.449000+00:00"
+    }
+}
+[sikaj01@ip-10-56-128-233 ~]$ dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov @8.8.8.8
+;; communications error to 8.8.8.8#53: timed out
+;; communications error to 8.8.8.8#53: timed out
+;; communications error to 8.8.8.8#53: timed out
+;; no servers could be reached
+[sikaj01@ip-10-56-128-233 ~]$ dig +short TXT _acme-challenge.dev.cnxs.vpcaas.fcs.gsa.gov @8.8.8.8
+
