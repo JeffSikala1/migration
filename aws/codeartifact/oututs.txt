@@ -1,461 +1,64 @@
-[sikaj01@ip-10-56-112-35 ~]$ INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
-echo "Instance ID: $INSTANCE_ID"
-Instance ID: i-077549ad791760d85
-[sikaj01@ip-10-56-112-35 ~]$ aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
-  --query "Reservations[0].Instances[0].{AMI:ImageId,Type:InstanceType,SubnetId:SubnetId,VpcId:VpcId,SecurityGroups:SecurityGroups,IAMProfile:IamInstanceProfile.Arn,KeyName:KeyName,AZ:Placement.AvailabilityZone,PrivateIP:PrivateIpAddress,Tags:Tags}"
-{
-    "AMI": "ami-034fab89e22e42287",
-    "Type": "m6a.4xlarge",
-    "SubnetId": "subnet-03dfb5138b5df60b6",
-    "VpcId": "vpc-039e133bf6811536d",
-    "SecurityGroups": [
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.112.233" \
+  --query 'Reservations[0].Instances[0].[InstanceId,SubnetId,SecurityGroups,IamInstanceProfile,KeyName]'
+null
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.128.233"   --query 'Reservations[0].Instances[0].[InstanceId,SubnetId,SecurityGroups,IamIns
+tanceProfile,KeyName]'
+[
+    "i-0dd6e0c7c4fcc27f9",
+    "subnet-03b2ad70c865c117e",
+    [
         {
-            "GroupId": "sg-0425adaa324674233",
-            "GroupName": "vpc-039e133bf6811536d20240508172459365500000001"
+            "GroupId": "sg-011fa66bc3ef9c842",
+            "GroupName": "vpc-0cb2efc594903069d20250114205005598700000001"
         }
     ],
-    "IAMProfile": "arn:aws:iam::339713019047:instance-profile/ec2_profile",
-    "KeyName": "cloudshellkey",
-    "AZ": "us-east-1b",
-    "PrivateIP": "10.56.112.35",
-    "Tags": [
+    null,
+    "jsikala-kp-00"
+]
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-security-groups --group-ids sg-011fa66bc3ef9c842
+{
+    "SecurityGroups": [
         {
-            "Key": "Env",
-            "Value": "Mgmt"
-        },
-        {
-            "Key": "Name",
-            "Value": "Denali"
-        },
-        {
-            "Key": "ResourceClass",
-            "Value": "Development"
-        },
-        {
-            "Key": "Service",
-            "Value": "BuildServer"
-        },
-        {
-            "Key": "Team",
-            "Value": "Ops"
-        },
-        {
-            "Key": "Application",
-            "Value": "Conexus"
-        },
-        {
-            "Key": "ResourceRole",
-            "Value": "Maven Build Agent Service"
+            "GroupId": "sg-011fa66bc3ef9c842",
+            "IpPermissionsEgress": [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [],
+                    "IpRanges": [
+                        {
+                            "CidrIp": "0.0.0.0/0"
+                        }
+                    ],
+                    "Ipv6Ranges": [
+                        {
+                            "CidrIpv6": "::/0"
+                        }
+                    ],
+                    "PrefixListIds": []
+                }
+            ],
+            "VpcId": "vpc-0cb2efc594903069d",
+            "SecurityGroupArn": "arn:aws:ec2:us-east-1:471112718870:security-group/sg-011fa66bc3ef9c842",
+            "OwnerId": "471112718870",
+            "GroupName": "vpc-0cb2efc594903069d20250114205005598700000001",
+            "Description": "Managed by Terraform",
+            "IpPermissions": [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [],
+                    "IpRanges": [
+                        {
+                            "CidrIp": "0.0.0.0/0"
+                        }
+                    ],
+                    "Ipv6Ranges": [
+                        {
+                            "CidrIpv6": "::/0"
+                        }
+                    ],
+                    "PrefixListIds": []
+                }
+            ]
         }
     ]
 }
-[sikaj01@ip-10-56-112-35 ~]$ docker inspect ip-10-56-112-35.ec2.internal-ba-1
-[
-    {
-        "Id": "3afb283158dfdbaa93c9edbbdc71660f83dabd32cf5419da35588a0ddeb774fd",
-        "Created": "2026-07-31T18:08:12.768763101Z",
-        "Path": "bash",
-        "Args": [
-            "-lc",
-            "\n      set -e\n      echo 'startup umask before change:' $(umask)\n      umask 0002\n      echo 'startup umask after change:' $(umask)\n      mkdir -p /opt/bamboo-keys\n      mkdir -p /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1\n      exec java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/\n    "
-        ],
-        "State": {
-            "Status": "running",
-            "Running": true,
-            "Paused": false,
-            "Restarting": false,
-            "OOMKilled": false,
-            "Dead": false,
-            "Pid": 4719,
-            "ExitCode": 0,
-            "Error": "",
-            "StartedAt": "2026-08-25T13:12:03.132841314Z",
-            "FinishedAt": "2026-08-25T13:11:22.590650313Z"
-        },
-        "Image": "sha256:c97abc6c7cab73173d2198bd10a35a93bc6d20e13013bdb0b9db7ec0f01c7e4d",
-        "ResolvConfPath": "/var/lib/docker/containers/3afb283158dfdbaa93c9edbbdc71660f83dabd32cf5419da35588a0ddeb774fd/resolv.conf",
-        "HostnamePath": "/var/lib/docker/containers/3afb283158dfdbaa93c9edbbdc71660f83dabd32cf5419da35588a0ddeb774fd/hostname",
-        "HostsPath": "/var/lib/docker/containers/3afb283158dfdbaa93c9edbbdc71660f83dabd32cf5419da35588a0ddeb774fd/hosts",
-        "LogPath": "/var/lib/docker/containers/3afb283158dfdbaa93c9edbbdc71660f83dabd32cf5419da35588a0ddeb774fd/3afb283158dfdbaa93c9edbbdc71660f83dabd32cf5419da35588a0ddeb774fd-json.log",
-        "Name": "/ip-10-56-112-35.ec2.internal-ba-1",
-        "RestartCount": 0,
-        "Driver": "overlay2",
-        "Platform": "linux",
-        "MountLabel": "",
-        "ProcessLabel": "",
-        "AppArmorProfile": "",
-        "ExecIDs": null,
-        "HostConfig": {
-            "Binds": [
-                "/opt/bamboo-keys:/opt/bamboo-keys:ro",
-                "/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1:/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1",
-                "/var/run/docker.sock:/var/run/docker.sock"
-            ],
-            "ContainerIDFile": "",
-            "LogConfig": {
-                "Type": "json-file",
-                "Config": {
-                    "max-file": "3",
-                    "max-size": "100m"
-                }
-            },
-            "NetworkMode": "isolated_nw",
-            "PortBindings": {},
-            "RestartPolicy": {
-                "Name": "unless-stopped",
-                "MaximumRetryCount": 0
-            },
-            "AutoRemove": false,
-            "VolumeDriver": "",
-            "VolumesFrom": null,
-            "ConsoleSize": [
-                89,
-                141
-            ],
-            "CapAdd": null,
-            "CapDrop": null,
-            "CgroupnsMode": "private",
-            "Dns": [],
-            "DnsOptions": [],
-            "DnsSearch": [],
-            "ExtraHosts": null,
-            "GroupAdd": null,
-            "IpcMode": "private",
-            "Cgroup": "",
-            "Links": null,
-            "OomScoreAdj": 0,
-            "PidMode": "",
-            "Privileged": false,
-            "PublishAllPorts": false,
-            "ReadonlyRootfs": false,
-            "SecurityOpt": null,
-            "UTSMode": "",
-            "UsernsMode": "",
-            "ShmSize": 67108864,
-            "Sysctls": {
-                "net.ipv4.ip_forward": "1"
-            },
-            "Runtime": "runc",
-            "Isolation": "",
-            "CpuShares": 0,
-            "Memory": 0,
-            "NanoCpus": 0,
-            "CgroupParent": "",
-            "BlkioWeight": 0,
-            "BlkioWeightDevice": [],
-            "BlkioDeviceReadBps": [],
-            "BlkioDeviceWriteBps": [],
-            "BlkioDeviceReadIOps": [],
-            "BlkioDeviceWriteIOps": [],
-            "CpuPeriod": 0,
-            "CpuQuota": 0,
-            "CpuRealtimePeriod": 0,
-            "CpuRealtimeRuntime": 0,
-            "CpusetCpus": "",
-            "CpusetMems": "",
-            "Devices": [],
-            "DeviceCgroupRules": null,
-            "DeviceRequests": null,
-            "MemoryReservation": 0,
-            "MemorySwap": 0,
-            "MemorySwappiness": null,
-            "OomKillDisable": null,
-            "PidsLimit": null,
-            "Ulimits": [
-                {
-                    "Name": "nofile",
-                    "Hard": 65536,
-                    "Soft": 32768
-                }
-            ],
-            "CpuCount": 0,
-            "CpuPercent": 0,
-            "IOMaximumIOps": 0,
-            "IOMaximumBandwidth": 0,
-            "MaskedPaths": [
-                "/proc/asound",
-                "/proc/acpi",
-                "/proc/kcore",
-                "/proc/keys",
-                "/proc/latency_stats",
-                "/proc/timer_list",
-                "/proc/timer_stats",
-                "/proc/sched_debug",
-                "/proc/scsi",
-                "/sys/firmware",
-                "/sys/devices/virtual/powercap"
-            ],
-            "ReadonlyPaths": [
-                "/proc/bus",
-                "/proc/fs",
-                "/proc/irq",
-                "/proc/sys",
-                "/proc/sysrq-trigger"
-            ],
-            "Init": true
-        },
-        "GraphDriver": {
-            "Data": {
-                "LowerDir": "/var/lib/docker/overlay2/7a1fdb0afe4c845b45f00708cf8bd6d5a976cd99d498f699f81d4a8eee94e4d8-init/diff:/var/lib/docker/overlay2/d7f01b45d5429ecc484ee350852f70b182e3906bdc744d32e4bfa8d7ea44268d/diff:/var/lib/docker/overlay2/4082a9ae44886958769c8a664fe787f7ceb04e847a2cb0388f5621ad038c7c0d/diff:/var/lib/docker/overlay2/28a7efcb61acd5b8097de84e8320f8cee37b9abd9eb7ca2287c623e11e21e687/diff:/var/lib/docker/overlay2/ffa4048e1acc76ce5877a61e92fa8275228f662b2478d07e0f8c7e06f8a00e32/diff:/var/lib/docker/overlay2/b5e23541109f2e9ce74222e1e926c8ee6f2340203694c73c42feaad9681f6fbb/diff:/var/lib/docker/overlay2/a11d5df97e50f93d7d504fc96b4e9bc95e59fc7f8f3bda29ec13914a60d5730b/diff:/var/lib/docker/overlay2/0bc0471071415aa9ab40468105e2416c6a63d1eca5c9396e54c090c237369337/diff:/var/lib/docker/overlay2/28cbde41a34f2367ce210fa2a49a996cae8d169e83dc8780c80d99c1514c877d/diff:/var/lib/docker/overlay2/b66a51fa1e3dd90fb1887940759a488d26f39a1f2786d2b201088c7cd6a831db/diff:/var/lib/docker/overlay2/e84ecaebacb42e805cf82e981b88ab142f4dddda271323956189b91d22d3fb81/diff:/var/lib/docker/overlay2/2fd5c38f5429abace5af2c26fa8e32da885433eb9a9931445906ab3d9e773f05/diff:/var/lib/docker/overlay2/c4b2545b79dade7701d4db19a73c3edac898932d8a94483b379119b16a7e97ce/diff:/var/lib/docker/overlay2/c87f6f597a57eb3944bcc5565ea1ae6859afbc95bd02b5af8879a35f156eb648/diff:/var/lib/docker/overlay2/ea68e1f7afd6e73baa6775df95a88b9b8bb7b4d39d67ee2d09d7e5638cfee2af/diff:/var/lib/docker/overlay2/6d1dcdb0ec7d84284a38e212ea22c7cc885d760ef8631c59fa979c8b3750c916/diff:/var/lib/docker/overlay2/77a6a0c3174f608047d410378186535f28b39b07fd0161a89863d4e653b4ffdb/diff:/var/lib/docker/overlay2/3bd66d6aab8195a373c2b6e05ca0b91e2714e9d46b0538699366d9a70d7d5fe3/diff:/var/lib/docker/overlay2/9604f27e4648eba8d59addf71da3c35642eb0074b85983a157de98bbf464175d/diff:/var/lib/docker/overlay2/90b64d167cf9259951782e354c15027dda66a2ddf17775340b8a6da8f558d7ef/diff:/var/lib/docker/overlay2/50704f5613715d225ffe27326fe111e46f27ac5cb5260e001053d854acdca490/diff:/var/lib/docker/overlay2/7b5d5edbfd703b3dbfd75ecae0d3ca2b76a2d54c5369233a89597eb0c149a3fc/diff:/var/lib/docker/overlay2/4edd33ae432d40ef84b8d2b8bc6174850038d6d277802924ac742fd53c18b243/diff:/var/lib/docker/overlay2/38378adfd6f4651f7fe0e9a935f70e9d028ad1a79fec0f568014fc8d9d94193a/diff:/var/lib/docker/overlay2/5346bf7ccde0b53801624df8d7a2170717eeb13915757f3478c8fa3d2c6a4e31/diff:/var/lib/docker/overlay2/fec32062bd205d008bb5f293f4227f0050d67c7e7e151d483f845791dc690d56/diff:/var/lib/docker/overlay2/f3731fec6635e76318b51d8b8ac194f6c5d39363e54d6315b61b0edab63ae0af/diff:/var/lib/docker/overlay2/b668bcb09a28e16b6657534da83d0e4a9bbefa1295b9ed5883708af0ca20e700/diff:/var/lib/docker/overlay2/673c14d301c4fa544671f19dcd447d8981e88635b88dbbc7815eb729cb81d72a/diff:/var/lib/docker/overlay2/2e974fed054758be6c862103986523d25edddf91fc1afcb83ecde58b0e3f47f8/diff:/var/lib/docker/overlay2/b3b915557272e705d33c0bbca3a5091ff8ccdb5e1a4f216c209635d6a5f55691/diff",
-                "MergedDir": "/var/lib/docker/overlay2/7a1fdb0afe4c845b45f00708cf8bd6d5a976cd99d498f699f81d4a8eee94e4d8/merged",
-                "UpperDir": "/var/lib/docker/overlay2/7a1fdb0afe4c845b45f00708cf8bd6d5a976cd99d498f699f81d4a8eee94e4d8/diff",
-                "WorkDir": "/var/lib/docker/overlay2/7a1fdb0afe4c845b45f00708cf8bd6d5a976cd99d498f699f81d4a8eee94e4d8/work"
-            },
-            "Name": "overlay2"
-        },
-        "Mounts": [
-            {
-                "Type": "bind",
-                "Source": "/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1",
-                "Destination": "/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1",
-                "Mode": "",
-                "RW": true,
-                "Propagation": "rprivate"
-            },
-            {
-                "Type": "bind",
-                "Source": "/opt/bamboo-keys",
-                "Destination": "/opt/bamboo-keys",
-                "Mode": "ro",
-                "RW": false,
-                "Propagation": "rprivate"
-            },
-            {
-                "Type": "bind",
-                "Source": "/var/run/docker.sock",
-                "Destination": "/var/run/docker.sock",
-                "Mode": "",
-                "RW": true,
-                "Propagation": "rprivate"
-            }
-        ],
-        "Config": {
-            "Hostname": "ip-10-56-112-35.ec2.internal-ba-1",
-            "Domainname": "",
-            "User": "root",
-            "AttachStdin": false,
-            "AttachStdout": false,
-            "AttachStderr": false,
-            "Tty": false,
-            "OpenStdin": false,
-            "StdinOnce": false,
-            "Env": [
-                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                "JAVA_HOME=/etc/alternatives/java_sdk_21/",
-                "MAVEN_VERSION=3.9.16",
-                "MAVEN_HOME=/usr/share/maven"
-            ],
-            "Cmd": [
-                "bash",
-                "-lc",
-                "\n      set -e\n      echo 'startup umask before change:' $(umask)\n      umask 0002\n      echo 'startup umask after change:' $(umask)\n      mkdir -p /opt/bamboo-keys\n      mkdir -p /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1\n      exec java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/\n    "
-            ],
-            "Image": "339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342",
-            "Volumes": null,
-            "WorkingDir": "",
-            "Entrypoint": null,
-            "OnBuild": null,
-            "Labels": {
-                "io.buildah.version": "1.33.15",
-                "maintainer": "Madhav Kundala <madhav.kundala@gsa.gov>",
-                "org.label-schema.build-date": "20260713",
-                "org.label-schema.license": "GPLv2",
-                "org.label-schema.name": "CentOS Stream 10 Base Image",
-                "org.label-schema.schema-version": "1.0",
-                "org.label-schema.vendor": "CentOS"
-            }
-        },
-        "NetworkSettings": {
-            "Bridge": "",
-            "SandboxID": "b15b466b16f1c995750ecc2c607e3db6508ead4dfb34f0f7f9f466b6a1c54c3f",
-            "SandboxKey": "/var/run/docker/netns/b15b466b16f1",
-            "Ports": {},
-            "HairpinMode": false,
-            "LinkLocalIPv6Address": "",
-            "LinkLocalIPv6PrefixLen": 0,
-            "SecondaryIPAddresses": null,
-            "SecondaryIPv6Addresses": null,
-            "EndpointID": "",
-            "Gateway": "",
-            "GlobalIPv6Address": "",
-            "GlobalIPv6PrefixLen": 0,
-            "IPAddress": "",
-            "IPPrefixLen": 0,
-            "IPv6Gateway": "",
-            "MacAddress": "",
-            "Networks": {
-                "isolated_nw": {
-                    "IPAMConfig": null,
-                    "Links": null,
-                    "Aliases": [
-                        "3afb283158df",
-                        "ip-10-56-112-35.ec2.internal-ba-1"
-                    ],
-                    "MacAddress": "02:42:ac:19:00:02",
-                    "NetworkID": "08adf00465034b171e57119ceca5887b69544f480db1f054b5af0837ae1513db",
-                    "EndpointID": "fe3147cfa2fbe2790c0989a705ee55c04b996274bc79faa20a1a09b2c69d1dcd",
-                    "Gateway": "172.25.0.1",
-                    "IPAddress": "172.25.0.2",
-                    "IPPrefixLen": 24,
-                    "IPv6Gateway": "",
-                    "GlobalIPv6Address": "",
-                    "GlobalIPv6PrefixLen": 0,
-                    "DriverOpts": null,
-                    "DNSNames": [
-                        "ip-10-56-112-35.ec2.internal-ba-1",
-                        "3afb283158df"
-                    ]
-                }
-            }
-        }
-    }
-]
-
-[sikaj01@ip-10-56-112-35 ~]$ docker inspect ip-10-56-112-35.ec2.internal-ba-1 --format '{{json .Config.Cmd}}' | python3 -m json.tool
-[
-    "bash",
-    "-lc",
-    "\n      set -e\n      echo 'startup umask before change:' $(umask)\n      umask 0002\n      echo 'startup umask after change:' $(umask)\n      mkdir -p /opt/bamboo-keys\n      mkdir -p /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1\n      exec java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/\n    "
-]
-
-[sikaj01@ip-10-56-112-35 ~]$ docker inspect ip-10-56-112-35.ec2.internal-ba-1 --format '{{json .Config.Cmd}}' | python3 -m json.tool
-[
-    "bash",
-    "-lc",
-    "\n      set -e\n      echo 'startup umask before change:' $(umask)\n      umask 0002\n      echo 'startup umask after change:' $(umask)\n      mkdir -p /opt/bamboo-keys\n      mkdir -p /cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1\n      exec java -Dbamboo.home=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1 -jar /opt/bamboo-agent.jar https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/\n    "
-]
-[sikaj01@ip-10-56-112-35 ~]$ docker exec ip-10-56-112-35.ec2.internal-ba-1 find / -maxdepth 4 -iname "*agent.cfg*" -o -iname "*bamboo-agent*" 2>/dev/null
-/opt/bamboo-agent.jar
-/root/bamboo-agent-home
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/bamboo-agent.cfg.xml
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/atlassian-bamboo-agent.log.1
-/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-1/atlassian-bamboo-agent.log
-[sikaj01@ip-10-56-112-35 ~]$ docker exec ip-10-56-112-35.ec2.internal-ba-1 cat /opt/bamboo-agent/bin/agent.cfg.xml 2>/dev/null || echo "not at that path"
-not at that path
-[sikaj01@ip-10-56-112-35 ~]$ ls -alh /opt/
-total 32K
-drwxr-xr-x. 12 root     root     185 Sep  3 17:12 .
-dr-xr-xr-x. 21 root     root     284 Apr 30 17:52 ..
-drwxr-xr-x.  4 root     root      30 Sep 26  2025 BESClient
-drwxr-x---.  3 root     root     16K Aug 25 13:11 CrowdStrike
-drwxr-x---.  3 root     root      19 Sep  3 17:12 Elastic
-drwxr-xr-x.  5 root     root      64 Sep 20  2025 aws
-drwxr-xr-x.  2 root     root     104 Mar 17 16:57 bamboo-keys
-drwx--x--x.  4 root     root      28 Sep 26  2025 containerd
-drwxr-xr-x. 10 dd-agent dd-agent 16K Aug 25 13:09 datadog-agent
-drwxr-xr-x.  5 root     root      68 Jun  2 14:41 datadog-packages
-drwxrwxr-x.  8 root     root      73 Sep 20  2025 nessus_agent
-drwxr-x---.  2 root     root       6 May  8 15:25 scripts
-[sikaj01@ip-10-56-112-35 ~]$ ls -alh /opt/bamboo-keys/
-total 16K
-drwxr-xr-x.  2 root root  104 Mar 17 16:57 .
-drwxr-xr-x. 12 root root  185 Sep  3 17:12 ..
--rw-------.  1 root root 3.4K Mar 17 13:50 bitbucket_ci
--rw-r--r--.  1 root root  745 Mar 17 13:50 bitbucket_ci.pub
--rw-------.  1 root root 3.2K Mar 17 17:11 bitbucket_ci_jgit
--rw-r--r--.  1 root root  759 Mar 17 17:11 bitbucket_ci_jgit.pub
-[sikaj01@ip-10-56-112-35 ~]$ ls -alh /opt/containerd/
-ls: cannot open directory '/opt/containerd/': Permission denied
-[sikaj01@ip-10-56-112-35 ~]$ sudo !!
-sudo ls -alh /opt/containerd/
-[sudo] password for sikaj01: 
-Sorry, try again.
-[sudo] password for sikaj01: 
-total 0
-drwx--x--x.  4 root root  28 Sep 26  2025 .
-drwxr-xr-x. 12 root root 185 Sep  3 17:12 ..
-drwx--x--x.  2 root root   6 Sep 26  2025 bin
-drwx--x--x.  2 root root   6 Sep 26  2025 lib
-[sikaj01@ip-10-56-112-35 ~]$ sudo ls -alh /opt/containerd/lib
-total 0
-drwx--x--x. 2 root root  6 Sep 26  2025 .
-drwx--x--x. 4 root root 28 Sep 26  2025 ..
-[sikaj01@ip-10-56-112-35 ~]$ sudo ls -alh /opt/containerd/bin
-total 0
-drwx--x--x. 2 root root  6 Sep 26  2025 .
-drwx--x--x. 4 root root 28 Sep 26  2025 ..
-[sikaj01@ip-10-56-112-35 ~]$ 
-
-
-[sikaj01@ip-10-56-112-35 ~]$ cat /app/create_agents.sh
-#!/usr/bin/env bash
-set -Eeuo pipefail
-umask 0002
-
-#DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node22-angular20-el10-2026-07-10-1705}"
-DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342}"
-NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
-
-BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
-
-NETWORK_NAME="${NETWORK_NAME:-isolated_nw}"
-NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
-
-HOST_CACHE_BASE="${HOST_CACHE_BASE:-/cache/bamboo}"
-DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
-SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
-
-echo "****************************************************************************"
-echo " Note: if Agents are getting upgraded then move and recreate /cache/bamboo"
-echo "****************************************************************************"
-#SKIP_PULL="${SKIP_PULL:-0}"
-
-command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
-systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
-
-[ -d "$SSH_KEYS_DIR" ] || { echo "ERROR: SSH key directory not found at $SSH_KEYS_DIR"; exit 1; }
-[ -f "$SSH_KEYS_DIR/bitbucket_ci" ] || { echo "ERROR: SSH key not found at $SSH_KEYS_DIR/bitbucket_ci"; exit 1; }
-chmod 600 "$SSH_KEYS_DIR/bitbucket_ci" || true
-[ -f "$SSH_KEYS_DIR/bitbucket_ci_jgit" ] && chmod 600 "$SSH_KEYS_DIR/bitbucket_ci_jgit" || true
-
-mkdir -p "$HOST_CACHE_BASE"
-
-if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
-  echo "Creating docker network $NETWORK_NAME ($NETWORK_SUBNET)..."
-  docker network create -d bridge --subnet "$NETWORK_SUBNET" "$NETWORK_NAME" >/dev/null
-else
-  echo "Docker network $NETWORK_NAME already exists."
-fi
-
-HOSTNAME_SHORT="$(hostname)"
-
-echo
-echo "Stopping/removing existing build agents..."
-docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
-
-echo
-echo "Starting build agents..."
-
-for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
-  AGENT_NAME="${HOSTNAME_SHORT}-ba-${num}"
-  HOST_AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
-  CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
-
-  mkdir -p "$HOST_AGENT_HOME"
-  echo "Agent name: $AGENT_NAME; Host Agent Home: $HOST_AGENT_HOME; Container Agent Home: $CONTAINER_AGENT_HOME; "
-  
-  #    exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
-  docker run -d \
-    -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
-    -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
-    -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
-    -h "$AGENT_NAME" \
-    --net="$NETWORK_NAME" --name="$AGENT_NAME" --init --restart=unless-stopped --sysctl net.ipv4.ip_forward=1 \
-    "$DOCKER_BUILD_AGENT_IMAGE" \
-    bash -lc "
-      set -e
-      echo 'startup umask before change:' \$(umask)
-      umask 0002
-      echo 'startup umask after change:' \$(umask)
-      mkdir -p /opt/bamboo-keys
-      mkdir -p ${CONTAINER_AGENT_HOME}
-      exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
-    "
-done
-#      mkdir -p /opt/java
-#      ln -sfn /etc/alternatives/java_sdk_21 /opt/java/openjdk
-
-echo
-echo "Running Bamboo agent containers:"
-sleep 5
-docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
