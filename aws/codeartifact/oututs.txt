@@ -1,64 +1,68 @@
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.112.233" \
-  --query 'Reservations[0].Instances[0].[InstanceId,SubnetId,SecurityGroups,IamInstanceProfile,KeyName]'
-null
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.128.233"   --query 'Reservations[0].Instances[0].[InstanceId,SubnetId,SecurityGroups,IamIns
-tanceProfile,KeyName]'
+[sikaj01@ip-10-56-112-35 ~]$ aws iam get-instance-profile --instance-profile-name ec2_profile \
+  --query 'InstanceProfile.Roles[].RoleName'
+
+An error occurred (AccessDenied) when calling the GetInstanceProfile operation: User: arn:aws:sts::339713019047:assumed-role/mgmt-ssm-role/i-077549ad791760d85 is not authorized to perform: iam:GetInstanceProfile on resource: instance profile ec2_profile because no identity-based policy allows the iam:GetInstanceProfile action. Go to https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/authorization-details/8pv1d9w30brhlf1xhptl2pm91 for complete details, or call the GetRequestAuthorizationDetails API with the following authorization id: 8pv1d9w30brhlf1xhptl2pm91
+[sikaj01@ip-10-56-112-35 ~]$ exit
+logout
+Connection to 10.56.112.35 closed.
+[sikaj01@ip-10-56-112-33 cert_renewal]$ aws iam get-instance-profile --instance-profile-name ec2_profile \
+  --query 'InstanceProfile.Roles[].RoleName'
 [
-    "i-0dd6e0c7c4fcc27f9",
-    "subnet-03b2ad70c865c117e",
-    [
-        {
-            "GroupId": "sg-011fa66bc3ef9c842",
-            "GroupName": "vpc-0cb2efc594903069d20250114205005598700000001"
-        }
-    ],
-    null,
-    "jsikala-kp-00"
+    "mgmt-ssm-role"
 ]
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-security-groups --group-ids sg-011fa66bc3ef9c842
+[sikaj01@ip-10-56-112-33 cert_renewal]$ aws iam list-attached-role-policies --role-name mgmt-ssm-role
 {
-    "SecurityGroups": [
+    "AttachedPolicies": [
         {
-            "GroupId": "sg-011fa66bc3ef9c842",
-            "IpPermissionsEgress": [
-                {
-                    "IpProtocol": "-1",
-                    "UserIdGroupPairs": [],
-                    "IpRanges": [
-                        {
-                            "CidrIp": "0.0.0.0/0"
-                        }
-                    ],
-                    "Ipv6Ranges": [
-                        {
-                            "CidrIpv6": "::/0"
-                        }
-                    ],
-                    "PrefixListIds": []
-                }
-            ],
-            "VpcId": "vpc-0cb2efc594903069d",
-            "SecurityGroupArn": "arn:aws:ec2:us-east-1:471112718870:security-group/sg-011fa66bc3ef9c842",
-            "OwnerId": "471112718870",
-            "GroupName": "vpc-0cb2efc594903069d20250114205005598700000001",
-            "Description": "Managed by Terraform",
-            "IpPermissions": [
-                {
-                    "IpProtocol": "-1",
-                    "UserIdGroupPairs": [],
-                    "IpRanges": [
-                        {
-                            "CidrIp": "0.0.0.0/0"
-                        }
-                    ],
-                    "Ipv6Ranges": [
-                        {
-                            "CidrIpv6": "::/0"
-                        }
-                    ],
-                    "PrefixListIds": []
-                }
-            ]
+            "PolicyName": "SSMSecretsPolicy",
+            "PolicyArn": "arn:aws:iam::339713019047:policy/SSMSecretsPolicy"
+        },
+        {
+            "PolicyName": "AmazonEC2ContainerRegistryPowerUser",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+        },
+        {
+            "PolicyName": "AmazonSSMManagedInstanceCore",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        },
+        {
+            "PolicyName": "CloudWatchReadOnlyAccess",
+            "PolicyArn": "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess"
+        },
+        {
+            "PolicyName": "SecretsManagerReadWrite",
+            "PolicyArn": "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+        },
+        {
+            "PolicyName": "AmazonS3FullAccess",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        },
+        {
+            "PolicyName": "ROSAKMSProviderPolicy",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/ROSAKMSProviderPolicy"
+        },
+        {
+            "PolicyName": "AWSBackupFullAccess",
+            "PolicyArn": "arn:aws:iam::aws:policy/AWSBackupFullAccess"
+        },
+        {
+            "PolicyName": "AWSCodeArtifactAdminAccess",
+            "PolicyArn": "arn:aws:iam::aws:policy/AWSCodeArtifactAdminAccess"
         }
+    ]
+}
+[sikaj01@ip-10-56-112-33 cert_renewal]$ aws iam list-role-policies --role-name mgmt-ssm-role
+{
+    "PolicyNames": [
+        "Access_Codeartifact",
+        "AllowEbsSnapshotDiscovery",
+        "AllowKmsForAtlassianBackupsBucket",
+        "AllowManagementAssumeDevRole",
+        "aws-glue-datadog-filterlogs-from-devvpc",
+        "aws-glue-datadog-filterlogs-from-testvpc",
+        "AWS-Glue-Datadog-permissions-4-23-26",
+        "Ecr-Push-Pull",
+        "read-codeartifact",
+        "test_policy"
     ]
 }
