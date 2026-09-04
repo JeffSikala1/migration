@@ -375,3 +375,87 @@ total 0
 drwx--x--x. 2 root root  6 Sep 26  2025 .
 drwx--x--x. 4 root root 28 Sep 26  2025 ..
 [sikaj01@ip-10-56-112-35 ~]$ 
+
+
+[sikaj01@ip-10-56-112-35 ~]$ cat /app/create_agents.sh
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 0002
+
+#DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node22-angular20-el10-2026-07-10-1705}"
+DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342}"
+NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
+
+BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
+
+NETWORK_NAME="${NETWORK_NAME:-isolated_nw}"
+NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
+
+HOST_CACHE_BASE="${HOST_CACHE_BASE:-/cache/bamboo}"
+DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
+SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
+
+echo "****************************************************************************"
+echo " Note: if Agents are getting upgraded then move and recreate /cache/bamboo"
+echo "****************************************************************************"
+#SKIP_PULL="${SKIP_PULL:-0}"
+
+command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
+systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
+
+[ -d "$SSH_KEYS_DIR" ] || { echo "ERROR: SSH key directory not found at $SSH_KEYS_DIR"; exit 1; }
+[ -f "$SSH_KEYS_DIR/bitbucket_ci" ] || { echo "ERROR: SSH key not found at $SSH_KEYS_DIR/bitbucket_ci"; exit 1; }
+chmod 600 "$SSH_KEYS_DIR/bitbucket_ci" || true
+[ -f "$SSH_KEYS_DIR/bitbucket_ci_jgit" ] && chmod 600 "$SSH_KEYS_DIR/bitbucket_ci_jgit" || true
+
+mkdir -p "$HOST_CACHE_BASE"
+
+if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
+  echo "Creating docker network $NETWORK_NAME ($NETWORK_SUBNET)..."
+  docker network create -d bridge --subnet "$NETWORK_SUBNET" "$NETWORK_NAME" >/dev/null
+else
+  echo "Docker network $NETWORK_NAME already exists."
+fi
+
+HOSTNAME_SHORT="$(hostname)"
+
+echo
+echo "Stopping/removing existing build agents..."
+docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
+
+echo
+echo "Starting build agents..."
+
+for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
+  AGENT_NAME="${HOSTNAME_SHORT}-ba-${num}"
+  HOST_AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
+  CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
+
+  mkdir -p "$HOST_AGENT_HOME"
+  echo "Agent name: $AGENT_NAME; Host Agent Home: $HOST_AGENT_HOME; Container Agent Home: $CONTAINER_AGENT_HOME; "
+  
+  #    exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
+  docker run -d \
+    -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
+    -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
+    -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
+    -h "$AGENT_NAME" \
+    --net="$NETWORK_NAME" --name="$AGENT_NAME" --init --restart=unless-stopped --sysctl net.ipv4.ip_forward=1 \
+    "$DOCKER_BUILD_AGENT_IMAGE" \
+    bash -lc "
+      set -e
+      echo 'startup umask before change:' \$(umask)
+      umask 0002
+      echo 'startup umask after change:' \$(umask)
+      mkdir -p /opt/bamboo-keys
+      mkdir -p ${CONTAINER_AGENT_HOME}
+      exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
+    "
+done
+#      mkdir -p /opt/java
+#      ln -sfn /etc/alternatives/java_sdk_21 /opt/java/openjdk
+
+echo
+echo "Running Bamboo agent containers:"
+sleep 5
+docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
