@@ -1,46 +1,68 @@
-[sikaj01@ip-10-56-112-33 cert_renewal]$ ssh -i ~/.ssh/id_rsa sikaj01@10.56.112.35
-Authorized uses only. All activity may be monitored and reported.
-Authorized uses only. All activity may be monitored and reported.
-   ,     #_
-   ~\_  ####_        Amazon Linux 2023
-  ~~  \_#####\
-  ~~     \###|
-  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
-   ~~       V~' '->
-    ~~~         /
-      ~~._.   _/
-         _/ _/
-       _/m/'
-Last login: Fri Sep  4 16:27:49 2026 from 10.56.112.33
-[sikaj01@ip-10-56-112-35 ~]$ cat > /tmp/build-agents-repo-policy.json <<'EOF'
-{
-  "Version": "2012-10-17",
-  "Statement": [
+[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.112.34" \
+  --query 'Reservations[0].Instances[0].[InstanceId,IamInstanceProfile]'
+[
+    "i-01d7e7fcb80559abb",
     {
-      "Sid": "AllowDevAccountPull",
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::471112718870:root"
-      },
-      "Action": [
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:BatchGetImage",
-        "ecr:BatchCheckLayerAvailability"
-      ]
+        "Arn": "arn:aws:iam::339713019047:instance-profile/ec2_profile",
+        "Id": "AIPAU6GDZJSTYIZIPIX7K"
     }
-  ]
-}
-EOF
-[sikaj01@ip-10-56-112-35 ~]$ 
-aws ecr set-repository-policy \
-  --repository-name build-agents \
-  --registry-id 339713019047 \
-  --policy-text file:///tmp/build-agents-repo-policy.json
+]
 
+[sikaj01@ip-10-56-128-233 ~]$ aws iam list-instance-profiles --query "InstanceProfiles[?contains(InstanceProfileName, 'dev-ssm')].InstanceProfileName"
+[
+    "dev-ssm-role"
+]
 
+[sikaj01@ip-10-56-128-233 ~]$ aws iam list-instance-profiles --query "InstanceProfiles[?contains(InstanceProfileName, 'dev-ssm')].InstanceProfileName"
+[
+    "dev-ssm-role"
+]
+[sikaj01@ip-10-56-128-233 ~]$ aws iam get-instance-profile --instance-profile-name <name> --query 'InstanceProfile.Roles[].RoleName'
+-bash: name: No such file or directory
+[sikaj01@ip-10-56-128-233 ~]$ aws iam get-instance-profile --instance-profile-name dev-ssm-role --query 'InstanceProfile.Roles[].RoleName'
+[
+    "dev-ssm-role"
+]
+[sikaj01@ip-10-56-128-233 ~]$ aws iam list-attached-role-policies --role-name dev-ssm-role
 {
-    "registryId": "339713019047",
-    "repositoryName": "build-agents",
-    "policyText": "{\n  \"Version\" : \"2012-10-17\",\n  \"Statement\" : [ {\n    \"Sid\" : \"AllowDevAccountPull\",\n    \"Effect\" : \"Allow\",\n    \"Principal\" : {\n      \"AWS\" : \"arn:aws:iam::471112718870:root\"\n    },\n    \"Action\" : [ \"ecr:GetDownloadUrlForLayer\", \"ecr:BatchGetImage\", \"ecr:BatchCheckLayerAvailability\" ]\n  } ]\n}"
+    "AttachedPolicies": [
+        {
+            "PolicyName": "AmazonEC2ContainerRegistryPowerUser",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+        },
+        {
+            "PolicyName": "AmazonSSMManagedInstanceCore",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        },
+        {
+            "PolicyName": "CloudWatchReadOnlyAccess",
+            "PolicyArn": "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess"
+        },
+        {
+            "PolicyName": "ssmpolicy",
+            "PolicyArn": "arn:aws:iam::471112718870:policy/ssmpolicy"
+        }
+    ]
 }
-[sikaj01@ip-10-56-112-35 ~]$ 
+[sikaj01@ip-10-56-128-233 ~]$ aws iam list-role-policies --role-name dev-ssm-role
+{
+    "PolicyNames": [
+        "Allow-jeff"
+    ]
+}
+
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.112.34" \
+  --query 'Reservations[0].Instances[0].[InstanceId,IamInstanceProfile]'
+null
+[sikaj01@ip-10-56-128-233 ~]$ exit
+logout
+Connection to 10.56.128.233 closed.
+[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.112.34" \
+  --query 'Reservations[0].Instances[0].[InstanceId,IamInstanceProfile]'
+[
+    "i-01d7e7fcb80559abb",
+    {
+        "Arn": "arn:aws:iam::339713019047:instance-profile/ec2_profile",
+        "Id": "AIPAU6GDZJSTYIZIPIX7K"
+    }
+[sikaj
