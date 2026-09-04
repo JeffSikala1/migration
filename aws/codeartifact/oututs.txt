@@ -1,106 +1,46 @@
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws iam list-attached-role-policies --role-name mgmt-ssm-role
+[sikaj01@ip-10-56-112-33 cert_renewal]$ ssh -i ~/.ssh/id_rsa sikaj01@10.56.112.35
+Authorized uses only. All activity may be monitored and reported.
+Authorized uses only. All activity may be monitored and reported.
+   ,     #_
+   ~\_  ####_        Amazon Linux 2023
+  ~~  \_#####\
+  ~~     \###|
+  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+Last login: Fri Sep  4 16:27:49 2026 from 10.56.112.33
+[sikaj01@ip-10-56-112-35 ~]$ cat > /tmp/build-agents-repo-policy.json <<'EOF'
 {
-    "AttachedPolicies": [
-        {
-            "PolicyName": "SSMSecretsPolicy",
-            "PolicyArn": "arn:aws:iam::339713019047:policy/SSMSecretsPolicy"
-        },
-        {
-            "PolicyName": "AmazonEC2ContainerRegistryPowerUser",
-            "PolicyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-        },
-        {
-            "PolicyName": "AmazonSSMManagedInstanceCore",
-            "PolicyArn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-        },
-        {
-            "PolicyName": "CloudWatchReadOnlyAccess",
-            "PolicyArn": "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess"
-        },
-        {
-            "PolicyName": "SecretsManagerReadWrite",
-            "PolicyArn": "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
-        },
-        {
-            "PolicyName": "AmazonS3FullAccess",
-            "PolicyArn": "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        },
-        {
-            "PolicyName": "ROSAKMSProviderPolicy",
-            "PolicyArn": "arn:aws:iam::aws:policy/service-role/ROSAKMSProviderPolicy"
-        },
-        {
-            "PolicyName": "AWSBackupFullAccess",
-            "PolicyArn": "arn:aws:iam::aws:policy/AWSBackupFullAccess"
-        },
-        {
-            "PolicyName": "AWSCodeArtifactAdminAccess",
-            "PolicyArn": "arn:aws:iam::aws:policy/AWSCodeArtifactAdminAccess"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowDevAccountPull",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::471112718870:root"
+      },
+      "Action": [
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability"
+      ]
+    }
+  ]
 }
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws iam list-role-policies --role-name mgmt-ssm-role
+EOF
+[sikaj01@ip-10-56-112-35 ~]$ 
+aws ecr set-repository-policy \
+  --repository-name build-agents \
+  --registry-id 339713019047 \
+  --policy-text file:///tmp/build-agents-repo-policy.json
+
+
 {
-    "PolicyNames": [
-        "Access_Codeartifact",
-        "AllowEbsSnapshotDiscovery",
-        "AllowKmsForAtlassianBackupsBucket",
-        "AllowManagementAssumeDevRole",
-        "aws-glue-datadog-filterlogs-from-devvpc",
-        "aws-glue-datadog-filterlogs-from-testvpc",
-        "AWS-Glue-Datadog-permissions-4-23-26",
-        "Ecr-Push-Pull",
-        "read-codeartifact",
-        "test_policy"
-    ]
+    "registryId": "339713019047",
+    "repositoryName": "build-agents",
+    "policyText": "{\n  \"Version\" : \"2012-10-17\",\n  \"Statement\" : [ {\n    \"Sid\" : \"AllowDevAccountPull\",\n    \"Effect\" : \"Allow\",\n    \"Principal\" : {\n      \"AWS\" : \"arn:aws:iam::471112718870:root\"\n    },\n    \"Action\" : [ \"ecr:GetDownloadUrlForLayer\", \"ecr:BatchGetImage\", \"ecr:BatchCheckLayerAvailability\" ]\n  } ]\n}"
 }
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ecr get-repository-policy --repository-name build-agents --registry-id 339713019047
-
-An error occurred (RepositoryPolicyNotFoundException) when calling the GetRepositoryPolicy operation: Repository policy does not exist for the repository with name 'build-agents' in the registry with id '339713019047'
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ecr get-repository-policy --repository-name build-agents 
-'
-An error occurred (RepositoryPolicyNotFoundException) when calling the GetRepositoryPolicy operation: Repository policy does not exist for the repository with name 'build-agents' in the registry with id '339713019047'
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ecr get-repository-policy --repository-name build-agents 
-
-An error occurred (RepositoryPolicyNotFoundException) when calling the GetRepositoryPolicy operation: Repository policy does not exist for the repository with name 'build-agents' in the registry with id '339713019047'
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ecr get-repository-policy --repository-name build-agents help
-
-[Errno 13] Permission denied: '/usr/lib/python3.9/site-packages/python_dateutil-2.8.2.dist-info'
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ecr get-repository-policy help
-
-[Errno 13] Permission denied: '/usr/lib/python3.9/site-packages/python_dateutil-2.8.2.dist-info'
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ecr 
-
-aws: [ERROR]: the following arguments are required: operation
-
-usage: aws [options] <command> <subcommand> [<subcommand> ...] [parameters]
-To see help text, you can run:
-
-  aws help
-  aws <command> help
-  aws <command> <subcommand> help
-
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ecr help
-
-[Errno 13] Permission denied: '/usr/lib/python3.9/site-packages/python_dateutil-2.8.2.dist-info'
-[sikaj01@ip-10-56-112-33 cert_renewal]$ sudo aws ecr help
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ecr get-repository-policy --repository-name build-agents --registry-id 339713019047
-
-An error occurred (RepositoryPolicyNotFoundException) when calling the GetRepositoryPolicy operation: Repository policy does not exist for the repository with name 'build-agents' in the registry with id '339713019047'
-[sikaj01@ip-10-56-112-33 cert_renewal]$ sudo 
-usage: sudo -h | -K | -k | -V
-usage: sudo -v [-ABkNnS] [-g group] [-h host] [-p prompt] [-u user]
-usage: sudo -l [-ABkNnS] [-g group] [-h host] [-p prompt] [-U user]
-            [-u user] [command [arg ...]]
-usage: sudo [-ABbEHkNnPS] [-r role] [-t type] [-C num] [-D directory]
-            [-g group] [-h host] [-p prompt] [-R directory] [-T timeout]
-            [-u user] [VAR=value] [-i | -s] [command [arg ...]]
-usage: sudo -e [-ABkNnS] [-r role] [-t type] [-C num] [-D directory]
-            [-g group] [-h host] [-p prompt] [-R directory] [-T timeout]
-            [-u user] file ...
-[sikaj01@ip-10-56-112-33 cert_renewal]$ sudo aws ecr get-repository-policy --repository-name build-agents --registry-id 339713019047
-
-An error occurred (RepositoryPolicyNotFoundException) when calling the GetRepositoryPolicy operation: Repository policy does not exist for the repository with name 'build-agents' in the registry with id '339713019047'
-[sikaj01@ip-10-56-112-33 cert_renewal]$ sudo aws ecr get-repository-policy --repository-name build-agents help
-[sikaj01@ip-10-56-112-33 cert_renewal]$ sudo aws ecr get-repository-policy --repository-name build-agents help
-[sikaj01@ip-10-56-112-33 cert_renewal]$ 
+[sikaj01@ip-10-56-112-35 ~]$ 
