@@ -1,11 +1,26 @@
-aws ecr get-repository-policy --repository-name build-agents --registry-id 339713019047
-
+cat > /tmp/build-agents-repo-policy.json <<'EOF'
 {
-  "Effect": "Allow",
-  "Principal": {"AWS": "arn:aws:iam::471112718870:root"},
-  "Action": [
-    "ecr:GetDownloadUrlForLayer",
-    "ecr:BatchGetImage",
-    "ecr:BatchCheckLayerAvailability"
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowDevAccountPull",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::471112718870:root"
+      },
+      "Action": [
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability"
+      ]
+    }
   ]
 }
+EOF
+
+aws ecr set-repository-policy \
+  --repository-name build-agents \
+  --registry-id 339713019047 \
+  --policy-text file:///tmp/build-agents-repo-policy.json
+
+
