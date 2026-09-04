@@ -1,26 +1,20 @@
-cat > /tmp/build-agents-repo-policy.json <<'EOF'
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AllowDevAccountPull",
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::471112718870:root"
-      },
-      "Action": [
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:BatchGetImage",
-        "ecr:BatchCheckLayerAvailability"
-      ]
-    }
-  ]
-}
-EOF
+aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.112.34" \
+  --query 'Reservations[0].Instances[0].[InstanceId,IamInstanceProfile]'
 
-aws ecr set-repository-policy \
-  --repository-name build-agents \
-  --registry-id 339713019047 \
-  --policy-text file:///tmp/build-agents-repo-policy.json
+aws iam list-instance-profiles --query "InstanceProfiles[?contains(InstanceProfileName, 'dev-ssm')].InstanceProfileName"
+
+aws iam get-instance-profile --instance-profile-name <name> --query 'InstanceProfile.Roles[].RoleName'
+aws iam list-attached-role-policies --role-name <role-name>
+aws iam list-role-policies --role-name <role-name>
 
 
+
+aws ec2 run-instances \
+  --image-id ami-034fab89e22e42287 \
+  --instance-type m6a.xlarge \
+  --subnet-id subnet-03b2ad70c865c117e \
+  --security-group-ids sg-011fa66bc3ef9c842 \
+  --key-name jsikala-kp-00 \
+  --iam-instance-profile Name=<dev-ssm-profile-name> \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=dev-build-agent-01},{Key=Env,Value=Dev},{Key=ResourceRole,Value=Maven Build Agent Service},{Key=Application,Value=Conexus},{Key=Team,Value=Ops}]' \
+  --count 1
