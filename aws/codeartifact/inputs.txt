@@ -1,12 +1,14 @@
-mkdir -p ~/elastic-install
-cd ~/elastic-install
-curl -L -O https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-8.19.5-linux-x86_64.tar.gz
-tar xzvf elastic-agent-8.19.5-linux-x86_64.tar.gz
-cd elastic-agent-8.19.5-linux-x86_64
+INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+echo "Instance ID: $INSTANCE_ID"
+
+aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
+  --query "Reservations[0].Instances[0].{AMI:ImageId,Type:InstanceType,SubnetId:SubnetId,VpcId:VpcId,SecurityGroups:SecurityGroups,IAMProfile:IamInstanceProfile.Arn,KeyName:KeyName,AZ:Placement.AvailabilityZone,PrivateIP:PrivateIpAddress,Tags:Tags}"
 
 
-sudo ./elastic-agent install \
-  --url=https://5b94f6e488e841b4a7bb5dcd4fc8322d.fleet.us-gov-east-1.aws.elastic-cloud.com:443 \
-  --enrollment-token=dHBfYWNaVUJCUjVCQWotYTVkZmg6V011enliZWtSeEd6emFUMVhQbEhVUQ== \
-  --non-interactive \
-  --tag=Q-CONEXUS
+docker inspect ip-10-56-112-35.ec2.internal-ba-1
+
+
+docker inspect ip-10-56-112-35.ec2.internal-ba-1 --format '{{json .Config.Cmd}}' | python3 -m json.tool
+
+docker exec ip-10-56-112-35.ec2.internal-ba-1 find / -maxdepth 4 -iname "*agent.cfg*" -o -iname "*bamboo-agent*" 2>/dev/null
+docker exec ip-10-56-112-35.ec2.internal-ba-1 cat /opt/bamboo-agent/bin/agent.cfg.xml 2>/dev/null || echo "not at that path"
