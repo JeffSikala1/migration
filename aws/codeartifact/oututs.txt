@@ -1,231 +1,223 @@
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.112.34" \
-  --query 'Reservations[0].Instances[0].[InstanceId,IamInstanceProfile]'
-[
-    "i-01d7e7fcb80559abb",
-    {
-        "Arn": "arn:aws:iam::339713019047:instance-profile/ec2_profile",
-        "Id": "AIPAU6GDZJSTYIZIPIX7K"
-    }
-]
+[sikaj01@ip-10-56-112-243 ~]$ sudo cronjob -l
+[sudo] password for sikaj01: 
+sudo: cronjob: command not found
+[sikaj01@ip-10-56-112-243 ~]$ sudo crontab -l
+# Nightly at 02:15
+15 2 * * * /app/artifactorybackup/bin/nightly_backup.sh
 
-[sikaj01@ip-10-56-128-233 ~]$ aws iam list-instance-profiles --query "InstanceProfiles[?contains(InstanceProfileName, 'dev-ssm')].InstanceProfileName"
-[
-    "dev-ssm-role"
-]
+# Weekly Sunday at 03:00
+0 3 * * 0 /app/artifactorybackup/bin/weekly_backup.sh
 
-[sikaj01@ip-10-56-128-233 ~]$ aws iam list-instance-profiles --query "InstanceProfiles[?contains(InstanceProfileName, 'dev-ssm')].InstanceProfileName"
-[
-    "dev-ssm-role"
-]
-[sikaj01@ip-10-56-128-233 ~]$ aws iam get-instance-profile --instance-profile-name <name> --query 'InstanceProfile.Roles[].RoleName'
--bash: name: No such file or directory
-[sikaj01@ip-10-56-128-233 ~]$ aws iam get-instance-profile --instance-profile-name dev-ssm-role --query 'InstanceProfile.Roles[].RoleName'
-[
-    "dev-ssm-role"
-]
-[sikaj01@ip-10-56-128-233 ~]$ aws iam list-attached-role-policies --role-name dev-ssm-role
-{
-    "AttachedPolicies": [
-        {
-            "PolicyName": "AmazonEC2ContainerRegistryPowerUser",
-            "PolicyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-        },
-        {
-            "PolicyName": "AmazonSSMManagedInstanceCore",
-            "PolicyArn": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-        },
-        {
-            "PolicyName": "CloudWatchReadOnlyAccess",
-            "PolicyArn": "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess"
-        },
-        {
-            "PolicyName": "ssmpolicy",
-            "PolicyArn": "arn:aws:iam::471112718870:policy/ssmpolicy"
-        }
-    ]
+# Daily Secrets Manager backup (encrypted to S3)
+#55 1 * * * /app/artifactorybackup/bin/secrets_backup_daily.sh
+
+# Cleanup local staging older than 1 day
+0 4 * * * find /app/artifactorybackup/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+
+[sikaj01@ip-10-56-112-243 ~]$ ls -alh/app/artifactorybackup/staging
+ls: invalid option -- '/'
+Try 'ls --help' for more information.
+[sikaj01@ip-10-56-112-243 ~]$ ls -alh /app/artifactorybackup/staging
+ls: cannot open directory '/app/artifactorybackup/staging': Permission denied
+[sikaj01@ip-10-56-112-243 ~]$ sudo !!
+sudo ls -alh /app/artifactorybackup/staging
+total 0
+drwx------. 5 root root 60 Sep  8 04:00 .
+drwxr-xr-x. 5 root root 44 Jun  1 17:42 ..
+drwxr-xr-x. 2 root root  6 Sep  6 05:34 2026-09-06
+drwxr-xr-x. 2 root root  6 Sep  7 05:34 2026-09-07
+drwxr-xr-x. 2 root root  6 Sep  8 05:34 2026-09-08
+[sikaj01@ip-10-56-112-243 ~]$ sudo ls -alh /app/artifactorybackup/staging/2026-09-06
+total 0
+drwxr-xr-x. 2 root root  6 Sep  6 05:34 .
+drwx------. 5 root root 60 Sep  8 04:00 ..
+[sikaj01@ip-10-56-112-243 ~]$ sudo cat /app/artifactorybackup/staging/2026-09-06
+cat: /app/artifactorybackup/staging/2026-09-06: Is a directory
+[sikaj01@ip-10-56-112-243 ~]$ sudo cat /app/artifactorybackup/staging/*
+cat: '/app/artifactorybackup/staging/*': No such file or directory
+[sikaj01@ip-10-56-112-243 ~]$ sudo ls -alR /app/artifactorybackup/staging/*
+ls: cannot access '/app/artifactorybackup/staging/*': No such file or directory
+[sikaj01@ip-10-56-112-243 ~]$ sudo ls -alR /app/artifactorybackup/staging/2026-09-08
+/app/artifactorybackup/staging/2026-09-08:
+total 0
+drwxr-xr-x. 2 root root  6 Sep  8 05:34 .
+drwx------. 5 root root 60 Sep  8 04:00 ..
+[sikaj01@ip-10-56-112-243 ~]$ sudo cat /app/artifactorybackup/bin/nightly_backup.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ===== Config =====
+BUCKET="s3://cnxs-artifactory-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+BASE="/app/artifactorybackup"
+STAGE="${BASE}/staging/${DATE}/${TS}"
+LOGDIR="${BASE}/logs"
+LOG="${LOGDIR}/nightly-${DATE}.log"
+HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
+AWS_REGION="${AWS_REGION:-us-east-1}"
+
+PG_CONTAINER="${PG_CONTAINER:-artifactory-postgres}"
+PG_USER="artifactory"
+DB_LIST=(${DB_LIST:-artifactory})
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+echo "==== Artifactory nightly backup start: ${TS} host=${HOSTNAME} ===="
+
+# ===== Helpers =====
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
+need aws
+need docker
+need tar
+
+have_jq=0
+if command -v jq >/dev/null 2>&1; then
+  have_jq=1
+else
+  echo "WARN: jq not found; metadata.json will be minimal."
+fi
+
+s3_put_dir() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest" --recursive
 }
-[sikaj01@ip-10-56-128-233 ~]$ aws iam list-role-policies --role-name dev-ssm-role
-{
-    "PolicyNames": [
-        "Allow-jeff"
-    ]
+
+s3_put_file() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest"
 }
 
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.112.34" \
-  --query 'Reservations[0].Instances[0].[InstanceId,IamInstanceProfile]'
-null
-[sikaj01@ip-10-56-128-233 ~]$ exit
-logout
-Connection to 10.56.128.233 closed.
-[sikaj01@ip-10-56-112-33 cert_renewal]$ aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.56.112.34" \
-  --query 'Reservations[0].Instances[0].[InstanceId,IamInstanceProfile]'
-[
-    "i-01d7e7fcb80559abb",
-    {
-        "Arn": "arn:aws:iam::339713019047:instance-profile/ec2_profile",
-        "Id": "AIPAU6GDZJSTYIZIPIX7K"
-    }
-[sikaj
+# ===== 1) Postgres dumps (logical) =====
+echo "[1/5] Postgres dumps..."
+mkdir -p "$STAGE/postgres"
 
-            ^
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 run-instances \
-  --image-id ami-034fab89e22e42287 \
-  --instance-type m6a.xlarge \
-  --subnet-id subnet-03b2ad70c865c117e \
-  --security-group-ids sg-011fa66bc3ef9c842 \
-  --key-name jsikala-kp-00 \
-  --iam-instance-profile Name=dev-ssm-role \
-  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=dev-build-agent-01},{Key=Env,Value=Dev},{Key=ResourceRole,Value=Maven Build Agent Service},{Key=Application,Value=Conexus},{Key=Team,Value=Ops}]' \
-  --count 1
+if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
+  echo "ERROR: Postgres container '$PG_CONTAINER' not running. Aborting."
+  exit 3
+fi
+
+echo "  - dumping globals (roles/grants)"
+docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
+  > "$STAGE/postgres/globals_${TS}.sql"
+
+for DB in "${DB_LIST[@]}"; do
+  echo "  - dumping ${DB}"
+  docker exec "$PG_CONTAINER" pg_dump -U "$PG_USER" -Fc "$DB" \
+    > "$STAGE/postgres/${DB}_${TS}.dump"
+done
+
+# ===== 2) Artifactory volumes (tar) =====
+# NOTE: Filestore is excluded — it is already backed by the
+# conexus-artifactory-filestore S3 bucket natively via Artifactory.
+# Nginx TLS certs are excluded — managed and backed up by the
+# Atlassian backup on .34 (shared wildcard cert).
+# artifactory/var is streamed directly to S3 — too large to stage locally.
+echo "[2/5] Artifactory volume backups..."
+mkdir -p "$STAGE/apps"
+
+echo "  - streaming artifactory/var directly to S3 (too large to stage locally)"
+# Exclude live log files (change during read, not needed for restore).
+tar -czf - \
+  --exclude=/app/jfrog/artifactory/var/log \
+  /app/jfrog/artifactory/var | \
+  pv -pterab | \
+  aws s3 cp - "${BUCKET}/apps/${DATE}/artifactory_var_${TS}.tar.gz" \
+  --sse aws:kms
+
+echo "  - tarring artifactory/security"
+tar -czf "$STAGE/apps/artifactory_security_${TS}.tar.gz" \
+  /app/jfrog/artifactory/security
+
+# ===== 3) Artifactory crypto / keystores =====
+echo "[3/5] Artifactory crypto safety backup..."
+mkdir -p "$STAGE/crypto"
+
+# master.key and join.key live under var/etc/security — already captured
+# in the var stream above, but snapshot them explicitly as a safety net.
+tar -czf "$STAGE/crypto/artifactory_keys_${TS}.tar.gz" \
+  /app/jfrog/artifactory/var/etc/security \
+  2>/dev/null || true
+
+# ===== 4) Metadata =====
+echo "[4/5] Metadata..."
+if [[ "$have_jq" -eq 1 ]]; then
+  cat > "$STAGE/metadata.json" <<JSON
 {
-    "ReservationId": "r-0b62a7f213ea3ae2a",
-    "OwnerId": "471112718870",
-    "Groups": [],
-    "Instances": [
-        {
-            "Architecture": "x86_64",
-            "BlockDeviceMappings": [],
-            "ClientToken": "30edc335-75f6-443f-bf72-338d1085e742",
-            "EbsOptimized": false,
-            "EnaSupport": true,
-            "Hypervisor": "xen",
-            "IamInstanceProfile": {
-                "Arn": "arn:aws:iam::471112718870:instance-profile/dev-ssm-role",
-                "Id": "AIPAW3MEBTILNUPJ7EPOA"
-            },
-            "NetworkInterfaces": [
-                {
-                    "Attachment": {
-                        "AttachTime": "2026-09-04T18:44:33+00:00",
-                        "AttachmentId": "eni-attach-02209679590fc756e",
-                        "DeleteOnTermination": true,
-                        "DeviceIndex": 0,
-                        "Status": "attaching",
-                        "NetworkCardIndex": 0
-                    },
-                    "Description": "",
-                    "Groups": [
-                        {
-                            "GroupId": "sg-011fa66bc3ef9c842",
-                            "GroupName": "vpc-0cb2efc594903069d20250114205005598700000001"
-                        }
-                    ],
-                    "Ipv6Addresses": [],
-                    "MacAddress": "02:19:56:67:b7:fd",
-                    "NetworkInterfaceId": "eni-06c818ffc72343ad0",
-                    "OwnerId": "471112718870",
-                    "PrivateDnsName": "ip-10-56-128-47.ec2.internal",
-                    "PrivateIpAddress": "10.56.128.47",
-                    "PrivateIpAddresses": [
-                        {
-                            "Primary": true,
-                            "PrivateDnsName": "ip-10-56-128-47.ec2.internal",
-                            "PrivateIpAddress": "10.56.128.47"
-                        }
-                    ],
-                    "SourceDestCheck": true,
-                    "Status": "in-use",
-                    "SubnetId": "subnet-03b2ad70c865c117e",
-                    "VpcId": "vpc-0cb2efc594903069d",
-                    "InterfaceType": "interface",
-                    "Operator": {
-                        "Managed": false
-                    }
-                }
-            ],
-            "RootDeviceName": "/dev/xvda",
-            "RootDeviceType": "ebs",
-            "SecurityGroups": [
-                {
-                    "GroupId": "sg-011fa66bc3ef9c842",
-                    "GroupName": "vpc-0cb2efc594903069d20250114205005598700000001"
-                }
-            ],
-            "SourceDestCheck": true,
-            "StateReason": {
-                "Code": "pending",
-                "Message": "pending"
-            },
-            "Tags": [
-                {
-                    "Key": "Env",
-                    "Value": "Dev"
-                },
-                {
-                    "Key": "Application",
-                    "Value": "Conexus"
-                },
-                {
-                    "Key": "ResourceRole",
-                    "Value": "Maven Build Agent Service"
-                },
-                {
-                    "Key": "Team",
-                    "Value": "Ops"
-                },
-                {
-                    "Key": "Name",
-                    "Value": "dev-build-agent-01"
-                }
-            ],
-            "VirtualizationType": "hvm",
-            "CpuOptions": {
-                "CoreCount": 2,
-                "ThreadsPerCore": 2
-            },
-            "CapacityReservationSpecification": {
-                "CapacityReservationPreference": "open"
-            },
-            "MetadataOptions": {
-                "State": "pending",
-                "HttpTokens": "optional",
-                "HttpPutResponseHopLimit": 1,
-                "HttpEndpoint": "enabled",
-                "HttpProtocolIpv6": "disabled",
-                "InstanceMetadataTags": "disabled"
-            },
-            "EnclaveOptions": {
-                "Enabled": false
-            },
-            "PrivateDnsNameOptions": {
-                "HostnameType": "ip-name",
-                "EnableResourceNameDnsARecord": false,
-                "EnableResourceNameDnsAAAARecord": false
-            },
-            "MaintenanceOptions": {
-                "AutoRecovery": "default",
-                "RebootMigration": "default"
-            },
-            "CurrentInstanceBootMode": "legacy-bios",
-            "Operator": {
-                "Managed": false
-            },
-            "InstanceId": "i-079b964a2338aaaa6",
-            "ImageId": "ami-034fab89e22e42287",
-            "State": {
-                "Code": 0,
-                "Name": "pending"
-            },
-            "PrivateDnsName": "ip-10-56-128-47.ec2.internal",
-            "PublicDnsName": "",
-            "StateTransitionReason": "",
-            "KeyName": "jsikala-kp-00",
-            "AmiLaunchIndex": 0,
-            "ProductCodes": [],
-            "InstanceType": "m6a.xlarge",
-            "LaunchTime": "2026-09-04T18:44:33+00:00",
-            "Placement": {
-                "AvailabilityZoneId": "use1-az1",
-                "GroupName": "",
-                "Tenancy": "default",
-                "AvailabilityZone": "us-east-1b"
-            },
-            "Monitoring": {
-                "State": "disabled"
-            },
-            "SubnetId": "subnet-03b2ad70c865c117e",
-            "VpcId": "vpc-0cb2efc594903069d",
-            "PrivateIpAddress": "10.56.128.47"
-        }
-    ]
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
+  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]')
 }
+JSON
+else
+  cat > "$STAGE/metadata.json" <<JSON
+{
+  "timestamp": "${TS}",
+  "date": "${DATE}",
+  "host": "${HOSTNAME}",
+  "region": "${AWS_REGION}",
+  "note": "jq not installed; container/volume inventory omitted"
+}
+JSON
+fi
+
+# ===== 5) Upload to S3 =====
+# Note: artifactory_var already streamed directly in step 2.
+echo "[5/5] Uploading to S3..."
+s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
+s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
+s3_put_dir  "$STAGE/crypto"   "${BUCKET}/crypto/${DATE}/"
+s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
+
+# ===== EBS snapshots =====
+echo "[EXTRA] EBS snapshots..."
+TOKEN_IMDS="$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")"
+
+INSTANCE_ID="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/instance-id)"
+
+AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/placement/availability-zone)"
+
+REGION="${AZ::-1}"
+
+VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
+  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
+
+declare -A VOL_PURPOSE
+VOL_PURPOSE["vol-078ee09ac10c02f62"]="root"
+VOL_PURPOSE["vol-060bb45ae6b8d71bc"]="artifactory"
+VOL_PURPOSE["vol-04f0ab9e32f79dc75"]="postgres"
+
+for VOL in $VOL_IDS; do
+  echo "  - snapshotting volume $VOL"
+  PURPOSE_TAG="${VOL_PURPOSE[$VOL]:-unknown}"
+  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
+    --description "Nightly Artifactory backup ${HOSTNAME} ${TS}" \
+    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-artifactory-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=artifactory-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
+    --query SnapshotId --output text)"
+  echo "    created snapshot: $SNAP_ID"
+done
+
+echo "==== Artifactory nightly backup completed OK ===="
+
+# Cleanup local staging after successful upload
+echo "Cleaning up local staging..."
+rm -rf "$STAGE"
+
+[sikaj01@ip-10-56-112-243 ~]$ sudo cat /app/artifactorybackup/bin/weekly_backup.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+BUCKET="s3://cnxs-artifactory-backups"
+DATE="$(date +%G-W%V)"
+
+aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
+aws s3 sync "${BUCKET}/apps/${DATE}/"     "${BUCKET}/weekly/apps/${DATE}/"
+aws s3 sync "${BUCKET}/crypto/${DATE}/"   "${BUCKET}/weekly/crypto/${DATE}/"
+aws s3 sync "${BUCKET}/metadata/${DATE}/" "${BUCKET}/weekly/metadata/${DATE}/
