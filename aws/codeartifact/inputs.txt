@@ -1,6 +1,20 @@
-sudo find /app/jfrog/artifactory -type f \( -name "*.groovy" -o -name "*.sh" \) \
-  -print 2>/dev/null
+sudo python3 - <<'PY'
+import json
 
-sudo grep -RniE \
-'cleanup|retention|delete|aql|maxUniqueSnapshots|max.*snapshot' \
-/app/jfrog/artifactory/var/etc 2>/dev/null
+f = "/app/jfrog/artifactory/var/etc/artifactory/artifactory.repository.config.latest.json"
+
+with open(f) as fh:
+    data = json.load(fh)
+
+targets = {"conexus-release-local", "conexus-rc-local"}
+
+for repo in data.get("localRepoConfigs", []):
+    if repo.get("key") in targets:
+        print("=" * 60)
+        print("Repository:", repo.get("key"))
+        print("Package Type:", repo.get("packageType"))
+        print("Repo Type Config:")
+        print(json.dumps(repo.get("repoTypeConfig", {}), indent=2))
+        print("Package Type Config:")
+        print(json.dumps(repo.get("packageTypeConfig", {}), indent=2))
+PY
