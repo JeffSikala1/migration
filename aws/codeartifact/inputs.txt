@@ -1,20 +1,15 @@
-sudo python3 - <<'PY'
-import json
+aws s3api get-bucket-encryption --bucket cnxs-artifactory-backups
 
-f = "/app/jfrog/artifactory/var/etc/artifactory/artifactory.repository.config.latest.json"
+aws s3api get-bucket-versioning --bucket cnxs-artifactory-backups
 
-with open(f) as fh:
-    data = json.load(fh)
 
-targets = {"conexus-release-local", "conexus-rc-local"}
+aws s3api get-object-lock-configuration \
+  --bucket cnxs-artifactory-backups
 
-for repo in data.get("localRepoConfigs", []):
-    if repo.get("key") in targets:
-        print("=" * 60)
-        print("Repository:", repo.get("key"))
-        print("Package Type:", repo.get("packageType"))
-        print("Repo Type Config:")
-        print(json.dumps(repo.get("repoTypeConfig", {}), indent=2))
-        print("Package Type Config:")
-        print(json.dumps(repo.get("packageTypeConfig", {}), indent=2))
-PY
+aws s3api get-bucket-versioning \
+  --bucket cnxs-artifactory-backups
+
+aws s3api get-bucket-policy \
+  --bucket cnxs-artifactory-backups \
+  --query Policy \
+  --output text | python3 -m json.tool
