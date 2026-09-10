@@ -1,147 +1,16 @@
-[sikaj01@ip-10-56-112-33 cert_renewal]$ scp sikaj01@10.56.112.35:/app/create_agents.sh /tmp/
-Authorized uses only. All activity may be monitored and reported.
-create_agents.sh                                                                                                                                                  100% 3428     1.8MB/s   00:00    
-[sikaj01@ip-10-56-112-33 cert_renewal]$ scp /tmp/create_agents.sh sikaj01@10.56.128.47:/tmp/
-Authorized uses only. All activity may be monitored and reported.
-create_agents.sh                                                                                                                                                  100% 3428     2.3MB/s   00:00    
-[sikaj01@ip-10-56-112-33 cert_renewal]$ rm /tmp/create_agents.sh
-[sikaj01@ip-10-56-112-33 cert_renewal]$ df -h
-Filesystem                                          Size  Used Avail Use% Mounted on
-devtmpfs                                            4.0M     0  4.0M   0% /dev
-tmpfs                                               3.8G     0  3.8G   0% /dev/shm
-tmpfs                                               1.6G  8.8M  1.6G   1% /run
-efivarfs                                            128K  3.5K  120K   3% /sys/firmware/efi/efivars
-/dev/nvme0n1p1                                       50G   24G   27G  48% /
-tmpfs                                               3.8G   12M  3.8G   1% /tmp
-/dev/nvme0n1p128                                     10M  1.3M  8.7M  13% /boot/efi
-fs-0f6ba8dbc07103a4a.efs.us-east-1.amazonaws.com:/  8.0E   91G  8.0E   1% /efs/devopsdata
-tmpfs                                               774M  4.0K  774M   1% /run/user/1021
-tmpfs                                               774M  4.0K  774M   1% /run/user/1017
-tmpfs                                               774M  4.0K  774M   1% /run/user/1011
-tmpfs                                               774M  4.0K  774M   1% /run/user/1003
-tmpfs                                               774M  4.0K  774M   1% /run/user/1039
-tmpfs                                               774M  4.0K  774M   1% /run/user/1024
-tmpfs                                               774M  4.0K  774M   1% /run/user/1014
-tmpfs                                               774M  4.0K  774M   1% /run/user/1001
-tmpfs                                               774M  4.0K  774M   1% /run/user/1020
-[sikaj01@ip-10-56-112-33 cert_renewal]$ ssh sikaj01@10.56.128.47
-Authorized uses only. All activity may be monitored and reported.
-Last login: Thu Sep 10 13:22:18 2026 from ip-10-56-112-33.ec2.internal
-   ,     #_
-   ~\_  ####_        Amazon Linux 2
-  ~~  \_#####\
-  ~~     \###|       AL2 End of Life is 2026-06-30.
-  ~~       \#/ ___
-   ~~       V~' '->
-    ~~~         /    A newer version of Amazon Linux is available!
-      ~~._.   _/
-         _/ _/       Amazon Linux 2023, GA and supported until 2029-06-30.
-       _/m/'           https://aws.amazon.com/linux/amazon-linux-2023/
-
-[sikaj01@ip-10-56-128-47 ~]$ sudo mkdir -p /app
-[sudo] password for sikaj01: 
-[sikaj01@ip-10-56-128-47 ~]$ sudo mv /tmp/create_agents.sh /app/create_agents.sh
-[sikaj01@ip-10-56-128-47 ~]$ sudo chmod 750 /app/create_agents.sh
-[sikaj01@ip-10-56-128-47 ~]$ cat /app/create_agents.sh 
-#!/usr/bin/env bash
-set -Eeuo pipefail
-umask 0002
-
-#DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node22-angular20-el10-2026-07-10-1705}"
-DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342}"
-NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
-
-BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
-
-NETWORK_NAME="${NETWORK_NAME:-isolated_nw}"
-NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
-
-HOST_CACHE_BASE="${HOST_CACHE_BASE:-/cache/bamboo}"
-DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
-SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
-
-echo "****************************************************************************"
-echo " Note: if Agents are getting upgraded then move and recreate /cache/bamboo"
-echo "****************************************************************************"
-#SKIP_PULL="${SKIP_PULL:-0}"
-
-command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
-systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
-
-[ -d "$SSH_KEYS_DIR" ] || { echo "ERROR: SSH key directory not found at $SSH_KEYS_DIR"; exit 1; }
-[ -f "$SSH_KEYS_DIR/bitbucket_ci" ] || { echo "ERROR: SSH key not found at $SSH_KEYS_DIR/bitbucket_ci"; exit 1; }
-chmod 600 "$SSH_KEYS_DIR/bitbucket_ci" || true
-[ -f "$SSH_KEYS_DIR/bitbucket_ci_jgit" ] && chmod 600 "$SSH_KEYS_DIR/bitbucket_ci_jgit" || true
-
-mkdir -p "$HOST_CACHE_BASE"
-
-if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
-  echo "Creating docker network $NETWORK_NAME ($NETWORK_SUBNET)..."
-  docker network create -d bridge --subnet "$NETWORK_SUBNET" "$NETWORK_NAME" >/dev/null
-else
-  echo "Docker network $NETWORK_NAME already exists."
-fi
-
-HOSTNAME_SHORT="$(hostname)"
-
-echo
-echo "Stopping/removing existing build agents..."
-docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
-
-echo
-echo "Starting build agents..."
-
-for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
-  AGENT_NAME="${HOSTNAME_SHORT}-ba-${num}"
-  HOST_AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
-  CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
-
-  mkdir -p "$HOST_AGENT_HOME"
-  echo "Agent name: $AGENT_NAME; Host Agent Home: $HOST_AGENT_HOME; Container Agent Home: $CONTAINER_AGENT_HOME; "
-  
-  #    exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
-  docker run -d \
-    -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
-    -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
-    -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
-    -h "$AGENT_NAME" \
-    --net="$NETWORK_NAME" --name="$AGENT_NAME" --init --restart=unless-stopped --sysctl net.ipv4.ip_forward=1 \
-    "$DOCKER_BUILD_AGENT_IMAGE" \
-    bash -lc "
+[sikaj01@ip-10-56-128-47 ~]$ docker inspect ip-10-56-128-47.ec2.internal-ba-1 --format '{{.Config.Cmd}}'
+[bash -lc 
       set -e
-      echo 'startup umask before change:' \$(umask)
+      echo 'startup umask before change:' $(umask)
       umask 0002
-      echo 'startup umask after change:' \$(umask)
+      echo 'startup umask after change:' $(umask)
       mkdir -p /opt/bamboo-keys
-      mkdir -p ${CONTAINER_AGENT_HOME}
-      exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
-    "
-done
-#      mkdir -p /opt/java
-#      ln -sfn /etc/alternatives/java_sdk_21 /opt/java/openjdk
-
-echo
-echo "Running Bamboo agent containers:"
-sleep 5
-docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-
-[sikaj01@ip-10-56-128-47 ~]$ sudo NUMBER_OF_BUILD_AGENTS=1 \
->      BAMBOO_URL=https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/ \
->      /app/create_agents.sh
-****************************************************************************
- Note: if Agents are getting upgraded then move and recreate /cache/bamboo
-****************************************************************************
-Creating docker network isolated_nw (172.25.0.0/24)...
-
-Stopping/removing existing build agents...
-
-Starting build agents...
-Agent name: ip-10-56-128-47.ec2.internal-ba-1; Host Agent Home: /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1; Container Agent Home: /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1; 
-518821cab291557ad701e7ed4cf841ac3c53fb04287559c617baf0809237036b
-
-Running Bamboo agent containers:
-NAMES                               IMAGE                                                                                                   STATUS
-ip-10-56-128-47.ec2.internal-ba-1   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342   Up 5 seconds
-[sikaj01@ip-10-56-128-47 ~]$ docker ps
-CONTAINER ID   IMAGE                                                                                                   COMMAND                   CREATED          STATUS          PORTS     NAMES
-518821cab291   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342   "bash -lc '\n      se…"   15 seconds ago   Up 14 seconds             ip-10-56-128-47.ec2.internal-ba-1
+      mkdir -p /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1
+      exec java -Dbamboo.home=/cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1 -jar /opt/bamboo-agent.jar https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+    ]
+[sikaj01@ip-10-56-128-47 ~]$ docker logs ip-10-56-128-47.ec2.internal-ba-1 2>&1 | grep -i "agentServer\|bamboo.dev\|bamboo.mgmt" | head -5
+BAMBOO_SERVER: https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+INFO   | jvm 1    | 2026/09/10 09:15:10 | 2026-09-10 09:15:09,998 INFO [WrapperSimpleAppMain] [AgentBootstrap] Using Bamboo URL: https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+INFO   | jvm 1    | 2026/09/10 09:15:10 | 2026-09-10 09:15:09,998 INFO [WrapperSimpleAppMain] [AgentBootstrap] Agent bootstrap using endpoint: https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/
+INFO   | jvm 1    | 2026/09/10 09:15:10 | 2026-09-10 09:15:10,011 INFO [WrapperSimpleAppMain] [AgentContext] Requesting fingerprint, url: https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/GetFingerprint.action?hostName=ip-10-56-128-47.ec2.internal-ba-1&version=5&agentUuid=a35007df-f912-46d8-8ac9-82ee522d106c
+INFO   | jvm 1    | 2026/09/10 09:15:10 | 2026-09-10 09:15:10,014 INFO [WrapperSimpleAppMain] [AgentContext] Authenticating against Bamboo server at https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/
