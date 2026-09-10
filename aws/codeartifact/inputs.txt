@@ -1,12 +1,17 @@
-# on .47
-df -h
-docker system df
+# on .33
+scp sikaj01@10.56.112.35:/app/create_agents.sh /tmp/
+scp /tmp/create_agents.sh sikaj01@10.56.128.47:/tmp/
+rm /tmp/create_agents.sh
 
 
-# check what EBS volume(s) the new instance actually got at launch
-aws ec2 describe-volumes --filters "Name=attachment.instance-id,Values=i-079b964a2338aaaa6" \
-  --query 'Volumes[].[VolumeId,Size,VolumeType]'
 
-# compare against .35's volume(s)
-aws ec2 describe-volumes --filters "Name=attachment.instance-id,Values=i-077549ad791760d85" \
-  --query 'Volumes[].[VolumeId,Size,VolumeType]'
+sudo mkdir -p /app
+sudo mv /tmp/create_agents.sh /app/create_agents.sh
+sudo chmod 750 /app/create_agents.sh
+
+
+sudo NUMBER_OF_BUILD_AGENTS=1 \
+     BAMBOO_URL=https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/ \
+     /app/create_agents.sh
+
+docker ps
