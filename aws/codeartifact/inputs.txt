@@ -1,10 +1,18 @@
-sudo bash -c 'ls -alh /app/bamboo/bamboo.cfg.xml.bak.*'
+aws elbv2 describe-listeners --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc \
+  --query 'Listeners[].[Port,Protocol]'
 
 
-sudo bash -c 'diff /app/bamboo/bamboo.cfg.xml.bak.* /app/bamboo/bamboo.cfg.xml'
+aws elbv2 create-target-group --name fcs-atlnlb-tg-8443 \
+  --protocol TCP --port 8443 \
+  --vpc-id vpc-0cb2efc594903069d \
+  --target-type instance \
+  --health-check-protocol TCP --health-check-port 8443
 
-sudo grep "bamboo.jms.broker.client.uri" /app/bamboo/bamboo.cfg.xml
+# register .233 as the target (using the same instance id we used for the 443/80 target groups)
+aws elbv2 register-targets --target-group-arn <new-tg-arn> --targets Id=i-0dd6e0c7c4fcc27f9
 
+aws elbv2 create-listener --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc \
+  --protocol TCP --port 8443 \
+  --default-actions Type=forward,TargetGroupArn=<new-tg-arn>
 
-docker logs --tail 20 -f ip-10-56-128-47.ec2.internal-ba-1
-
+  
