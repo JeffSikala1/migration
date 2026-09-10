@@ -1,18 +1,3 @@
-aws elbv2 describe-listeners --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc \
-  --query 'Listeners[].[Port,Protocol]'
+aws elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-8443/1bda12b8d32eb48e
 
-
-aws elbv2 create-target-group --name fcs-atlnlb-tg-8443 \
-  --protocol TCP --port 8443 \
-  --vpc-id vpc-0cb2efc594903069d \
-  --target-type instance \
-  --health-check-protocol TCP --health-check-port 8443
-
-# register .233 as the target (using the same instance id we used for the 443/80 target groups)
-aws elbv2 register-targets --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-8443/1bda12b8d32eb48e --targets Id=i-0dd6e0c7c4fcc27f9
-
-aws elbv2 create-listener --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc \
-  --protocol TCP --port 8443 \
-  --default-actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-8443/1bda12b8d32eb48e
-
-  
+docker logs --tail 5 -f ip-10-56-128-47.ec2.internal-ba-1
