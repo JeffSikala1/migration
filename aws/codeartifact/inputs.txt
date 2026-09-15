@@ -1,15 +1,45 @@
-Artifactory Retention Recommendations
+BITBUCKET_URL="https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov"
+ADMIN_USER="bitbucket-admin"
+read -s -p "Admin password/token: " ADMIN_PASS; echo
+DEVOPS_ALIAS="conexus_devsecops@gsa.gov"
 
-* No retention policy exists today. Artifacts across CNXS repositories currently accumulate indefinitely, our clean scripts and Artifactory storage data did not identify an existing cleanup process for old artifacts.
-* Prioritize conexus-snapshot-local. It currently represents 99.11 GB / 48,733 files which is about 26% of total storage and is growing by roughly 1,000 artifacts per week. Starting proposal: keep the last 10 builds per module/branch.
-* Address Release and RC repositories next. conexus-release-local is the second largest repository at 25.88 GB / 3,299 files, while conexus-rc-local contains 4.31 GB / 2,561 files. Because Release and RC artifacts may be required for rollback or hotfix scenarios, starting proposal: keep the last 10 releases per release line and 10 RC builds per release line.
-* Maven and plugin backup are lower priority. conexus-maven-local and conexus-plugins-backup account for less than 1.3 GB combined less than 1%. A lighter policy, such as the last 5 builds or 90 days, should be sufficient.
-* Use native Artifactory cleanup if available. Confirm whether our current Artifactory version/license supports native cleanup policies before developing a custom AQL/script based solution. Any cleanup should first run in dry run/report only mode.
-* Developer input needed before implementation. We still need to validate artifact download/usage frequency particularly for snapshots and confirm that the proposed retention counts provide enough history for rollback, troubleshooting, and development needs before enabling deletion.
+USERS=(
+  "abitha.bakthavachalam@gsa.gov"
+  "douglas.nelson@gsa.gov"
+  "eli.tatro@gsa.gov"
+  "gavin.ecker@gsa.gov"
+  "james.hyland@gsa.gov"
+  "john.zehetner@gsa.gov"
+  "kristian.fitzgerald@gsa.gov"
+  "larry.hilton@gsa.gov"
+  "mark.hotra@gsa.gov"
+  "peter.traunfeld@gsa.gov"
+  "philippe.thai@gsa.gov"
+  "rajesh.vaswani@gsa.gov"
+  "robert.wernsman@gsa.gov"
+  "sasikanth.dale@gsa.gov"
+  "shilpika.pamarthi@gsa.gov"
+  "steven.kuzmich@gsa.gov"
+)
+
+for u in "${USERS[@]}"; do
+  echo "Updating $u ..."
+  curl -sS -u "${ADMIN_USER}:${ADMIN_PASS}" \
+    -X PUT "${BITBUCKET_URL}/rest/api/1.0/admin/users?name=${u}" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"${u}\",\"email\":\"${DEVOPS_ALIAS}\"}"
+  echo
+done
 
 
-Control Response:
 
-The Conexus Application Load Balancer WAF monitors inbound and outbound application traffic and evaluates requests against the configured WAF rules. The current rules include rate limiting, request header and body size restrictions, a custom BadBot User Agent rule, and AWS managed protections for cross site scripting and SQL injection. Requests that match one of these rules are blocked and logged. Traffic that does not match a configured rule is allowed.
 
-CloudWatch metrics and sampled requests are enabled for the WAF rules to provide visibility into allowed, blocked, and counted traffic. The environment uses Elastic Agents to support centralized logging and monitoring, along with Datadog for additional infrastructure and application monitoring. The WAF configuration is managed through Terraform, which allows rule priorities, thresholds, and other settings to be updated as new threats or unauthorized activity patterns are identified.
+BITBUCKET_URL="https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov"
+ADMIN_USER="bitbucket-admin"
+read -s -p "Admin password/token: " ADMIN_PASS; echo
+DEVOPS_ALIAS="conexus_devsecops@gsa.gov"
+
+curl -sS -u "${ADMIN_USER}:${ADMIN_PASS}" \
+  -X PUT "${BITBUCKET_URL}/rest/api/1.0/admin/users?name=abitha.bakthavachalam@gsa.gov" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"abitha.bakthavachalam@gsa.gov\",\"email\":\"${DEVOPS_ALIAS}\"}"
