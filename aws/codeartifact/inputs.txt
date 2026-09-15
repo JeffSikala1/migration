@@ -1,15 +1,11 @@
-for REPO in conexus-snapshot-local conexus-rc-local conexus-release-local; do
-  echo "=== $REPO ==="
-  curl -s -X POST -H "Authorization: Bearer $ARTIFACTORY_TOKEN" \
-    -H "Content-Type: text/plain" \
-    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-    -d "items.find({\"repo\":\"$REPO\"})
-        .include(\"repo\",\"path\",\"name\",\"created\",\"size\")
-        .sort({\"\$desc\":[\"created\"]})
-        .limit(1000)" \
-    | python3 -m json.tool > "${REPO}_results.json"
-  echo "count: $(python3 -c "import json;print(len(json.load(open('${REPO}_results.json'))['results']))")"
-  echo "total size (bytes): $(python3 -c "import json;print(sum(r.get('size',0) for r in json.load(open('${REPO}_results.json'))['results']))")"
-  echo "oldest: $(python3 -c "import json;r=json.load(open('${REPO}_results.json'))['results'];print(r[-1]['created'] if r else 'n/a')")"
-  echo
-done
+curl -s -H "Authorization: Bearer $ARTIFACTORY_TOKEN" \
+  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/storageinfo" \
+  | python3 -m json.tool > storageinfo.json
+
+python3 -c "
+import json
+d = json.load(open('storageinfo.json'))
+for r in d['repositoriesSummaryList']:
+    if r['repoKey'] in ('conexus-snapshot-local','conexus-rc-local','conexus-release-local','conexus-maven-local','conexus-plugins-backup'):
+        print(r['repoKey'], '| files:', r['filesCount'], '| used:', r['usedSpace'], '| percentage:', r.get('percentage'))
+"
