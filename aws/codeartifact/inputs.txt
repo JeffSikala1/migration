@@ -1,29 +1,15 @@
-# List every repo key so we know the real names
-curl -s -H "Authorization: Bearer $ARTIFACTORY_TOKEN" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories" \
-  | python3 -m json.tool
-
-
-curl -s -X POST -H "Authorization: Bearer $ARTIFACTORY_TOKEN" \
-  -H "Content-Type: text/plain" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  -d 'items.find({"repo":"cnxs-snapshot-local"})
-      .include("repo","path","name","created","size")
-      .sort({"$desc":["created"]})
-      .limit(500)' \
-  | python3 -m json.tool > snapshot_local_results.json
-
-wc -l snapshot_local_results.json
-
-
-
-curl -s -X POST -H "Authorization: Bearer $ARTIFACTORY_TOKEN" \
-  -H "Content-Type: text/plain" \
-  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
-  -d 'items.find({"repo":"cnxs-snapshot-local"})
-      .include("repo","name","created","stat.downloads","stat.downloaded")
-      .sort({"$desc":["stat.downloaded"]})
-      .limit(200)' \
-  | python3 -m json.tool
-
-
+for REPO in conexus-snapshot-local conexus-rc-local conexus-release-local; do
+  echo "=== $REPO ==="
+  curl -s -X POST -H "Authorization: Bearer $ARTIFACTORY_TOKEN" \
+    -H "Content-Type: text/plain" \
+    "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/aql" \
+    -d "items.find({\"repo\":\"$REPO\"})
+        .include(\"repo\",\"path\",\"name\",\"created\",\"size\")
+        .sort({\"\$desc\":[\"created\"]})
+        .limit(1000)" \
+    | python3 -m json.tool > "${REPO}_results.json"
+  echo "count: $(python3 -c "import json;print(len(json.load(open('${REPO}_results.json'))['results']))")"
+  echo "total size (bytes): $(python3 -c "import json;print(sum(r.get('size',0) for r in json.load(open('${REPO}_results.json'))['results']))")"
+  echo "oldest: $(python3 -c "import json;r=json.load(open('${REPO}_results.json'))['results'];print(r[-1]['created'] if r else 'n/a')")"
+  echo
+done
