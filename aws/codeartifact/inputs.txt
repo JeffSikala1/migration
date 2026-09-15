@@ -1,12 +1,29 @@
-openssl req -out conexus_ContractorOrganization.csr -new -newkey rsa:2048 -nodes -keyout privatekey.key
+# List every repo key so we know the real names
+curl -s -H "Authorization: Bearer $ARTIFACTORY_TOKEN" \
+  "https://<your-artifactory-host>/artifactory/api/repositories" \
+  | python3 -m json.tool
 
-openssl req -text -noout -verify -in conexus_ContractorOrganization.csr
 
-To: SM.OCIO.ICAM.Services
-Cc: Ecker, Gavin (CTR) - OCIO-DISC, CO; Goll, Tyler (CTR) - OCIO-DISC, CO
-Subject: Conexus Vendor: CoreTech CSR enclosed. Certificate needed for environment PROD web services access.
-Attachment: Conexus_CoreTech_PROD.csr
+curl -s -X POST -H "Authorization: Bearer $ARTIFACTORY_TOKEN" \
+  -H "Content-Type: text/plain" \
+  "https://<your-artifactory-host>/artifactory/api/search/aql" \
+  -d 'items.find({"repo":"cnxs-snapshot-local"})
+      .include("repo","path","name","created","size")
+      .sort({"$desc":["created"]})
+      .limit(500)' \
+  | python3 -m json.tool > snapshot_local_results.json
 
-Please find enclosed the CSR for CoreTech Conexus PROD web services access. Please forward this request to DISC and return the completed certificate to ocio-eas-conexus-systems@usda.gov and CC: Conexus.system@gsa.gov as soon as possible.
+wc -l snapshot_local_results.json
 
-The CSR is for service account SVC_GSA_EAS_Conexus_CoreTech.
+
+
+curl -s -X POST -H "Authorization: Bearer $ARTIFACTORY_TOKEN" \
+  -H "Content-Type: text/plain" \
+  "https://<your-artifactory-host>/artifactory/api/search/aql" \
+  -d 'items.find({"repo":"cnxs-snapshot-local"})
+      .include("repo","name","created","stat.downloads","stat.downloaded")
+      .sort({"$desc":["stat.downloaded"]})
+      .limit(200)' \
+  | python3 -m json.tool
+
+
