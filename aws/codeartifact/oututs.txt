@@ -54,3 +54,49 @@ upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_164647/apps/bamboo_confi
 upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_164647/metadata.json to s3://cnxs-dev-atlassian-backups/metadata/2026-09-18/metadata_20260918_164647.json
 ==== Dev nightly backup completed OK ====
 Cleaning up local staging...
+
+
+[sikaj01@ip-10-56-128-233 ~]$ sudo mkdir -p /app/devbackup/bin /app/devbackup/logs
+[sikaj01@ip-10-56-128-233 ~]$ sudo mv ~/dev_nightly_backup.sh /app/devbackup/bin/
+[sikaj01@ip-10-56-128-233 ~]$ sudo mv ~/dev_weekly_backup.sh  /app/devbackup/bin/
+[sikaj01@ip-10-56-128-233 ~]$ sudo chown -R root:root /app/devbackup
+[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 750 /app/devbackup/bin /app/devbackup/logs
+[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 750 /app/devbackup/bin/dev_nightly_backup.sh /app/devbackup/bin/dev_weekly_backup.sh
+[sikaj01@ip-10-56-128-233 ~]$ sudo ls -la /app/devbackup/bin
+total 12
+drwxr-x---. 2 root root   63 Sep 18 16:53 .
+drwxr-x---. 4 root root   29 Sep 18 16:52 ..
+-rwxr-x---. 1 root root 5559 Sep 18 15:15 dev_nightly_backup.sh
+-rwxr-x---. 1 root root  337 Sep 18 14:57 dev_weekly_backup.sh
+[sikaj01@ip-10-56-128-233 ~]$ sudo STAGE_ROOT=/tmp/dev-backup-dryrun bash /app/devbackup/bin/dev_nightly_backup.sh
+==== Dev nightly backup start: 20260918_165351 host=ip-10-56-128-233.ec2.internal ====
+Staging to: /tmp/dev-backup-dryrun/2026-09-18/20260918_165351
+[1/3] Postgres dumps (bitbucket, bamboo)...
+  - dumping globals (roles/grants)
+  - dumping bitbucket
+  - dumping bamboo
+[2/3] Bitbucket / Bamboo config-only backup...
+  - dev-bitbucket home -> /app/bitbucket
+  - wrote /tmp/dev-backup-dryrun/2026-09-18/20260918_165351/apps/bitbucket_config_20260918_165351.tar.gz (973918 bytes) containing: shared/bitbucket.properties shared/secrets-config.yaml shared/keys shared/config
+  - dev-bamboo home -> /app/bamboo
+  - wrote /tmp/dev-backup-dryrun/2026-09-18/20260918_165351/apps/bamboo_config_20260918_165351.tar.gz (13923 bytes) containing: shared/configuration shared/ssl shared/clusterInfo bamboo.cfg.xml
+[3/3] Metadata + upload...
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_165351/postgres/globals_20260918_165351.sql to s3://cnxs-dev-atlassian-backups/postgres/2026-09-18/globals_20260918_165351.sql
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_165351/postgres/bitbucket_20260918_165351.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-18/bitbucket_20260918_165351.dump
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_165351/postgres/bamboo_20260918_165351.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-18/bamboo_20260918_165351.dump
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_165351/apps/bamboo_config_20260918_165351.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-18/bamboo_config_20260918_165351.tar.gz
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_165351/apps/bitbucket_config_20260918_165351.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-18/bitbucket_config_20260918_165351.tar.gz
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_165351/metadata.json to s3://cnxs-dev-atlassian-backups/metadata/2026-09-18/metadata_20260918_165351.json
+==== Dev nightly backup completed OK ====
+Cleaning up local staging...
+[sikaj01@ip-10-56-128-233 ~]$ sudo crontab -e
+no crontab for root - using an empty one
+crontab: installing new crontab
+[sikaj01@ip-10-56-128-233 ~]$ sudo crontab -l
+# Dev/OSS nightly backup (Bitbucket/Bamboo config + Postgres dumps) at 02:15
+15 2 * * * /app/devbackup/bin/dev_nightly_backup.sh
+
+# Weekly rollup, Sunday 03:00
+0 3 * * 0 /app/devbackup/bin/dev_weekly_backup.sh
+
+# Cleanup stale staging older than 1 day
