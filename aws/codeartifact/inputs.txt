@@ -1,10 +1,4 @@
-UPLOAD_ID=$(aws s3api list-multipart-uploads --bucket cnxs-dev-atlassian-backups \
-  --query "Uploads[?Key=='apps/2026-09-18/artifactory_filestore_20260918_173954.tar.gz'].UploadId" \
-  --output text)
-
-echo "Upload ID: $UPLOAD_ID"
-
 aws s3api list-parts --bucket cnxs-dev-atlassian-backups \
   --key apps/2026-09-18/artifactory_filestore_20260918_173954.tar.gz \
   --upload-id "$UPLOAD_ID" \
-  --query "sum(Parts[].Size)" --output text
+  --query "Parts[].Size" --output text | tr '\t' '\n' | awk '{sum+=$1} END {print sum, "/ 315252220222 bytes =", sum/315252220222*100, "%"}'
