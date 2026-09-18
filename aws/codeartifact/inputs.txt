@@ -1,9 +1,25 @@
-aws ec2 describe-iam-instance-profile-associations \
-  --filters Name=instance-id,Values=i-0dd6e0c7c4fcc27f9
+sudo mkdir -p /app/devbackup/bin /app/devbackup/logs
+
+sudo mv ~/dev_nightly_backup.sh /app/devbackup/bin/
+sudo mv ~/dev_weekly_backup.sh  /app/devbackup/bin/
+
+sudo chown -R root:root /app/devbackup
+sudo chmod 750 /app/devbackup/bin /app/devbackup/logs
+sudo chmod 750 /app/devbackup/bin/dev_nightly_backup.sh /app/devbackup/bin/dev_weekly_backup.sh
+
+# confirm they're where you expect
+sudo ls -la /app/devbackup/bin
 
 
-aws ec2 associate-iam-instance-profile \
-  --instance-id i-0dd6e0c7c4fcc27f9 \
-  --iam-instance-profile Name=dev-ssm-role
+sudo STAGE_ROOT=/tmp/dev-backup-dryrun bash /app/devbackup/bin/dev_nightly_backup.sh
 
-curl -s -w "\nHTTP_STATUS:%{http_code}\n" -H "X-aws-ec2-metadata-token: $TOKEN3" http://169.254.169.254/latest/meta-data/iam/security-credentials/
+
+
+# Dev/OSS nightly backup (Bitbucket/Bamboo config + Postgres dumps) at 02:15
+15 2 * * * /app/devbackup/bin/dev_nightly_backup.sh
+
+# Weekly rollup, Sunday 03:00
+0 3 * * 0 /app/devbackup/bin/dev_weekly_backup.sh
+
+# Cleanup stale staging older than 1 day
+0 4 * * * find /backup-staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
