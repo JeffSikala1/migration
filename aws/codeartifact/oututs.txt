@@ -1,49 +1,17 @@
-[sikaj01@ip-10-56-128-233 ~]$ pwd
-/home/sikaj01
-[sikaj01@ip-10-56-128-233 ~]$ ll
-total 668
--rw-r-----. 1 sikaj01 users  14743 Sep  1 19:45 artifactory-config-current.xml
-drwxr-x---. 7 sikaj01 users  16384 Aug 14 14:17 artifactory-migration
--rw-r--r--. 1 sikaj01 users 290502 Aug  3 17:17 artifactory_pre_admin_reset_20260803.dump
--rw-r--r--. 1 sikaj01 users 293881 Aug 10 15:11 artifactory_pre_repo_insert_20260810.dump
--rw-r-----. 1 sikaj01 users  10560 Aug 19 18:04 ec2_investigate.sh
--rw-r-----. 1 sikaj01 users  52283 Aug 19 18:10 ec2_report_ip-10-56-128-233.ec2.internal_2026-08-19_1807.txt
-drwxr-x---. 3 sikaj01 users     95 Sep  3 19:34 elastic-install
-[sikaj01@ip-10-56-128-233 ~]$ ll /home/
-total 16
-drwxr-xr-x. 2 cwagent              cwagent                 62 Jan 30  2023 cwagent
-drwxr-xr-x. 2 ec2-instance-connect ec2-instance-connect    62 Jan 30  2023 ec2-instance-connect
-drwx------+ 4 ec2-user             ec2-user               111 Jul 21 21:41 ec2-user
-drwx------. 9 sikaj01              users                16384 Sep 18 14:38 sikaj01
-[sikaj01@ip-10-56-128-233 ~]$ vim setup_dev_backup.sh
-[sikaj01@ip-10-56-128-233 ~]$ chmod +x setup_dev_backup.sh 
-[sikaj01@ip-10-56-128-233 ~]$ ./setup_dev_backup.sh 
-Account: 471112718870   Region: us-east-1   Bucket: cnxs-dev-atlassian-backups
-
-[1/6] Creating bucket s3://cnxs-dev-atlassian-backups ...
+[sikaj01@ip-10-56-128-233 ~]$  aws iam create-policy --policy-name dev-atlassian-backup-write --policy-document file://dev-atlassian-backup-write.json
 {
-    "Location": "/cnxs-dev-atlassian-backups",
-    "BucketArn": "arn:aws:s3:::cnxs-dev-atlassian-backups"
+    "Policy": {
+        "PolicyName": "dev-atlassian-backup-write",
+        "PolicyId": "ANPAW3MEBTILFWWTPTD3B",
+        "Arn": "arn:aws:iam::471112718870:policy/dev-atlassian-backup-write",
+        "Path": "/",
+        "DefaultVersionId": "v1",
+        "AttachmentCount": 0,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "CreateDate": "2026-09-18T14:46:48+00:00",
+        "UpdateDate": "2026-09-18T14:46:48+00:00"
+    }
 }
-[2/6] Blocking public access ...
-[3/6] Enabling versioning ...
-[4/6] Creating KMS key ...
-  KeyId: 176a3c99-52f7-45f0-a310-cc2244461a33
-  Alias: alias/dev-atlassian-backups -> arn:aws:kms:us-east-1:471112718870:key/176a3c99-52f7-45f0-a310-cc2244461a33
-[5/6] Setting default encryption + lifecycle + TLS-only bucket policy ...
-{
-    "TransitionDefaultMinimumObjectSize": "all_storage_classes_128K"
-}
-[6/6] Writing IAM policy document -> ./dev-atlassian-backup-write.json
-
-Review dev-atlassian-backup-write.json, then attach it to the dev-ssm-role role
-(confirmed as the role ip-10-56-128-233 assumes for AWS CLI calls):
-
-  aws iam create-policy --policy-name dev-atlassian-backup-write --policy-document file://dev-atlassian-backup-write.json
-  aws iam attach-role-policy --role-name dev-ssm-role --policy-arn arn:aws:iam::471112718870:policy/dev-atlassian-backup-write
-
-Bucket:  s3://cnxs-dev-atlassian-backups  (region us-east-1)
-KMS key: arn:aws:kms:us-east-1:471112718870:key/176a3c99-52f7-45f0-a310-cc2244461a33  (alias alias/dev-atlassian-backups)
-Retention: 30 days, versioning on, public access blocked, TLS-only.
-
-Nothing here touches prod's bucket, key, or IAM role.
+[sikaj01@ip-10-56-128-233 ~]$ aws iam attach-role-policy --role-name dev-ssm-role --policy-arn arn:aws:iam::471112718870:policy/dev-atlassian-backup-write
+[sikaj01@ip-10-56-128-233 ~]$ 
