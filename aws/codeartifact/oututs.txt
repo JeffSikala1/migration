@@ -1,121 +1,32 @@
-[sikaj01@ip-10-56-112-33 scripts]$ pwd
-/home/sikaj01/scripts
-[sikaj01@ip-10-56-112-33 scripts]$ ll
-total 36
--rw-r-----. 1 sikaj01 users  264 Oct 17  2025 README
--rw-r-----. 1 sikaj01 users  214 Oct 17  2025 al2githubtfmodule.txt
-drwxr-x---. 6 sikaj01 users 6144 Jun  2 18:28 devvpc
--rwxr-x---. 1 sikaj01 users 2688 Oct 17  2025 jsontodot.py
-drwxr-x---. 4 sikaj01 users 6144 Oct 17  2025 mgmtvpc
-drwxr-x---. 2 sikaj01 users 6144 Oct 17  2025 mgmtvpcterraform
-drwxr-x---. 3 sikaj01 users 6144 Jun  2 18:28 reports
-drwxr-x---. 5 sikaj01 users 6144 Oct 17  2025 terraform
-drwxr-x---. 4 sikaj01 users 6144 Jul  1 22:40 testperf
-[sikaj01@ip-10-56-112-33 scripts]$ cd devvpc/k8s/argocd/
-[sikaj01@ip-10-56-112-33 argocd]$ clea
-rbash: clea: command not found
-[sikaj01@ip-10-56-112-33 argocd]$ cat argocdhelminstall.sh 
-#!/bin/bash
+[sikaj01@ip-10-56-128-233 ~]$ TOKEN=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+echo "$TOKEN"
+AQAEAH001U-PF06okFN3b8F0zmHLLYzhtNfm_0mPn9KGjzN54tM7vg==
+HTTP_STATUS:200
+[sikaj01@ip-10-56-128-233 ~]$ TOKEN2=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+curl -s -w "\nHTTP_STATUS:%{http_code}\n" -H "X-aws-ec2-metadata-token: $TOKEN2" http://169.254.169.254/latest/meta-data/iam/security-credentials/
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title>404 - Not Found</title>
+ </head>
+ <body>
+  <h1>404 - Not Found</h1>
+ </body>
+</html>
 
-helm upgrade --install argocd argo-cd/argo-cd --version "${ARGOCD_CHART_VERSION}" \
-  --namespace "argocd" --create-namespace \
-  --values ~/environment/eks-workshop/modules/automation/gitops/argocd/values.yaml \
-  --wait
-[sikaj01@ip-10-56-112-33 argocd]$ cat argocdinstall.sh 
-#!/bin/bash
-
-kubectl create namespace argocd
-#kubectl apply -n argocd -f https://github.com/argoproj/argo-cd/blob/master/manifests/core-install.yaml
-kubectl create namespace argocd
-#kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.0/manifests/install.yaml
-kubectl apply --server-side --force-conflicts -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/core-install.yaml
-[sikaj01@ip-10-56-112-33 argocd]$ ll
-total 1840
--rw-r-----. 1 sikaj01 users     235 Nov 20  2025 argocdhelminstall.sh
--rwxr-x---. 1 sikaj01 users     467 Aug 27 19:31 argocdinstall.sh
--rw-r-----. 1 sikaj01 users 1858542 Aug 27 19:30 core-install.yaml
--rw-r-----. 1 sikaj01 users     490 Aug 27 19:30 manifest-sync-cert.yaml
--rw-r-----. 1 sikaj01 users     489 Aug 27 19:30 manifest-sync-dev.yaml
--rw-r-----. 1 sikaj01 users     490 Aug 27 19:30 manifest-sync-prod.yaml
--rw-r-----. 1 sikaj01 users     490 Aug 27 19:30 manifest-sync-test.yaml
-[sikaj01@ip-10-56-112-33 argocd]$ cat manifest-sync-*
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: app-argo-jboss
-  namespace: argocd
-spec:
-  project: default 
-  source:
-    path: devvpc/k8s/jboss/cert
-    repoURL: ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts
-    targetRevision: feature/cicdsplit
-  destination: 
-    server: https://kubernetes.default.svc
-    namespace: ingress-nginx
-  syncPolicy:
-#    syncOptions:
-#    - CreateNamespace=true
-    automated:
-      selfHeal: true
-      prune: true
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: app-argo-jboss
-  namespace: argocd
-spec:
-  project: default 
-  source:
-    path: devvpc/k8s/jboss/dev
-    repoURL: ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts
-    targetRevision: feature/cicdsplit
-  destination: 
-    server: https://kubernetes.default.svc
-    namespace: ingress-nginx
-  syncPolicy:
-#    syncOptions:
-#    - CreateNamespace=true
-    automated:
-      selfHeal: true
-      prune: true
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: app-argo-jboss
-  namespace: argocd
-spec:
-  project: default 
-  source:
-    path: devvpc/k8s/jboss/prod
-    repoURL: ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts
-    targetRevision: feature/cicdsplit
-  destination: 
-    server: https://kubernetes.default.svc
-    namespace: ingress-nginx
-  syncPolicy:
-#    syncOptions:
-#    - CreateNamespace=true
-    automated:
-      selfHeal: true
-      prune: true
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: app-argo-jboss
-  namespace: argocd
-spec:
-  project: default 
-  source:
-    path: devvpc/k8s/jboss/test
-    repoURL: ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts
-    targetRevision: feature/cicdsplit
-  destination: 
-    server: https://kubernetes.default.svc
-    namespace: ingress-nginx
-  syncPolicy:
-#    syncOptions:
-#    - CreateNamespace=true
-    automated:
-      selfHeal: true
-      prune: true
+HTTP_STATUS:404
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --instance-ids i-079b964a2338aaaa6 \
+  --query 'Reservations[].Instances[].MetadataOptions'
+[
+    {
+        "State": "applied",
+        "HttpTokens": "optional",
+        "HttpPutResponseHopLimit": 1,
+        "HttpEndpoint": "enabled",
+        "HttpProtocolIpv6": "disabled",
+        "InstanceMetadataTags": "disabled"
+    }
+]
+[s
