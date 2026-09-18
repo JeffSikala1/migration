@@ -1,5 +1,5 @@
-cd ~
-# confirm staging root exists and is writable; fall back to a scratch dir if not
-df -h /backup-staging 2>/dev/null || echo "/backup-staging not found — will use scratch dir instead"
+docker inspect dev-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -i POSTGRES
 
-sudo STAGE_ROOT=/tmp/dev-backup-dryrun bash dev_nightly_backup.sh
+docker exec dev-postgres psql -U "$(docker inspect dev-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' | grep POSTGRES_USER | cut -d= -f2)" -c '\du'
+
+docker exec dev-postgres psql -U "$(docker inspect dev-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' | grep POSTGRES_USER | cut -d= -f2)" -l
