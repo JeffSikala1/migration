@@ -1,36 +1,7 @@
-read -s -p "Password: " bitbucket_dev_admin_pass; echo
+docker inspect dev-bitbucket --format '{{range .Mounts}}{{.Destination}} -> {{.Source}}{{end}}'
+docker inspect dev-bamboo    --format '{{range .Mounts}}{{.Destination}} -> {{.Source}}{{end}}'
 
-bitbucket_admin_user="jeff.sikala"
-DEVOPS_ALIAS="conexus_devsecops@gsa.gov"
 
-declare -A USERS=(
-  ["douglas.nelson@gsa.gov"]="Douglas Nelson"
-  ["eli.tatro@gsa.gov"]="Eli Tatro"
-  ["gavin.ecker@gsa.gov"]="Gavin Ecker"
-  ["james.hyland@gsa.gov"]="James Hyland"
-  ["john.zehetner@gsa.gov"]="John Zehetner"
-  ["kristian.fitzgerald@gsa.gov"]="Kristian Fitzgerald"
-  ["larry.hilton@gsa.gov"]="Larry Hilton"
-  ["mark.hotra@gsa.gov"]="Mark Hotra"
-  ["peter.traunfeld@gsa.gov"]="Peter Traunfeld"
-  ["philippe.thai@gsa.gov"]="Philippe Thai"
-  ["rajesh.vaswani@gsa.gov"]="Rajesh Vaswani"
-  ["robert.wernsman@gsa.gov"]="Robert Wernsman"
-  ["sasikanth.dale@gsa.gov"]="Sasikanth Dale"
-  ["shilpika.pamarthi@gsa.gov"]="Shilpika Pamarthi"
-  ["steven.kuzmich@gsa.gov"]="Steven Kuzmich"
-  ["sa_bamboo"]="sa_bamboo"
-)
+ls -la <bitbucket_mount_source>/shared/
+ls -la <bamboo_mount_source>/shared/
 
-for u in "${!USERS[@]}"; do
-  dn="${USERS[$u]}"
-  echo "Updating $u ($dn) ..."
-  curl -sSk -u "${bitbucket_admin_user}:${bitbucket_dev_admin_pass}" \
-    -H "Host: bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov" \
-    -X PUT "https://localhost/rest/api/1.0/admin/users?name=${u}" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\":\"${u}\",\"displayName\":\"${dn}\",\"email\":\"${DEVOPS_ALIAS}\"}"
-  echo
-done
-
-unset bitbucket_dev_admin_pass
