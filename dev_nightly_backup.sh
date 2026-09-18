@@ -124,6 +124,10 @@ for DB in "${DB_LIST[@]}"; do
     > "$STAGE/postgres/${DB}_${TS}.dump"
 done
 
+# Upload now, the weekly rollup can't wait on the filestore stream
+echo "  - uploading postgres dumps"
+s3_put_dir "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
+
 # ===== 2) Bitbucket / Bamboo config-only backup =====
 echo "[2/4] Bitbucket / Bamboo config-only backup..."
 mkdir -p "$STAGE/apps"
@@ -145,13 +149,19 @@ else
   echo "  WARN: ${BAMBOO_CONTAINER} not running — skipping Bamboo config backup."
 fi
 
-# ===== 3) Artifactory: config (staged) + filestore (streamed) =====
+echo "  - uploading Bitbucket/Bamboo config tars"
+s3_put_dir "$STAGE/apps" "${BUCKET}/apps/${DATE}/"
+
+# ===== 3) Artifactory: config (staged) + filestore (streamed, always last) =====
 echo "[3/4] Artifactory config + filestore backup..."
 
 if docker ps --format '{{.Names}}' | grep -qx "$ARTIFACTORY_CONTAINER"; then
   ARTIFACTORY_HOME="$(resolve_container_mount "$ARTIFACTORY_CONTAINER" "/var/opt/jfrog/artifactory")"
   echo "  - ${ARTIFACTORY_CONTAINER} home -> ${ARTIFACTORY_HOME}"
   tar_config_subset "$STAGE/apps/artifactory_config_${TS}.tar.gz" "$ARTIFACTORY_HOME" "${ARTIFACTORY_CONFIG_PATHS[@]}"
+  if [[ -f "$STAGE/apps/artifactory_config_${TS}.tar.gz" ]]; then
+    s3_put_file "$STAGE/apps/artifactory_config_${TS}.tar.gz" "${BUCKET}/apps/${DATE}/artifactory_config_${TS}.tar.gz"
+  fi
 
   FILESTORE_DIR="${ARTIFACTORY_HOME}/${ARTIFACTORY_FILESTORE_PATH}"
   if [[ -d "$FILESTORE_DIR" ]]; then
@@ -167,7 +177,7 @@ if docker ps --format '{{.Names}}' | grep -qx "$ARTIFACTORY_CONTAINER"; then
       tar -czf - -C "$(dirname "$FILESTORE_DIR")" "$(basename "$FILESTORE_DIR")" \
         | aws s3 cp - "$FILESTORE_DEST" --expected-size "$FILESTORE_SIZE"
     fi
-    echo "  - filestore stream complete"
+    echo "  - filestore stream complete: ${FILESTORE_DEST}"
   else
     echo "  WARN: filestore dir not found at ${FILESTORE_DIR} — skipping filestore stream."
   fi
@@ -175,8 +185,9 @@ else
   echo "  WARN: ${ARTIFACTORY_CONTAINER} not running — skipping Artifactory backup."
 fi
 
-# ===== 4) Metadata + upload =====
-echo "[4/4] Metadata + upload..."
+# ===== 4) Metadata =====
+# Everything else is already uploaded above
+echo "[4/4] Metadata..."
 if [[ "$have_jq" -eq 1 ]]; then
   cat > "$STAGE/metadata.json" <<JSON
 {
@@ -184,7 +195,7 @@ if [[ "$have_jq" -eq 1 ]]; then
   "date": "${DATE}",
   "host": "${HOSTNAME}",
   "region": "${AWS_REGION}",
-  "scope": "config-only (bitbucket/bamboo), config + full filestore (artifactory), full postgres dumps",
+  "scope": "config-only (bitbucket/bamboo), config+full-filestore (artifactory), full postgres dumps (all 3 DBs)",
   "containers": $(docker ps --format '{{json .}}' | jq -s '.')
 }
 JSON
@@ -194,8 +205,6 @@ else
 JSON
 fi
 
-s3_put_dir  "$STAGE/postgres" "${BUCKET}/postgres/${DATE}/"
-s3_put_dir  "$STAGE/apps"     "${BUCKET}/apps/${DATE}/"
 s3_put_file "$STAGE/metadata.json" "${BUCKET}/metadata/${DATE}/metadata_${TS}.json"
 
 echo "==== Dev nightly backup completed OK ===="
