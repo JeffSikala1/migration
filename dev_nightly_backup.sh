@@ -17,6 +17,7 @@ HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 
 PG_CONTAINER="${PG_CONTAINER:-dev-postgres}"
+PG_USER="${PG_USER:-artifactory}"
 DB_LIST=(${DB_LIST:-bitbucket bamboo})
 
 BITBUCKET_CONTAINER="${BITBUCKET_CONTAINER:-dev-bitbucket}"
@@ -98,12 +99,12 @@ if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
 fi
 
 echo "  - dumping globals (roles/grants)"
-docker exec "$PG_CONTAINER" pg_dumpall -U postgres --globals-only \
+docker exec "$PG_CONTAINER" pg_dumpall -U "$PG_USER" --globals-only \
   > "$STAGE/postgres/globals_${TS}.sql"
 
 for DB in "${DB_LIST[@]}"; do
   echo "  - dumping ${DB}"
-  docker exec "$PG_CONTAINER" pg_dump -U postgres -Fc "$DB" \
+  docker exec "$PG_CONTAINER" pg_dump -U "$PG_USER" -Fc "$DB" \
     > "$STAGE/postgres/${DB}_${TS}.dump"
 done
 
