@@ -1,11 +1,8 @@
-# Confirm the token call actually succeeds and isn't silently empty
-TOKEN=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-echo "$TOKEN"
+TOKEN3=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+curl -s -w "\nHTTP_STATUS:%{http_code}\n" -H "X-aws-ec2-metadata-token: $TOKEN3" http://169.254.169.254/latest/meta-data/iam/
+curl -s -w "\nHTTP_STATUS:%{http_code}\n" -H "X-aws-ec2-metadata-token: $TOKEN3" http://169.254.169.254/latest/meta-data/iam/info
 
-# Then retry the credentials call with verbose status output
-TOKEN2=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-curl -s -w "\nHTTP_STATUS:%{http_code}\n" -H "X-aws-ec2-metadata-token: $TOKEN2" http://169.254.169.254/latest/meta-data/iam/security-credentials/
 
-# Check the instance's metadata service configuration
-aws ec2 describe-instances --instance-ids i-079b964a2338aaaa6 \
-  --query 'Reservations[].Instances[].MetadataOptions'
+aws ec2 disassociate-iam-instance-profile --association-id iip-assoc-0b6470cb3e4f045ff
+# wait ~10-15 seconds
+aws ec2 associate-iam-instance-profile --instance-id i-079b964a2338aaaa6 --iam-instance-profile Name=dev-ssm-role
