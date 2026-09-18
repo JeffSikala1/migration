@@ -1,35 +1,31 @@
-[sikaj01@ip-10-56-128-233 ~]$ aws iam get-instance-profile --instance-profile-name dev-ssm-role
-{
-    "InstanceProfile": {
-        "Path": "/",
-        "InstanceProfileName": "dev-ssm-role",
-        "InstanceProfileId": "AIPAW3MEBTILNUPJ7EPOA",
-        "Arn": "arn:aws:iam::471112718870:instance-profile/dev-ssm-role",
-        "CreateDate": "2025-03-18T16:15:38+00:00",
-        "Roles": [
-            {
-                "Path": "/",
-                "RoleName": "dev-ssm-role",
-                "RoleId": "AROAW3MEBTILITDDJPFGC",
-                "Arn": "arn:aws:iam::471112718870:role/dev-ssm-role",
-                "CreateDate": "2025-03-18T16:15:38+00:00",
-                "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": "ec2.amazonaws.com"
-                            },
-                            "Action": "sts:AssumeRole"
-                        }
-                    ]
-                }
-            }
-        ],
-        "Tags": []
-    }
-}
-[sikaj01@ip-10-56-128-233 ~]$ aws iam add-role-to-instance-profile --instance-profile-name dev-ssm-role --role-name dev-ssm-role
+[sikaj01@ip-10-56-128-233 ~]$ TOKEN=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+echo "$TOKEN"
+AQAEAH001U--R5IKrBDlYXVDxpcP9B4slXGPKltjMyp0t_Ut7SyvAw==
+HTTP_STATUS:200
+[sikaj01@ip-10-56-128-233 ~]$ TOKEN2=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+[sikaj01@ip-10-56-128-233 ~]$ curl -s -w "\nHTTP_STATUS:%{http_code}\n" -H "X-aws-ec2-metadata-token: $TOKEN2" http://169.254.169.254/latest/meta-data/iam/security-credentials/
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+                 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title>404 - Not Found</title>
+ </head>
+ <body>
+  <h1>404 - Not Found</h1>
+ </body>
+</html>
 
-An error occurred (LimitExceeded) when calling the AddRoleToInstanceProfile operation: Cannot exceed quota for InstanceSessionsPerInstanceProfile: 1
+HTTP_STATUS:404
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --instance-ids i-079b964a2338aaaa6 \
+  --query 'Reservations[].Instances[].MetadataOptions'
+[
+    {
+        "State": "applied",
+        "HttpTokens": "optional",
+        "HttpPutResponseHopLimit": 1,
+        "HttpEndpoint": "enabled",
+        "HttpProtocolIpv6": "disabled",
+        "InstanceMetadataTags": "disabled"
+    }
+]
