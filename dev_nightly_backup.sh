@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Dev/OSS nightly backup — Bitbucket, Bamboo, Postgres
+# Dev/OSS nightly backup — Bitbucket, Bamboo, Artifactory, Postgres
 # No s3 backend here, so full backups are staged locally first
+# Exception: the Artifactory filestore is too big to stage, streamed straight to S3
 
 # ===== Config =====
 BUCKET="s3://cnxs-dev-atlassian-backups"
@@ -16,12 +17,14 @@ LOG="${LOGDIR}/nightly-${DATE}.log"
 HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 
+# One dev-postgres backs all three apps; superuser is artifactory, not postgres
 PG_CONTAINER="${PG_CONTAINER:-dev-postgres}"
 PG_USER="${PG_USER:-artifactory}"
-DB_LIST=(${DB_LIST:-bitbucket bamboo})
+DB_LIST=(${DB_LIST:-bitbucket bamboo artifactory})
 
 BITBUCKET_CONTAINER="${BITBUCKET_CONTAINER:-dev-bitbucket}"
 BAMBOO_CONTAINER="${BAMBOO_CONTAINER:-dev-bamboo}"
+ARTIFACTORY_CONTAINER="${ARTIFACTORY_CONTAINER:-dev-artifactory}"
 
 # Bitbucket config paths; excludes shared/data.
 BITBUCKET_CONFIG_PATHS=(
@@ -43,6 +46,16 @@ BAMBOO_ROOT_CONFIG_FILES=(
   "bamboo.cfg.xml"
 )
 
+# Artifactory keys only; filestore is handled separately.
+ARTIFACTORY_CONFIG_PATHS=(
+  "etc/artifactory/security"
+  "etc/security/keys"
+  "etc/access/keys"
+  "etc/jfconnect/keys"
+  "etc/event/keys"
+)
+ARTIFACTORY_FILESTORE_PATH="data/artifactory/filestore"
+
 mkdir -p "$STAGE" "$LOGDIR"
 exec > >(tee -a "$LOG") 2>&1
 
@@ -57,6 +70,9 @@ need tar
 
 have_jq=0
 command -v jq >/dev/null 2>&1 && have_jq=1 || echo "WARN: jq not found; metadata.json will be minimal."
+
+have_pv=0
+command -v pv >/dev/null 2>&1 && have_pv=1 || echo "WARN: pv not found; filestore stream will have no progress meter."
 
 s3_put_dir()  { aws s3 cp "$1" "$2" --recursive; }
 s3_put_file() { aws s3 cp "$1" "$2"; }
@@ -90,7 +106,7 @@ tar_config_subset() {
 }
 
 # ===== 1) Postgres dumps (full — this is our only copy) =====
-echo "[1/3] Postgres dumps (bitbucket, bamboo)..."
+echo "[1/4] Postgres dumps (bitbucket, bamboo, artifactory)..."
 mkdir -p "$STAGE/postgres"
 
 if ! docker ps --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
@@ -109,7 +125,7 @@ for DB in "${DB_LIST[@]}"; do
 done
 
 # ===== 2) Bitbucket / Bamboo config-only backup =====
-echo "[2/3] Bitbucket / Bamboo config-only backup..."
+echo "[2/4] Bitbucket / Bamboo config-only backup..."
 mkdir -p "$STAGE/apps"
 
 if docker ps --format '{{.Names}}' | grep -qx "$BITBUCKET_CONTAINER"; then
@@ -129,8 +145,38 @@ else
   echo "  WARN: ${BAMBOO_CONTAINER} not running — skipping Bamboo config backup."
 fi
 
-# ===== 3) Metadata + upload =====
-echo "[3/3] Metadata + upload..."
+# ===== 3) Artifactory: config (staged) + filestore (streamed) =====
+echo "[3/4] Artifactory config + filestore backup..."
+
+if docker ps --format '{{.Names}}' | grep -qx "$ARTIFACTORY_CONTAINER"; then
+  ARTIFACTORY_HOME="$(resolve_container_mount "$ARTIFACTORY_CONTAINER" "/var/opt/jfrog/artifactory")"
+  echo "  - ${ARTIFACTORY_CONTAINER} home -> ${ARTIFACTORY_HOME}"
+  tar_config_subset "$STAGE/apps/artifactory_config_${TS}.tar.gz" "$ARTIFACTORY_HOME" "${ARTIFACTORY_CONFIG_PATHS[@]}"
+
+  FILESTORE_DIR="${ARTIFACTORY_HOME}/${ARTIFACTORY_FILESTORE_PATH}"
+  if [[ -d "$FILESTORE_DIR" ]]; then
+    FILESTORE_DEST="${BUCKET}/apps/${DATE}/artifactory_filestore_${TS}.tar.gz"
+    # --expected-size is required for streams over 50GB
+    FILESTORE_SIZE="$(du -sb "$FILESTORE_DIR" | cut -f1)"
+    echo "  - streaming filestore (${FILESTORE_DIR}) to ${FILESTORE_DEST}"
+    if [[ "$have_pv" -eq 1 ]]; then
+      tar -czf - -C "$(dirname "$FILESTORE_DIR")" "$(basename "$FILESTORE_DIR")" \
+        | pv -pterab \
+        | aws s3 cp - "$FILESTORE_DEST" --expected-size "$FILESTORE_SIZE"
+    else
+      tar -czf - -C "$(dirname "$FILESTORE_DIR")" "$(basename "$FILESTORE_DIR")" \
+        | aws s3 cp - "$FILESTORE_DEST" --expected-size "$FILESTORE_SIZE"
+    fi
+    echo "  - filestore stream complete"
+  else
+    echo "  WARN: filestore dir not found at ${FILESTORE_DIR} — skipping filestore stream."
+  fi
+else
+  echo "  WARN: ${ARTIFACTORY_CONTAINER} not running — skipping Artifactory backup."
+fi
+
+# ===== 4) Metadata + upload =====
+echo "[4/4] Metadata + upload..."
 if [[ "$have_jq" -eq 1 ]]; then
   cat > "$STAGE/metadata.json" <<JSON
 {
@@ -138,7 +184,7 @@ if [[ "$have_jq" -eq 1 ]]; then
   "date": "${DATE}",
   "host": "${HOSTNAME}",
   "region": "${AWS_REGION}",
-  "scope": "config-only (bitbucket/bamboo), full postgres dumps",
+  "scope": "config-only (bitbucket/bamboo), config + full filestore (artifactory), full postgres dumps",
   "containers": $(docker ps --format '{{json .}}' | jq -s '.')
 }
 JSON
