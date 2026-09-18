@@ -1,4 +1,10 @@
-sudo du -sh /app/jfrog/data/artifactory/filestore
-sudo du -sh /app/jfrog/etc/artifactory/security
-sudo ls -la /app/jfrog/backup/artifactory/backup-daily
-sudo du -sh /app/jfrog/backup/artifactory/backup-daily
+UPLOAD_ID=$(aws s3api list-multipart-uploads --bucket cnxs-dev-atlassian-backups \
+  --query "Uploads[?Key=='apps/2026-09-18/artifactory_filestore_20260918_173954.tar.gz'].UploadId" \
+  --output text)
+
+echo "Upload ID: $UPLOAD_ID"
+
+aws s3api list-parts --bucket cnxs-dev-atlassian-backups \
+  --key apps/2026-09-18/artifactory_filestore_20260918_173954.tar.gz \
+  --upload-id "$UPLOAD_ID" \
+  --query "sum(Parts[].Size)" --output text
