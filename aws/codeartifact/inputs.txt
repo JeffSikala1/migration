@@ -1,25 +1,6 @@
-sudo mkdir -p /app/devbackup/bin /app/devbackup/logs
-
-sudo mv ~/dev_nightly_backup.sh /app/devbackup/bin/
-sudo mv ~/dev_weekly_backup.sh  /app/devbackup/bin/
-
-sudo chown -R root:root /app/devbackup
-sudo chmod 750 /app/devbackup/bin /app/devbackup/logs
-sudo chmod 750 /app/devbackup/bin/dev_nightly_backup.sh /app/devbackup/bin/dev_weekly_backup.sh
-
-# confirm they're where you expect
-sudo ls -la /app/devbackup/bin
+sudo mkdir -p /backup-staging
+sudo chown root:root /backup-staging
+sudo chmod 750 /backup-staging
+df -h /backup-staging
 
 
-sudo STAGE_ROOT=/tmp/dev-backup-dryrun bash /app/devbackup/bin/dev_nightly_backup.sh
-
-
-
-# Dev/OSS nightly backup (Bitbucket/Bamboo config + Postgres dumps) at 02:15
-15 2 * * * /app/devbackup/bin/dev_nightly_backup.sh
-
-# Weekly rollup, Sunday 03:00
-0 3 * * 0 /app/devbackup/bin/dev_weekly_backup.sh
-
-# Cleanup stale staging older than 1 day
-0 4 * * * find /backup-staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
