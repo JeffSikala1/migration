@@ -4,4 +4,53 @@ HTTP_STATUS:200
 [sikaj01@ip-10-56-128-233 ~]$ curl -s -w "\nHTTP_STATUS:%{http_code}\n" -H "X-aws-ec2-metadata-token: $TOKEN3" http://169.254.169.254/latest/meta-data/placement/availability-zone
 us-east-1b
 HTTP_STATUS:200
-[sikaj01@ip-10-56-128-233 ~]$ 
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-iam-instance-profile-associations \
+  --filters Name=instance-id,Values=i-0dd6e0c7c4fcc27f9
+{
+    "IamInstanceProfileAssociations": []
+}
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 associate-iam-instance-profile \
+  --instance-id i-0dd6e0c7c4fcc27f9 \
+  --iam-instance-profile Name=dev-ssm-role
+{
+    "IamInstanceProfileAssociation": {
+        "AssociationId": "iip-assoc-01d10fb2864f97855",
+        "InstanceId": "i-0dd6e0c7c4fcc27f9",
+        "IamInstanceProfile": {
+            "Arn": "arn:aws:iam::471112718870:instance-profile/dev-ssm-role",
+            "Id": "AIPAW3MEBTILNUPJ7EPOA"
+        },
+        "State": "associating"
+    }
+}
+[sikaj01@ip-10-56-128-233 ~]$ curl -s -w "\nHTTP_STATUS:%{http_code}\n" -H "X-aws-ec2-metadata-token: $TOKEN3" http://169.254.169.254/latest/meta-data/iam/security-credentials/
+dev-ssm-role
+HTTP_STATUS:200
+[sikaj01@ip-10-56-128-233 ~]$ history | grep dry
+  925  sudo STAGE_ROOT=/tmp/dev-backup-dryrun bash dev_nightly_backup.sh
+  934  sudo STAGE_ROOT=/tmp/dev-backup-dryrun bash dev_nightly_backup.sh
+  936  sudo --preserve-env=HOME STAGE_ROOT=/tmp/dev-backup-dryrun bash dev_nightly_backup.sh
+  973  history | grep dry
+[sikaj01@ip-10-56-128-233 ~]$ !934
+sudo STAGE_ROOT=/tmp/dev-backup-dryrun bash dev_nightly_backup.sh
+[sudo] password for sikaj01: 
+==== Dev nightly backup start: 20260918_164647 host=ip-10-56-128-233.ec2.internal ====
+Staging to: /tmp/dev-backup-dryrun/2026-09-18/20260918_164647
+[1/3] Postgres dumps (bitbucket, bamboo)...
+  - dumping globals (roles/grants)
+  - dumping bitbucket
+  - dumping bamboo
+[2/3] Bitbucket / Bamboo config-only backup...
+  - dev-bitbucket home -> /app/bitbucket
+  - wrote /tmp/dev-backup-dryrun/2026-09-18/20260918_164647/apps/bitbucket_config_20260918_164647.tar.gz (973918 bytes) containing: shared/bitbucket.properties shared/secrets-config.yaml shared/keys shared/config
+  - dev-bamboo home -> /app/bamboo
+  - wrote /tmp/dev-backup-dryrun/2026-09-18/20260918_164647/apps/bamboo_config_20260918_164647.tar.gz (13923 bytes) containing: shared/configuration shared/ssl shared/clusterInfo bamboo.cfg.xml
+[3/3] Metadata + upload...
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_164647/postgres/globals_20260918_164647.sql to s3://cnxs-dev-atlassian-backups/postgres/2026-09-18/globals_20260918_164647.sql
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_164647/postgres/bitbucket_20260918_164647.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-18/bitbucket_20260918_164647.dump
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_164647/postgres/bamboo_20260918_164647.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-18/bamboo_20260918_164647.dump
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_164647/apps/bitbucket_config_20260918_164647.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-18/bitbucket_config_20260918_164647.tar.gz
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_164647/apps/bamboo_config_20260918_164647.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-18/bamboo_config_20260918_164647.tar.gz
+upload: ../../tmp/dev-backup-dryrun/2026-09-18/20260918_164647/metadata.json to s3://cnxs-dev-atlassian-backups/metadata/2026-09-18/metadata_20260918_164647.json
+==== Dev nightly backup completed OK ====
+Cleaning up local staging...
