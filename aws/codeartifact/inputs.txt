@@ -1,3 +1,11 @@
-aws iam get-instance-profile --instance-profile-name dev-ssm-role
+# Confirm the token call actually succeeds and isn't silently empty
+TOKEN=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+echo "$TOKEN"
 
-aws iam add-role-to-instance-profile --instance-profile-name dev-ssm-role --role-name dev-ssm-role
+# Then retry the credentials call with verbose status output
+TOKEN2=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+curl -s -w "\nHTTP_STATUS:%{http_code}\n" -H "X-aws-ec2-metadata-token: $TOKEN2" http://169.254.169.254/latest/meta-data/iam/security-credentials/
+
+# Check the instance's metadata service configuration
+aws ec2 describe-instances --instance-ids i-079b964a2338aaaa6 \
+  --query 'Reservations[].Instances[].MetadataOptions'
