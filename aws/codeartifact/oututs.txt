@@ -1,9 +1,3 @@
-[sikaj01@ip-10-56-128-233 ~]$ sudo mkdir -p /app/devbackup/bin /app/devbackup/logs
-[sikaj01@ip-10-56-128-233 ~]$ sudo mv ~/dev_nightly_backup.sh /app/devbackup/bin/
-[sikaj01@ip-10-56-128-233 ~]$ sudo mv ~/dev_weekly_backup.sh  /app/devbackup/bin/
-[sikaj01@ip-10-56-128-233 ~]$ sudo chown -R root:root /app/devbackup
-[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 750 /app/devbackup/bin /app/devbackup/logs
-[sikaj01@ip-10-56-128-233 ~]$ sudo chmod 750 /app/devbackup/bin/dev_nightly_backup.sh /app/devbackup/bin/dev_weekly_backup.sh
 [sikaj01@ip-10-56-128-233 ~]$ sudo ls -la /app/devbackup/bin
 total 12
 drwxr-x---. 2 root root   63 Sep 18 16:53 .
@@ -43,11 +37,84 @@ crontab: installing new crontab
 
 # Cleanup stale staging older than 1 day
 0 4 * * * find /backup-staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
-
-
 [sikaj01@ip-10-56-128-233 ~]$ sudo mkdir -p /backup-staging
 [sikaj01@ip-10-56-128-233 ~]$ sudo chown root:root /backup-staging
 [sikaj01@ip-10-56-128-233 ~]$ sudo chmod 750 /backup-staging
 [sikaj01@ip-10-56-128-233 ~]$ df -h /backup-staging
 Filesystem      Size  Used Avail Use% Mounted on
 /dev/nvme0n1p1  800G  343G  458G  43% /
+[sikaj01@ip-10-56-128-233 ~]$ sudo /app/devbackup/bin/dev_nightly_backup.sh
+==== Dev nightly backup start: 20260918_170540 host=ip-10-56-128-233.ec2.internal ====
+Staging to: /backup-staging/2026-09-18/20260918_170540
+[1/3] Postgres dumps (bitbucket, bamboo)...
+  - dumping globals (roles/grants)
+  - dumping bitbucket
+  - dumping bamboo
+[2/3] Bitbucket / Bamboo config-only backup...
+  - dev-bitbucket home -> /app/bitbucket
+  - wrote /backup-staging/2026-09-18/20260918_170540/apps/bitbucket_config_20260918_170540.tar.gz (973918 bytes) containing: shared/bitbucket.properties shared/secrets-config.yaml shared/keys shared/config
+  - dev-bamboo home -> /app/bamboo
+  - wrote /backup-staging/2026-09-18/20260918_170540/apps/bamboo_config_20260918_170540.tar.gz (13923 bytes) containing: shared/configuration shared/ssl shared/clusterInfo bamboo.cfg.xml
+[3/3] Metadata + upload...
+upload: ../../backup-staging/2026-09-18/20260918_170540/postgres/globals_20260918_170540.sql to s3://cnxs-dev-atlassian-backups/postgres/2026-09-18/globals_20260918_170540.sql
+upload: ../../backup-staging/2026-09-18/20260918_170540/postgres/bitbucket_20260918_170540.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-18/bitbucket_20260918_170540.dump
+upload: ../../backup-staging/2026-09-18/20260918_170540/postgres/bamboo_20260918_170540.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-18/bamboo_20260918_170540.dump
+upload: ../../backup-staging/2026-09-18/20260918_170540/apps/bamboo_config_20260918_170540.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-18/bamboo_config_20260918_170540.tar.gz
+upload: ../../backup-staging/2026-09-18/20260918_170540/apps/bitbucket_config_20260918_170540.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-18/bitbucket_config_20260918_170540.tar.gz
+upload: ../../backup-staging/2026-09-18/20260918_170540/metadata.json to s3://cnxs-dev-atlassian-backups/metadata/2026-09-18/metadata_20260918_170540.json
+==== Dev nightly backup completed OK ====
+Cleaning up local staging...
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls
+2026-03-06 22:36:48 aws-waf-logs-cnxs-dev
+2024-04-30 15:11:36 cf-templates-q3rbvz7og6ew-us-east-1
+2026-09-18 14:44:27 cnxs-dev-atlassian-backups
+2025-07-25 05:58:38 cnxslbdiaglogs
+2025-05-05 22:51:54 datadog-forwarder-forwarderbucket-yex8zv7xm7vx
+2025-07-28 04:05:59 dev-cnxs-ts-s3
+2025-05-05 22:59:44 devvpcdatadogintegration-forwarder-forwarderbucket-haptxgyfxmmi
+2026-03-11 03:55:14 wso2-logs-dev
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls cnxs-dev-atlassian-backups
+                           PRE apps/
+                           PRE metadata/
+                           PRE postgres/
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls cnxs-dev-atlassian-backups/app/
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls cnxs-dev-atlassian-backups/apps/
+                           PRE 2026-09-18/
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls cnxs-dev-atlassian-backups/apps/2026-09-18/
+2026-09-18 15:19:50      13923 bamboo_config_20260918_151902.tar.gz
+2026-09-18 16:47:35      13923 bamboo_config_20260918_164647.tar.gz
+2026-09-18 16:54:39      13923 bamboo_config_20260918_165351.tar.gz
+2026-09-18 17:06:28      13923 bamboo_config_20260918_170540.tar.gz
+2026-09-18 15:19:50     973918 bitbucket_config_20260918_151902.tar.gz
+2026-09-18 16:47:35     973918 bitbucket_config_20260918_164647.tar.gz
+2026-09-18 16:54:39     973918 bitbucket_config_20260918_165351.tar.gz
+2026-09-18 17:06:29     973918 bitbucket_config_20260918_170540.tar.gz
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls cnxs-dev-atlassian-backups/postgres/
+                           PRE 2026-09-18/
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls cnxs-dev-atlassian-backups/postgres/2026-09-18/
+2026-09-18 15:19:49  268341917 bamboo_20260918_151902.dump
+2026-09-18 16:47:34  268341909 bamboo_20260918_164647.dump
+2026-09-18 16:54:38  268341917 bamboo_20260918_165351.dump
+2026-09-18 17:06:27  268341923 bamboo_20260918_170540.dump
+2026-09-18 15:19:49   24163787 bitbucket_20260918_151902.dump
+2026-09-18 16:47:34   24163785 bitbucket_20260918_164647.dump
+2026-09-18 16:54:38   24163775 bitbucket_20260918_165351.dump
+2026-09-18 17:06:27   24163782 bitbucket_20260918_170540.dump
+2026-09-18 15:19:49       1229 globals_20260918_151902.sql
+2026-09-18 16:47:34       1229 globals_20260918_164647.sql
+2026-09-18 16:54:38       1229 globals_20260918_165351.sql
+2026-09-18 17:06:27       1229 globals_20260918_170540.sql
+[sikaj01@ip-10-56-128-233 ~]$ docker ps
+CONTAINER ID   IMAGE                                                     COMMAND                  CREATED       STATUS       PORTS                                                       NAMES
+fac41a7f340b   atlassian/bitbucket:9.4.17                                "/usr/bin/tini -- /e…"   2 weeks ago   Up 2 weeks   0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp              dev-bitbucket
+3e31878e1d2c   atlassian/bamboo:10.2.11                                  "/usr/bin/tini -- /e…"   2 weeks ago   Up 8 days    0.0.0.0:8085->8085/tcp, 0.0.0.0:8443->8443/tcp, 54663/tcp   dev-bamboo
+05ccbc52a0ba   nginx:1.29.3                                              "/docker-entrypoint.…"   7 weeks ago   Up 4 weeks   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp                    dev-nginx
+bbe9824ab941   releases-docker.jfrog.io/jfrog/artifactory-oss:7.104.14   "/entrypoint-artifac…"   7 weeks ago   Up 4 weeks   0.0.0.0:8081-8082->8081-8082/tcp                            dev-artifactory
+32baf1b78df2   postgres:15-alpine                                        "docker-entrypoint.s…"   7 weeks ago   Up 4 weeks   5432/tcp                                                    dev-postgres
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls cnxs-dev-atlassian-backups/metadata/
+                           PRE 2026-09-18/
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 ls cnxs-dev-atlassian-backups/metadata/2026-09-18/
+2026-09-18 15:19:51       3670 metadata_20260918_151902.json
+2026-09-18 16:47:36       3666 metadata_20260918_164647.json
+2026-09-18 16:54:40       3667 metadata_20260918_165351.json
+2026-09-18 17:06:29       3667 metadata_20260918_170540.json
