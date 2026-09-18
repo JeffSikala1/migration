@@ -1,6 +1,10 @@
-sudo mkdir -p /backup-staging
-sudo chown root:root /backup-staging
-sudo chmod 750 /backup-staging
-df -h /backup-staging
+docker inspect dev-artifactory --format '{{range .Mounts}}{{.Destination}} -> {{.Source}}{{end}}'
 
+# once we have the real mount source, check filestore size specifically
+sudo du -sh <mount_source>/var/etc/security 2>/dev/null
+sudo du -sh <mount_source>/var/data/filestore 2>/dev/null
+sudo du -sh <mount_source>/var/data 2>/dev/null
+sudo du -sh <mount_source>/var 2>/dev/null
 
+# confirm artifactory's storage config isn't secretly pointing at S3 despite what we assume
+docker exec dev-artifactory cat /opt/jfrog/artifactory/var/etc/artifactory/binarystore.xml 2>/dev/null
