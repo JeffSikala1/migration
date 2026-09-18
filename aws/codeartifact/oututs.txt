@@ -1,12 +1,71 @@
-[sikaj01@ip-10-56-128-233 ~]$ sudo du -sh /app/jfrog/data/artifactory/filestore
-294G    /app/jfrog/data/artifactory/filestore
-[sikaj01@ip-10-56-128-233 ~]$ sudo du -sh /app/jfrog/etc/artifactory/security
-16K     /app/jfrog/etc/artifactory/security
-[sikaj01@ip-10-56-128-233 ~]$ sudo ls -la /app/jfrog/backup/artifactory/backup-daily
-total 0
-drwxr-x---. 3 1030 1030  21 Jul 30 01:59 .
-drwxr-x---. 3 1030 1030  26 Jul 30 01:59 ..
-drwxr-x---. 4 1030 1030 139 Jul 30 02:00 current
-[sikaj01@ip-10-56-128-233 ~]$ sudo du -sh /app/jfrog/backup/artifactory/backup-daily
-299G    /app/jfrog/backup/artifactory/backup-daily
+[sikaj01@ip-10-56-128-233 ~]$ !932
+rm dev_nightly_backup.sh 
+rm: cannot remove 'dev_nightly_backup.sh': No such file or directory
+[sikaj01@ip-10-56-128-233 ~]$ sudo rm /app/devbackup/bin/dev_nightly_backup.sh
+[sikaj01@ip-10-56-128-233 ~]$ sudo vim /app/devbackup/bin/dev_nightly_backup.sh
+[sikaj01@ip-10-56-128-233 ~]$ !990
+sudo /app/devbackup/bin/dev_nightly_backup.sh
+sudo: /app/devbackup/bin/dev_nightly_backup.sh: command not found
+[sikaj01@ip-10-56-128-233 ~]$ history | grep chmod
+  113  sudo chmod o+x /app
+  200  sudo chmod 640 /app/nginx/conf.d/bitbucket.conf
+  333  sudo chmod 640 /app/nginx/conf.d/bamboo.conf
+  376  sudo chmod 640 /app/bamboo/shared/configuration/bamboo-shared.cfg.xml
+  378  sudo chmod 750 /app/bamboo/shared/configuration
+  503  sudo chmod 750 /app/bamboo/shared/configuration/keys /app/bamboo/shared/configuration/cipher
+  504  sudo chmod 400 /app/bamboo/shared/configuration/secrets-config.yaml
+  505  sudo chmod 400 /app/bamboo/shared/configuration/keys/AES256_2026-04-21-220531_18a03f06-8847-4017-aa17-828fcce740f3
+  506  sudo chmod 640 /app/bamboo/shared/configuration/cipher/cipher.key_0
+  768  sudo chmod 640 /app/nginx/certificates/dev_wildcard.pem
+  769  sudo chmod 600 /app/nginx/certificates/dev_privatekey.key
+  915  chmod +x setup_dev_backup.sh 
+  921  chmod +x dev*
+  980  sudo chmod 750 /app/devbackup/bin /app/devbackup/logs
+  981  sudo chmod 750 /app/devbackup/bin/dev_nightly_backup.sh /app/devbackup/bin/dev_weekly_backup.sh
+  988  sudo chmod 750 /backup-staging
+ 1028  history | grep chmod
+[sikaj01@ip-10-56-128-233 ~]$ ^Cstory | grep chmod!9
+[sikaj01@ip-10-56-128-233 ~]$ !981
+sudo chmod 750 /app/devbackup/bin/dev_nightly_backup.sh /app/devbackup/bin/dev_weekly_backup.sh
+[sikaj01@ip-10-56-128-233 ~]$ sudo /app/devbackup/bin/dev_nightly_backup.sh
+==== Dev nightly backup start: 20260918_173954 host=ip-10-56-128-233.ec2.internal ====
+Staging to: /backup-staging/2026-09-18/20260918_173954
+[1/4] Postgres dumps (bitbucket, bamboo, artifactory)...
+  - dumping globals (roles/grants)
+  - dumping bitbucket
+  - dumping bamboo
+  - dumping artifactory
+[2/4] Bitbucket / Bamboo config-only backup...
+  - dev-bitbucket home -> /app/bitbucket
+  - wrote /backup-staging/2026-09-18/20260918_173954/apps/bitbucket_config_20260918_173954.tar.gz (973918 bytes) containing: shared/bitbucket.properties shared/secrets-config.yaml shared/keys shared/config
+  - dev-bamboo home -> /app/bamboo
+  - wrote /backup-staging/2026-09-18/20260918_173954/apps/bamboo_config_20260918_173954.tar.gz (13923 bytes) containing: shared/configuration shared/ssl shared/clusterInfo bamboo.cfg.xml
+[3/4] Artifactory config + filestore backup...
+  - dev-artifactory home -> /app/jfrog
+  - wrote /backup-staging/2026-09-18/20260918_173954/apps/artifactory_config_20260918_173954.tar.gz (5555 bytes) containing: etc/artifactory/security etc/security/keys etc/access/keys etc/jfconnect/keys etc/event/keys
+  - streaming filestore (/app/jfrog/data/artifactory/filestore) to s3://cnxs-dev-atlassian-backups/apps/2026-09-18/artifactory_filestore_20260918_173954.tar.gz
+
+
+# in another terminal
+
+[sikaj01@ip-10-56-128-233 ~]$ pv
+^C00 B 0:01:35 [0.00 B/s] [<=>                                                                                                                                   ]
+[sikaj01@ip-10-56-128-233 ~]$ command -v pv
+/usr/bin/pv
+[sikaj01@ip-10-56-128-233 ~]$ ps aux | grep -E 'tar|aws s3 cp' | grep -v grep
+root        3248  0.0  0.0  15260  9396 ?        Ss   Aug20   0:00 sshd: /usr/sbin/sshd -D [listener] 0 of 10-60 startups
+1030       14840  0.2  2.7 12374120 1795864 ?    Sl   Aug20 114:28 /opt/jfrog/artifactory/app/third-party/java/bin/java -Djava.util.logging.config.file=/opt/jfrog/artifactory/app/artifactory/tomcat/conf/logging.properties -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager -Djdk.tls.ephemeralDHKeySize=2048 -Djava.protocol.handler.pkgs=org.apache.catalina.webresources -Dorg.apache.catalina.security.SecurityListener.UMASK=0027 --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED -server -Xms512m -Xmx2g -XX:+UseG1GC -XX:OnOutOfMemoryError=kill -9 %p --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens java.base/java.text=ALL-UNNAMED --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.desktop/java.awt.font=ALL-UNNAMED --add-opens java.naming/com.sun.jndi.ldap=ALL-UNNAMED -Dfile.encoding=UTF8 -Djruby.compile.invokedynamic=false -Djruby.bytecode.version=1.8 -Djava.security.egd=file:/dev/./urandom -Dartdist=docker -Djf.product.home=/opt/jfrog/artifactory -Djruby.bytecode.version=1.8 -classpath /opt/jfrog/artifactory/app/artifactory/tomcat/bin/bootstrap.jar:/opt/jfrog/artifactory/app/artifactory/tomcat/bin/tomcat-juli.jar -Dcatalina.base=/opt/jfrog/artifactory/app/artifactory/tomcat -Dcatalina.home=/opt/jfrog/artifactory/app/artifactory/tomcat -Djava.io.tmpdir=/opt/jfrog/artifactory/var/work/artifactory/tomcat/temp org.apache.catalina.startup.Bootstrap start
+1030       15238  0.2  1.9 25107344 1252532 ?    Sl   Aug20  84:35 /opt/jfrog/artifactory/app/third-party/java/bin/java -Djava.util.logging.config.file=/opt/jfrog/artifactory/app/access/tomcat/conf/logging.properties -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager -Djdk.tls.ephemeralDHKeySize=2048 -Djava.protocol.handler.pkgs=org.apache.catalina.webresources -Dorg.apache.catalina.security.SecurityListener.UMASK=0027 --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED -server -XX:MaxRAMPercentage=25 -XX:+CrashOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:+UseStringDeduplication --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens java.base/java.text=ALL-UNNAMED --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.desktop/java.awt.font=ALL-UNNAMED -Dfile.encoding=UTF8 -Djava.security.egd=file:/dev/./urandom -Djf.product.home=/opt/jfrog/artifactory -Djruby.bytecode.version=1.8 -classpath /opt/jfrog/artifactory/app/access/tomcat/bin/bootstrap.jar:/opt/jfrog/artifactory/app/access/tomcat/bin/tomcat-juli.jar -Dcatalina.base=/opt/jfrog/artifactory/app/access/tomcat -Dcatalina.home=/opt/jfrog/artifactory/app/access/tomcat -Djava.io.tmpdir=/opt/jfrog/artifactory/var/work/access/tomcat/temp org.apache.catalina.startup.Bootstrap start
+2005      674021  1.4  5.4 11771040 3501364 ?    Sl   Sep10 165:27 /opt/java/openjdk/bin/java -Djava.util.logging.config.file=/opt/atlassian/bamboo/conf/logging.properties -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager -Djdk.tls.ephemeralDHKeySize=2048 -Djava.protocol.handler.pkgs=org.apache.catalina.webresources -Dsun.io.useCanonCaches=false -Dorg.apache.catalina.security.SecurityListener.UMASK=0027 -Xms1024m -Xmx1024m -XX:+UseG1GC -Dbamboo.setup.rss.in.docker=false --add-opens java.base/java.security=ALL-UNNAMED -Dbamboo.home=/var/atlassian/application-data/bamboo -Dignore.endorsed.dirs= -classpath /opt/atlassian/bamboo/bin/bootstrap.jar:/opt/atlassian/bamboo/bin/tomcat-juli.jar -Dcatalina.base=/opt/atlassian/bamboo -Dcatalina.home=/opt/atlassian/bamboo -Djava.io.tmpdir=/opt/atlassian/bamboo/temp org.apache.catalina.startup.Bootstrap start
+root     1176072  0.0  0.2 3487100 145040 ?      Sl   Sep08   6:12 /opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/components/agentbeat filebeat -E setup.ilm.enabled=false -E setup.template.enabled=false -E management.enabled=true -E management.restart_on_output_change=true -E logging.level=info -E logging.to_stderr=true -E gc_percent=${FILEBEAT_GOGC:100} -E filebeat.config.modules.enabled=false -E logging.event_data.to_stderr=true -E logging.event_data.to_files=false -E http.enabled=true -E http.host=unix:///opt/Elastic/Agent/data/tmp/Ds_6G65tNA-0WeaOn7NfzL41I9rFw1GW.sock -E path.data=/opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/run/journald-3f9da240-abe1-11ed-a92c-29b7c3d5d102
+root     2802449  0.0  0.2 2973712 135872 ?      Sl   Sep03   5:43 /opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/components/agentbeat filebeat -E setup.ilm.enabled=false -E setup.template.enabled=false -E management.enabled=true -E management.restart_on_output_change=true -E logging.level=info -E logging.to_stderr=true -E gc_percent=${FILEBEAT_GOGC:100} -E filebeat.config.modules.enabled=false -E logging.event_data.to_stderr=true -E logging.event_data.to_files=false -E http.enabled=true -E http.host=unix:///opt/Elastic/Agent/data/tmp/ktLNdx1PfhBC4oi1tvoCSIRxrimpcSAg.sock -E path.data=/opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/run/aws-cloudwatch-3f9da240-abe1-11ed-a92c-29b7c3d5d102
+root     2802475  0.0  0.2 3258880 146548 ?      Sl   Sep03   8:38 /opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/components/agentbeat filebeat -E setup.ilm.enabled=false -E setup.template.enabled=false -E management.enabled=true -E management.restart_on_output_change=true -E logging.level=info -E logging.to_stderr=true -E gc_percent=${FILEBEAT_GOGC:100} -E filebeat.config.modules.enabled=false -E logging.event_data.to_stderr=true -E logging.event_data.to_files=false -E http.enabled=true -E http.host=unix:///opt/Elastic/Agent/data/tmp/_ergWj_UEGyqfJSndBvLVP7q4D2kI4uZ.sock -E path.data=/opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/run/log-3f9da240-abe1-11ed-a92c-29b7c3d5d102
+root     2802502  0.0  0.2 2963856 137672 ?      Sl   Sep03   9:42 /opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/components/agentbeat filebeat -E setup.ilm.enabled=false -E setup.template.enabled=false -E management.enabled=true -E management.restart_on_output_change=true -E logging.level=info -E logging.to_stderr=true -E gc_percent=${FILEBEAT_GOGC:100} -E filebeat.config.modules.enabled=false -E logging.event_data.to_stderr=true -E logging.event_data.to_files=false -E http.enabled=true -E http.host=unix:///opt/Elastic/Agent/data/tmp/xTEtpJ7117ppc6OYvJCaYHbDW8mLjXGe.sock -E path.data=/opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/run/filestream-monitoring
+root     3138062  1.4  0.0 222924  3072 pts/1    R+   17:40   0:46 tar -czf - -C /app/jfrog/data/artifactory filestore
+root     3138064  5.6  0.1 641192 112144 pts/1   Sl+  17:40   3:00 /usr/bin/python3 -s /usr/bin/aws s3 cp - s3://cnxs-dev-atlassian-backups/apps/2026-09-18/artifactory_filestore_20260918_173954.tar.gz --expected-size 315252220222
+2003     3319484  0.0  0.0   7340  3404 ?        S    Sep01   0:00 bash /opt/atlassian/bitbucket/bin/start-bitbucket.sh -fg
+2003     3319551  0.0  0.0   7600  2720 ?        S    Sep01   0:00 bash /opt/atlassian/bitbucket/bin/_start-search.sh
+2003     3319708  0.3  2.3 8427612 1492728 ?     Sl   Sep01  73:39 /opt/java/openjdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.security.manager=allow -Djava.locale.providers=SPI,COMPAT -Xms1g -Xmx1g -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/var/atlassian/application-data/bitbucket/tmp/search -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=data -XX:ErrorFile=logs/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=logs/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.security.manager=allow --add-modules=jdk.incubator.vector -Djava.util.concurrent.ForkJoinPool.common.threadFactory=org.opensearch.secure_sm.SecuredForkJoinWorkerThreadFactory -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/opt/atlassian/bitbucket/opensearch -Dopensearch.path.conf=/var/atlassian/application-data/bitbucket/shared/search/config -Dopensearch.distribution.type=tar -Dopensearch.bundled_jdk=true -cp /opt/atlassian/bitbucket/opensearch/lib/* org.opensearch.bootstrap.OpenSearch -d -p /var/atlassian/application-data/bitbucket/log/search/opensearch.pid
+2003     3319726  0.0  0.0   7340  3248 ?        S    Sep01   0:00 bash /opt/atlassian/bitbucket/bin/_start-webapp.sh run
+2003     3319738  0.8  4.2 11692124 2723296 ?    Sl   Sep01 197:40 /opt/java/openjdk/bin/java -classpath /opt/atlassian/bitbucket/app -Datlassian.standalone=BITBUCKET -Dbitbucket.home=/var/atlassian/application-data/bitbucket -Dbitbucket.install=/opt/atlassian/bitbucket -Dcom.sun.jndi.ldap.connect.pool.timeout=300000 -Xms512m -Xmx1g -XX:+UseG1GC -Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8 -Djava.io.tmpdir=/var/atlassian/application-data/bitbucket/tmp -Djava.library.path=/opt/atlassian/bitbucket/lib/native;/var/atlassian/application-data/bitbucket/lib/native -XX:+IgnoreUnrecognizedVMOptions --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.naming/com.sun.jndi.ldap=ALL-UNNAMED -Duser.timezone=America/Denver -Dserver.forward-headers-strategy=native com.atlassian.bitbucket.internal.launcher.BitbucketServerLauncher start --logging.console=true
 [sikaj01@ip-10-56-128-233 ~]$ 
