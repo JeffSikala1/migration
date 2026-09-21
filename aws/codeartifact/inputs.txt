@@ -1,16 +1,13 @@
-# confirm instance type first — a large instance with enhanced networking
-# could plausibly sustain much higher throughput than I assumed
-aws ec2 describe-instances --instance-ids i-0dd6e0c7c4fcc27f9 \
-  --query 'Reservations[].Instances[].InstanceType' --output text
+aws s3api head-object --bucket cnxs-dev-atlassian-backups \
+  --key apps/2026-09-19/artifactory_filestore_20260919_021502.tar.gz \
+  --query '{ContentLength:ContentLength,ETag:ETag,PartsCount:PartsCount}'
 
-# actual network egress around Saturday's run window
-aws cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name NetworkOut \
-  --dimensions Name=InstanceId,Value=i-0dd6e0c7c4fcc27f9 \
-  --start-time 2026-09-19T02:10:00Z --end-time 2026-09-19T02:30:00Z \
-  --period 60 --statistics Sum --output table
+aws s3 cp s3://cnxs-dev-atlassian-backups/apps/2026-09-19/artifactory_filestore_20260919_021502.tar.gz - \
+  | gzip -t && echo "GZIP OK — archive is intact" || echo "GZIP FAILED — archive is truncated/corrupt"
 
-# same for Sunday
-aws cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name NetworkOut \
-  --dimensions Name=InstanceId,Value=i-0dd6e0c7c4fcc27f9 \
-  --start-time 2026-09-20T02:10:00Z --end-time 2026-09-20T02:30:00Z \
-  --period 60 --statistics Sum --output table
+
+date -d "-1 day" +%F
+
+sudo cp dev_weekly_backup.sh /app/devbackup/bin/dev_weekly_backup.sh
+sudo chown root:root /app/devbackup/bin/dev_weekly_backup.sh
+sudo chmod 750 /app/devbackup/bin/dev_weekly_backup.sh
