@@ -1,6 +1,21 @@
-sudo cp dev_nightly_backup.sh /app/devbackup/bin/dev_nightly_backup.sh
-sudo chown root:root /app/devbackup/bin/dev_nightly_backup.sh
-sudo chmod 750 /app/devbackup/bin/dev_nightly_backup.sh
+# Saturday and Sunday nightly runs — checking postgres/config upload timing
+echo "=== Saturday 2026-09-19 postgres ==="
+aws s3 ls cnxs-dev-atlassian-backups/postgres/2026-09-19/
+echo "=== Saturday 2026-09-19 apps ==="
+aws s3 ls cnxs-dev-atlassian-backups/apps/2026-09-19/
 
-aws s3 ls cnxs-dev-atlassian-backups/postgres/$(date +%F)/
-aws s3 ls cnxs-dev-atlassian-backups/apps/$(date +%F)/
+echo "=== Sunday 2026-09-20 postgres ==="
+aws s3 ls cnxs-dev-atlassian-backups/postgres/2026-09-20/
+echo "=== Sunday 2026-09-20 apps ==="
+aws s3 ls cnxs-dev-atlassian-backups/apps/2026-09-20/
+
+# Sunday's weekly rollup
+echo "=== weekly postgres ==="
+aws s3 ls cnxs-dev-atlassian-backups/weekly/postgres/ --recursive
+echo "=== weekly apps ==="
+aws s3 ls cnxs-dev-atlassian-backups/weekly/apps/ --recursive
+
+# Sanity check: any cron failures logged?
+sudo tail -100 /app/devbackup/logs/nightly-2026-09-19.log
+echo "---"
+sudo tail -100 /app/devbackup/logs/nightly-2026-09-20.log
