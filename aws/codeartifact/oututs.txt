@@ -1,29 +1,39 @@
-[sikaj01@ip-10-56-128-233 ~]$ DATE="$(date +%G-W%V)" 
-[sikaj01@ip-10-56-128-233 ~]$ aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
-
-usage: aws s3 sync <LocalPath> <S3Uri> or <S3Uri> <LocalPath> or <S3Uri> <S3Uri>
-Error: Invalid argument type
-[sikaj01@ip-10-56-128-233 ~]$ date
-Mon Sep 21 14:55:42 UTC 2026
-[sikaj01@ip-10-56-128-233 ~]$ sudo timedatectl status
-               Local time: Mon 2026-09-21 14:55:49 UTC
-           Universal time: Mon 2026-09-21 14:55:49 UTC
-                 RTC time: Mon 2026-09-21 14:55:48
-                Time zone: n/a (UTC, +0000)
-System clock synchronized: yes
-              NTP service: active
-          RTC in local TZ: no
-[sikaj01@ip-10-56-128-233 ~]$ sudo chronyc tracking 2>/dev/null || sudo ntpstat 2>/dev/null
-Reference ID    : A9FEA97B (169.254.169.123)
-Stratum         : 4
-Ref time (UTC)  : Mon Sep 21 14:55:48 2026
-System time     : 0.000000230 seconds slow of NTP time
-Last offset     : -0.000000493 seconds
-RMS offset      : 0.000001213 seconds
-Frequency       : 23.749 ppm fast
-Residual freq   : -0.000 ppm
-Skew            : 0.021 ppm
-Root delay      : 0.000305403 seconds
-Root dispersion : 0.000262779 seconds
-Update interval : 16.2 seconds
-Leap status     : Normal
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --instance-ids i-0dd6e0c7c4fcc27f9 \
+  --query 'Reservations[].Instances[].InstanceType' --output text
+m6i.4xlarge
+[sikaj01@ip-10-56-128-233 ~]$ aws cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name NetworkOut \
+  --dimensions Name=InstanceId,Value=i-0dd6e0c7c4fcc27f9 \
+  --start-time 2026-09-19T02:10:00Z --end-time 2026-09-19T02:30:00Z \
+  --period 60 --statistics Sum --output table
+-----------------------------------------------------------
+|                   GetMetricStatistics                   |
++---------------------+-----------------------------------+
+|  Label              |  NetworkOut                       |
++---------------------+-----------------------------------+
+||                      Datapoints                       ||
+|+----------------+-----------------------------+--------+|
+||       Sum      |          Timestamp          | Unit   ||
+|+----------------+-----------------------------+--------+|
+||  310499.0      |  2026-09-19T02:10:00+00:00  |  Bytes ||
+||  11254435417.0 |  2026-09-19T02:20:00+00:00  |  Bytes ||
+||  8263414796.0  |  2026-09-19T02:15:00+00:00  |  Bytes ||
+||  11312766477.0 |  2026-09-19T02:25:00+00:00  |  Bytes ||
+|+----------------+-----------------------------+--------+|
+[sikaj01@ip-10-56-128-233 ~]$ aws cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name NetworkOut \
+  --dimensions Name=InstanceId,Value=i-0dd6e0c7c4fcc27f9 \
+  --start-time 2026-09-20T02:10:00Z --end-time 2026-09-20T02:30:00Z \
+  --period 60 --statistics Sum --output table
+-----------------------------------------------------------
+|                   GetMetricStatistics                   |
++---------------------+-----------------------------------+
+|  Label              |  NetworkOut                       |
++---------------------+-----------------------------------+
+||                      Datapoints                       ||
+|+----------------+-----------------------------+--------+|
+||       Sum      |          Timestamp          | Unit   ||
+|+----------------+-----------------------------+--------+|
+||  11175840076.0 |  2026-09-20T02:20:00+00:00  |  Bytes ||
+||  8363815032.0  |  2026-09-20T02:15:00+00:00  |  Bytes ||
+||  11136727881.0 |  2026-09-20T02:25:00+00:00  |  Bytes ||
+||  365701.0      |  2026-09-20T02:10:00+00:00  |  Bytes ||
+|+----------------+-----------------------------+--------+|
