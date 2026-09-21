@@ -1,21 +1,7 @@
-# Saturday and Sunday nightly runs — checking postgres/config upload timing
-echo "=== Saturday 2026-09-19 postgres ==="
-aws s3 ls cnxs-dev-atlassian-backups/postgres/2026-09-19/
-echo "=== Saturday 2026-09-19 apps ==="
-aws s3 ls cnxs-dev-atlassian-backups/apps/2026-09-19/
+DATE="$(date +%G-W%V)"   # e.g. "2026-W38"
+aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
 
-echo "=== Sunday 2026-09-20 postgres ==="
-aws s3 ls cnxs-dev-atlassian-backups/postgres/2026-09-20/
-echo "=== Sunday 2026-09-20 apps ==="
-aws s3 ls cnxs-dev-atlassian-backups/apps/2026-09-20/
 
-# Sunday's weekly rollup
-echo "=== weekly postgres ==="
-aws s3 ls cnxs-dev-atlassian-backups/weekly/postgres/ --recursive
-echo "=== weekly apps ==="
-aws s3 ls cnxs-dev-atlassian-backups/weekly/apps/ --recursive
-
-# Sanity check: any cron failures logged?
-sudo tail -100 /app/devbackup/logs/nightly-2026-09-19.log
-echo "---"
-sudo tail -100 /app/devbackup/logs/nightly-2026-09-20.log
+date
+sudo timedatectl status
+sudo chronyc tracking 2>/dev/null || sudo ntpstat 2>/dev/null
