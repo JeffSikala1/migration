@@ -1,100 +1,29 @@
-[sikaj01@ip-10-56-128-233 ~]$ echo "=== Saturday 2026-09-19 postgres ==="
-aws s3 ls cnxs-dev-atlassian-backups/postgres/2026-09-19/
-echo "=== Saturday 2026-09-19 apps ==="
-aws s3 ls cnxs-dev-atlassian-backups/apps/2026-09-19/
+[sikaj01@ip-10-56-128-233 ~]$ DATE="$(date +%G-W%V)" 
+[sikaj01@ip-10-56-128-233 ~]$ aws s3 sync "${BUCKET}/postgres/${DATE}/" "${BUCKET}/weekly/postgres/${DATE}/"
 
-echo "=== Sunday 2026-09-20 postgres ==="
-aws s3 ls cnxs-dev-atlassian-backups/postgres/2026-09-20/
-echo "=== Sunday 2026-09-20 apps ==="
-aws s3 ls cnxs-dev-atlassian-backups/apps/2026-09-20/
-=== Saturday 2026-09-19 postgres ===
-2026-09-19 02:15:52   33401192 artifactory_20260919_021502.dump
-2026-09-19 02:15:52  268341909 bamboo_20260919_021502.dump
-2026-09-19 02:15:52   24163665 bitbucket_20260919_021502.dump
-2026-09-19 02:15:52       1229 globals_20260919_021502.sql
-=== Saturday 2026-09-19 apps ===
-2026-09-19 02:15:54       5555 artifactory_config_20260919_021502.tar.gz
-2026-09-19 02:15:54 314178349088 artifactory_filestore_20260919_021502.tar.gz
-2026-09-19 02:15:53      13923 bamboo_config_20260919_021502.tar.gz
-2026-09-19 02:15:53     973918 bitbucket_config_20260919_021502.tar.gz
-=== Sunday 2026-09-20 postgres ===
-2026-09-20 02:15:51   33401194 artifactory_20260920_021501.dump
-2026-09-20 02:15:51  268340929 bamboo_20260920_021501.dump
-2026-09-20 02:15:51   24163254 bitbucket_20260920_021501.dump
-2026-09-20 02:15:51       1229 globals_20260920_021501.sql
-=== Sunday 2026-09-20 apps ===
-2026-09-20 02:15:54       5555 artifactory_config_20260920_021501.tar.gz
-2026-09-20 02:15:54 314178349088 artifactory_filestore_20260920_021501.tar.gz
-2026-09-20 02:15:53      13923 bamboo_config_20260920_021501.tar.gz
-2026-09-20 02:15:53     973918 bitbucket_config_20260920_021501.tar.gz
-[sikaj01@ip-10-56-128-233 ~]$ echo "=== weekly postgres ==="
-aws s3 ls cnxs-dev-atlassian-backups/weekly/postgres/ --recursive
-echo "=== weekly apps ==="
-aws s3 ls cnxs-dev-atlassian-backups/weekly/apps/ --recursive
-=== weekly postgres ===
-=== weekly apps ===
-[sikaj01@ip-10-56-128-233 ~]$ sudo tail -100 /app/devbackup/logs/nightly-2026-09-19.log
-echo "---"
-sudo tail -100 /app/devbackup/logs/nightly-2026-09-20.log
-[sudo] password for sikaj01: 
-==== Dev nightly backup start: 20260919_021502 host=ip-10-56-128-233.ec2.internal ====
-Staging to: /backup-staging/2026-09-19/20260919_021502
-[1/4] Postgres dumps (bitbucket, bamboo, artifactory)...
-  - dumping globals (roles/grants)
-  - dumping bitbucket
-  - dumping bamboo
-  - dumping artifactory
-  - uploading postgres dumps
-upload: ../backup-staging/2026-09-19/20260919_021502/postgres/globals_20260919_021502.sql to s3://cnxs-dev-atlassian-backups/postgres/2026-09-19/globals_20260919_021502.sql
-upload: ../backup-staging/2026-09-19/20260919_021502/postgres/artifactory_20260919_021502.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-19/artifactory_20260919_021502.dump
-upload: ../backup-staging/2026-09-19/20260919_021502/postgres/bitbucket_20260919_021502.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-19/bitbucket_20260919_021502.dump
-upload: ../backup-staging/2026-09-19/20260919_021502/postgres/bamboo_20260919_021502.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-19/bamboo_20260919_021502.dump
-[2/4] Bitbucket / Bamboo config-only backup...
-  - dev-bitbucket home -> /app/bitbucket
-  - wrote /backup-staging/2026-09-19/20260919_021502/apps/bitbucket_config_20260919_021502.tar.gz (973918 bytes) containing: shared/bitbucket.properties shared/secrets-config.yaml shared/keys shared/config
-  - dev-bamboo home -> /app/bamboo
-  - wrote /backup-staging/2026-09-19/20260919_021502/apps/bamboo_config_20260919_021502.tar.gz (13923 bytes) containing: shared/configuration shared/ssl shared/clusterInfo bamboo.cfg.xml
-  - uploading Bitbucket/Bamboo config tars
-upload: ../backup-staging/2026-09-19/20260919_021502/apps/bamboo_config_20260919_021502.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-19/bamboo_config_20260919_021502.tar.gz
-upload: ../backup-staging/2026-09-19/20260919_021502/apps/bitbucket_config_20260919_021502.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-19/bitbucket_config_20260919_021502.tar.gz
-[3/4] Artifactory config + filestore backup...
-  - dev-artifactory home -> /app/jfrog
-  - wrote /backup-staging/2026-09-19/20260919_021502/apps/artifactory_config_20260919_021502.tar.gz (5555 bytes) containing: etc/artifactory/security etc/security/keys etc/access/keys etc/jfconnect/keys etc/event/keys
-upload: ../backup-staging/2026-09-19/20260919_021502/apps/artifactory_config_20260919_021502.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-19/artifactory_config_20260919_021502.tar.gz
-  - streaming filestore (/app/jfrog/data/artifactory/filestore) to s3://cnxs-dev-atlassian-backups/apps/2026-09-19/artifactory_filestore_20260919_021502.tar.gz
-  - filestore stream complete: s3://cnxs-dev-atlassian-backups/apps/2026-09-19/artifactory_filestore_20260919_021502.tar.gz
-[4/4] Metadata...
-upload: ../backup-staging/2026-09-19/20260919_021502/metadata.json to s3://cnxs-dev-atlassian-backups/metadata/2026-09-19/metadata_20260919_021502.json
-==== Dev nightly backup completed OK ====
-Cleaning up local staging...
----
-==== Dev nightly backup start: 20260920_021501 host=ip-10-56-128-233.ec2.internal ====
-Staging to: /backup-staging/2026-09-20/20260920_021501
-[1/4] Postgres dumps (bitbucket, bamboo, artifactory)...
-  - dumping globals (roles/grants)
-  - dumping bitbucket
-  - dumping bamboo
-  - dumping artifactory
-  - uploading postgres dumps
-upload: ../backup-staging/2026-09-20/20260920_021501/postgres/globals_20260920_021501.sql to s3://cnxs-dev-atlassian-backups/postgres/2026-09-20/globals_20260920_021501.sql
-upload: ../backup-staging/2026-09-20/20260920_021501/postgres/bitbucket_20260920_021501.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-20/bitbucket_20260920_021501.dump
-upload: ../backup-staging/2026-09-20/20260920_021501/postgres/artifactory_20260920_021501.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-20/artifactory_20260920_021501.dump
-upload: ../backup-staging/2026-09-20/20260920_021501/postgres/bamboo_20260920_021501.dump to s3://cnxs-dev-atlassian-backups/postgres/2026-09-20/bamboo_20260920_021501.dump
-[2/4] Bitbucket / Bamboo config-only backup...
-  - dev-bitbucket home -> /app/bitbucket
-  - wrote /backup-staging/2026-09-20/20260920_021501/apps/bitbucket_config_20260920_021501.tar.gz (973918 bytes) containing: shared/bitbucket.properties shared/secrets-config.yaml shared/keys shared/config
-  - dev-bamboo home -> /app/bamboo
-  - wrote /backup-staging/2026-09-20/20260920_021501/apps/bamboo_config_20260920_021501.tar.gz (13923 bytes) containing: shared/configuration shared/ssl shared/clusterInfo bamboo.cfg.xml
-  - uploading Bitbucket/Bamboo config tars
-upload: ../backup-staging/2026-09-20/20260920_021501/apps/bamboo_config_20260920_021501.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-20/bamboo_config_20260920_021501.tar.gz
-upload: ../backup-staging/2026-09-20/20260920_021501/apps/bitbucket_config_20260920_021501.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-20/bitbucket_config_20260920_021501.tar.gz
-[3/4] Artifactory config + filestore backup...
-  - dev-artifactory home -> /app/jfrog
-  - wrote /backup-staging/2026-09-20/20260920_021501/apps/artifactory_config_20260920_021501.tar.gz (5555 bytes) containing: etc/artifactory/security etc/security/keys etc/access/keys etc/jfconnect/keys etc/event/keys
-upload: ../backup-staging/2026-09-20/20260920_021501/apps/artifactory_config_20260920_021501.tar.gz to s3://cnxs-dev-atlassian-backups/apps/2026-09-20/artifactory_config_20260920_021501.tar.gz
-  - streaming filestore (/app/jfrog/data/artifactory/filestore) to s3://cnxs-dev-atlassian-backups/apps/2026-09-20/artifactory_filestore_20260920_021501.tar.gz
-  - filestore stream complete: s3://cnxs-dev-atlassian-backups/apps/2026-09-20/artifactory_filestore_20260920_021501.tar.gz
-[4/4] Metadata...
-upload: ../backup-staging/2026-09-20/20260920_021501/metadata.json to s3://cnxs-dev-atlassian-backups/metadata/2026-09-20/metadata_20260920_021501.json
-==== Dev nightly backup completed OK ====
-Cleaning up local staging...
+usage: aws s3 sync <LocalPath> <S3Uri> or <S3Uri> <LocalPath> or <S3Uri> <S3Uri>
+Error: Invalid argument type
+[sikaj01@ip-10-56-128-233 ~]$ date
+Mon Sep 21 14:55:42 UTC 2026
+[sikaj01@ip-10-56-128-233 ~]$ sudo timedatectl status
+               Local time: Mon 2026-09-21 14:55:49 UTC
+           Universal time: Mon 2026-09-21 14:55:49 UTC
+                 RTC time: Mon 2026-09-21 14:55:48
+                Time zone: n/a (UTC, +0000)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+[sikaj01@ip-10-56-128-233 ~]$ sudo chronyc tracking 2>/dev/null || sudo ntpstat 2>/dev/null
+Reference ID    : A9FEA97B (169.254.169.123)
+Stratum         : 4
+Ref time (UTC)  : Mon Sep 21 14:55:48 2026
+System time     : 0.000000230 seconds slow of NTP time
+Last offset     : -0.000000493 seconds
+RMS offset      : 0.000001213 seconds
+Frequency       : 23.749 ppm fast
+Residual freq   : -0.000 ppm
+Skew            : 0.021 ppm
+Root delay      : 0.000305403 seconds
+Root dispersion : 0.000262779 seconds
+Update interval : 16.2 seconds
+Leap status     : Normal
