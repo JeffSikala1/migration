@@ -1,50 +1,61 @@
-[sikaj01@ip-10-56-112-33 sftp]$ docker build -t 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-sftp:1.9.1 --no-cache .
-[+] Building 79.6s (18/22)                                                                                                                                                          docker:default
+[sikaj01@ip-10-56-112-33 sftp]$ docker run --rm fedora:44 sh -c 'ulimit -n'
+Unable to find image 'fedora:44' locally
+44: Pulling from library/fedora
+59259e167f13: Already exists 
+Digest: sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+Status: Downloaded newer image for fedora:44
+32768
+[sikaj01@ip-10-56-112-33 sftp]$ free -m
+               total        used        free      shared  buff/cache   available
+Mem:            7739        3102         256          15        4380        4296
+Swap:              0           0           0
+[sikaj01@ip-10-56-112-33 sftp]$ docker buildx build --ulimit nofile=1024:524288 -t 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-sftp:1.9.1 --no-cache .
+[+] Building 54.1s (18/22)                                                                                                                                                          docker:default
  => [internal] load build definition from Dockerfile                                                                                                                                          0.0s
  => => transferring dockerfile: 1.14kB                                                                                                                                                        0.0s
- => [internal] load metadata for docker.io/library/fedora:44                                                                                                                                  0.3s
+ => [internal] load metadata for docker.io/library/fedora:44                                                                                                                                  0.0s
  => [internal] load .dockerignore                                                                                                                                                             0.0s
  => => transferring context: 2B                                                                                                                                                               0.0s
- => CACHED [ 1/18] FROM docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80                                                                   0.0s
+ => CACHED [ 1/18] FROM docker.io/library/fedora:44                                                                                                                                           0.0s
  => [internal] load build context                                                                                                                                                             0.1s
- => => transferring context: 3.98kB                                                                                                                                                           0.0s
- => [ 2/18] RUN dnf update -y                                                                                                                                                                39.7s
- => [ 3/18] RUN dnf install -y mod_ssl less which net-tools procps-ng curl clamav clamav-filesystem clamav-data clamav-freshclam crontabs python3-magic sqlite moreutils file s-nail         24.5s 
- => [ 4/18] RUN dnf clean all                                                                                                                                                                 0.9s 
+ => => transferring context: 3.98kB                                                                                                                                                           0.1s
+ => [ 2/18] RUN dnf update -y                                                                                                                                                                21.3s
+ => [ 3/18] RUN dnf install -y mod_ssl less which net-tools procps-ng curl clamav clamav-filesystem clamav-data clamav-freshclam crontabs python3-magic sqlite moreutils file s-nail         18.2s 
+ => [ 4/18] RUN dnf clean all                                                                                                                                                                 0.8s 
  => [ 5/18] RUN mkdir -p /app/ConexusSFTP                                                                                                                                                     0.6s 
- => [ 6/18] ADD ConexusSFTP /app/ConexusSFTP                                                                                                                                                  0.4s 
+ => [ 6/18] ADD ConexusSFTP /app/ConexusSFTP                                                                                                                                                  0.3s 
  => [ 7/18] COPY mailrc /root/.mailrc                                                                                                                                                         0.0s 
  => [ 8/18] COPY sftpservercrons /etc/cron.d/sftpservercrons                                                                                                                                  0.0s 
  => [ 9/18] COPY efschrootfolders-prodcreate.txt /app/ConexusSFTP                                                                                                                             0.1s 
- => [10/18] COPY efschrootfolders-certcreate.txt /app/ConexusSFTP                                                                                                                             0.1s
+ => [10/18] COPY efschrootfolders-certcreate.txt /app/ConexusSFTP                                                                                                                             0.0s
  => [11/18] COPY dbfolders.txt /app/ConexusSFTP                                                                                                                                               0.1s
- => [12/18] RUN chmod 0644 /etc/cron.d/sftpservercrons                                                                                                                                        0.5s
+ => [12/18] RUN chmod 0644 /etc/cron.d/sftpservercrons                                                                                                                                        0.4s
  => [13/18] RUN crontab /etc/cron.d/sftpservercrons                                                                                                                                           0.6s
- => ERROR [14/18] RUN /usr/bin/freshclam                                                                                                                                                     11.4s
+ => ERROR [14/18] RUN /usr/bin/freshclam                                                                                                                                                     11.3s
 ------                                                                                                                                                                                             
  > [14/18] RUN /usr/bin/freshclam:                                                                                                                                                                 
-0.621 ClamAV update process started at Wed Sep 23 16:20:41 2026                                                                                                                                    
-0.644 WARNING: [LibClamAV] CVD verification failed for: daily.cvd                                                                                                                                  
-0.644 ERROR: mkdir_and_chdir_for_cdiff_tmp: Can't unpack daily.cvd into /var/lib/clamav/tmp.0000000000/clamav-00000000000000000000000000000000.tmp                                                 
-0.644 WARNING: Incremental update failed, trying to download daily.cvd                                                                                                                             
-0.644 daily database available for update (local version: 28088, remote version: 28132)
-0.990 ERROR: Verification: Can't allocate memory
-0.995 Trying again in 5 secs...
-5.995 daily database available for update (local version: 28088, remote version: 28132)
-6.010 WARNING: [LibClamAV] CVD verification failed for: daily.cvd
-6.010 ERROR: mkdir_and_chdir_for_cdiff_tmp: Can't unpack daily.cvd into /var/lib/clamav/tmp.0000000000/clamav-00000000000000000000000000000000.tmp
-6.010 WARNING: Incremental update failed, trying to download daily.cvd
-6.214 ERROR: Verification: Can't allocate memory
-6.218 Trying again in 5 secs...
-11.22 daily database available for update (local version: 28088, remote version: 28132)
-11.22 WARNING: [LibClamAV] CVD verification failed for: daily.cvd
-11.22 ERROR: mkdir_and_chdir_for_cdiff_tmp: Can't unpack daily.cvd into /var/lib/clamav/tmp.0000000000/clamav-00000000000000000000000000000000.tmp
-11.22 WARNING: Incremental update failed, trying to download daily.cvd
-11.37 ERROR: Verification: Can't allocate memory
-11.38 Giving up on https://database.clamav.net...
-11.38 ERROR: Update failed for database: daily
-11.38 ERROR: Database update process failed: Invalid or corrupted CVD/CLD database
-11.38 ERROR: Update failed.
+0.642 ClamAV update process started at Wed Sep 23 16:29:50 2026                                                                                                                                    
+0.653 daily database available for update (local version: 28088, remote version: 28132)                                                                                                            
+0.653 WARNING: [LibClamAV] CVD verification failed for: daily.cvd                                                                                                                                  
+0.653 ERROR: mkdir_and_chdir_for_cdiff_tmp: Can't unpack daily.cvd into /var/lib/clamav/tmp.0000000000/clamav-00000000000000000000000000000000.tmp                                                 
+0.654 WARNING: Incremental update failed, trying to download daily.cvd
+0.860 ERROR: Verification: Can't allocate memory
+0.864 Trying again in 5 secs...
+5.866 WARNING: [LibClamAV] CVD verification failed for: daily.cvd
+5.866 ERROR: mkdir_and_chdir_for_cdiff_tmp: Can't unpack daily.cvd into /var/lib/clamav/tmp.0000000000/clamav-00000000000000000000000000000000.tmp
+5.866 WARNING: Incremental update failed, trying to download daily.cvd
+5.866 daily database available for update (local version: 28088, remote version: 28132)
+6.112 ERROR: Verification: Can't allocate memory
+6.119 Trying again in 5 secs...
+11.12 WARNING: [LibClamAV] CVD verification failed for: daily.cvd
+11.12 ERROR: mkdir_and_chdir_for_cdiff_tmp: Can't unpack daily.cvd into /var/lib/clamav/tmp.0000000000/clamav-00000000000000000000000000000000.tmp
+11.12 WARNING: Incremental update failed, trying to download daily.cvd
+11.12 daily database available for update (local version: 28088, remote version: 28132)
+11.30 ERROR: Verification: Can't allocate memory
+11.30 ERROR: Update failed for database: daily
+11.30 ERROR: Database update process failed: Invalid or corrupted CVD/CLD database
+11.30 Giving up on https://database.clamav.net...
+11.31 ERROR: Update failed.
 ------
 Dockerfile:20
 --------------------
@@ -55,46 +66,3 @@ Dockerfile:20
   22 |     RUN chmod 0744 startup.sh
 --------------------
 ERROR: failed to solve: process "/bin/sh -c /usr/bin/freshclam" did not complete successfully: exit code: 7
-
-[sikaj01@ip-10-56-112-33 sftp]$ cat Dockerfile 
-FROM fedora:44
-#FROM 339713019047.dkr.ecr.us-east-1.amazonaws.com/cnxsfedora:43
-#**********added to upstream image********************
-#ARG SASL
-RUN dnf update -y
-RUN dnf install -y mod_ssl less which net-tools procps-ng curl clamav clamav-filesystem clamav-data clamav-freshclam crontabs python3-magic sqlite moreutils file s-nail
-RUN dnf clean all
-#*****************************************************
-
-RUN mkdir -p /app/ConexusSFTP
-ADD ConexusSFTP /app/ConexusSFTP
-
-COPY mailrc /root/.mailrc
-COPY sftpservercrons /etc/cron.d/sftpservercrons
-COPY efschrootfolders-prodcreate.txt /app/ConexusSFTP
-COPY efschrootfolders-certcreate.txt /app/ConexusSFTP
-COPY dbfolders.txt /app/ConexusSFTP
-RUN chmod 0644 /etc/cron.d/sftpservercrons
-RUN crontab /etc/cron.d/sftpservercrons
-RUN /usr/bin/freshclam
-COPY startup.sh .
-RUN chmod 0744 startup.sh
-RUN useradd -c "Container User" cuser 
-RUN find / -perm /6000 -type f -exec chmod a-s {} \; || true
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD exit 0 #Pods so dummy check
-CMD ["/bin/bash"]
-USER cuser[sikaj01@ip-10-56-112-33 sftp]$ ll
-total 628
-drwxr-x---. 6 sikaj01 users   6144 Oct 17  2025 ConexusSFTP
--rw-r-----. 1 sikaj01 users   1052 Sep  3 15:36 Dockerfile
--rw-r-----. 1 sikaj01 users 575828 Oct 17  2025 conexusprodsftp.tgz
--rw-r-----. 1 sikaj01 users   2266 Jun  2 18:28 dbfolders.txt
--rw-r-----. 1 sikaj01 users   7084 Oct 17  2025 efschrootfolders-cert.txt
--rw-r-----. 1 sikaj01 users   9379 Jun  2 18:28 efschrootfolders-certcreate.txt
--rw-r-----. 1 sikaj01 users   2757 Oct 17  2025 efschrootfolders-prod.txt
--rw-r-----. 1 sikaj01 users   4334 Oct 17  2025 efschrootfolders-prodcreate.txt
--rw-r-----. 1 sikaj01 users     36 Oct 17  2025 freshclamcron
--rw-r-----. 1 sikaj01 users     69 Jun  2 18:28 mailrc
--rw-r-----. 1 sikaj01 users     92 Jun  2 18:28 refdatacron
--rw-r-----. 1 sikaj01 users    277 Aug 27 19:30 sftpservercrons
--rw-r-----. 1 sikaj01 users     89 Oct 17  2025 startup.sh
