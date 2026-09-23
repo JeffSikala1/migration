@@ -1,68 +1,151 @@
-[sikaj01@ip-10-56-112-33 sftp]$ docker run --rm fedora:44 sh -c 'ulimit -n'
-Unable to find image 'fedora:44' locally
-44: Pulling from library/fedora
-59259e167f13: Already exists 
-Digest: sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
-Status: Downloaded newer image for fedora:44
-32768
-[sikaj01@ip-10-56-112-33 sftp]$ free -m
-               total        used        free      shared  buff/cache   available
-Mem:            7739        3102         256          15        4380        4296
-Swap:              0           0           0
-[sikaj01@ip-10-56-112-33 sftp]$ docker buildx build --ulimit nofile=1024:524288 -t 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-sftp:1.9.1 --no-cache .
-[+] Building 54.1s (18/22)                                                                                                                                                          docker:default
- => [internal] load build definition from Dockerfile                                                                                                                                          0.0s
- => => transferring dockerfile: 1.14kB                                                                                                                                                        0.0s
- => [internal] load metadata for docker.io/library/fedora:44                                                                                                                                  0.0s
- => [internal] load .dockerignore                                                                                                                                                             0.0s
- => => transferring context: 2B                                                                                                                                                               0.0s
- => CACHED [ 1/18] FROM docker.io/library/fedora:44                                                                                                                                           0.0s
- => [internal] load build context                                                                                                                                                             0.1s
- => => transferring context: 3.98kB                                                                                                                                                           0.1s
- => [ 2/18] RUN dnf update -y                                                                                                                                                                21.3s
- => [ 3/18] RUN dnf install -y mod_ssl less which net-tools procps-ng curl clamav clamav-filesystem clamav-data clamav-freshclam crontabs python3-magic sqlite moreutils file s-nail         18.2s 
- => [ 4/18] RUN dnf clean all                                                                                                                                                                 0.8s 
- => [ 5/18] RUN mkdir -p /app/ConexusSFTP                                                                                                                                                     0.6s 
- => [ 6/18] ADD ConexusSFTP /app/ConexusSFTP                                                                                                                                                  0.3s 
- => [ 7/18] COPY mailrc /root/.mailrc                                                                                                                                                         0.0s 
- => [ 8/18] COPY sftpservercrons /etc/cron.d/sftpservercrons                                                                                                                                  0.0s 
- => [ 9/18] COPY efschrootfolders-prodcreate.txt /app/ConexusSFTP                                                                                                                             0.1s 
- => [10/18] COPY efschrootfolders-certcreate.txt /app/ConexusSFTP                                                                                                                             0.0s
- => [11/18] COPY dbfolders.txt /app/ConexusSFTP                                                                                                                                               0.1s
- => [12/18] RUN chmod 0644 /etc/cron.d/sftpservercrons                                                                                                                                        0.4s
- => [13/18] RUN crontab /etc/cron.d/sftpservercrons                                                                                                                                           0.6s
- => ERROR [14/18] RUN /usr/bin/freshclam                                                                                                                                                     11.3s
-------                                                                                                                                                                                             
- > [14/18] RUN /usr/bin/freshclam:                                                                                                                                                                 
-0.642 ClamAV update process started at Wed Sep 23 16:29:50 2026                                                                                                                                    
-0.653 daily database available for update (local version: 28088, remote version: 28132)                                                                                                            
-0.653 WARNING: [LibClamAV] CVD verification failed for: daily.cvd                                                                                                                                  
-0.653 ERROR: mkdir_and_chdir_for_cdiff_tmp: Can't unpack daily.cvd into /var/lib/clamav/tmp.0000000000/clamav-00000000000000000000000000000000.tmp                                                 
-0.654 WARNING: Incremental update failed, trying to download daily.cvd
-0.860 ERROR: Verification: Can't allocate memory
-0.864 Trying again in 5 secs...
-5.866 WARNING: [LibClamAV] CVD verification failed for: daily.cvd
-5.866 ERROR: mkdir_and_chdir_for_cdiff_tmp: Can't unpack daily.cvd into /var/lib/clamav/tmp.0000000000/clamav-00000000000000000000000000000000.tmp
-5.866 WARNING: Incremental update failed, trying to download daily.cvd
-5.866 daily database available for update (local version: 28088, remote version: 28132)
-6.112 ERROR: Verification: Can't allocate memory
-6.119 Trying again in 5 secs...
-11.12 WARNING: [LibClamAV] CVD verification failed for: daily.cvd
-11.12 ERROR: mkdir_and_chdir_for_cdiff_tmp: Can't unpack daily.cvd into /var/lib/clamav/tmp.0000000000/clamav-00000000000000000000000000000000.tmp
-11.12 WARNING: Incremental update failed, trying to download daily.cvd
-11.12 daily database available for update (local version: 28088, remote version: 28132)
-11.30 ERROR: Verification: Can't allocate memory
-11.30 ERROR: Update failed for database: daily
-11.30 ERROR: Database update process failed: Invalid or corrupted CVD/CLD database
-11.30 Giving up on https://database.clamav.net...
-11.31 ERROR: Update failed.
-------
-Dockerfile:20
---------------------
-  18 |     RUN chmod 0644 /etc/cron.d/sftpservercrons
-  19 |     RUN crontab /etc/cron.d/sftpservercrons
-  20 | >>> RUN /usr/bin/freshclam
-  21 |     COPY startup.sh .
-  22 |     RUN chmod 0744 startup.sh
---------------------
-ERROR: failed to solve: process "/bin/sh -c /usr/bin/freshclam" did not complete successfully: exit code: 7
+[sikaj01@ip-10-56-128-81 scripts]$ git pull
+remote: Enumerating objects: 1004, done.
+remote: Counting objects: 100% (422/422), done.
+remote: Compressing objects: 100% (201/201), done.
+remote: Total 1004 (delta 350), reused 221 (delta 221), pack-reused 582 (from 1)
+Receiving objects: 100% (1004/1004), 113.00 KiB | 1.85 MiB/s, done.
+Resolving deltas: 100% (692/692), completed with 43 local objects.
+From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts
+   071e105..5e84cdb  feature/cicdsplit -> origin/feature/cicdsplit
+Updating 071e105..5e84cdb
+error: Your local changes to the following files would be overwritten by merge:
+        devvpc/k8s/sftp/run-sftp.yaml
+Please commit your changes or stash them before you merge.
+Aborting
+[sikaj01@ip-10-56-128-81 scripts]$ git pull --no-rebase
+Updating 071e105..5e84cdb
+error: Your local changes to the following files would be overwritten by merge:
+        devvpc/k8s/sftp/run-sftp.yaml
+Please commit your changes or stash them before you merge.
+Aborting
+[sikaj01@ip-10-56-128-81 scripts]$ git pull --norebase
+error: unknown option `norebase'
+usage: git pull [<options>] [<repository> [<refspec>...]]
+
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+    --[no-]progress       force progress reporting
+    --[no-]recurse-submodules[=<on-demand>]
+                          control for recursive fetching of submodules
+
+Options related to merging
+    -r, --[no-]rebase[=(false|true|merges|interactive)]
+                          incorporate changes by rebasing rather than merging
+    -n                    do not show a diffstat at the end of the merge
+    --[no-]stat           show a diffstat at the end of the merge
+    --[no-]log[=<n>]      add (at most <n>) entries from shortlog to merge commit message
+    --[no-]signoff[=...]  add a Signed-off-by trailer
+    --[no-]squash         create a single commit instead of doing a merge
+    --[no-]commit         perform a commit if the merge succeeds (default)
+    --[no-]edit           edit message before committing
+    --[no-]cleanup <mode> how to strip spaces and #comments from message
+    --[no-]ff             allow fast-forward
+    --ff-only             abort if fast-forward is not possible
+    --[no-]verify         control use of pre-merge-commit and commit-msg hooks
+    --[no-]verify-signatures
+                          verify that the named commit has a valid GPG signature
+    --[no-]autostash      automatically stash/stash pop before and after
+    -s, --[no-]strategy <strategy>
+                          merge strategy to use
+    -X, --[no-]strategy-option <option=value>
+                          option for selected merge strategy
+    -S, --[no-]gpg-sign[=<key-id>]
+                          GPG sign commit
+    --[no-]allow-unrelated-histories
+                          allow merging unrelated histories
+
+Options related to fetching
+    --[no-]all            fetch from all remotes
+    -a, --[no-]append     append to .git/FETCH_HEAD instead of overwriting
+    --[no-]upload-pack <path>
+                          path to upload pack on remote end
+    -f, --[no-]force      force overwrite of local branch
+    -t, --[no-]tags       fetch all tags and associated objects
+    -p, --[no-]prune      prune remote-tracking branches no longer on remote
+    -j, --[no-]jobs[=<n>] number of submodules pulled in parallel
+    --[no-]dry-run        dry run
+    -k, --[no-]keep       keep downloaded pack
+    --[no-]depth <depth>  deepen history of shallow clone
+    --[no-]shallow-since <time>
+                          deepen history of shallow repository based on time
+    --[no-]shallow-exclude <ref>
+                          deepen history of shallow clone, excluding ref
+    --[no-]deepen <n>     deepen history of shallow clone
+    --unshallow           convert to a complete repository
+    --[no-]update-shallow accept refs that update .git/shallow
+    --refmap <refmap>     specify fetch refmap
+    -o, --[no-]server-option <server-specific>
+                          option to transmit
+    -4, --[no-]ipv4       use IPv4 addresses only
+    -6, --[no-]ipv6       use IPv6 addresses only
+    --[no-]negotiation-tip <revision>
+                          report that we have only objects reachable from this object
+    --[no-]show-forced-updates
+                          check for forced-updates on all updated branches
+    --[no-]set-upstream   set upstream for git pull/fetch
+
+[sikaj01@ip-10-56-128-81 scripts]$ git pull --no-rebase
+Updating 071e105..5e84cdb
+error: Your local changes to the following files would be overwritten by merge:
+        devvpc/k8s/sftp/run-sftp.yaml
+Please commit your changes or stash them before you merge.
+Aborting
+[sikaj01@ip-10-56-128-81 scripts]$ git --help
+usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]
+           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]
+           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]
+           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]
+           <command> [<args>]
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone      Clone a repository into a new directory
+   init       Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add        Add file contents to the index
+   mv         Move or rename a file, a directory, or a symlink
+   restore    Restore working tree files
+   rm         Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect     Use binary search to find the commit that introduced a bug
+   diff       Show changes between commits, commit and working tree, etc
+   grep       Print lines matching a pattern
+   log        Show commit logs
+   show       Show various types of objects
+   status     Show the working tree status
+
+grow, mark and tweak your common history
+   backfill   Download missing objects in a partial clone
+   branch     List, create, or delete branches
+   commit     Record changes to the repository
+   merge      Join two or more development histories together
+   rebase     Reapply commits on top of another base tip
+   reset      Reset current HEAD to the specified state
+   switch     Switch branches
+   tag        Create, list, delete or verify a tag object signed with GPG
+
+collaborate (see also: git help workflows)
+   fetch      Download objects and refs from another repository
+   pull       Fetch from and integrate with another repository or a local branch
+   push       Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help <command>' or 'git help <concept>'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.
+[sikaj01@ip-10-56-128-81 scripts]$ git rm devvpc/k8s/sftp/run-sftp.yaml
+error: the following file has local modifications:
+    devvpc/k8s/sftp/run-sftp.yaml
+(use --cached to keep the file, or -f to force removal)
+[sikaj01@ip-10-56-128-81 scripts]$ git rm -f devvpc/k8s/sftp/run-sftp.yaml
+rm 'devvpc/k8s/sftp/run-sftp.yaml'
+[sikaj01@ip-10-56-128-81 scripts]$ git pull
+Updating 071e105..5e84cdb
+error: Your local changes to the following files would be overwritten by merge:
+        devvpc/k8s/sftp/run-sftp.yaml
+Please commit your changes or stash them before you merge.
+Aborting
