@@ -1,13 +1,9 @@
-# are bamboo/bitbucket even on the same docker network as nginx?
-docker inspect dev-bamboo --format '{{json .NetworkSettings.Networks}}' | python3 -m json.tool
-docker inspect dev-bitbucket --format '{{json .NetworkSettings.Networks}}' | python3 -m json.tool
+docker exec dev-bamboo sh -c 'echo "172.18.0.4 bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov bamboo.dev.cnxs.vpcaas.fcs.gsa.gov" >> /etc/hosts'
+docker exec dev-bitbucket sh -c 'echo "172.18.0.4 bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov bamboo.dev.cnxs.vpcaas.fcs.gsa.gov" >> /etc/hosts'
 
-# does /etc/hosts inside them already have (stale or missing) entries for these hostnames?
-docker exec dev-bamboo cat /etc/hosts
-docker exec dev-bitbucket cat /etc/hosts
+docker exec dev-bamboo curl -sk -o /dev/null -w "%{http_code}\n" --max-time 10 https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+docker exec dev-bitbucket curl -sk -o /dev/null -w "%{http_code}\n" --max-time 10 https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
 
-# how was the previous alias actually implemented? check for --add-host / extra_hosts
-# in whatever launches these containers
-sudo find /app -maxdepth 2 -iname "docker-compose*.yml" -o -iname "*.yml" 2>/dev/null
-docker inspect dev-bamboo --format '{{json .HostConfig.ExtraHosts}}'
-docker inspect dev-bitbucket --format '{{json .HostConfig.ExtraHosts}}'
+
+sudo grep -rl "dev-bamboo\|dev-bitbucket" /app --include="*.sh" 2>/dev/null
+sudo grep -rl "dev-bamboo\|dev-bitbucket" /etc/systemd/system 2>/dev/null
