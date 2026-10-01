@@ -1,12 +1,13 @@
-# what networks/aliases does the nginx container actually have right now?
-docker inspect dev-nginx --format '{{json .NetworkSettings.Networks}}' | python3 -m json.tool
+# are bamboo/bitbucket even on the same docker network as nginx?
+docker inspect dev-bamboo --format '{{json .NetworkSettings.Networks}}' | python3 -m json.tool
+docker inspect dev-bitbucket --format '{{json .NetworkSettings.Networks}}' | python3 -m json.tool
 
-# does DNS resolution inside bamboo/bitbucket actually point at nginx, or go external?
-docker exec dev-bamboo getent hosts bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
-docker exec dev-bamboo getent hosts bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
-docker exec dev-bitbucket getent hosts bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
-docker exec dev-bitbucket getent hosts bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+# does /etc/hosts inside them already have (stale or missing) entries for these hostnames?
+docker exec dev-bamboo cat /etc/hosts
+docker exec dev-bitbucket cat /etc/hosts
 
-# and does a direct curl from inside bamboo to bitbucket's public hostname actually work?
-docker exec dev-bamboo curl -sk -o /dev/null -w "%{http_code}\n" --max-time 10 https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
-docker exec dev-bitbucket curl -sk -o /dev/null -w "%{http_code}\n" --max-time 10 https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
+# how was the previous alias actually implemented? check for --add-host / extra_hosts
+# in whatever launches these containers
+sudo find /app -maxdepth 2 -iname "docker-compose*.yml" -o -iname "*.yml" 2>/dev/null
+docker inspect dev-bamboo --format '{{json .HostConfig.ExtraHosts}}'
+docker inspect dev-bitbucket --format '{{json .HostConfig.ExtraHosts}}'
