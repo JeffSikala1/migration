@@ -1,18 +1,23 @@
+[sikaj01@ip-10-56-128-233 ~]$ env | grep DT
 [sikaj01@ip-10-56-128-233 ~]$ read -rsp "Prod RO token: " PT; echo
 read -rsp "Dev token: " DT; echo
 P=https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
 D=https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
 Prod RO token: 
 Dev token: 
-[sikaj01@ip-10-56-128-233 ~]$ curl -s -o /dev/null -w "prod read repos:   %{http_code}\n" \
-  -H "Authorization: Bearer $PT" "$P/rest/api/1.0/projects/CNXS/repos?limit=1"
-prod read repos:   200
-[sikaj01@ip-10-56-128-233 ~]$ curl -s -o /dev/null -w "prod write check:  %{http_code}\n" \
-  -H "Authorization: Bearer $PT" "$P/scm/cnxs/api_gateway.git/info/refs?service=git-receive-pack"
-prod write check:  200
-[sikaj01@ip-10-56-128-233 ~]$ curl -s -o /dev/null -w "dev project:       %{http_code}\n" \
+[sikaj01@ip-10-56-128-233 ~]$ grep -q 'bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov' /etc/hosts || \
+  echo "127.0.0.1 bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov" | sudo tee -a /etc/hosts
+getent hosts bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+[sudo] password for sikaj01: 
+127.0.0.1 bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+127.0.0.1       bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+[sikaj01@ip-10-56-128-233 ~]$ curl -sS --max-time 15 -o /dev/null -w "dev project:     %{http_code}\n" \
   -H "Authorization: Bearer $DT" "$D/rest/api/1.0/projects/CNXS"
-dev project:       000
-[sikaj01@ip-10-56-128-233 ~]$ curl -s -o /dev/null -w "dev admin check:   %{http_code}\n" \
+dev project:     200
+[sikaj01@ip-10-56-128-233 ~]$ curl -sS --max-time 15 -o /dev/null -w "dev admin check: %{http_code}\n" \
   -H "Authorization: Bearer $DT" "$D/rest/api/1.0/projects/CNXS/permissions/users"
-dev admin check:   000
+dev admin check: 200
+[sikaj01@ip-10-56-128-233 ~]$ 
+curl -sS --max-time 15 -o /dev/null -w "prod admin-only endpoint: %{http_code}\n" \
+  -H "Authorization: Bearer $PT" "$P/rest/api/1.0/projects/CNXS/permissions/users"
+prod admin-only endpoint: 401
