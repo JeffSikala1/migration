@@ -1,4 +1,26 @@
-curl -s -u jeff.sikala:Killadog2! \
-  "https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/rest/api/1.0/projects/CNXS/repos?limit=100" \
-  | jq -r '.values[] | [.slug, .name, .state, .public] | @tsv'
+kubectl exec -it -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- /bin/sh
+
+
+mount | grep -Ei 'nfs|nsfs|efs|chroot'
+df -h
+grep -Ei 'chroot|internal-sftp|Match' /etc/ssh/sshd_config
+
+ls -l /app/ConexusSFTP
+
+ls -ld <CHROOT>
+ls -la <CHROOT>
+stat <CHROOT>
+ls -ld <NSFS>
+ls -la <NSFS>
+stat <NSFS>
+
+
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'date -u; hostname; echo "--- CHROOT ---"; ls -ld <CHROOT>; stat <CHROOT>; echo "--- NSFS ---"; ls -ld <NSFS>; stat <NSFS>' | tee sftp_permissions_evidence_$(date +%Y%m%d).txt
+
+
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- which getfacl
+
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'getfacl -p <CHROOT>; echo "-----"; getfacl -p <NSFS>'
+
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'date -u; hostname; for p in <CHROOT> <NSFS>; do echo "=== $p ==="; ls -ld $p; stat $p; getfacl -p $p; done' 2>&1 | tee sftp_permissions_evidence_$(date +%Y%m%d).txt
 
