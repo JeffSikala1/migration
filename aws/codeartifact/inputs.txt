@@ -1,12 +1,1 @@
-kubectl get pod conexus-sftp-fbb5b4c96-552jh -n ingress-nginx -o jsonpath='{range .spec.volumes[*]}{.name}{"\t"}{.persistentVolumeClaim.claimName}{"\n"}{end}'
-kubectl get pv -o custom-columns=NAME:.metadata.name,CLAIM:.spec.claimRef.name,HANDLE:.spec.csi.volumeHandle | grep -i efs
-
-
-aws efs describe-file-system-policy --file-system-id <fs-id> --region us-east-1 --profile prodvpc
-aws efs describe-access-points --file-system-id <fs-id> --region us-east-1 --profile prodvpc
-aws efs describe-mount-targets --file-system-id <fs-id> --region us-east-1 --profile prodvpc
-
-
-{ echo "=== EFS inventory $(date -u) ==="; aws efs describe-file-systems --region us-east-1 --profile prodvpc --no-cli-pager --query 'FileSystems[?Tags[?Key==`Service` && Value==`DBFolders`]].[Name,FileSystemId,CreationToken,Encrypted,KmsKeyId,ThroughputMode,LifeCycleState]' --output table; } 2>&1 | tee -a sftp_permissions_evidence_20261005.txt
-
-kubectl get pod conexus-sftp-fbb5b4c96-552jh -n ingress-nginx -o jsonpath='{range .spec.containers[*].volumeMounts[*]}{.name}{"\t"}{.mountPath}{"\n"}{end}' | tee -a sftp_permissions_evidence_20261005.txt
+{ echo "=== NSFS database listing and stat $(date -u) ==="; kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'ls -la /NSFS_NAS/database; stat /NSFS_NAS/database /NSFS_NAS/fail_scan'; } 2>&1 | tee -a sftp_permissions_evidence_20261005.txt
