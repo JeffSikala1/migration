@@ -1,15 +1,59 @@
-[sikaj01@ip-10-56-112-33 cert_renewal]$ kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- which python3 perl
-/usr/sbin/python3
-/usr/sbin/perl
-[sikaj01@ip-10-56-112-33 cert_renewal]$ kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- python3 -c 'import os,sys; [print(p, os.listxattr(p)) for p in sys.argv[1:]]' /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan
+[sikaj01@ip-10-56-112-33 cert_renewal]$ 
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- python3 -c '
+import os,sys
+for p in sys.argv[1:]:
+    print(p, os.listxattr(p))
+    for a in ("system.posix_acl_access","system.posix_acl_default","system.nfs4_acl"):
+        try: print("   ", a, os.getxattr(p, a))
+        except OSError as e: print("   ", a, "->", e.strerror)
+' /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan 2>&1 | tee -a sftp_permissions_evidence_20261005.txt
 /NSFS_NAS ['security.selinux']
+    system.posix_acl_access -> No data available
+    system.posix_acl_default -> No data available
+    system.nfs4_acl -> Operation not supported
 /NSFS_NAS/chroot ['security.selinux']
+    system.posix_acl_access -> Operation not supported
+    system.posix_acl_default -> Operation not supported
+    system.nfs4_acl -> Operation not supported
 /NSFS_NAS/database ['security.selinux']
+    system.posix_acl_access -> Operation not supported
+    system.posix_acl_default -> Operation not supported
+    system.nfs4_acl -> Operation not supported
 /NSFS_NAS/fail_scan ['security.selinux']
-[sikaj01@ip-10-56-112-33 cert_renewal]$ kubectl get pod conexus-sftp-fbb5b4c96-552jh -n ingress-nginx -o wide | tee -a sftp_permissions_evidence_20261005.txt
+    system.posix_acl_access -> Operation not supported
+    system.posix_acl_default -> Operation not supported
+    system.nfs4_acl -> Operation not supported
+[sikaj01@ip-10-56-112-33 cert_renewal]$ 
+
+
+[sikaj01@ip-10-56-112-33 cert_renewal]$ cat sftp_permissions_evidence_20261005.txt 
+Mon Oct  5 17:10:03 UTC 2026
+conexus-sftp-fbb5b4c96-552jh
+=== /NSFS_NAS/chroot ===
+drwxr-xr-x. 18 root root 6144 Jul 21 01:30 /NSFS_NAS/chroot
+  File: /NSFS_NAS/chroot
+  Size: 6144            Blocks: 8          IO Block: 1048576 directory
+Device: 0,384   Inode: 8337692559950646131  Links: 18
+Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
+Access: 2026-07-21 01:30:02.223000000 -0400
+Modify: 2026-07-21 01:30:02.223000000 -0400
+Change: 2026-07-21 01:30:02.223000000 -0400
+ Birth: 2025-08-28 23:30:39.355000000 -0400
+sh: line 1: getfacl: command not found
+=== /NSFS_NAS ===
+drwxr-xr-x. 5 root root 53 Oct  2 12:29 /NSFS_NAS
+  File: /NSFS_NAS
+  Size: 53              Blocks: 0          IO Block: 4096   directory
+Device: 0,411   Inode: 125986441   Links: 5
+Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
+Access: 2026-10-04 20:09:25.564460934 -0400
+Modify: 2026-10-02 12:29:58.424623636 -0400
+Change: 2026-10-02 12:29:58.424623636 -0400
+ Birth: 2026-10-02 12:29:58.420895435 -0400
+sh: line 1: getfacl: command not found
+command terminated with exit code 127
 NAME                           READY   STATUS    RESTARTS   AGE   IP              NODE                           NOMINATED NODE   READINESS GATES
 conexus-sftp-fbb5b4c96-552jh   1/1     Running   0          3d    192.168.6.126   ip-10-56-194-60.ec2.internal   <none>           <none>
-[sikaj01@ip-10-56-112-33 cert_renewal]$ kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'mount | grep nfs4; ls -la /NSFS_NAS/chroot' | tee -a sftp_permissions_evidence_20261005.txt
 127.0.0.1:/ on /NSFS_NAS/database type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,noresvport,fatal_neterrors=none,proto=tcp,port=20688,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
 127.0.0.1:/ on /NSFS_NAS/chroot type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,noresvport,fatal_neterrors=none,proto=tcp,port=20653,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
 127.0.0.1:/ on /NSFS_NAS/fail_scan type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,noresvport,fatal_neterrors=none,proto=tcp,port=20361,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
@@ -35,14 +79,25 @@ drwxr-xr-x.  2 1112 1112 6144 Jan 15  2026 eis_pmo
 drwxr-xr-x.  4 root root 6144 Mar  4  2026 iconectiv
 drwxr-xr-x.  4 root root 6144 Sep 18  2025 pegasys
 drwxr-xr-x.  6 1114 1114 6144 Mar  2  2026 s_conexus_testsftp
-[sikaj01@ip-10-56-112-33 cert_renewal]$ kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'ls -ld /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan' | tee -a sftp_permissions_evidence_20261005.txt
 drwxr-xr-x.  5 root root   53 Oct  2 12:29 /NSFS_NAS
 drwxr-xr-x. 18 root root 6144 Jul 21 01:30 /NSFS_NAS/chroot
 drwxrwxr-x. 36 6060 6060 6144 Mar  5  2026 /NSFS_NAS/database
 drwxr-xr-x.  2 root root 6144 Oct  5 13:15 /NSFS_NAS/fail_scan
-[sikaj01@ip-10-56-112-33 cert_renewal]$ kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'getfacl -p /NSFS_NAS/chroot; echo "-----"; getfacl -p /NSFS_NAS' | tee -a sftp_permissions_evidence_20261005.txt
-sh: line 1: getfacl: command not found
-sh: line 1: getfacl: command not found
 -----
-command terminated with exit code 127
+/NSFS_NAS ['security.selinux']
+    system.posix_acl_access -> No data available
+    system.posix_acl_default -> No data available
+    system.nfs4_acl -> Operation not supported
+/NSFS_NAS/chroot ['security.selinux']
+    system.posix_acl_access -> Operation not supported
+    system.posix_acl_default -> Operation not supported
+    system.nfs4_acl -> Operation not supported
+/NSFS_NAS/database ['security.selinux']
+    system.posix_acl_access -> Operation not supported
+    system.posix_acl_default -> Operation not supported
+    system.nfs4_acl -> Operation not supported
+/NSFS_NAS/fail_scan ['security.selinux']
+    system.posix_acl_access -> Operation not supported
+    system.posix_acl_default -> Operation not supported
+    system.nfs4_acl -> Operation not supported
 [sikaj01@ip-10-56-112-33 cert_renewal]$ 
