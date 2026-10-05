@@ -1,29 +1,11 @@
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- which python3 perl
+kubectl get pod conexus-sftp-fbb5b4c96-552jh -n ingress-nginx -o jsonpath='{range .spec.volumes[*]}{.name}{"\t"}{.persistentVolumeClaim.claimName}{"\n"}{end}'
+kubectl get pv -o custom-columns=NAME:.metadata.name,CLAIM:.spec.claimRef.name,HANDLE:.spec.csi.volumeHandle | grep -i efs
 
 
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- python3 -c 'import os,sys; [print(p, os.listxattr(p)) for p in sys.argv[1:]]' /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan
+aws efs describe-file-system-policy --file-system-id <fs-id> --region us-east-1 --profile prodvpc
+aws efs describe-access-points --file-system-id <fs-id> --region us-east-1 --profile prodvpc
+aws efs describe-mount-targets --file-system-id <fs-id> --region us-east-1 --profile prodvpc
 
 
-kubectl get pod conexus-sftp-fbb5b4c96-552jh -n ingress-nginx -o wide | tee -a sftp_permissions_evidence_20261005.txt
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'mount | grep nfs4; ls -la /NSFS_NAS/chroot' | tee -a sftp_permissions_evidence_20261005.txt
+{ echo "=== EFS inventory $(date -u) ==="; aws efs describe-file-systems --region us-east-1 --profile prodvpc --no-cli-pager --query 'FileSystems[?Tags[?Key==`Service` && Value==`DBFolders`]].[Name,FileSystemId,CreationToken,Encrypted,KmsKeyId,ThroughputMode,LifeCycleState]' --output table; } 2>&1 | tee -a sftp_permissions_evidence_20261005.txt
 
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'ls -ld /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan' | tee -a sftp_permissions_evidence_20261005.txt
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'getfacl -p /NSFS_NAS/chroot; echo "-----"; getfacl -p /NSFS_NAS' | tee -a sftp_permissions_evidence_20261005.txt
-
-
-
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- python3 -c '
-import os,sys
-for p in sys.argv[1:]:
-    print(p, os.listxattr(p))
-    for a in ("system.posix_acl_access","system.posix_acl_default","system.nfs4_acl"):
-        try: print("   ", a, os.getxattr(p, a))
-        except OSError as e: print("   ", a, "->", e.strerror)
-' /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan 2>&1 | tee -a sftp_permissions_evidence_20261005.txt
-
-
-
-aws efs describe-file-systems --region us-east-1 --profile prodvpc
-aws efs describe-mount-targets --file-system-id <fs-id>
-
-aws efs describe-mount-targets --file-system-id <fs-id> --region us-gov-west-1
