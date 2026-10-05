@@ -9,3 +9,14 @@ kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'mount | gre
 
 kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'ls -ld /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan' | tee -a sftp_permissions_evidence_20261005.txt
 kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'getfacl -p /NSFS_NAS/chroot; echo "-----"; getfacl -p /NSFS_NAS' | tee -a sftp_permissions_evidence_20261005.txt
+
+
+
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- python3 -c '
+import os,sys
+for p in sys.argv[1:]:
+    print(p, os.listxattr(p))
+    for a in ("system.posix_acl_access","system.posix_acl_default","system.nfs4_acl"):
+        try: print("   ", a, os.getxattr(p, a))
+        except OSError as e: print("   ", a, "->", e.strerror)
+' /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan 2>&1 | tee -a sftp_permissions_evidence_20261005.txt
