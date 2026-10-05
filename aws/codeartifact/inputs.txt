@@ -1,22 +1,13 @@
-read -rsp "Prod RO token: " PT; echo
-read -rsp "Dev token: " DT; echo
-P=https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
-D=https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+grep -q 'bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov' /etc/hosts || \
+  echo "127.0.0.1 bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov" | sudo tee -a /etc/hosts
+getent hosts bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
 
-# Prod: read should be 200
-curl -s -o /dev/null -w "prod read repos:   %{http_code}\n" \
-  -H "Authorization: Bearer $PT" "$P/rest/api/1.0/projects/CNXS/repos?limit=1"
-
-# Prod: write handshake should be 401 or 403, NOT 200 (read-only check, writes nothing)
-curl -s -o /dev/null -w "prod write check:  %{http_code}\n" \
-  -H "Authorization: Bearer $PT" "$P/scm/cnxs/api_gateway.git/info/refs?service=git-receive-pack"
-
-# Dev: project visible should be 200
-curl -s -o /dev/null -w "dev project:       %{http_code}\n" \
+curl -sS --max-time 15 -o /dev/null -w "dev project:     %{http_code}\n" \
   -H "Authorization: Bearer $DT" "$D/rest/api/1.0/projects/CNXS"
-
-# Dev: admin-only endpoint should be 200 if the token has Project admin
-curl -s -o /dev/null -w "dev admin check:   %{http_code}\n" \
+curl -sS --max-time 15 -o /dev/null -w "dev admin check: %{http_code}\n" \
   -H "Authorization: Bearer $DT" "$D/rest/api/1.0/projects/CNXS/permissions/users"
 
-unset PT DT
+
+
+curl -sS --max-time 15 -o /dev/null -w "prod admin-only endpoint: %{http_code}\n" \
+  -H "Authorization: Bearer $PT" "$P/rest/api/1.0/projects/CNXS/permissions/users"
