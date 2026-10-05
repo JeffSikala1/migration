@@ -1,26 +1,11 @@
-kubectl exec -it -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- /bin/sh
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- which python3 perl
 
 
-mount | grep -Ei 'nfs|nsfs|efs|chroot'
-df -h
-grep -Ei 'chroot|internal-sftp|Match' /etc/ssh/sshd_config
-
-ls -l /app/ConexusSFTP
-
-ls -ld /NSFS_NAS/chroot
-ls -la /NSFS_NAS/chroot
-stat /NSFS_NAS/chroot
-ls -ld /NSFS_NAS
-ls -la /NSFS_NAS
-stat /NSFS_NAS
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- python3 -c 'import os,sys; [print(p, os.listxattr(p)) for p in sys.argv[1:]]' /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan
 
 
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'date -u; hostname; echo "--- CHROOT ---"; ls -ld /NSFS_NAS/chroot; stat /NSFS_NAS/chroot; echo "--- NSFS ---"; ls -ld /NSFS_NAS; stat /NSFS_NAS' | tee sftp_permissions_evidence_$(date +%Y%m%d).txt
+kubectl get pod conexus-sftp-fbb5b4c96-552jh -n ingress-nginx -o wide | tee -a sftp_permissions_evidence_20261005.txt
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'mount | grep nfs4; ls -la /NSFS_NAS/chroot' | tee -a sftp_permissions_evidence_20261005.txt
 
-
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- which getfacl
-
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'getfacl -p /NSFS_NAS/chroot; echo "-----"; getfacl -p /NSFS_NAS'
-
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'date -u; hostname; for p in /NSFS_NAS/chroot /NSFS_NAS; do echo "=== $p ==="; ls -ld $p; stat $p; getfacl -p $p; done' 2>&1 | tee sftp_permissions_evidence_$(date +%Y%m%d).txt
-
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'ls -ld /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan' | tee -a sftp_permissions_evidence_20261005.txt
+kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'getfacl -p /NSFS_NAS/chroot; echo "-----"; getfacl -p /NSFS_NAS' | tee -a sftp_permissions_evidence_20261005.txt
