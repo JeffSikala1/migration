@@ -1,1 +1,22 @@
-{ echo "=== NSFS database listing and stat $(date -u) ==="; kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- sh -c 'ls -la /NSFS_NAS/database; stat /NSFS_NAS/database /NSFS_NAS/fail_scan'; } 2>&1 | tee -a sftp_permissions_evidence_20261005.txt
+read -rsp "Prod RO token: " PT; echo
+read -rsp "Dev token: " DT; echo
+P=https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+D=https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+
+# Prod: read should be 200
+curl -s -o /dev/null -w "prod read repos:   %{http_code}\n" \
+  -H "Authorization: Bearer $PT" "$P/rest/api/1.0/projects/CNXS/repos?limit=1"
+
+# Prod: write handshake should be 401 or 403, NOT 200 (read-only check, writes nothing)
+curl -s -o /dev/null -w "prod write check:  %{http_code}\n" \
+  -H "Authorization: Bearer $PT" "$P/scm/cnxs/api_gateway.git/info/refs?service=git-receive-pack"
+
+# Dev: project visible should be 200
+curl -s -o /dev/null -w "dev project:       %{http_code}\n" \
+  -H "Authorization: Bearer $DT" "$D/rest/api/1.0/projects/CNXS"
+
+# Dev: admin-only endpoint should be 200 if the token has Project admin
+curl -s -o /dev/null -w "dev admin check:   %{http_code}\n" \
+  -H "Authorization: Bearer $DT" "$D/rest/api/1.0/projects/CNXS/permissions/users"
+
+unset PT DT
