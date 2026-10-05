@@ -1,13 +1,20 @@
-grep -q 'bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov' /etc/hosts || \
-  echo "127.0.0.1 bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov" | sudo tee -a /etc/hosts
-getent hosts bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+sudo mkdir -p /app/bbmirror/{bin,etc,cache,run}
+sudo chmod 700 /app/bbmirror/etc
 
-curl -sS --max-time 15 -o /dev/null -w "dev project:     %{http_code}\n" \
-  -H "Authorization: Bearer $DT" "$D/rest/api/1.0/projects/CNXS"
-curl -sS --max-time 15 -o /dev/null -w "dev admin check: %{http_code}\n" \
-  -H "Authorization: Bearer $DT" "$D/rest/api/1.0/projects/CNXS/permissions/users"
+( umask 077
+  printf '%s\n' \
+    'PROD_URL="https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov"' \
+    "PROD_TOKEN=\"$PT\"" \
+    'DEV_URL="https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov"' \
+    "DEV_TOKEN=\"$DT\"" \
+    'PROJECT_KEY="CNXS"' \
+    'EXCLUDE_REPOS="releasetest"' \
+  | sudo tee /app/bbmirror/etc/mirror.env >/dev/null )
 
+sudo chown root:root /app/bbmirror/etc/mirror.env
+sudo chmod 600 /app/bbmirror/etc/mirror.env
+unset PT DT
 
-
-curl -sS --max-time 15 -o /dev/null -w "prod admin-only endpoint: %{http_code}\n" \
-  -H "Authorization: Bearer $PT" "$P/rest/api/1.0/projects/CNXS/permissions/users"
+sudo ls -l /app/bbmirror/etc/mirror.env      # should be -rw------- root root
+sudo sed -E 's/(TOKEN=").+"/\1<hidden>"/' /app/bbmirror/etc/mirror.env
+df -h /app
