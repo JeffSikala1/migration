@@ -1,103 +1,745 @@
-[sikaj01@ip-10-56-112-33 cert_renewal]$ 
-kubectl exec -n ingress-nginx conexus-sftp-fbb5b4c96-552jh -- python3 -c '
-import os,sys
-for p in sys.argv[1:]:
-    print(p, os.listxattr(p))
-    for a in ("system.posix_acl_access","system.posix_acl_default","system.nfs4_acl"):
-        try: print("   ", a, os.getxattr(p, a))
-        except OSError as e: print("   ", a, "->", e.strerror)
-' /NSFS_NAS /NSFS_NAS/chroot /NSFS_NAS/database /NSFS_NAS/fail_scan 2>&1 | tee -a sftp_permissions_evidence_20261005.txt
-/NSFS_NAS ['security.selinux']
-    system.posix_acl_access -> No data available
-    system.posix_acl_default -> No data available
-    system.nfs4_acl -> Operation not supported
-/NSFS_NAS/chroot ['security.selinux']
-    system.posix_acl_access -> Operation not supported
-    system.posix_acl_default -> Operation not supported
-    system.nfs4_acl -> Operation not supported
-/NSFS_NAS/database ['security.selinux']
-    system.posix_acl_access -> Operation not supported
-    system.posix_acl_default -> Operation not supported
-    system.nfs4_acl -> Operation not supported
-/NSFS_NAS/fail_scan ['security.selinux']
-    system.posix_acl_access -> Operation not supported
-    system.posix_acl_default -> Operation not supported
-    system.nfs4_acl -> Operation not supported
-[sikaj01@ip-10-56-112-33 cert_renewal]$ 
+[sikaj01@ip-10-56-112-33 cert_renewal]$ aws efs describe-file-systems --region us-east-1 --profile prodvpc
+{
+    "FileSystems": [
+        {
+            "OwnerId": "590183684637",
+            "CreationToken": "Conexus Billing Scripts",
+            "FileSystemId": "fs-055bc44723f1a9d74",
+            "FileSystemArn": "arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-055bc44723f1a9d74",
+            "CreationTime": "2025-12-24T17:55:21+00:00",
+            "LifeCycleState": "available",
+            "Name": "Ash",
+            "NumberOfMountTargets": 2,
+            "SizeInBytes": {
+                "Value": 188416,
+                "Timestamp": "2026-10-05T17:29:03+00:00",
+                "ValueInIA": 0,
+                "ValueInStandard": 188416,
+                "ValueInArchive": 0
+            },
+            "PerformanceMode": "generalPurpose",
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:590183684637:key/3a9fcbd7-eec3-4c66-8988-a24c14924ee2",
+            "ThroughputMode": "bursting",
+            "Tags": [
+                {
+                    "Key": "Application",
+                    "Value": "Conexus"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "prod"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "Ash"
+                },
+                {
+                    "Key": "ResourceClass",
+                    "Value": "FileStorage"
+                },
+                {
+                    "Key": "ResourceRole",
+                    "Value": "Conexus Billing Scripts"
+                },
+                {
+                    "Key": "Service",
+                    "Value": "DBFolders"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "Ops"
+                },
+                {
+                    "Key": "Terraform",
+                    "Value": "true"
+                }
+            ],
+            "FileSystemProtection": {
+                "ReplicationOverwriteProtection": "ENABLED"
+            }
+        },
+        {
+            "OwnerId": "590183684637",
+            "CreationToken": "Conexus Jboss temp",
+            "FileSystemId": "fs-028d122a8fcb0cdab",
+            "FileSystemArn": "arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-028d122a8fcb0cdab",
+            "CreationTime": "2025-12-24T17:55:21+00:00",
+            "LifeCycleState": "available",
+            "Name": "Acacia",
+            "NumberOfMountTargets": 2,
+            "SizeInBytes": {
+                "Value": 27940407296,
+                "Timestamp": "2026-10-05T17:28:42+00:00",
+                "ValueInIA": 0,
+                "ValueInStandard": 27940407296,
+                "ValueInArchive": 0
+            },
+            "PerformanceMode": "generalPurpose",
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:590183684637:key/9e27922d-2f0b-461a-a775-6f5ccbd1382f",
+            "ThroughputMode": "elastic",
+            "Tags": [
+                {
+                    "Key": "Application",
+                    "Value": "Conexus"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "prod"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "Acacia"
+                },
+                {
+                    "Key": "ResourceClass",
+                    "Value": "FileStorage"
+                },
+                {
+                    "Key": "ResourceRole",
+                    "Value": "Conexus Jboss temp files"
+                },
+                {
+                    "Key": "Service",
+                    "Value": "DBFolders"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "Ops"
+                },
+                {
+                    "Key": "Terraform",
+                    "Value": "true"
+                }
+            ],
+            "FileSystemProtection": {
+                "ReplicationOverwriteProtection": "ENABLED"
+            }
+        },
+        {
+            "OwnerId": "590183684637",
+            "CreationToken": "Conexus SFTP Database",
+            "FileSystemId": "fs-0edc3507fee0b8e7f",
+            "FileSystemArn": "arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-0edc3507fee0b8e7f",
+            "CreationTime": "2025-08-29T03:30:38+00:00",
+            "LifeCycleState": "available",
+            "Name": "Maple",
+            "NumberOfMountTargets": 2,
+            "SizeInBytes": {
+                "Value": 2856182423552,
+                "Timestamp": "2026-10-05T17:29:01+00:00",
+                "ValueInIA": 0,
+                "ValueInStandard": 2856182423552,
+                "ValueInArchive": 0
+            },
+            "PerformanceMode": "generalPurpose",
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:590183684637:key/4713453c-6ca0-494a-b403-bf7fd5cf0f78",
+            "ThroughputMode": "bursting",
+            "Tags": [
+                {
+                    "Key": "Application",
+                    "Value": "Conexus"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "prod"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "Maple"
+                },
+                {
+                    "Key": "ResourceClass",
+                    "Value": "FileStorage"
+                },
+                {
+                    "Key": "ResourceRole",
+                    "Value": "Conexus SFTP Database"
+                },
+                {
+                    "Key": "Service",
+                    "Value": "DBFolders"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "Ops"
+                },
+                {
+                    "Key": "Terraform",
+                    "Value": "true"
+                }
+            ],
+            "FileSystemProtection": {
+                "ReplicationOverwriteProtection": "ENABLED"
+            }
+        },
+        {
+            "OwnerId": "590183684637",
+            "CreationToken": "Conexus SFTP reject",
+            "FileSystemId": "fs-0d2481c7d812404ba",
+            "FileSystemArn": "arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-0d2481c7d812404ba",
+            "CreationTime": "2025-08-29T03:30:38+00:00",
+            "LifeCycleState": "available",
+            "Name": "Banyan",
+            "NumberOfMountTargets": 2,
+            "SizeInBytes": {
+                "Value": 6144,
+                "Timestamp": "2026-10-05T17:28:23+00:00",
+                "ValueInIA": 0,
+                "ValueInStandard": 6144,
+                "ValueInArchive": 0
+            },
+            "PerformanceMode": "generalPurpose",
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:590183684637:key/5cf30c63-c4a6-44ef-9b1f-b72278592232",
+            "ThroughputMode": "bursting",
+            "Tags": [
+                {
+                    "Key": "Application",
+                    "Value": "Conexus"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "prod"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "Banyan"
+                },
+                {
+                    "Key": "ResourceClass",
+                    "Value": "FileStorage"
+                },
+                {
+                    "Key": "ResourceRole",
+                    "Value": "Conexus SFTP reject"
+                },
+                {
+                    "Key": "Service",
+                    "Value": "DBFolders"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "Ops"
+                },
+                {
+                    "Key": "Terraform",
+                    "Value": "true"
+                }
+            ],
+            "FileSystemProtection": {
+                "ReplicationOverwriteProtection": "ENABLED"
+            }
+        },
+        {
+            "OwnerId": "590183684637",
+            "CreationToken": "Conexus Order attachments",
+            "FileSystemId": "fs-0a848adb9fa9daf67",
+            "FileSystemArn": "arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-0a848adb9fa9daf67",
+            "CreationTime": "2025-08-29T03:30:38+00:00",
+            "LifeCycleState": "available",
+            "Name": "Alder",
+            "NumberOfMountTargets": 2,
+            "SizeInBytes": {
+                "Value": 14572177408,
+                "Timestamp": "2026-10-05T17:18:34+00:00",
+                "ValueInIA": 0,
+                "ValueInStandard": 14572177408,
+                "ValueInArchive": 0
+            },
+            "PerformanceMode": "generalPurpose",
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:590183684637:key/4713453c-6ca0-494a-b403-bf7fd5cf0f78",
+            "ThroughputMode": "bursting",
+            "Tags": [
+                {
+                    "Key": "Application",
+                    "Value": "Conexus"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "prod"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "Alder"
+                },
+                {
+                    "Key": "ResourceClass",
+                    "Value": "FileStorage"
+                },
+                {
+                    "Key": "ResourceRole",
+                    "Value": "Conexus Order attachments"
+                },
+                {
+                    "Key": "Service",
+                    "Value": "DBFolders"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "Ops"
+                },
+                {
+                    "Key": "Terraform",
+                    "Value": "true"
+                }
+            ],
+            "FileSystemProtection": {
+                "ReplicationOverwriteProtection": "ENABLED"
+            }
+        },
+        {
+            "OwnerId": "590183684637",
+            "CreationToken": "Conexus UI Reports",
+            "FileSystemId": "fs-06b99a459338bb9f3",
+            "FileSystemArn": "arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-06b99a459338bb9f3",
+            "CreationTime": "2025-08-29T03:30:38+00:00",
+            "LifeCycleState": "available",
+            "Name": "Baobab",
+            "NumberOfMountTargets": 2,
+            "SizeInBytes": {
+                "Value": 12761667584,
+                "Timestamp": "2026-10-05T17:29:32+00:00",
+                "ValueInIA": 0,
+                "ValueInStandard": 12761667584,
+                "ValueInArchive": 0
+            },
+            "PerformanceMode": "generalPurpose",
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:590183684637:key/4713453c-6ca0-494a-b403-bf7fd5cf0f78",
+            "ThroughputMode": "bursting",
+            "Tags": [
+                {
+                    "Key": "Application",
+                    "Value": "Conexus"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "prod"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "Baobab"
+                },
+                {
+                    "Key": "ResourceClass",
+                    "Value": "FileStorage"
+                },
+                {
+                    "Key": "ResourceRole",
+                    "Value": "Conexus UI Reports"
+                },
+                {
+                    "Key": "Service",
+                    "Value": "DBFolders"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "Ops"
+                },
+                {
+                    "Key": "Terraform",
+                    "Value": "true"
+                }
+            ],
+            "FileSystemProtection": {
+                "ReplicationOverwriteProtection": "ENABLED"
+            }
+        },
+        {
+            "OwnerId": "590183684637",
+            "CreationToken": "Conexus SFTP Data",
+            "FileSystemId": "fs-00b6a469a1d5d43d5",
+            "FileSystemArn": "arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-00b6a469a1d5d43d5",
+            "CreationTime": "2025-08-29T03:30:38+00:00",
+            "LifeCycleState": "available",
+            "Name": "Magnolia",
+            "NumberOfMountTargets": 2,
+            "SizeInBytes": {
+                "Value": 3301236736,
+                "Timestamp": "2026-10-05T17:13:49+00:00",
+                "ValueInIA": 0,
+                "ValueInStandard": 3301236736,
+                "ValueInArchive": 0
+            },
+            "PerformanceMode": "generalPurpose",
+            "Encrypted": true,
+            "KmsKeyId": "arn:aws:kms:us-east-1:590183684637:key/5cf30c63-c4a6-44ef-9b1f-b72278592232",
+            "ThroughputMode": "elastic",
+            "Tags": [
+                {
+                    "Key": "Application",
+                    "Value": "Conexus"
+                },
+                {
+                    "Key": "Environment",
+                    "Value": "prod"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "Magnolia"
+                },
+                {
+                    "Key": "ResourceClass",
+                    "Value": "FileStorage"
+                },
+                {
+                    "Key": "ResourceRole",
+                    "Value": "Conexus SFTP Data"
+                },
+                {
+                    "Key": "Service",
+                    "Value": "DBFolders"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "Ops"
+                },
+                {
+                    "Key": "Terraform",
+                    "Value": "true"
+                }
+            ],
+            "FileSystemProtection": {
+                "ReplicationOverwriteProtection": "ENABLED"
+            }
+        }
+    ]
+}
+(END)
+                },
+                {
+                    "Key": "ResourceClass",
+                    "Value": "FileStorage"
+                },
+                {
+                    "Key": "ResourceRole",
+                    "Value": "Conexus SFTP Data"
+                },
+                {
+                    "Key": "Service",
+                    "Value": "DBFolders"
+                },
+                {
+                    "Key": "Team",
+                    "Value": "Ops"
+                },
+                {
+                    "Key": "Terraform",
+                    "Value": "true"
+                }
+            ],
+            "FileSystemProtection": {
+                "ReplicationOverwriteProtection": "ENABLED"
+            }
+        }
+    ]
+}
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
 
-
-[sikaj01@ip-10-56-112-33 cert_renewal]$ cat sftp_permissions_evidence_20261005.txt 
-Mon Oct  5 17:10:03 UTC 2026
-conexus-sftp-fbb5b4c96-552jh
-=== /NSFS_NAS/chroot ===
-drwxr-xr-x. 18 root root 6144 Jul 21 01:30 /NSFS_NAS/chroot
-  File: /NSFS_NAS/chroot
-  Size: 6144            Blocks: 8          IO Block: 1048576 directory
-Device: 0,384   Inode: 8337692559950646131  Links: 18
-Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
-Access: 2026-07-21 01:30:02.223000000 -0400
-Modify: 2026-07-21 01:30:02.223000000 -0400
-Change: 2026-07-21 01:30:02.223000000 -0400
- Birth: 2025-08-28 23:30:39.355000000 -0400
-sh: line 1: getfacl: command not found
-=== /NSFS_NAS ===
-drwxr-xr-x. 5 root root 53 Oct  2 12:29 /NSFS_NAS
-  File: /NSFS_NAS
-  Size: 53              Blocks: 0          IO Block: 4096   directory
-Device: 0,411   Inode: 125986441   Links: 5
-Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
-Access: 2026-10-04 20:09:25.564460934 -0400
-Modify: 2026-10-02 12:29:58.424623636 -0400
-Change: 2026-10-02 12:29:58.424623636 -0400
- Birth: 2026-10-02 12:29:58.420895435 -0400
-sh: line 1: getfacl: command not found
-command terminated with exit code 127
-NAME                           READY   STATUS    RESTARTS   AGE   IP              NODE                           NOMINATED NODE   READINESS GATES
-conexus-sftp-fbb5b4c96-552jh   1/1     Running   0          3d    192.168.6.126   ip-10-56-194-60.ec2.internal   <none>           <none>
-127.0.0.1:/ on /NSFS_NAS/database type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,noresvport,fatal_neterrors=none,proto=tcp,port=20688,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
-127.0.0.1:/ on /NSFS_NAS/chroot type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,noresvport,fatal_neterrors=none,proto=tcp,port=20653,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
-127.0.0.1:/ on /NSFS_NAS/fail_scan type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,noresvport,fatal_neterrors=none,proto=tcp,port=20361,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
-127.0.0.1:/ on /mnt/temp type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,noresvport,fatal_neterrors=none,proto=tcp,port=20726,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
-127.0.0.1:/ on /app/conexus/attachments type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,noresvport,fatal_neterrors=none,proto=tcp,port=20321,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
-total 72
-drwxr-xr-x. 18 root root 6144 Jul 21 01:30 .
-drwxr-xr-x.  5 root root   53 Oct  2 12:29 ..
-drwxr-xr-x.  8 1104 1104 6144 Jun  1 19:11 ATT
-drwxr-xr-x.  8 1110 1110 6144 Jan  3  2026 BTFederal
-drwxr-xr-x.  8 1101 1101 6144 Feb  2  2026 Centurylink
-drwxr-xr-x.  8 1107 1107 6144 Jan  3  2026 CoreTech
-drwxr-xr-x.  4 1111 1111 6144 Jul 21 01:30 DOD_DISA_1
-drwxr-xr-x.  8 1102 1102 6144 Jan  3  2026 GraniteTelcom
-drwxr-xr-x.  8 1105 1105 6144 Jan  3  2026 HarrisCorp
-drwxr-xr-x.  2 1103 1103 6144 Jul 21 01:30 Level3
-lrwxrwxrwx.  1 root root   28 Sep 18  2025 Lumen -> /NSFS_NAS/chroot/Centurylink
-drwxr-xr-x.  8 1108 1108 6144 Jan  3  2026 ManhattanTelco
-drwxr-xr-x.  8 1109 1109 6144 Feb 18  2026 MicroTech
-drwxr-xr-x.  6 1113 1113 6144 Jul 21 01:30 NHC
-drwxr-xr-x.  8 1106 1106 6144 Jul 21 01:30 Verizon
-drwxr-xr-x.  2 1112 1112 6144 Jan 15  2026 eis_pmo
-drwxr-xr-x.  4 root root 6144 Mar  4  2026 iconectiv
-drwxr-xr-x.  4 root root 6144 Sep 18  2025 pegasys
-drwxr-xr-x.  6 1114 1114 6144 Mar  2  2026 s_conexus_testsftp
-drwxr-xr-x.  5 root root   53 Oct  2 12:29 /NSFS_NAS
-drwxr-xr-x. 18 root root 6144 Jul 21 01:30 /NSFS_NAS/chroot
-drwxrwxr-x. 36 6060 6060 6144 Mar  5  2026 /NSFS_NAS/database
-drwxr-xr-x.  2 root root 6144 Oct  5 13:15 /NSFS_NAS/fail_scan
------
-/NSFS_NAS ['security.selinux']
-    system.posix_acl_access -> No data available
-    system.posix_acl_default -> No data available
-    system.nfs4_acl -> Operation not supported
-/NSFS_NAS/chroot ['security.selinux']
-    system.posix_acl_access -> Operation not supported
-    system.posix_acl_default -> Operation not supported
-    system.nfs4_acl -> Operation not supported
-/NSFS_NAS/database ['security.selinux']
-    system.posix_acl_access -> Operation not supported
-    system.posix_acl_default -> Operation not supported
-    system.nfs4_acl -> Operation not supported
-/NSFS_NAS/fail_scan ['security.selinux']
-    system.posix_acl_access -> Operation not supported
-    system.posix_acl_default -> Operation not supported
-    system.nfs4_acl -> Operation not supported
-[sikaj01@ip-10-56-112-33 cert_renewal]$ 
+[sikaj01@ip-10-56-112-33 cert_renewal]$ aws efs describe-file-systems --region us-east-1 --profile prodvpc --output table
+-----------------------------------------------------------------------------------------------------------------
+|                                              DescribeFileSystems                                              |
++---------------------------------------------------------------------------------------------------------------+
+||                                                 FileSystems                                                 ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+||  CreationTime        |  2025-12-24T17:55:21+00:00                                                           ||
+||  CreationToken       |  Conexus Billing Scripts                                                             ||
+||  Encrypted           |  True                                                                                ||
+||  FileSystemArn       |  arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-055bc44723f1a9d74   ||
+||  FileSystemId        |  fs-055bc44723f1a9d74                                                                ||
+||  KmsKeyId            |  arn:aws:kms:us-east-1:590183684637:key/3a9fcbd7-eec3-4c66-8988-a24c14924ee2         ||
+||  LifeCycleState      |  available                                                                           ||
+||  Name                |  Ash                                                                                 ||
+||  NumberOfMountTargets|  2                                                                                   ||
+||  OwnerId             |  590183684637                                                                        ||
+||  PerformanceMode     |  generalPurpose                                                                      ||
+||  ThroughputMode      |  bursting                                                                            ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+|||                                           FileSystemProtection                                            |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||  ReplicationOverwriteProtection                                                |  ENABLED                 |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||                                                SizeInBytes                                                |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||  Timestamp                              |  2026-10-05T17:29:03+00:00                                      |||
+|||  Value                                  |  188416                                                         |||
+|||  ValueInArchive                         |  0                                                              |||
+|||  ValueInIA                              |  0                                                              |||
+|||  ValueInStandard                        |  188416                                                         |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||                                                   Tags                                                    |||
+||+----------------------------------------+------------------------------------------------------------------+||
+|||                   Key                  |                              Value                               |||
+||+----------------------------------------+------------------------------------------------------------------+||
+|||  Application                           |  Conexus                                                         |||
+|||  Environment                           |  prod                                                            |||
+|||  Name                                  |  Ash                                                             |||
+|||  ResourceClass                         |  FileStorage                                                     |||
+|||  ResourceRole                          |  Conexus Billing Scripts                                         |||
+|||  Service                               |  DBFolders                                                       |||
+|||  Team                                  |  Ops                                                             |||
+|||  Terraform                             |  true                                                            |||
+||+----------------------------------------+------------------------------------------------------------------+||
+||                                                 FileSystems                                                 ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+||  CreationTime        |  2025-12-24T17:55:21+00:00                                                           ||
+||  CreationToken       |  Conexus Jboss temp                                                                  ||
+||  Encrypted           |  True                                                                                ||
+||  FileSystemArn       |  arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-028d122a8fcb0cdab   ||
+||  FileSystemId        |  fs-028d122a8fcb0cdab                                                                ||
+||  KmsKeyId            |  arn:aws:kms:us-east-1:590183684637:key/9e27922d-2f0b-461a-a775-6f5ccbd1382f         ||
+||  LifeCycleState      |  available                                                                           ||
+||  Name                |  Acacia                                                                              ||
+||  NumberOfMountTargets|  2                                                                                   ||
+||  OwnerId             |  590183684637                                                                        ||
+||  PerformanceMode     |  generalPurpose                                                                      ||
+||  ThroughputMode      |  elastic                                                                             ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+|||                                           FileSystemProtection                                            |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||  ReplicationOverwriteProtection                                                |  ENABLED                 |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||                                                SizeInBytes                                                |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||  Timestamp                              |  2026-10-05T17:28:42+00:00                                      |||
+|||  Value                                  |  27940407296                                                    |||
+|||  ValueInArchive                         |  0                                                              |||
+|||  ValueInIA                              |  0                                                              |||
+|||  ValueInStandard                        |  27940407296                                                    |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||                                                   Tags                                                    |||
+||+---------------------------------------+-------------------------------------------------------------------+||
+|||                  Key                  |                               Value                               |||
+||+---------------------------------------+-------------------------------------------------------------------+||
+|||  Application                          |  Conexus                                                          |||
+|||  Environment                          |  prod                                                             |||
+|||  Name                                 |  Acacia                                                           |||
+|||  ResourceClass                        |  FileStorage                                                      |||
+|||  ResourceRole                         |  Conexus Jboss temp files                                         |||
+|||  Service                              |  DBFolders                                                        |||
+|||  Team                                 |  Ops                                                              |||
+|||  Terraform                            |  true                                                             |||
+||+---------------------------------------+-------------------------------------------------------------------+||
+||                                                 FileSystems                                                 ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+||  CreationTime        |  2025-08-29T03:30:38+00:00                                                           ||
+||  CreationToken       |  Conexus SFTP Database                                                               ||
+||  Encrypted           |  True                                                                                ||
+||  FileSystemArn       |  arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-0edc3507fee0b8e7f   ||
+||  FileSystemId        |  fs-0edc3507fee0b8e7f                                                                ||
+||  KmsKeyId            |  arn:aws:kms:us-east-1:590183684637:key/4713453c-6ca0-494a-b403-bf7fd5cf0f78         ||
+||  LifeCycleState      |  available                                                                           ||
+||  Name                |  Maple                                                                               ||
+||  NumberOfMountTargets|  2                                                                                   ||
+||  OwnerId             |  590183684637                                                                        ||
+||  PerformanceMode     |  generalPurpose                                                                      ||
+||  ThroughputMode      |  bursting                                                                            ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+|||                                           FileSystemProtection                                            |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||  ReplicationOverwriteProtection                                                |  ENABLED                 |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||                                                SizeInBytes                                                |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||  Timestamp                              |  2026-10-05T17:29:01+00:00                                      |||
+|||  Value                                  |  2856182423552                                                  |||
+|||  ValueInArchive                         |  0                                                              |||
+|||  ValueInIA                              |  0                                                              |||
+|||  ValueInStandard                        |  2856182423552                                                  |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||                                                   Tags                                                    |||
+||+------------------------------------------+----------------------------------------------------------------+||
+|||                    Key                   |                             Value                              |||
+||+------------------------------------------+----------------------------------------------------------------+||
+|||  Application                             |  Conexus                                                       |||
+|||  Environment                             |  prod                                                          |||
+|||  Name                                    |  Maple                                                         |||
+|||  ResourceClass                           |  FileStorage                                                   |||
+|||  ResourceRole                            |  Conexus SFTP Database                                         |||
+|||  Service                                 |  DBFolders                                                     |||
+|||  Team                                    |  Ops                                                           |||
+|||  Terraform                               |  true                                                          |||
+||+------------------------------------------+----------------------------------------------------------------+||
+||                                                 FileSystems                                                 ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+||  CreationTime        |  2025-08-29T03:30:38+00:00                                                           ||
+||  CreationToken       |  Conexus SFTP reject                                                                 ||
+||  Encrypted           |  True                                                                                ||
+||  FileSystemArn       |  arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-0d2481c7d812404ba   ||
+||  FileSystemId        |  fs-0d2481c7d812404ba                                                                ||
+||  KmsKeyId            |  arn:aws:kms:us-east-1:590183684637:key/5cf30c63-c4a6-44ef-9b1f-b72278592232         ||
+||  LifeCycleState      |  available                                                                           ||
+||  Name                |  Banyan                                                                              ||
+||  NumberOfMountTargets|  2                                                                                   ||
+||  OwnerId             |  590183684637                                                                        ||
+||  PerformanceMode     |  generalPurpose                                                                      ||
+||  ThroughputMode      |  bursting                                                                            ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+|||                                           FileSystemProtection                                            |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||  ReplicationOverwriteProtection                                                |  ENABLED                 |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||                                                SizeInBytes                                                |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||  Timestamp                              |  2026-10-05T17:28:23+00:00                                      |||
+|||  Value                                  |  6144                                                           |||
+|||  ValueInArchive                         |  0                                                              |||
+|||  ValueInIA                              |  0                                                              |||
+|||  ValueInStandard                        |  6144                                                           |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||                                                   Tags                                                    |||
+||+--------------------------------------------+--------------------------------------------------------------+||
+|||                     Key                    |                            Value                             |||
+||+--------------------------------------------+--------------------------------------------------------------+||
+|||  Application                               |  Conexus                                                     |||
+|||  Environment                               |  prod                                                        |||
+|||  Name                                      |  Banyan                                                      |||
+|||  ResourceClass                             |  FileStorage                                                 |||
+|||  ResourceRole                              |  Conexus SFTP reject                                         |||
+|||  Service                                   |  DBFolders                                                   |||
+|||  Team                                      |  Ops                                                         |||
+|||  Terraform                                 |  true                                                        |||
+||+--------------------------------------------+--------------------------------------------------------------+||
+||                                                 FileSystems                                                 ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+||  CreationTime        |  2025-08-29T03:30:38+00:00                                                           ||
+||  CreationToken       |  Conexus Order attachments                                                           ||
+||  Encrypted           |  True                                                                                ||
+||  FileSystemArn       |  arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-0a848adb9fa9daf67   ||
+||  FileSystemId        |  fs-0a848adb9fa9daf67                                                                ||
+||  KmsKeyId            |  arn:aws:kms:us-east-1:590183684637:key/4713453c-6ca0-494a-b403-bf7fd5cf0f78         ||
+||  LifeCycleState      |  available                                                                           ||
+||  Name                |  Alder                                                                               ||
+||  NumberOfMountTargets|  2                                                                                   ||
+||  OwnerId             |  590183684637                                                                        ||
+||  PerformanceMode     |  generalPurpose                                                                      ||
+||  ThroughputMode      |  bursting                                                                            ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+|||                                           FileSystemProtection                                            |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||  ReplicationOverwriteProtection                                                |  ENABLED                 |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||                                                SizeInBytes                                                |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||  Timestamp                              |  2026-10-05T17:18:34+00:00                                      |||
+|||  Value                                  |  14572177408                                                    |||
+|||  ValueInArchive                         |  0                                                              |||
+|||  ValueInIA                              |  0                                                              |||
+|||  ValueInStandard                        |  14572177408                                                    |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||                                                   Tags                                                    |||
+||+--------------------------------------+--------------------------------------------------------------------+||
+|||                  Key                 |                               Value                                |||
+||+--------------------------------------+--------------------------------------------------------------------+||
+|||  Application                         |  Conexus                                                           |||
+|||  Environment                         |  prod                                                              |||
+|||  Name                                |  Alder                                                             |||
+|||  ResourceClass                       |  FileStorage                                                       |||
+|||  ResourceRole                        |  Conexus Order attachments                                         |||
+|||  Service                             |  DBFolders                                                         |||
+|||  Team                                |  Ops                                                               |||
+|||  Terraform                           |  true                                                              |||
+||+--------------------------------------+--------------------------------------------------------------------+||
+||                                                 FileSystems                                                 ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+||  CreationTime        |  2025-08-29T03:30:38+00:00                                                           ||
+||  CreationToken       |  Conexus UI Reports                                                                  ||
+||  Encrypted           |  True                                                                                ||
+||  FileSystemArn       |  arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-06b99a459338bb9f3   ||
+||  FileSystemId        |  fs-06b99a459338bb9f3                                                                ||
+||  KmsKeyId            |  arn:aws:kms:us-east-1:590183684637:key/4713453c-6ca0-494a-b403-bf7fd5cf0f78         ||
+||  LifeCycleState      |  available                                                                           ||
+||  Name                |  Baobab                                                                              ||
+||  NumberOfMountTargets|  2                                                                                   ||
+||  OwnerId             |  590183684637                                                                        ||
+||  PerformanceMode     |  generalPurpose                                                                      ||
+||  ThroughputMode      |  bursting                                                                            ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+|||                                           FileSystemProtection                                            |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||  ReplicationOverwriteProtection                                                |  ENABLED                 |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||                                                SizeInBytes                                                |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||  Timestamp                              |  2026-10-05T17:29:32+00:00                                      |||
+|||  Value                                  |  12761667584                                                    |||
+|||  ValueInArchive                         |  0                                                              |||
+|||  ValueInIA                              |  0                                                              |||
+|||  ValueInStandard                        |  12761667584                                                    |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||                                                   Tags                                                    |||
+||+----------------------------------------------+------------------------------------------------------------+||
+|||                      Key                     |                           Value                            |||
+||+----------------------------------------------+------------------------------------------------------------+||
+|||  Application                                 |  Conexus                                                   |||
+|||  Environment                                 |  prod                                                      |||
+|||  Name                                        |  Baobab                                                    |||
+|||  ResourceClass                               |  FileStorage                                               |||
+|||  ResourceRole                                |  Conexus UI Reports                                        |||
+|||  Service                                     |  DBFolders                                                 |||
+|||  Team                                        |  Ops                                                       |||
+|||  Terraform                                   |  true                                                      |||
+||+----------------------------------------------+------------------------------------------------------------+||
+||                                                 FileSystems                                                 ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+||  CreationTime        |  2025-08-29T03:30:38+00:00                                                           ||
+||  CreationToken       |  Conexus SFTP Data                                                                   ||
+||  Encrypted           |  True                                                                                ||
+||  FileSystemArn       |  arn:aws:elasticfilesystem:us-east-1:590183684637:file-system/fs-00b6a469a1d5d43d5   ||
+||  FileSystemId        |  fs-00b6a469a1d5d43d5                                                                ||
+||  KmsKeyId            |  arn:aws:kms:us-east-1:590183684637:key/5cf30c63-c4a6-44ef-9b1f-b72278592232         ||
+||  LifeCycleState      |  available                                                                           ||
+||  Name                |  Magnolia                                                                            ||
+||  NumberOfMountTargets|  2                                                                                   ||
+||  OwnerId             |  590183684637                                                                        ||
+||  PerformanceMode     |  generalPurpose                                                                      ||
+||  ThroughputMode      |  elastic                                                                             ||
+|+----------------------+--------------------------------------------------------------------------------------+|
+|||                                           FileSystemProtection                                            |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||  ReplicationOverwriteProtection                                                |  ENABLED                 |||
+||+--------------------------------------------------------------------------------+--------------------------+||
+|||                                                SizeInBytes                                                |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||  Timestamp                              |  2026-10-05T17:13:49+00:00                                      |||
+|||  Value                                  |  3301236736                                                     |||
+|||  ValueInArchive                         |  0                                                              |||
+|||  ValueInIA                              |  0                                                              |||
+|||  ValueInStandard                        |  3301236736                                                     |||
+||+-----------------------------------------+-----------------------------------------------------------------+||
+|||                                                   Tags                                                    |||
+||+-----------------------------------------------+-----------------------------------------------------------+||
+|||                      Key                      |                           Value                           |||
+||+-----------------------------------------------+-----------------------------------------------------------+||
+|||  Application                                  |  Conexus                                                  |||
+|||  Environment                                  |  prod                                                     |||
+|||  Name                                         |  Magnolia                                                 |||
+|||  ResourceClass                                |  FileStorage                                              |||
+|||  ResourceRole                                 |  Conexus SFTP Data                                        |||
+|||  Service                                      |  DBFolders                                                |||
+|||  Team                                         |  Ops                                                      |||
+|||  Terraform                                    |  true                                                     |||
+||+-----------------------------------------------+-----------------------------------------------------------+||
+(END)
