@@ -13,7 +13,7 @@ CACHE_DIR="${CACHE_DIR:-/app/bbmirror/cache}"
 LOCK_FILE="${LOCK_FILE:-/app/bbmirror/run/cnxs_mirror.lock}"
 DRY_RUN="${DRY_RUN:-0}"
 ONLY_REPO="${ONLY_REPO:-}"
-# Space separated repo slugs that are never touched (neither created nor synced).
+# Space-separated repo slugs that are never touched (neither created nor synced).
 # These stay writable/independent in dev (e.g. release start/finish testing).
 EXCLUDE_REPOS="${EXCLUDE_REPOS:-releasetest}"
 
@@ -32,16 +32,18 @@ flock -n 9 || { log "Another run is in progress; exiting"; exit 0; }
 
 # --- REST helpers (token passed via curl config on a pipe, not on argv) ----
 api() { # base token method path [json]
+  # Auth header goes to curl via stdin config (-K -), so the token is never on argv.
+  # (A process substitution stored in an array does NOT survive: bash closes it
+  # after the assignment, before curl runs.)
   local base="$1" token="$2" method="$3" path="$4" data="${5:-}"
-  local args=(-sS --fail --max-time 60 -X "$method" -H 'Accept: application/json'
-              -K <(printf 'header = "Authorization: Bearer %s"\n' "$token"))
+  local args=(-sS --fail --max-time 60 -X "$method" -H 'Accept: application/json' -K -)
   [[ -n "$data" ]] && args+=(-H 'Content-Type: application/json' --data "$data")
-  curl "${args[@]}" "${base}${path}"
+  curl "${args[@]}" "${base}${path}" <<<"header = \"Authorization: Bearer ${token}\""
 }
 http_code() { # base token path
   curl -sS -o /dev/null -w '%{http_code}' --max-time 60 \
-    -H 'Accept: application/json' \
-    -K <(printf 'header = "Authorization: Bearer %s"\n' "$2") "${1}${3}"
+    -H 'Accept: application/json' -K - "${1}${3}" \
+    <<<"header = \"Authorization: Bearer ${2}\""
 }
 
 # --- git helpers (token via env, not in URL or argv) ------------------------
