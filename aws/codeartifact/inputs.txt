@@ -1,20 +1,7 @@
-sudo mkdir -p /app/bbmirror/{bin,etc,cache,run}
-sudo chmod 700 /app/bbmirror/etc
+sudo install -o root -g root -m 750 ./cnxs_mirror.sh /app/bbmirror/bin/cnxs_mirror.sh
+sudo bash -n /app/bbmirror/bin/cnxs_mirror.sh && echo SYNTAX_OK
+grep -n EXCLUDE /app/bbmirror/bin/cnxs_mirror.sh      # expect the releasetest default on line ~31 and the skip check near line ~163
 
-( umask 077
-  printf '%s\n' \
-    'PROD_URL="https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov"' \
-    "PROD_TOKEN=\"$PT\"" \
-    'DEV_URL="https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov"' \
-    "DEV_TOKEN=\"$DT\"" \
-    'PROJECT_KEY="CNXS"' \
-    'EXCLUDE_REPOS="releasetest"' \
-  | sudo tee /app/bbmirror/etc/mirror.env >/dev/null )
 
-sudo chown root:root /app/bbmirror/etc/mirror.env
-sudo chmod 600 /app/bbmirror/etc/mirror.env
-unset PT DT
 
-sudo ls -l /app/bbmirror/etc/mirror.env      # should be -rw------- root root
-sudo sed -E 's/(TOKEN=").+"/\1<hidden>"/' /app/bbmirror/etc/mirror.env
-df -h /app
+sudo env DRY_RUN=1 /app/bbmirror/bin/cnxs_mirror.sh 2>&1 | tee /tmp/cnxs_dryrun.log
