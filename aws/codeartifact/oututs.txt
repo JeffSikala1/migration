@@ -1,52 +1,41 @@
 [sikaj01@ip-10-56-128-233 ~]$ sudo bash -c '
-source /app/bbmirror/etc/mirror.env
 R=contract-mod
 gd=/app/bbmirror/cache/CNXS/$R.git
-export GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Bearer $DEV_TOKEN"
-git ls-remote --heads --tags "$DEV_URL/scm/cnxs/$R.git" | grep -v "\^{}" | awk "{print \$2, \$1}" | LC_ALL=C sort -k1,1 > /tmp/dev_$R.txt
-git --git-dir=$gd for-each-ref --format="%(refname) %(objectname)" refs/heads refs/tags | LC_ALL=C sort -k1,1 > /tmp/prod_$R.txt
-echo "== only in DEV (prune would delete):"
-LC_ALL=C join -v1 /tmp/dev_$R.txt /tmp/prod_$R.txt | cut -d" " -f1
-echo "== in both, DIFFERENT commit:"
-LC_ALL=C join /tmp/dev_$R.txt /tmp/prod_$R.txt | awk "\$2!=\$3 {print \$1}"
-echo "== only in PROD (would be created):"
-LC_ALL=C join -v2 /tmp/dev_$R.txt /tmp/prod_$R.txt | cut -d" " -f1
+for ref in refs/heads/develop refs/heads/feature/ll-modelchanges; do
+  d=$(grep "^$ref " /tmp/dev_$R.txt | cut -d" " -f2)
+  p=$(grep "^$ref " /tmp/prod_$R.txt | cut -d" " -f2)
+  if git --git-dir=$gd cat-file -e "$d^{commit}" 2>/dev/null; then
+    git --git-dir=$gd merge-base --is-ancestor "$d" "$p" && echo "$ref: FAST-FORWARD (dev is behind prod)" || echo "$ref: DIVERGED (dev has commits prod lacks)"
+  else
+    echo "$ref: DIVERGED (dev commit $d not in prod history)"
+  fi
+done
 '
-== only in DEV (prune would delete):
-refs/heads/release/01.00.000.46
-refs/heads/release/02.00.000.47
-refs/heads/release/02.00.000.48
-== in both, DIFFERENT commit:
-refs/heads/develop
-refs/heads/feature/ll-modelchanges
-== only in PROD (would be created):
-refs/heads/feature/ll-upgrades
-refs/heads/main
-refs/heads/release/02.00.000.57
-refs/tags/02.00.000.49
-refs/tags/02.00.000.51
-refs/tags/02.00.000.55
-refs/tags/02.00.000.56
-refs/tags/02.00.000.57
-[sikaj01@ip-10-56-128-233 ~]$ sudo env ONLY_REPO=billingsftp /app/bbmirror/bin/cnxs_mirror.sh 2>&1 | tail -20
- ! [remote rejected] develop -> develop (pre-receive hook declined)
- ! [remote rejected] feature/ll-modelchanges -> feature/ll-modelchanges (pre-receive hook declined)
- ! [remote rejected] main -> main (pre-receive hook declined)
- ! [remote rejected] release/01.00.000.119 (pre-receive hook declined)
- ! [remote rejected] release/02.00.000.120 (pre-receive hook declined)
- ! [remote rejected] release/02.00.000.121 (pre-receive hook declined)
- ! [remote rejected] feature/ll-upgrades -> feature/ll-upgrades (pre-receive hook declined)
- ! [remote rejected] feature/temp-test-branch-creation-june24 -> feature/temp-test-branch-creation-june24 (pre-receive hook declined)
- ! [remote rejected] release/02.00.000.131 -> release/02.00.000.131 (pre-receive hook declined)
- ! [remote rejected] 02.00.000.122 -> 02.00.000.122 (pre-receive hook declined)
- ! [remote rejected] 02.00.000.125 -> 02.00.000.125 (pre-receive hook declined)
- ! [remote rejected] 02.00.000.126 -> 02.00.000.126 (pre-receive hook declined)
- ! [remote rejected] 02.00.000.127 -> 02.00.000.127 (pre-receive hook declined)
- ! [remote rejected] 02.00.000.129 -> 02.00.000.129 (pre-receive hook declined)
- ! [remote rejected] 02.00.000.130 -> 02.00.000.130 (pre-receive hook declined)
- ! [remote rejected] 02.00.000.131 -> 02.00.000.131 (pre-receive hook declined)
-error: failed to push some refs to 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxs/billingsftp.git'
-2026-10-06 17:21:00   ERROR: push to dev failed
-2026-10-06 17:21:00 === done: ok=0 failed=1 skipped=0 ===
-2026-10-06 17:21:00 FAILED repos: billingsftp
-[sikaj01@ip-10-56-128-233 ~]$ 
+[sudo] password for sikaj01: 
+refs/heads/develop: FAST-FORWARD (dev is behind prod)
+refs/heads/feature/ll-modelchanges: FAST-FORWARD (dev is behind prod)
+[sikaj01@ip-10-56-128-233 ~]$ sudo -v
+[sikaj01@ip-10-56-128-233 ~]$ sudo nohup /app/bbmirror/bin/cnxs_mirror.sh > /tmp/cnxs_full3.log 2>&1 &
+[1] 3953955
+
+
+
+[sikaj01@ip-10-56-128-233 ~]$ tail -f /tmp/cnxs_full3.log
+2026-10-06 17:46:56   OK
+2026-10-06 17:46:56 - testautomation
+2026-10-06 17:46:56   OK
+2026-10-06 17:46:56 - ui
+2026-10-06 17:46:57   OK
+2026-10-06 17:46:57 - ui-public
+2026-10-06 17:46:58   OK
+2026-10-06 17:46:58 - vendoremulator
+2026-10-06 17:46:58   OK
+2026-10-06 17:46:58 - webservices
+2026-10-06 17:46:59   OK
+2026-10-06 17:46:59 - ws
+2026-10-06 17:47:00   OK
+2026-10-06 17:47:00 - ws-client
+2026-10-06 17:47:00   OK
+2026-10-06 17:47:00 === done: ok=34 failed=0 skipped=1 ===
+
+
