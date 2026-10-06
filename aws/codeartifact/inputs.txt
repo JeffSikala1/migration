@@ -1,14 +1,28 @@
-sudo env ONLY_REPO=temp-application-01 /app/bbmirror/bin/cnxs_mirror.sh 2>&1 | tee /tmp/cnxs_one.log
+sudo nohup /app/bbmirror/bin/cnxs_mirror.sh > /tmp/cnxs_full.log 2>&1 &
+sudo tail -f /tmp/cnxs_full.log
+
+
+
+
 
 sudo bash -c '
 source /app/bbmirror/etc/mirror.env
-R=temp-application-01
-export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader
-export GIT_TERMINAL_PROMPT=0
-export GIT_CONFIG_VALUE_0="Authorization: Bearer $PROD_TOKEN"
-git ls-remote --heads --tags "$PROD_URL/scm/cnxs/$R.git" | sort > /tmp/prod_refs.txt
-export GIT_CONFIG_VALUE_0="Authorization: Bearer $DEV_TOKEN"
-git ls-remote --heads --tags "$DEV_URL/scm/cnxs/$R.git" | sort > /tmp/dev_refs.txt
-wc -l /tmp/prod_refs.txt /tmp/dev_refs.txt
-diff /tmp/prod_refs.txt /tmp/dev_refs.txt && echo "REFS MATCH"
+export GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader
+bad=0; n=0
+for gd in /app/bbmirror/cache/CNXS/*.git; do
+  R=$(basename "$gd" .git); n=$((n+1))
+  export GIT_CONFIG_VALUE_0="Authorization: Bearer $PROD_TOKEN"
+  p=$(git ls-remote --heads --tags "$PROD_URL/scm/cnxs/$R.git" | sort | md5sum)
+  export GIT_CONFIG_VALUE_0="Authorization: Bearer $DEV_TOKEN"
+  d=$(git ls-remote --heads --tags "$DEV_URL/scm/cnxs/$R.git" | sort | md5sum)
+  [ "$p" = "$d" ] || { echo "MISMATCH: $R"; bad=$((bad+1)); }
+done
+echo "checked=$n mismatches=$bad"
 '
+
+
+
+
+
+( sudo crontab -l 2>/dev/null; echo '30 */2 * * * /app/bbmirror/bin/cnxs_mirror.sh >> /var/log/cnxs_mirror.log 2>&1' ) | sudo crontab -
+sudo crontab -l
