@@ -3,3 +3,20 @@ sudo install -o root -g root -m 750 ./cnxs_mirror.sh /app/bbmirror/bin/cnxs_mirr
 sudo bash -n /app/bbmirror/bin/cnxs_mirror.sh && echo SYNTAX_OK
 sudo grep -c -- "-K -" /app/bbmirror/bin/cnxs_mirror.sh     # expect 2
 sudo env DRY_RUN=1 /app/bbmirror/bin/cnxs_mirror.sh 2>&1 | tee /tmp/cnxs_dryrun.log
+
+--------------
+
+sudo env ONLY_REPO=temp-application-01 /app/bbmirror/bin/cnxs_mirror.sh 2>&1 | tee /tmp/cnxs_one.log
+
+sudo bash -c '
+source /app/bbmirror/etc/mirror.env
+R=temp-application-01
+export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader
+export GIT_TERMINAL_PROMPT=0
+export GIT_CONFIG_VALUE_0="Authorization: Bearer $PROD_TOKEN"
+git ls-remote --heads --tags "$PROD_URL/scm/cnxs/$R.git" | sort > /tmp/prod_refs.txt
+export GIT_CONFIG_VALUE_0="Authorization: Bearer $DEV_TOKEN"
+git ls-remote --heads --tags "$DEV_URL/scm/cnxs/$R.git" | sort > /tmp/dev_refs.txt
+wc -l /tmp/prod_refs.txt /tmp/dev_refs.txt
+diff /tmp/prod_refs.txt /tmp/dev_refs.txt && echo "REFS MATCH"
+'
