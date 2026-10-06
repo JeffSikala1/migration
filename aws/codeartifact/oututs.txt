@@ -1,3 +1,4 @@
+Last login: Tue Oct  6 15:09:48 2026 from 10.56.112.33
 [sikaj01@ip-10-56-128-233 ~]$ sudo bash -c '
 R=contract-mod
 gd=/app/bbmirror/cache/CNXS/$R.git
@@ -17,25 +18,78 @@ refs/heads/feature/ll-modelchanges: FAST-FORWARD (dev is behind prod)
 [sikaj01@ip-10-56-128-233 ~]$ sudo -v
 [sikaj01@ip-10-56-128-233 ~]$ sudo nohup /app/bbmirror/bin/cnxs_mirror.sh > /tmp/cnxs_full3.log 2>&1 &
 [1] 3953955
+[sikaj01@ip-10-56-128-233 ~]$ sudo bash -c '
+source /app/bbmirror/etc/mirror.env
+export GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader
+bad=0; n=0
+for gd in /app/bbmirror/cache/CNXS/*.git; do
+  R=$(basename "$gd" .git); n=$((n+1))
+  export GIT_CONFIG_VALUE_0="Authorization: Bearer $PROD_TOKEN"
+  p=$(git ls-remote --heads --tags "$PROD_URL/scm/cnxs/$R.git" | sort | md5sum)
+  export GIT_CONFIG_VALUE_0="Authorization: Bearer $DEV_TOKEN"
+  d=$(git ls-remote --heads --tags "$DEV_URL/scm/cnxs/$R.git" | sort | md5sum)
+  [ "$p" = "$d" ] || { echo "MISMATCH: $R"; bad=$((bad+1)); }
+done
+echo "checked=$n mismatches=$bad"
+'
+[1]+  Done                    sudo nohup /app/bbmirror/bin/cnxs_mirror.sh > /tmp/cnxs_full3.log 2>&1
+checked=34 mismatches=0
+[sikaj01@ip-10-56-128-233 ~]$ du -sh /app/bbmirror/cache; df -h /app | tail -1
+du: cannot access '/app/bbmirror/cache': Permission denied
+/dev/nvme0n1p1  800G  357G  444G  45% /
+[sikaj01@ip-10-56-128-233 ~]$ sudo !!
+sudo du -sh /app/bbmirror/cache; df -h /app | tail -1
+6.1G    /app/bbmirror/cache
+/dev/nvme0n1p1  800G  357G  444G  45% /
+[sikaj01@ip-10-56-128-233 ~]$ ( sudo crontab -l 2>/dev/null; echo '30 */2 * * * /app/bbmirror/bin/cnxs_mirror.sh >> /var/log/cnxs_mirror.log 2>&1' ) | sudo crontab -
+sudo crontab -l
 
+sudo tee /etc/logrotate.d/cnxs_mirror >/dev/null <<'EOF'
+/var/log/cnxs_mirror.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root root
+}
+EOF
+sudo logrotate -d /etc/logrotate.d/cnxs_mirror
+# Dev/OSS nightly backup (Bitbucket/Bamboo config + Postgres dumps) at 02:15
+15 2 * * * /app/devbackup/bin/dev_nightly_backup.sh
 
+# Weekly rollup, Sunday 03:00
+0 3 * * 0 /app/devbackup/bin/dev_weekly_backup.sh
 
-[sikaj01@ip-10-56-128-233 ~]$ tail -f /tmp/cnxs_full3.log
-2026-10-06 17:46:56   OK
-2026-10-06 17:46:56 - testautomation
-2026-10-06 17:46:56   OK
-2026-10-06 17:46:56 - ui
-2026-10-06 17:46:57   OK
-2026-10-06 17:46:57 - ui-public
-2026-10-06 17:46:58   OK
-2026-10-06 17:46:58 - vendoremulator
-2026-10-06 17:46:58   OK
-2026-10-06 17:46:58 - webservices
-2026-10-06 17:46:59   OK
-2026-10-06 17:46:59 - ws
-2026-10-06 17:47:00   OK
-2026-10-06 17:47:00 - ws-client
-2026-10-06 17:47:00   OK
-2026-10-06 17:47:00 === done: ok=34 failed=0 skipped=1 ===
+# Cleanup stale staging older than 1 day
+0 4 * * * find /backup-staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
+30 */2 * * * /app/bbmirror/bin/cnxs_mirror.sh >> /var/log/cnxs_mirror.log 2>&1
+WARNING: logrotate in debug mode does nothing except printing debug messages!  Consider using verbose mode (-v) instead if this is not what you want.
 
+reading config file /etc/logrotate.d/cnxs_mirror
+Reading state from file: /var/lib/logrotate/logrotate.status
+Allocating hash table for state file, size 64 entries
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
+Creating new state
 
+Handling 1 logs
+
+rotating pattern: /var/log/cnxs_mirror.log  weekly (8 rotations)
+empty log files are not rotated, old logs are removed
+considering log /var/log/cnxs_mirror.log
+  log /var/log/cnxs_mirror.log does not exist -- skipping
+Creating new state
