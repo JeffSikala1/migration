@@ -1,28 +1,18 @@
-sudo nohup /app/bbmirror/bin/cnxs_mirror.sh > /tmp/cnxs_full.log 2>&1 &
-sudo tail -f /tmp/cnxs_full.log
+sed -n '/- billingsftp/,/- bsstwiki/p' /tmp/cnxs_full.log | head -60
+grep -c 'remote rejected' /tmp/cnxs_full.log
+grep -n 'ERROR' /tmp/cnxs_full.log
 
 
 
-
-
-sudo bash -c '
-source /app/bbmirror/etc/mirror.env
-export GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader
-bad=0; n=0
-for gd in /app/bbmirror/cache/CNXS/*.git; do
-  R=$(basename "$gd" .git); n=$((n+1))
-  export GIT_CONFIG_VALUE_0="Authorization: Bearer $PROD_TOKEN"
-  p=$(git ls-remote --heads --tags "$PROD_URL/scm/cnxs/$R.git" | sort | md5sum)
-  export GIT_CONFIG_VALUE_0="Authorization: Bearer $DEV_TOKEN"
-  d=$(git ls-remote --heads --tags "$DEV_URL/scm/cnxs/$R.git" | sort | md5sum)
-  [ "$p" = "$d" ] || { echo "MISMATCH: $R"; bad=$((bad+1)); }
-done
-echo "checked=$n mismatches=$bad"
-'
-
-
-
-
-
-( sudo crontab -l 2>/dev/null; echo '30 */2 * * * /app/bbmirror/bin/cnxs_mirror.sh >> /var/log/cnxs_mirror.log 2>&1' ) | sudo crontab -
-sudo crontab -l
+sudo tee /etc/logrotate.d/cnxs_mirror >/dev/null <<'EOF'
+/var/log/cnxs_mirror.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root root
+}
+EOF
+sudo logrotate -d /etc/logrotate.d/cnxs_mirror
