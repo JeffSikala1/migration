@@ -1,18 +1,10 @@
-sed -n '/- billingsftp/,/- bsstwiki/p' /tmp/cnxs_full.log | head -60
-grep -c 'remote rejected' /tmp/cnxs_full.log
-grep -n 'ERROR' /tmp/cnxs_full.log
+   sudo vim /app/bbmirror/etc/mirror.env     # replace only the DEV_TOKEN value
+   sudo ls -l /app/bbmirror/etc/mirror.env   # should still be -rw------- root root
 
 
 
-sudo tee /etc/logrotate.d/cnxs_mirror >/dev/null <<'EOF'
-/var/log/cnxs_mirror.log {
-    weekly
-    rotate 8
-    compress
-    delaycompress
-    missingok
-    notifempty
-    create 0640 root root
-}
-EOF
-sudo logrotate -d /etc/logrotate.d/cnxs_mirror
+
+   sudo env ONLY_REPO=billingsftp /app/bbmirror/bin/cnxs_mirror.sh 2>&1 | tail -20
+   sudo -v
+   sudo nohup /app/bbmirror/bin/cnxs_mirror.sh > /tmp/cnxs_full2.log 2>&1 &
+   tail -f /tmp/cnxs_full2.log
