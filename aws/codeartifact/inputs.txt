@@ -1,1 +1,13 @@
-sudo tail -20 /var/log/cnxs_mirror.log
+# 1. What dev is running now
+docker container ls --format 'table {{.Names}}\t{{.Image}}\t{{.CreatedAt}}\t{{.Status}}'
+
+# 2. Can dev see the new tag in ECR, and which account/role is it using?
+aws sts get-caller-identity
+aws ecr describe-images --repository-name build-agents --region us-east-1 \
+  --query 'sort_by(imageDetails,&imagePushedAt)[-5:].[imageTags[0],imagePushedAt]' --output table
+
+# 3. Disk space for the pull (the image will be large)
+df -h /var/lib/docker /app
+docker image ls | grep build-agents
+
+
