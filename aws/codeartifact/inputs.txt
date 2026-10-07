@@ -1,22 +1,5 @@
-# What ba-1 was actually launched with (the command contains the Bamboo URL, no secrets)
-docker inspect ip-10-56-128-47.ec2.internal-ba-1 --format '{{json .Config.Cmd}}'
-
-# Any record of how it was launched
-grep -n "create_agents\|NUMBER_OF_BUILD_AGENTS\|BAMBOO_URL" ~/.bash_history | tail -20
-
-# Smoke test the new image against the old one. This prints only ids, URLs and
-# mirrors, so no tokens, and nothing is registered with Bamboo.
-for IMG in jdk21-node24-angular21-el10-2026-07-14-1342 jdk21-node24-angular21-el10-2026-09-28-0214; do
-  echo "=== $IMG"
-  docker run --rm --entrypoint bash 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:$IMG -lc \
-    'java -version 2>&1 | head -1; mvn -v | head -1; node -v; grep -iE "<id>|<url>|<mirrorOf>" /usr/share/maven/conf/settings.xml'
-done
+sudo NUMBER_OF_BUILD_AGENTS=1 BAMBOO_URL=https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/ /app/create_agents.sh
 
 
-# on prod 
-
-docker image inspect --format '{{index .RepoDigests 0}}' \
-  339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214
-# expect sha256:838ad5ec9b7868fc2f9397536db706f386c710477e6f51509b34dfbf40734696
-
-
+docker ps --filter "name=ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+docker logs --tail 30 ip-10-56-128-47.ec2.internal-ba-1
