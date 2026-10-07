@@ -1,147 +1,55 @@
-# in prod
-
-[sikaj01@ip-10-56-112-35 ~]$ cat /app/create_agents.sh
-#!/usr/bin/env bash
-set -Eeuo pipefail
-umask 0002
-
-#DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node22-angular20-el10-2026-07-10-1705}"
-#DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342}"
-DOCKER_BUILD_AGENT_IMAGE="339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214"
-
-NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
-
-BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
-
-NETWORK_NAME="${NETWORK_NAME:-isolated_nw}"
-NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
-
-HOST_CACHE_BASE="${HOST_CACHE_BASE:-/cache/bamboo}"
-DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
-SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
-
-echo "****************************************************************************"
-echo " Note: if Agents are getting upgraded then move and recreate /cache/bamboo"
-echo "****************************************************************************"
-#SKIP_PULL="${SKIP_PULL:-0}"
-
-command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
-systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
-
-[ -d "$SSH_KEYS_DIR" ] || { echo "ERROR: SSH key directory not found at $SSH_KEYS_DIR"; exit 1; }
-[ -f "$SSH_KEYS_DIR/bitbucket_ci" ] || { echo "ERROR: SSH key not found at $SSH_KEYS_DIR/bitbucket_ci"; exit 1; }
-chmod 600 "$SSH_KEYS_DIR/bitbucket_ci" || true
-[ -f "$SSH_KEYS_DIR/bitbucket_ci_jgit" ] && chmod 600 "$SSH_KEYS_DIR/bitbucket_ci_jgit" || true
-
-mkdir -p "$HOST_CACHE_BASE"
-
-if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
-  echo "Creating docker network $NETWORK_NAME ($NETWORK_SUBNET)..."
-  docker network create -d bridge --subnet "$NETWORK_SUBNET" "$NETWORK_NAME" >/dev/null
-else
-  echo "Docker network $NETWORK_NAME already exists."
-fi
-
-HOSTNAME_SHORT="$(hostname)"
-
-echo
-echo "Stopping/removing existing build agents..."
-docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
-
-echo
-echo "Starting build agents..."
-
-for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
-  AGENT_NAME="${HOSTNAME_SHORT}-ba-${num}"
-  HOST_AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
-  CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
-
-  mkdir -p "$HOST_AGENT_HOME"
-  echo "Agent name: $AGENT_NAME; Host Agent Home: $HOST_AGENT_HOME; Container Agent Home: $CONTAINER_AGENT_HOME; "
-  
-  #    exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
-  docker run -d \
-    -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
-    -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
-    -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
-    -h "$AGENT_NAME" \
-    --net="$NETWORK_NAME" --name="$AGENT_NAME" --init --restart=unless-stopped --sysctl net.ipv4.ip_forward=1 \
-    "$DOCKER_BUILD_AGENT_IMAGE" \
-    bash -lc "
-      set -e
-      echo 'startup umask before change:' \$(umask)
-      umask 0002
-      echo 'startup umask after change:' \$(umask)
-      mkdir -p /opt/bamboo-keys
-      mkdir -p ${CONTAINER_AGENT_HOME}
-      exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
-    "
-done
-#      mkdir -p /opt/java
-#      ln -sfn /etc/alternatives/java_sdk_21 /opt/java/openjdk
-
-echo
-echo "Running Bamboo agent containers:"
-sleep 5
-docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-
-
-
-[sikaj01@ip-10-56-112-35 ~]$ docker image inspect --format '{{index .RepoDigests 0}}' \
-  339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214
-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents@sha256:838ad5ec9b7868fc2f9397536db706f386c710477e6f51509b34dfbf40734696
-
-
-
-
-
-# in dev
-
-[sikaj01@ip-10-56-128-47 ~]$ docker inspect ip-10-56-128-47.ec2.internal-ba-1 --format '{{json .Config.Cmd}}'
-["bash","-lc","\n      set -e\n      echo 'startup umask before change:' $(umask)\n      umask 0002\n      echo 'startup umask after change:' $(umask)\n      mkdir -p /opt/bamboo-keys\n      mkdir -p /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1\n      exec java -Dbamboo.home=/cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1 -jar /opt/bamboo-agent.jar https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/\n    "]
 [sikaj01@ip-10-56-128-47 ~]$ clear
-[sikaj01@ip-10-56-128-47 ~]$ docker inspect ip-10-56-128-47.ec2.internal-ba-1 --format '{{json .Config.Cmd}}'
-["bash","-lc","\n      set -e\n      echo 'startup umask before change:' $(umask)\n      umask 0002\n      echo 'startup umask after change:' $(umask)\n      mkdir -p /opt/bamboo-keys\n      mkdir -p /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1\n      exec java -Dbamboo.home=/cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1 -jar /opt/bamboo-agent.jar https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/\n    "]
-[sikaj01@ip-10-56-128-47 ~]$ grep -n "create_agents\|NUMBER_OF_BUILD_AGENTS\|BAMBOO_URL" ~/.bash_history | tail -20
-84:sudo mv /tmp/create_agents.sh /app/create_agents.sh
-85:sudo chmod 750 /app/create_agents.sh
-86:cat /app/create_agents.sh 
-87:sudo NUMBER_OF_BUILD_AGENTS=1      BAMBOO_URL=https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/      /app/create_agents.sh
-215:cat /app/create_agents.sh 
-219:vim /app/create_agents.sh 
-221:cat /app/create_agents.sh 
-[sikaj01@ip-10-56-128-47 ~]$ for IMG in jdk21-node24-angular21-el10-2026-07-14-1342 jdk21-node24-angular21-el10-2026-09-28-0214; do
->   echo "=== $IMG"
->   docker run --rm --entrypoint bash 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:$IMG -lc \
->     'java -version 2>&1 | head -1; mvn -v | head -1; node -v; grep -iE "<id>|<url>|<mirrorOf>" /usr/share/maven/conf/settings.xml'
-> done
-=== jdk21-node24-angular21-el10-2026-07-14-1342
-openjdk version "21.0.11" 2026-04-21 LTS
-Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
-v24.18.0
-      <id>central</id>
-      <id>conexus-feature-repo</id>
-      <id>ArtifactoryPluginRepos</id>
-      <id>ArtifactoryPluginRepos</id>
-      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-      <mirrorOf>*,!conexus-feature-repo</mirrorOf>
-          <id>conexus-feature-repo</id>
-          <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
-          <id>central</id>
-          <url>${bamboo.inject.pluginRepositoryUrl}</url>
-      <id>artifactory</id>
-=== jdk21-node24-angular21-el10-2026-09-28-0214
-openjdk version "21.0.12.1" 2026-08-18 LTS
-Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
-v24.21.0
-      <id>central</id>
-      <id>conexus-feature-repo</id>
-      <id>ArtifactoryPluginRepos</id>
-      <id>ArtifactoryPluginRepos</id>
-      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-      <mirrorOf>*,!conexus-feature-repo</mirrorOf>
-          <id>conexus-feature-repo</id>
-          <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
-          <id>central</id>
-          <url>${bamboo.inject.pluginRepositoryUrl}</url>
-      <id>artifactory</id>
+[sikaj01@ip-10-56-128-47 ~]$ sudo NUMBER_OF_BUILD_AGENTS=1 BAMBOO_URL=https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/ /app/create_agents.sh
+[sudo] password for sikaj01: 
+Sorry, try again.
+[sudo] password for sikaj01: 
+****************************************************************************
+ Note: if Agents are getting upgraded then move and recreate /cache/bamboo
+****************************************************************************
+Docker network isolated_nw already exists.
+
+Stopping/removing existing build agents...
+518821cab291
+
+Starting build agents...
+Agent name: ip-10-56-128-47.ec2.internal-ba-1; Host Agent Home: /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1; Container Agent Home: /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1; 
+ba6b608f7bca3f27aae81b8998c6c603db9a9798c84bfda07e67c0fae9ed76fc
+
+Running Bamboo agent containers:
+NAMES                               IMAGE                                                                                                   STATUS
+ip-10-56-128-47.ec2.internal-ba-1   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214   Up 5 seconds
+[sikaj01@ip-10-56-128-47 ~]$ docker ps --filter "name=ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+NAMES                               IMAGE                                                                                                   STATUS
+ip-10-56-128-47.ec2.internal-ba-1   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214   Up 19 seconds
+[sikaj01@ip-10-56-128-47 ~]$ docker logs --tail 30 ip-10-56-128-47.ec2.internal-ba-1
+INFO   | jvm 1    | 2026/10/07 10:22:40 | 2026-10-07 10:22:40,377 INFO [AgentRunnerThread] [lifecycle]   uptime=0 seconds (since Wed Oct 07 10:22:40 CDT 2026, Epoch time: 1791386560363)
+INFO   | jvm 1    | 2026/10/07 10:22:40 | 2026-10-07 10:22:40,377 INFO [AgentRunnerThread] [lifecycle]   usedMemory=155
+INFO   | jvm 1    | 2026/10/07 10:22:40 | 2026-10-07 10:22:40,377 INFO [AgentRunnerThread] [lifecycle]   userHome=/root
+INFO   | jvm 1    | 2026/10/07 10:22:40 | 2026-10-07 10:22:40,377 INFO [AgentRunnerThread] [lifecycle]   userLocale=English
+INFO   | jvm 1    | 2026/10/07 10:22:40 | 2026-10-07 10:22:40,377 INFO [AgentRunnerThread] [lifecycle]   userName=root
+INFO   | jvm 1    | 2026/10/07 10:22:40 | 2026-10-07 10:22:40,378 INFO [AgentRunnerThread] [lifecycle]   userTimezone=America/Chicago
+INFO   | jvm 1    | 2026/10/07 10:22:40 | 2026-10-07 10:22:40,378 INFO [AgentRunnerThread] [lifecycle] ]
+INFO   | jvm 1    | 2026/10/07 10:22:40 | 2026-10-07 10:22:40,407 INFO [AgentRunnerThread] [AgentRegistrationBean] Current agent remote definition: ip-10-56-128-47.ec2.internal-ba-1 Remote agent on host ip-10-56-128-47.ec2.internal-ba-1
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,265 INFO [AgentRunnerThread] [AgentRegistrationBean] Registering agent on the server,
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,665 INFO [AgentRunnerThread] [AgentRegistrationBean] Definition from the server: ip-10-56-128-47.ec2.internal-ba-1 Remote agent on host ip-10-56-128-47.ec2.internal-ba-1
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,665 INFO [AgentRunnerThread] [AgentRegistrationBean] Configuration has not been changed.
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,667 INFO [AgentRunnerThread] [CachingAdministrationConfigurationAccessor] Requesting AdministrationConfiguration
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,686 INFO [AgentRunnerThread] [CachingSerializationSecurityConfigAccessor] Administration configuration was updated from server
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,718 INFO [AgentRunnerThread] [AgentMessageListenerContainer] Configuring message selector: allowableAgents = '23461889' AND fingerprint = '5027774703581977486'
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,744 INFO [AgentRunnerThread] [PluginSystemStartupUtils] Verifying availability of mission critical plugins...
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,745 INFO [AgentRunnerThread] [PluginSystemStartupUtils] All mission critical plugins have started.
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,745 INFO [AgentRunnerThread] [DefaultBuildAgent] Ensuring the temp path '/tmp' exists.
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,747 INFO [AgentRunnerThread] [DefaultBuildAgent] Build agent 'ip-10-56-128-47.ec2.internal-ba-1' started. Waiting for builds...
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,747 INFO [3-BAM::ip-10-56-128-47.ec2.internal-ba-1::Agent:Thread-16] [RemoteAgentCipherProviderService] Requesting agent cipher..
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,763 INFO [AgentRunnerThread] [AgentHeartBeatJobScheduler] Scheduled AgentHeartBeatJobScheduler to run every 60s. Next run at Wed Oct 07 10:22:41 CDT 2026
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,817 INFO [AgentRunnerThread] [QuartzScheduler] Scheduler scheduler_$_NON_CLUSTERED started.
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,839 INFO [AgentRunnerThread] [RemoteAgent] ***********************************************************************************************************************************************************************************************
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,839 INFO [AgentRunnerThread] [RemoteAgent] *                                                                                                                                                                                             *
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,839 INFO [AgentRunnerThread] [RemoteAgent] * Bamboo agent 'ip-10-56-128-47.ec2.internal-ba-1' ready to receive builds.
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,839 INFO [AgentRunnerThread] [RemoteAgent] * Remote Agent Home: /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,839 INFO [AgentRunnerThread] [RemoteAgent] * Broker URL: failover:(ssl://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov:8443?socket.verifyHostName=false&wireFormat.maxInactivityDuration=90000)?initialReconnectDelay=15000&maxReconnectAttempts=10
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,839 INFO [AgentRunnerThread] [RemoteAgent] *                                                                                                                                                                                             *
+INFO   | jvm 1    | 2026/10/07 10:22:41 | 2026-10-07 10:22:41,839 INFO [AgentRunnerThread] [RemoteAgent] ***********************************************************************************************************************************************************************************************
+INFO   | jvm 1    | 2026/10/07 10:22:42 | 2026-10-07 10:22:41,949 INFO [3-BAM::ip-10-56-128-47.ec2.internal-ba-1::Agent:Thread-16] [BuildAgentControllerImpl] Agent 'ip-10-56-128-47.ec2.internal-ba-1' ready to take build from queue...
+INFO   | jvm 1    | 2026/10/07 10:22:42 | 2026-10-07 10:22:41,949 INFO [3-BAM::ip-10-56-128-47.ec2.internal-ba-1::Agent:Thread-16] [BuildAgentControllerImpl] Agent 23461889 checking build queue for executables...
+[sikaj01@ip-10-56-128-47 ~]$ 
