@@ -1,13 +1,14 @@
-# 1. What dev is running now
-docker container ls --format 'table {{.Names}}\t{{.Image}}\t{{.CreatedAt}}\t{{.Status}}'
+# 1. Is the new tag visible to the dev role in the prod account's ECR?
+aws ecr describe-images --registry-id 339713019047 --repository-name build-agents \
+  --region us-east-1 --image-ids imageTag=jdk21-node24-angular21-el10-2026-09-28-0214 \
+  --query 'imageDetails[0].[imageTags,imagePushedAt,imageSizeInBytes]' --output table
 
-# 2. Can dev see the new tag in ECR, and which account/role is it using?
-aws sts get-caller-identity
-aws ecr describe-images --repository-name build-agents --region us-east-1 \
-  --query 'sort_by(imageDetails,&imagePushedAt)[-5:].[imageTags[0],imagePushedAt]' --output table
+# 2. Log in and pull it (does not affect ba-1)
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+docker pull 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214
 
-# 3. Disk space for the pull (the image will be large)
-df -h /var/lib/docker /app
-docker image ls | grep build-agents
-
-
+# 3. How ba-1 was launched (mounts and restart policy only, no env, so no secrets)
+docker inspect ip-10-56-128-47.ec2.internal-ba-1 \
+  --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}{{.HostConfig.RestartPolicy.Name}} {{.HostConfig.NetworkMode}}'
+ls -la /app /app/*.sh 2>/dev/null
