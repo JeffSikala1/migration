@@ -1,15 +1,3 @@
-[sikaj01@ip-10-56-128-47 ~]$ docker ps
-CONTAINER ID   IMAGE                                                                                                   COMMAND                   CREATED       STATUS       PORTS     NAMES
-518821cab291   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342   "bash -lc '\n      se…"   3 weeks ago   Up 3 weeks             ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ docker container ls --format 'table {{.Names}}\t{{.Image}}\t{{.CreatedAt}}\t{{.Status}}'
-NAMES                               IMAGE                                                                                                   CREATED AT                      STATUS
-ip-10-56-128-47.ec2.internal-ba-1   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342   2026-09-10 14:15:07 +0000 UTC   Up 3 weeks
-[sikaj01@ip-10-56-128-47 ~]$ aws sts get-caller-identity
-{
-    "UserId": "AROAW3MEBTILITDDJPFGC:i-079b964a2338aaaa6",
-    "Account": "471112718870",
-    "Arn": "arn:aws:sts::471112718870:assumed-role/dev-ssm-role/i-079b964a2338aaaa6"
-}
 [sikaj01@ip-10-56-128-47 ~]$ aws ecr describe-images --repository-name build-agents --region us-east-1 \
 >   --query 'sort_by(imageDetails,&imagePushedAt)[-5:].[imageTags[0],imagePushedAt]' --output table
 
@@ -41,3 +29,238 @@ Filesystem      Size  Used Avail Use% Mounted on
 /dev/nvme0n1p1  150G   11G  140G   8% /
 [sikaj01@ip-10-56-128-47 ~]$ docker image ls | grep build-agents
 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   jdk21-node24-angular21-el10-2026-07-14-1342   c97abc6c7cab   2 months ago   4.29GB
+[sikaj01@ip-10-56-128-47 ~]$ cat /app/create_agents.sh 
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 0002
+
+#DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node22-angular20-el10-2026-07-10-1705}"
+DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-07-14-1342}"
+NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
+
+BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
+
+NETWORK_NAME="${NETWORK_NAME:-isolated_nw}"
+NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
+
+HOST_CACHE_BASE="${HOST_CACHE_BASE:-/cache/bamboo}"
+DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
+SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
+
+echo "****************************************************************************"
+echo " Note: if Agents are getting upgraded then move and recreate /cache/bamboo"
+echo "****************************************************************************"
+#SKIP_PULL="${SKIP_PULL:-0}"
+
+command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
+systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
+
+[ -d "$SSH_KEYS_DIR" ] || { echo "ERROR: SSH key directory not found at $SSH_KEYS_DIR"; exit 1; }
+[ -f "$SSH_KEYS_DIR/bitbucket_ci" ] || { echo "ERROR: SSH key not found at $SSH_KEYS_DIR/bitbucket_ci"; exit 1; }
+chmod 600 "$SSH_KEYS_DIR/bitbucket_ci" || true
+[ -f "$SSH_KEYS_DIR/bitbucket_ci_jgit" ] && chmod 600 "$SSH_KEYS_DIR/bitbucket_ci_jgit" || true
+
+mkdir -p "$HOST_CACHE_BASE"
+
+if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
+  echo "Creating docker network $NETWORK_NAME ($NETWORK_SUBNET)..."
+  docker network create -d bridge --subnet "$NETWORK_SUBNET" "$NETWORK_NAME" >/dev/null
+else
+  echo "Docker network $NETWORK_NAME already exists."
+fi
+
+HOSTNAME_SHORT="$(hostname)"
+
+echo
+echo "Stopping/removing existing build agents..."
+docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
+
+echo
+echo "Starting build agents..."
+
+for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
+  AGENT_NAME="${HOSTNAME_SHORT}-ba-${num}"
+  HOST_AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
+  CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
+
+  mkdir -p "$HOST_AGENT_HOME"
+  echo "Agent name: $AGENT_NAME; Host Agent Home: $HOST_AGENT_HOME; Container Agent Home: $CONTAINER_AGENT_HOME; "
+  
+  #    exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
+  docker run -d \
+    -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
+    -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
+    -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
+    -h "$AGENT_NAME" \
+    --net="$NETWORK_NAME" --name="$AGENT_NAME" --init --restart=unless-stopped --sysctl net.ipv4.ip_forward=1 \
+    "$DOCKER_BUILD_AGENT_IMAGE" \
+    bash -lc "
+      set -e
+      echo 'startup umask before change:' \$(umask)
+      umask 0002
+      echo 'startup umask after change:' \$(umask)
+      mkdir -p /opt/bamboo-keys
+      mkdir -p ${CONTAINER_AGENT_HOME}
+      exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
+    "
+done
+#      mkdir -p /opt/java
+#      ln -sfn /etc/alternatives/java_sdk_21 /opt/java/openjdk
+
+echo
+echo "Running Bamboo agent containers:"
+sleep 5
+docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+
+[sikaj01@ip-10-56-128-47 ~]$ aws ecr describe-images --registry-id 339713019047 --repository-name build-agents \
+>   --region us-east-1 --image-ids imageTag=jdk21-node24-angular21-el10-2026-09-28-0214 \
+>   --query 'imageDetails[0].[imageTags,imagePushedAt,imageSizeInBytes]' --output table
+
+aws: [ERROR]: An error occurred (AccessDeniedException) when calling the DescribeImages operation: User: arn:aws:sts::471112718870:assumed-role/dev-ssm-role/i-079b964a2338aaaa6 is not authorized to perform: ecr:DescribeImages on resource: arn:aws:ecr:us-east-1:339713019047:repository/build-agents because no resource-based policy allows the ecr:DescribeImages action
+[sikaj01@ip-10-56-128-47 ~]$ aws ecr get-login-password --region us-east-1 | \
+>   docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+WARNING! Your password will be stored unencrypted in /home/sikaj01/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+
+Login Succeeded
+[sikaj01@ip-10-56-128-47 ~]$ docker pull 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214
+jdk21-node24-angular21-el10-2026-09-28-0214: Pulling from build-agents
+905d570bdf33: Pull complete 
+4f4fb700ef54: Pull complete 
+abadf423baf1: Pull complete 
+4cd7c935816b: Pull complete 
+b1d7e772db2b: Pull complete 
+29adb66cf34d: Pull complete 
+9b4ead3ee733: Pull complete 
+a3b8219e3cb6: Pull complete 
+58c782ae2184: Pull complete 
+70dc7602c357: Pull complete 
+0a006c0b4ff5: Pull complete 
+7b49b27d677c: Pull complete 
+ebfc6c207e69: Pull complete 
+f87cbe4909c8: Pull complete 
+6747500983fa: Pull complete 
+75b6b9de5d7d: Pull complete 
+f5615805ca3d: Pull complete 
+3da2924e3c81: Pull complete 
+a36d9c7356dd: Pull complete 
+1bb00151045e: Pull complete 
+68428ff0ea07: Pull complete 
+e315b655e14f: Pull complete 
+1f0a4e5cff10: Pull complete 
+136c745388fa: Pull complete 
+53a966e06d0c: Pull complete 
+11aaf1c220cd: Pull complete 
+dff2bb72ad7a: Pull complete 
+c43bd0882684: Pull complete 
+0147ea0020a6: Pull complete 
+7214ba3e7526: Pull complete 
+4ecb08a40a3c: Pull complete 
+Digest: sha256:838ad5ec9b7868fc2f9397536db706f386c710477e6f51509b34dfbf40734696
+Status: Downloaded newer image for 339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214
+339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214
+[sikaj01@ip-10-56-128-47 ~]$ vim /app/create_agents.sh 
+[sikaj01@ip-10-56-128-47 ~]$ aws ecr describe-images --registry-id 339713019047 --repository-name build-agents \
+>   --region us-east-1 --image-ids imageTag=jdk21-node24-angular21-el10-2026-09-28-0214 \
+>   --query 'imageDetails[0].[imageTags,imagePushedAt,imageSizeInBytes]' --output table
+
+aws: [ERROR]: An error occurred (AccessDeniedException) when calling the DescribeImages operation: User: arn:aws:sts::471112718870:assumed-role/dev-ssm-role/i-079b964a2338aaaa6 is not authorized to perform: ecr:DescribeImages on resource: arn:aws:ecr:us-east-1:339713019047:repository/build-agents because no resource-based policy allows the ecr:DescribeImages action
+[sikaj01@ip-10-56-128-47 ~]$ cat /app/create_agents.sh 
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 0002
+
+#DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node22-angular20-el10-2026-07-10-1705}"
+DOCKER_BUILD_AGENT_IMAGE="${DOCKER_BUILD_AGENT_IMAGE:-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214}"
+NUMBER_OF_BUILD_AGENTS="${NUMBER_OF_BUILD_AGENTS:-6}"
+
+BAMBOO_URL="${BAMBOO_URL:-https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/}"
+
+NETWORK_NAME="${NETWORK_NAME:-isolated_nw}"
+NETWORK_SUBNET="${NETWORK_SUBNET:-172.25.0.0/24}"
+
+HOST_CACHE_BASE="${HOST_CACHE_BASE:-/cache/bamboo}"
+DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
+SSH_KEYS_DIR="${SSH_KEYS_DIR:-/opt/bamboo-keys}"
+
+echo "****************************************************************************"
+echo " Note: if Agents are getting upgraded then move and recreate /cache/bamboo"
+echo "****************************************************************************"
+#SKIP_PULL="${SKIP_PULL:-0}"
+
+command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed"; exit 1; }
+systemctl is-active --quiet docker || { echo "ERROR: docker service not running"; exit 1; }
+
+[ -d "$SSH_KEYS_DIR" ] || { echo "ERROR: SSH key directory not found at $SSH_KEYS_DIR"; exit 1; }
+[ -f "$SSH_KEYS_DIR/bitbucket_ci" ] || { echo "ERROR: SSH key not found at $SSH_KEYS_DIR/bitbucket_ci"; exit 1; }
+chmod 600 "$SSH_KEYS_DIR/bitbucket_ci" || true
+[ -f "$SSH_KEYS_DIR/bitbucket_ci_jgit" ] && chmod 600 "$SSH_KEYS_DIR/bitbucket_ci_jgit" || true
+
+mkdir -p "$HOST_CACHE_BASE"
+
+if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
+  echo "Creating docker network $NETWORK_NAME ($NETWORK_SUBNET)..."
+  docker network create -d bridge --subnet "$NETWORK_SUBNET" "$NETWORK_NAME" >/dev/null
+else
+  echo "Docker network $NETWORK_NAME already exists."
+fi
+
+HOSTNAME_SHORT="$(hostname)"
+
+echo
+echo "Stopping/removing existing build agents..."
+docker ps -aq --filter "name=${HOSTNAME_SHORT}-ba-" | xargs -r docker rm -f
+
+echo
+echo "Starting build agents..."
+
+for num in $(seq 1 "$NUMBER_OF_BUILD_AGENTS"); do
+  AGENT_NAME="${HOSTNAME_SHORT}-ba-${num}"
+  HOST_AGENT_HOME="${HOST_CACHE_BASE}/${AGENT_NAME}"
+  CONTAINER_AGENT_HOME="/cache/bamboo/${AGENT_NAME}"
+
+  mkdir -p "$HOST_AGENT_HOME"
+  echo "Agent name: $AGENT_NAME; Host Agent Home: $HOST_AGENT_HOME; Container Agent Home: $CONTAINER_AGENT_HOME; "
+  
+  #    exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
+  docker run -d \
+    -v "${SSH_KEYS_DIR}:/opt/bamboo-keys:ro" \
+    -v "${HOST_AGENT_HOME}:${CONTAINER_AGENT_HOME}" \
+    -v "${DOCKER_SOCK}:${DOCKER_SOCK}" \
+    -h "$AGENT_NAME" \
+    --net="$NETWORK_NAME" --name="$AGENT_NAME" --init --restart=unless-stopped --sysctl net.ipv4.ip_forward=1 \
+    "$DOCKER_BUILD_AGENT_IMAGE" \
+    bash -lc "
+      set -e
+      echo 'startup umask before change:' \$(umask)
+      umask 0002
+      echo 'startup umask after change:' \$(umask)
+      mkdir -p /opt/bamboo-keys
+      mkdir -p ${CONTAINER_AGENT_HOME}
+      exec java -Dbamboo.home=${CONTAINER_AGENT_HOME} -jar /opt/bamboo-agent.jar ${BAMBOO_URL}
+    "
+done
+#      mkdir -p /opt/java
+#      ln -sfn /etc/alternatives/java_sdk_21 /opt/java/openjdk
+
+echo
+echo "Running Bamboo agent containers:"
+sleep 5
+docker ps --filter "name=${HOSTNAME_SHORT}-ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+
+[sikaj01@ip-10-56-128-47 ~]$ docker inspect ip-10-56-128-47.ec2.internal-ba-1 \
+>   --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}{{.HostConfig.RestartPolicy.Name}} {{.HostConfig.NetworkMode}}'
+/cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1 -> /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1
+/var/run/docker.sock -> /var/run/docker.sock
+/opt/bamboo-keys -> /opt/bamboo-keys
+unless-stopped isolated_nw
+[sikaj01@ip-10-56-128-47 ~]$ ls -la /app /app/*.sh 2>/dev/null
+-rwxr-x---. 1 sikaj01 sikaj01 3428 Oct  7 14:57 /app/create_agents.sh
+
+/app:
+total 4
+drwxr-xr-x.  2 root    root      30 Sep 10 14:14 .
+dr-xr-xr-x. 21 root    root     284 Sep 10 14:15 ..
+-rwxr-x---.  1 sikaj01 sikaj01 3428 Oct  7 14:57 create_agents.sh
+[sikaj01@ip-10-56-128-47 ~]$ 
