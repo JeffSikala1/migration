@@ -1,78 +1,63 @@
-[sikaj01@ip-10-56-128-233 ~]$ getent hosts bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
-for h in bitbucket.dev bitbucket.mgmt; do for p in 443 7999; do
-  timeout 5 bash -c "</dev/tcp/$h.cnxs.vpcaas.fcs.gsa.gov/$p" 2>/dev/null && echo "$h:$p open" || echo "$h:$p closed/timeout"
-done; done
-127.0.0.1       bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
-bitbucket.dev:443 open
-bitbucket.dev:7999 open
-bitbucket.mgmt:443 open
-bitbucket.mgmt:7999 open
-[sikaj01@ip-10-56-128-233 ~]$ ls -l ~/.ssh
-total 8
--rw-r-----. 1 sikaj01 users 590 Jul 21 21:45 authorized_keys
--rw-r--r--. 1 sikaj01 users 520 Oct  8 17:35 known_hosts
-[sikaj01@ip-10-56-128-233 ~]$ ssh -vT -p 7999 git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov 2>&1 | grep -E "Offering|identity|Authentications|Permission|Welcome|logged in"
-debug1: identity file /home/sikaj01/.ssh/id_rsa type -1
-debug1: identity file /home/sikaj01/.ssh/id_rsa-cert type -1
-debug1: identity file /home/sikaj01/.ssh/id_dsa type -1
-debug1: identity file /home/sikaj01/.ssh/id_dsa-cert type -1
-debug1: identity file /home/sikaj01/.ssh/id_ecdsa type -1
-debug1: identity file /home/sikaj01/.ssh/id_ecdsa-cert type -1
-debug1: identity file /home/sikaj01/.ssh/id_ecdsa_sk type -1
-debug1: identity file /home/sikaj01/.ssh/id_ecdsa_sk-cert type -1
-debug1: identity file /home/sikaj01/.ssh/id_ed25519 type -1
-debug1: identity file /home/sikaj01/.ssh/id_ed25519-cert type -1
-debug1: identity file /home/sikaj01/.ssh/id_ed25519_sk type -1
-debug1: identity file /home/sikaj01/.ssh/id_ed25519_sk-cert type -1
-debug1: identity file /home/sikaj01/.ssh/id_xmss type -1
-debug1: identity file /home/sikaj01/.ssh/id_xmss-cert type -1
-debug1: Authentications that can continue: publickey
-git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov: Permission denied (publickey).
-[sikaj01@ip-10-56-128-233 ~]$ 
-
-
-
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --region us-east-1 --query 'LoadBalancers[].[LoadBalancerName,Type,Scheme,DNSName]' --output table
---------------------------------------------------------------------------------------------------------------------------------------------------
-|                                                              DescribeLoadBalancers                                                             |
-+----------------------------------+--------------+-----------+----------------------------------------------------------------------------------+
-|  ace14fa09ce30462ba59168c38f04c93|  network     |  internal |  ace14fa09ce30462ba59168c38f04c93-0433bda0b7d06f69.elb.us-east-1.amazonaws.com   |
-|  fcs-conexus-dev-D-outnlb        |  network     |  internal |  fcs-conexus-dev-D-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com           |
-|  ad7fecba9c5c64a318acc3807778f26b|  network     |  internal |  ad7fecba9c5c64a318acc3807778f26b-2c9ca1f582460205.elb.us-east-1.amazonaws.com   |
-|  fcs-conexus-dev-D-outuinlb      |  network     |  internal |  fcs-conexus-dev-D-outuinlb-7e5ced0483d329d2.elb.us-east-1.amazonaws.com         |
-|  fcs-conexus-dev-D-atlnlb        |  network     |  internal |  fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com           |
-|  ace010ad32b4f407e95d88c43e98e8e2|  network     |  internal |  ace010ad32b4f407e95d88c43e98e8e2-a5b1a432a0f0f6e6.elb.us-east-1.amazonaws.com   |
-|  fcs-conexus-dev-D-wafalb        |  application |  internal |  internal-fcs-conexus-dev-D-wafalb-374788130.us-east-1.elb.amazonaws.com         |
-|  fcs-conexus-dev-D-uialb         |  application |  internal |  internal-fcs-conexus-dev-D-uialb-439872116.us-east-1.elb.amazonaws.com          |
-+----------------------------------+--------------+-----------+----------------------------------------------------------------------------------+
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-listeners --region us-east-1 --load-balancer-arn <dev-bitbucket-nlb-arn> --query 'Listeners[].[Port,Protocol]' --output table
--bash: dev-bitbucket-nlb-arn: No such file or directory
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-listeners --region us-east-1 --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc --query 'Listeners[].[Port,Protocol]' --output table
--------------------
-|DescribeListeners|
-+--------+--------+
-|  8443  |  TCP   |
-|  80    |  TCP   |
-|  443   |  TCP   |
-+--------+--------+
-[sikaj01@ip-10-56-128-233 ~]$ arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b^C
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b
-{
-    "TargetHealthDescriptions": [
-        {
-            "Target": {
-                "Id": "i-0dd6e0c7c4fcc27f9",
-                "Port": 443
-            },
-            "HealthCheckPort": "443",
-            "TargetHealth": {
-                "State": "healthy"
-            },
-            "AdministrativeOverride": {
-                "State": "no_override",
-                "Reason": "AdministrativeOverride.NoOverride",
-                "Description": "No override is currently active on target"
-            }
-        }
+[sikaj01@ip-10-56-128-233 ~]$ ss -tlnp | grep -E ':7999|:443|:8443'
+LISTEN 0      4096         0.0.0.0:7999       0.0.0.0:*          
+LISTEN 0      4096         0.0.0.0:443        0.0.0.0:*          
+LISTEN 0      4096         0.0.0.0:8443       0.0.0.0:*          
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --region us-east-1 --instance-ids i-0dd6e0c7c4fcc27f9 \
+  --query 'Reservations[0].Instances[0].[PrivateIpAddress,Tags[?Key==`Name`].Value|[0],SecurityGroups[].GroupId]'
+[
+    "10.56.128.233",
+    "ec2artifactoryhost",
+    [
+        "sg-011fa66bc3ef9c842"
     ]
-}
+]
+[sikaj01@ip-10-56-128-233 ~]$ LB=arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc
+aws elbv2 describe-listeners --region us-east-1 --load-balancer-arn $LB \
+  --query 'Listeners[].[Port,Protocol,DefaultActions[0].TargetGroupArn]' --output table
+------------------------------------------------------------------------------------------------------------------------
+|                                                   DescribeListeners                                                  |
++------+------+--------------------------------------------------------------------------------------------------------+
+|  8443|  TCP |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-8443/1bda12b8d32eb48e   |
+|  80  |  TCP |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-80/5933359e55ed1fb4     |
+|  443 |  TCP |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b    |
++------+------+--------------------------------------------------------------------------------------------------------+
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-groups --region us-east-1 --load-balancer-arn $LB \
+  --query 'TargetGroups[].[TargetGroupName,Protocol,Port,TargetType,HealthCheckProtocol,HealthCheckPort,VpcId]' --output table
+-------------------------------------------------------------------------------------------
+|                                  DescribeTargetGroups                                   |
++--------------------+------+-------+-----------+------+-------+--------------------------+
+|  fcs-atlnlb-tg-443 |  TCP |  443  |  instance |  TCP |  443  |  vpc-0cb2efc594903069d   |
+|  fcs-atlnlb-tg-80  |  TCP |  80   |  instance |  TCP |  80   |  vpc-0cb2efc594903069d   |
+|  fcs-atlnlb-tg-8443|  TCP |  8443 |  instance |  TCP |  8443 |  vpc-0cb2efc594903069d   |
++--------------------+------+-------+-----------+------+-------+--------------------------+
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --region us-east-1 --names fcs-conexus-dev-D-atlnlb \
+  --query 'LoadBalancers[0].[SecurityGroups,AvailabilityZones[].SubnetId]'
+[
+    null,
+    [
+        "subnet-0826111a038991700",
+        "subnet-0fa28a398cb662a71"
+    ]
+]
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --region us-east-1 --instance-ids i-0dd6e0c7c4fcc27f9 \
+  --query 'Reservations[0].Instances[0].[VpcId,SubnetId,SecurityGroups[].GroupId]'
+[
+    "vpc-0cb2efc594903069d",
+    "subnet-03b2ad70c865c117e",
+    [
+        "sg-011fa66bc3ef9c842"
+    ]
+]
+[sikaj01@ip-10-56-128-233 ~]$ LB=arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc
+aws elbv2 describe-target-groups --region us-east-1 --load-balancer-arn $LB \
+  --query 'TargetGroups[].[TargetGroupName,Protocol,Port,TargetType,HealthCheckProtocol,HealthCheckPort,VpcId]' --output table
+-------------------------------------------------------------------------------------------
+|                                  DescribeTargetGroups                                   |
++--------------------+------+-------+-----------+------+-------+--------------------------+
+|  fcs-atlnlb-tg-443 |  TCP |  443  |  instance |  TCP |  443  |  vpc-0cb2efc594903069d   |
+|  fcs-atlnlb-tg-80  |  TCP |  80   |  instance |  TCP |  80   |  vpc-0cb2efc594903069d   |
+|  fcs-atlnlb-tg-8443|  TCP |  8443 |  instance |  TCP |  8443 |  vpc-0cb2efc594903069d   |
++--------------------+------+-------+-----------+------+-------+--------------------------+
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --region us-east-1 --names fcs-conexus-dev-D-atlnlb \
+  --query 'LoadBalancers[0].SecurityGroups'
+null
