@@ -1,63 +1,47 @@
-[sikaj01@ip-10-56-128-233 ~]$ ss -tlnp | grep -E ':7999|:443|:8443'
-LISTEN 0      4096         0.0.0.0:7999       0.0.0.0:*          
-LISTEN 0      4096         0.0.0.0:443        0.0.0.0:*          
-LISTEN 0      4096         0.0.0.0:8443       0.0.0.0:*          
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --region us-east-1 --instance-ids i-0dd6e0c7c4fcc27f9 \
-  --query 'Reservations[0].Instances[0].[PrivateIpAddress,Tags[?Key==`Name`].Value|[0],SecurityGroups[].GroupId]'
-[
-    "10.56.128.233",
-    "ec2artifactoryhost",
-    [
-        "sg-011fa66bc3ef9c842"
-    ]
-]
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-security-groups --region us-east-1 --group-ids sg-011fa66bc3ef9c842 \
+  --query 'SecurityGroups[].IpPermissions[].[FromPort,ToPort,IpProtocol,IpRanges[].CidrIp,UserIdGroupPairs[].GroupId]' --output table
+aws ec2 describe-security-groups --region us-east-1 --group-ids sg-011fa66bc3ef9c842 \
+  --query 'SecurityGroups[].IpPermissions[].[FromPort,ToPort,IpProtocol,IpRanges[].CidrIp,UserIdGroupPairs[].GroupId]' --output table
+^C
+[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-security-groups --region us-east-1 --group-ids sg-011fa66bc3ef9c842 \
+  --query 'SecurityGroups[].IpPermissions[].[FromPort,ToPort,IpProtocol,IpRanges[].CidrIp,UserIdGroupPairs[].GroupId]' --output table
+
+Row should have 1 elements, instead it has 0
 [sikaj01@ip-10-56-128-233 ~]$ LB=arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc
-aws elbv2 describe-listeners --region us-east-1 --load-balancer-arn $LB \
-  --query 'Listeners[].[Port,Protocol,DefaultActions[0].TargetGroupArn]' --output table
-------------------------------------------------------------------------------------------------------------------------
-|                                                   DescribeListeners                                                  |
-+------+------+--------------------------------------------------------------------------------------------------------+
-|  8443|  TCP |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-8443/1bda12b8d32eb48e   |
-|  80  |  TCP |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-80/5933359e55ed1fb4     |
-|  443 |  TCP |  arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b    |
-+------+------+--------------------------------------------------------------------------------------------------------+
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-groups --region us-east-1 --load-balancer-arn $LB \
-  --query 'TargetGroups[].[TargetGroupName,Protocol,Port,TargetType,HealthCheckProtocol,HealthCheckPort,VpcId]' --output table
--------------------------------------------------------------------------------------------
-|                                  DescribeTargetGroups                                   |
-+--------------------+------+-------+-----------+------+-------+--------------------------+
-|  fcs-atlnlb-tg-443 |  TCP |  443  |  instance |  TCP |  443  |  vpc-0cb2efc594903069d   |
-|  fcs-atlnlb-tg-80  |  TCP |  80   |  instance |  TCP |  80   |  vpc-0cb2efc594903069d   |
-|  fcs-atlnlb-tg-8443|  TCP |  8443 |  instance |  TCP |  8443 |  vpc-0cb2efc594903069d   |
-+--------------------+------+-------+-----------+------+-------+--------------------------+
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --region us-east-1 --names fcs-conexus-dev-D-atlnlb \
-  --query 'LoadBalancers[0].[SecurityGroups,AvailabilityZones[].SubnetId]'
-[
-    null,
-    [
-        "subnet-0826111a038991700",
-        "subnet-0fa28a398cb662a71"
+TG=$(aws elbv2 create-target-group --region us-east-1 --name fcs-atlnlb-tg-7999 \
+  --protocol TCP --port 7999 --vpc-id vpc-0cb2efc594903069d --target-type instance \
+  --health-check-protocol TCP --health-check-port 7999 \
+  --query 'TargetGroups[0].TargetGroupArn' --output text)
+echo $TG
+arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-7999/8376db9ff98c3866
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 register-targets --region us-east-1 --target-group-arn $TG \
+  --targets Id=i-0dd6e0c7c4fcc27f9,Port=7999
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 create-listener --region us-east-1 --load-balancer-arn $LB \
+  --protocol TCP --port 7999 \
+  --default-actions Type=forward,TargetGroupArn=$TG
+{
+    "Listeners": [
+        {
+            "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:listener/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc/18410c22e73c1e88",
+            "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc",
+            "Port": 7999,
+            "Protocol": "TCP",
+            "DefaultActions": [
+                {
+                    "Type": "forward",
+                    "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-7999/8376db9ff98c3866",
+                    "ForwardConfig": {
+                        "TargetGroups": [
+                            {
+                                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-7999/8376db9ff98c3866"
+                            }
+                        ],
+                        "TargetGroupStickinessConfig": {
+                            "Enabled": false
+                        }
+                    }
+                }
+            ]
+        }
     ]
-]
-[sikaj01@ip-10-56-128-233 ~]$ aws ec2 describe-instances --region us-east-1 --instance-ids i-0dd6e0c7c4fcc27f9 \
-  --query 'Reservations[0].Instances[0].[VpcId,SubnetId,SecurityGroups[].GroupId]'
-[
-    "vpc-0cb2efc594903069d",
-    "subnet-03b2ad70c865c117e",
-    [
-        "sg-011fa66bc3ef9c842"
-    ]
-]
-[sikaj01@ip-10-56-128-233 ~]$ LB=arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc
-aws elbv2 describe-target-groups --region us-east-1 --load-balancer-arn $LB \
-  --query 'TargetGroups[].[TargetGroupName,Protocol,Port,TargetType,HealthCheckProtocol,HealthCheckPort,VpcId]' --output table
--------------------------------------------------------------------------------------------
-|                                  DescribeTargetGroups                                   |
-+--------------------+------+-------+-----------+------+-------+--------------------------+
-|  fcs-atlnlb-tg-443 |  TCP |  443  |  instance |  TCP |  443  |  vpc-0cb2efc594903069d   |
-|  fcs-atlnlb-tg-80  |  TCP |  80   |  instance |  TCP |  80   |  vpc-0cb2efc594903069d   |
-|  fcs-atlnlb-tg-8443|  TCP |  8443 |  instance |  TCP |  8443 |  vpc-0cb2efc594903069d   |
-+--------------------+------+-------+-----------+------+-------+--------------------------+
-[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --region us-east-1 --names fcs-conexus-dev-D-atlnlb \
-  --query 'LoadBalancers[0].SecurityGroups'
-null
+}
