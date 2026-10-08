@@ -1,5 +1,16 @@
-sudo NUMBER_OF_BUILD_AGENTS=1 BAMBOO_URL=https://bamboo.dev.cnxs.vpcaas.fcs.gsa.gov/agentServer/ /app/create_agents.sh
+getent hosts bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+for h in bitbucket.dev bitbucket.mgmt; do for p in 443 7999; do
+  timeout 5 bash -c "</dev/tcp/$h.cnxs.vpcaas.fcs.gsa.gov/$p" 2>/dev/null && echo "$h:$p open" || echo "$h:$p closed/timeout"
+done; done
 
 
-docker ps --filter "name=ba-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-docker logs --tail 30 ip-10-56-128-47.ec2.internal-ba-1
+
+ls -l ~/.ssh
+ssh -vT -p 7999 git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov 2>&1 | grep -E "Offering|identity|Authentications|Permission|Welcome|logged in"
+
+
+aws elbv2 describe-load-balancers --region us-east-1 --query 'LoadBalancers[].[LoadBalancerName,Type,Scheme,DNSName]' --output table
+aws elbv2 describe-listeners --region us-east-1 --load-balancer-arn <dev-bitbucket-nlb-arn> --query 'Listeners[].[Port,Protocol]' --output table
+
+
+aws elbv2 describe-target-health --region us-east-1 --target-group-arn <7999-target-group-arn>
