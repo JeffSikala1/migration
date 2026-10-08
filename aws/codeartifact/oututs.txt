@@ -1,29 +1,78 @@
-[sikaj01@ip-10-56-128-233 ~]$ exit
-logout
-Connection to 10.56.128.233 closed.
-[sikaj01@ip-10-56-112-33 dev-ci]$ git clone ssh://git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git
-Cloning into 'bamboo-specs'...
-ssh: connect to host bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov port 7999: Connection timed out
-fatal: Could not read from remote repository.
-
-Please make sure you have the correct access rights
-and the repository exists.
-
-
-
-
-
-
-[sikaj01@ip-10-56-128-233 ~]$ git clone ssh://git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git
-Cloning into 'bamboo-specs'...
-The authenticity of host '[bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov]:7999 ([127.0.0.1]:7999)' can't be established.
-RSA key fingerprint is SHA256:O9WIcDi1YTpvZiNpNTcV96SVzbZ7fRFzA++Kl0rRM00.
-This key is not known by any other names
-Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
-Warning: Permanently added '[bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov]:7999' (RSA) to the list of known hosts.
+[sikaj01@ip-10-56-128-233 ~]$ getent hosts bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+for h in bitbucket.dev bitbucket.mgmt; do for p in 443 7999; do
+  timeout 5 bash -c "</dev/tcp/$h.cnxs.vpcaas.fcs.gsa.gov/$p" 2>/dev/null && echo "$h:$p open" || echo "$h:$p closed/timeout"
+done; done
+127.0.0.1       bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+bitbucket.dev:443 open
+bitbucket.dev:7999 open
+bitbucket.mgmt:443 open
+bitbucket.mgmt:7999 open
+[sikaj01@ip-10-56-128-233 ~]$ ls -l ~/.ssh
+total 8
+-rw-r-----. 1 sikaj01 users 590 Jul 21 21:45 authorized_keys
+-rw-r--r--. 1 sikaj01 users 520 Oct  8 17:35 known_hosts
+[sikaj01@ip-10-56-128-233 ~]$ ssh -vT -p 7999 git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov 2>&1 | grep -E "Offering|identity|Authentications|Permission|Welcome|logged in"
+debug1: identity file /home/sikaj01/.ssh/id_rsa type -1
+debug1: identity file /home/sikaj01/.ssh/id_rsa-cert type -1
+debug1: identity file /home/sikaj01/.ssh/id_dsa type -1
+debug1: identity file /home/sikaj01/.ssh/id_dsa-cert type -1
+debug1: identity file /home/sikaj01/.ssh/id_ecdsa type -1
+debug1: identity file /home/sikaj01/.ssh/id_ecdsa-cert type -1
+debug1: identity file /home/sikaj01/.ssh/id_ecdsa_sk type -1
+debug1: identity file /home/sikaj01/.ssh/id_ecdsa_sk-cert type -1
+debug1: identity file /home/sikaj01/.ssh/id_ed25519 type -1
+debug1: identity file /home/sikaj01/.ssh/id_ed25519-cert type -1
+debug1: identity file /home/sikaj01/.ssh/id_ed25519_sk type -1
+debug1: identity file /home/sikaj01/.ssh/id_ed25519_sk-cert type -1
+debug1: identity file /home/sikaj01/.ssh/id_xmss type -1
+debug1: identity file /home/sikaj01/.ssh/id_xmss-cert type -1
+debug1: Authentications that can continue: publickey
 git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov: Permission denied (publickey).
-fatal: Could not read from remote repository.
-
-Please make sure you have the correct access rights
-and the repository exists.
 [sikaj01@ip-10-56-128-233 ~]$ 
+
+
+
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-load-balancers --region us-east-1 --query 'LoadBalancers[].[LoadBalancerName,Type,Scheme,DNSName]' --output table
+--------------------------------------------------------------------------------------------------------------------------------------------------
+|                                                              DescribeLoadBalancers                                                             |
++----------------------------------+--------------+-----------+----------------------------------------------------------------------------------+
+|  ace14fa09ce30462ba59168c38f04c93|  network     |  internal |  ace14fa09ce30462ba59168c38f04c93-0433bda0b7d06f69.elb.us-east-1.amazonaws.com   |
+|  fcs-conexus-dev-D-outnlb        |  network     |  internal |  fcs-conexus-dev-D-outnlb-19f9b0da7ae75712.elb.us-east-1.amazonaws.com           |
+|  ad7fecba9c5c64a318acc3807778f26b|  network     |  internal |  ad7fecba9c5c64a318acc3807778f26b-2c9ca1f582460205.elb.us-east-1.amazonaws.com   |
+|  fcs-conexus-dev-D-outuinlb      |  network     |  internal |  fcs-conexus-dev-D-outuinlb-7e5ced0483d329d2.elb.us-east-1.amazonaws.com         |
+|  fcs-conexus-dev-D-atlnlb        |  network     |  internal |  fcs-conexus-dev-D-atlnlb-99c2edaca6f193fc.elb.us-east-1.amazonaws.com           |
+|  ace010ad32b4f407e95d88c43e98e8e2|  network     |  internal |  ace010ad32b4f407e95d88c43e98e8e2-a5b1a432a0f0f6e6.elb.us-east-1.amazonaws.com   |
+|  fcs-conexus-dev-D-wafalb        |  application |  internal |  internal-fcs-conexus-dev-D-wafalb-374788130.us-east-1.elb.amazonaws.com         |
+|  fcs-conexus-dev-D-uialb         |  application |  internal |  internal-fcs-conexus-dev-D-uialb-439872116.us-east-1.elb.amazonaws.com          |
++----------------------------------+--------------+-----------+----------------------------------------------------------------------------------+
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-listeners --region us-east-1 --load-balancer-arn <dev-bitbucket-nlb-arn> --query 'Listeners[].[Port,Protocol]' --output table
+-bash: dev-bitbucket-nlb-arn: No such file or directory
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-listeners --region us-east-1 --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc --query 'Listeners[].[Port,Protocol]' --output table
+-------------------
+|DescribeListeners|
++--------+--------+
+|  8443  |  TCP   |
+|  80    |  TCP   |
+|  443   |  TCP   |
++--------+--------+
+[sikaj01@ip-10-56-128-233 ~]$ arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b^C
+[sikaj01@ip-10-56-128-233 ~]$ aws elbv2 describe-target-health --region us-east-1 --target-group-arn arn:aws:elasticloadbalancing:us-east-1:471112718870:targetgroup/fcs-atlnlb-tg-443/1ccb54393b9afd2b
+{
+    "TargetHealthDescriptions": [
+        {
+            "Target": {
+                "Id": "i-0dd6e0c7c4fcc27f9",
+                "Port": 443
+            },
+            "HealthCheckPort": "443",
+            "TargetHealth": {
+                "State": "healthy"
+            },
+            "AdministrativeOverride": {
+                "State": "no_override",
+                "Reason": "AdministrativeOverride.NoOverride",
+                "Description": "No override is currently active on target"
+            }
+        }
+    ]
+}
