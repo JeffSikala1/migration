@@ -1,38 +1,31 @@
-ss -tlnp | grep -E ':7999|:443|:8443'
-aws ec2 describe-instances --region us-east-1 --instance-ids i-0dd6e0c7c4fcc27f9 \
-  --query 'Reservations[0].Instances[0].[PrivateIpAddress,Tags[?Key==`Name`].Value|[0],SecurityGroups[].GroupId]'
+aws ec2 describe-security-groups --region us-east-1 --group-ids sg-011fa66bc3ef9c842 \
+  --query 'SecurityGroups[].IpPermissions[].[FromPort,ToPort,IpProtocol,IpRanges[].CidrIp,UserIdGroupPairs[].GroupId]' --output table
 
 
 LB=arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc
-aws elbv2 describe-listeners --region us-east-1 --load-balancer-arn $LB \
-  --query 'Listeners[].[Port,Protocol,DefaultActions[0].TargetGroupArn]' --output table
-aws elbv2 describe-target-groups --region us-east-1 --load-balancer-arn $LB \
-  --query 'TargetGroups[].[TargetGroupName,Protocol,Port,TargetType,HealthCheckProtocol,HealthCheckPort,VpcId]' --output table
-aws elbv2 describe-load-balancers --region us-east-1 --names fcs-conexus-dev-D-atlnlb \
-  --query 'LoadBalancers[0].[SecurityGroups,AvailabilityZones[].SubnetId]'
 
+# 1. Target group
+TG=$(aws elbv2 create-target-group --region us-east-1 --name fcs-atlnlb-tg-7999 \
+  --protocol TCP --port 7999 --vpc-id vpc-0cb2efc594903069d --target-type instance \
+  --health-check-protocol TCP --health-check-port 7999 \
+  --query 'TargetGroups[0].TargetGroupArn' --output text)
+echo $TG
 
-aws elbv2 create-target-group --region us-east-1 --name fcs-atlnlb-tg-7999 \
-  --protocol TCP --port 7999 --vpc-id <vpc-id> --target-type instance \
-  --health-check-protocol TCP --health-check-port 7999
-aws elbv2 register-targets --region us-east-1 --target-group-arn <new-tg-arn> --targets Id=<instance-id>,Port=7999
+# 2. Register .233 on 7999
+aws elbv2 register-targets --region us-east-1 --target-group-arn $TG \
+  --targets Id=i-0dd6e0c7c4fcc27f9,Port=7999
+
+# 3. Listener
 aws elbv2 create-listener --region us-east-1 --load-balancer-arn $LB \
-  --protocol TCP --port 7999 --default-actions Type=forward,TargetGroupArn=<new-tg-arn>
+  --protocol TCP --port 7999 \
+  --default-actions Type=forward,TargetGroupArn=$TG
 
 
-# VPC, subnet and security groups of the Bitbucket host
-aws ec2 describe-instances --region us-east-1 --instance-ids i-0dd6e0c7c4fcc27f9 \
-  --query 'Reservations[0].Instances[0].[VpcId,SubnetId,SecurityGroups[].GroupId]'
 
-# How the existing target groups and listeners are set up (to copy the pattern)
-LB=arn:aws:elasticloadbalancing:us-east-1:471112718870:loadbalancer/net/fcs-conexus-dev-D-atlnlb/99c2edaca6f193fc
-aws elbv2 describe-target-groups --region us-east-1 --load-balancer-arn $LB \
-  --query 'TargetGroups[].[TargetGroupName,Protocol,Port,TargetType,HealthCheckProtocol,HealthCheckPort,VpcId]' --output table
-
-# Does the NLB itself have security groups?
-aws elbv2 describe-load-balancers --region us-east-1 --names fcs-conexus-dev-D-atlnlb \
-  --query 'LoadBalancers[0].SecurityGroups'
+aws elbv2 describe-target-health --region us-east-1 --target-group-arn $TG
 
 
-aws ec2 describe-security-groups --region us-east-1 --group-ids <sg-id-from-above> \
-  --query 'SecurityGroups[].IpPermissions[].[FromPort,ToPort,IpProtocol,IpRanges[].CidrIp,UserIdGroupPairs[].GroupId]' --output table  
+
+timeout 5 bash -c '</dev/tcp/bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/7999' && echo open || echo closed
+
+
