@@ -1,7 +1,11 @@
-sudo aureport -if /var/log/audit/audit.log.32 --start 11/26/25 18:00:00 --end 11/27/25 00:30:00 -l -i
-
-sudo ausearch -if /var/log/audit/audit.log.32 --start 11/26/25 18:00:00 --end 11/27/25 00:30:00 -m USER_CMD -i | grep -E 'auid=|acct=|cmd=' | head -60
+aws ec2 describe-instances --filters Name=private-ip-address,Values=10.56.112.33 --query 'Reservations[].Instances[].[InstanceId,Tags[?Key==`Name`].Value|[0]]' --output text
 
 
+sudo ausearch -if /var/log/audit/audit.log.<N> --start 11/26/25 19:40:00 --end 11/26/25 20:20:00 -m USER_LOGIN,USER_START,USER_CMD -i
 
-sudo awk -F'[(:.]' '/^type=/ {t=$3; if (t>=1764180000 && t<=1764201600) print}' /var/log/audit/audit.log.32 | grep -E 'cp|rsync|mv|docker|systemctl' | head -60
+sudo ausearch -if /var/log/audit/audit.log.32 --session 227 -i | grep -E 'type=(USER_LOGIN|USER_AUTH|CRYPTO|USER_ACCT|USER_START)'
+sudo ausearch -if /var/log/audit/audit.log.42 --session 227 -i | grep -E 'type=(USER_LOGIN|USER_AUTH|CRYPTO|USER_ACCT|USER_START)'
+
+
+aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=SendSSHPublicKey --start-time 2025-11-26T18:30:00Z --end-time 2025-11-26T20:30:00Z
+aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=StartSession --start-time 2025-11-26T18:30:00Z --end-time 2025-11-26T20:30:00Z
