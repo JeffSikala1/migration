@@ -1,10 +1,12 @@
-git rev-list --count 59b52c5..74c9ef2
-git log --reverse --format='%cI %an %s' 59b52c5..74c9ef2 | head -5
+# 1. Repo id in prod
+docker exec prod-postgres psql -U bitbucketuser -d bitbucket -c "select id, slug from repository where slug = 'bamboo-specs';"
 
+# 2. Layout of today's archive (a broken-pipe message at the end is expected)
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-10-10/bitbucket_20261010_021501.tar.gz - | tar -tzf - | head -15
 
-aws s3 ls s3://cnxs-atlassian-backups/apps/ | tail -5
-aws s3 ls s3://cnxs-atlassian-backups/apps/2026-10-10/ --human-readable
-aws s3 ls s3://cnxs-atlassian-backups/apps/ --recursive --human-readable | grep -i bitbucket | tail -15
-aws s3 ls s3://cnxs-atlassian-backups/manual/
-aws s3 ls s3://cnxs-atlassian-backups/legacy/
-
+# 3. Pull out just that repo (adjust the pattern to match what step 2 shows)
+mkdir -p /tmp/bbcheck && cd /tmp/bbcheck
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-10-10/bitbucket_20261010_021501.tar.gz - \
+  | tar -xzf - --wildcards '*/repositories/<ID>/*'
+D=$(find /tmp/bbcheck -maxdepth 6 -type d -path '*/repositories/*' -name '<ID>' | head -1)
+git --git-dir="$D" log -1 --format='%h %cI %s' refs/heads/export-2025-08-13
