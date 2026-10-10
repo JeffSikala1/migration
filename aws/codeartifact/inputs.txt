@@ -1,10 +1,23 @@
-ls -l ~/.ssh
-ssh -vT -p 7999 git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov 2>&1 | grep -E "Offering|Authentications|Permission|logged in"
+git remote -v
+git for-each-ref --sort=-committerdate --count=5 --format='%(committerdate:short) %(refname:short)'
+diff <(git ls-remote --heads --tags ssh://git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git | sort) \
+     <(git ls-remote --heads --tags ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git | sort) && echo IDENTICAL
 
 
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_dev -C "sikaj01 jumpbox dev"
-cat ~/.ssh/id_rsa_dev.pub
 
 
-GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa_dev -o IdentitiesOnly=yes' \
-  git clone ssh://git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git
+history | grep -E "s3 cp|pg_restore|psql|tar |/app/bitbucket" | head -60
+docker exec dev-postgres psql -U <the user that worked earlier> -d bitbucket \
+  -c "select max(created_timestamp), max(updated_timestamp) from sta_pull_request;"
+
+
+
+
+
+aws s3 ls s3://cnxs-atlassian-backups/apps/ | tail -5
+aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-20/ --human-readable
+aws s3 ls s3://cnxs-atlassian-backups/apps/2026-10-10/ --human-readable
+aws s3 ls s3://cnxs-atlassian-backups/manual/
+aws s3 ls s3://cnxs-atlassian-backups/legacy/
+aws s3 ls s3://cnxs-atlassian-backups/postgres/ --recursive | grep 'bitbucket_' | awk '{print $3, $4}' | sort -n | head -5
+sudo crontab -l
