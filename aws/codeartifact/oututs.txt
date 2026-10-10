@@ -1,113 +1,13 @@
-[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=volume-id,Values=vol-05ebadfa92a493533 \
-  --query 'sort_by(Snapshots,&StartTime)[-3:].[SnapshotId,StartTime,State,VolumeSize,Tags]' --output json
-[
-    [
-        "snap-08d713187556c0888",
-        "2026-08-21T02:22:23.963000+00:00",
-        "completed",
-        150,
-        [
-            {
-                "Key": "Name",
-                "Value": "cnxs-atlassian-nightly"
-            },
-            {
-                "Key": "Purpose",
-                "Value": "atlassian-backup"
-            },
-            {
-                "Key": "Date",
-                "Value": "2026-08-21"
-            },
-            {
-                "Key": "Host",
-                "Value": "ip-10-56-112-34.ec2.internal"
-            },
-            {
-                "Key": "Timestamp",
-                "Value": "20260821_021502"
-            },
-            {
-                "Key": "VolumePurpose",
-                "Value": "app"
-            }
-        ]
-    ],
-    [
-        "snap-095a9f43eddc05ad1",
-        "2026-08-21T20:59:21.033000+00:00",
-        "completed",
-        150,
-        [
-            {
-                "Key": "Purpose",
-                "Value": "atlassian-backup"
-            },
-            {
-                "Key": "Host",
-                "Value": "ip-10-56-112-34.ec2.internal"
-            },
-            {
-                "Key": "Date",
-                "Value": "2026-08-21"
-            },
-            {
-                "Key": "Timestamp",
-                "Value": "20260821_203345"
-            },
-            {
-                "Key": "Name",
-                "Value": "cnxs-atlassian-nightly"
-            },
-            {
-                "Key": "VolumePurpose",
-                "Value": "app"
-            }
-        ]
-    ],
-    [
-        "snap-074577e61f711486f",
-        "2026-08-25T11:25:42.846000+00:00",
-        "completed",
-        150,
-        [
-            {
-                "Key": "Name",
-                "Value": "vol-05ebadfa92a493533-decommission-snapshot"
-            },
-            {
-                "Key": "Host",
-                "Value": "ip-10-56-112-34"
-            },
-            {
-                "Key": "Purpose",
-                "Value": "pre-decommission"
-            }
-        ]
-    ]
-]
-[sikaj01@ip-10-56-112-34 ~]$ grep -v '^\s*#' /etc/fstab
-UUID=e1f0d2ec-93af-4d46-8039-6fd7a938a4de     /           xfs    defaults,noatime  1   1
-UUID=E147-FCAD        /boot/efi       vfat    defaults,noatime,uid=0,gid=0,umask=0077,shortname=winnt,x-systemd.automount 0 2
-tmpfs /dev/shm tmpfs defaults,nodev,noexec,nosuid 0 0
-/dev/nvme1n1p1 /app xfs defaults 0 2
-[sikaj01@ip-10-56-112-34 ~]$ findmnt -rn -o TARGET,SOURCE | grep -vE 'proc|sys|cgroup|/dev|/run|docker'
-/tmp tmpfs
-/var/lib/nfs/rpc_pipefs sunrpc
-[sikaj01@ip-10-56-112-34 ~]$ sudo journalctl --disk-usage
-Archived and active journals take up 499.8M in the file system.
-[sikaj01@ip-10-56-112-34 ~]$ sudo journalctl --since "2026-08-22 01:50" --until "2026-08-22 02:30" --no-pager | head -40
--- No entries --
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -rIl -i "no space left" /app/docker/volumes/pgdataVolume16/_data/log /app/docker/volumes/bitbucketVolume/_data/log 2>/dev/null | head
-[sikaj01@ip-10-56-112-34 ~]$ sudo ls -l /var/log/cron* /var/spool/mail/ 2>&1 | head
--rw-------. 1 root root 3423524 Oct 10 17:01 /var/log/cron
--rw-------. 1 root root 3478246 Oct  6 23:01 /var/log/cron-20261007
--rw-------. 1 root root 3433864 Oct  7 23:01 /var/log/cron-20261008
--rw-------. 1 root root 3443572 Oct  8 23:01 /var/log/cron-20261009
--rw-------. 1 root root 3441712 Oct  9 23:01 /var/log/cron-20261010
-
-/var/spool/mail/:
-total 0
--rw-rw----. 1 ec2-user mail 0 Sep 20  2025 ec2-user
--rw-rw----. 1 ezehb01  mail 0 Jun 30 15:41 ezehb01
-[sikaj01@ip-10-56-112-34 ~]$ 
+[sikaj01@ip-10-56-112-34 ~]$ uptime -s
+2026-09-22 13:19:41
+[sikaj01@ip-10-56-112-34 ~]$ sudo journalctl --list-boots --no-pager | head
+IDX BOOT ID                          FIRST ENTRY                 LAST ENTRY
+  0 d47c47efb5254f4ea9982b8a52b20ae3 Tue 2026-09-22 13:19:42 UTC Sat 2026-10-10 17:49:14 UTC
+[sikaj01@ip-10-56-112-34 ~]$ sudo ls -l --time-style=long-iso /etc/fstab*
+-rw-r--r--. 1 root root 352 2026-08-25 11:29 /etc/fstab
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-snapshots --region us-east-1 --owner-ids self \
+  --filters Name=tag:Purpose,Values=atlassian-backup Name=tag:Date,Values=2026-08-20 \
+  --query 'Snapshots[].[SnapshotId,VolumeId,StartTime,State]' --output text
+snap-03925040e138c3a62  vol-04e3115aea57b5c70   2026-08-20T02:21:45.801000+00:00        completed
+snap-079bbb63369ddcb0b  vol-08f7bca75e08f0d3f   2026-08-20T02:21:42.940000+00:00        completed
+snap-075b2db92c1bbbd58  vol-05ebadfa92a493533   2026-08-20T02:21:44.408000+00:00        completed
