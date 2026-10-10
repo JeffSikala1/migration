@@ -1,11 +1,12 @@
-aws ec2 describe-instances --filters Name=private-ip-address,Values=10.56.112.33 --query 'Reservations[].Instances[].[InstanceId,Tags[?Key==`Name`].Value|[0]]' --output text
+# Who logged in, and who ran ssh/scp/rsync between 18:40 and 20:30 UTC
+sudo ausearch -if /var/log/audit/audit.log.42 --start 11/26/25 18:40:00 --end 11/26/25 20:30:00 -m USER_LOGIN,USER_START,USER_END,USER_CMD,EXECVE -i | grep -E 'acct=|auid=|cmd=|a0=' | grep -iE 'ssh|scp|rsync|auid=[a-z]' | head -80
+
+# Logins only, with the person's name (auid) and source
+sudo aureport -if /var/log/audit/audit.log.42 --start 11/26/25 18:00:00 --end 11/27/25 00:30:00 -l -i
 
 
-sudo ausearch -if /var/log/audit/audit.log.<N> --start 11/26/25 19:40:00 --end 11/26/25 20:20:00 -m USER_LOGIN,USER_START,USER_CMD -i
 
-sudo ausearch -if /var/log/audit/audit.log.32 --session 227 -i | grep -E 'type=(USER_LOGIN|USER_AUTH|CRYPTO|USER_ACCT|USER_START)'
-sudo ausearch -if /var/log/audit/audit.log.42 --session 227 -i | grep -E 'type=(USER_LOGIN|USER_AUTH|CRYPTO|USER_ACCT|USER_START)'
+sudo sh -c 'grep -nE "10\.56\.112\.34|ec2-user@|rsync|cp -a|docker" /home/*/.bash_history /root/.bash_history 2>/dev/null | head -60'
 
 
-aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=SendSSHPublicKey --start-time 2025-11-26T18:30:00Z --end-time 2025-11-26T20:30:00Z
-aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=StartSession --start-time 2025-11-26T18:30:00Z --end-time 2025-11-26T20:30:00Z
+aws cloudtrail describe-trails --query 'trailList[].[Name,S3BucketName,IsMultiRegionTrail]' --output text
