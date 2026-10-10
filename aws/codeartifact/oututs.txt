@@ -1,67 +1,12 @@
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ pwd
-/home/sikaj01/dev-ci/bamboo-specs
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ git remote -v
-git for-each-ref --sort=-committerdate --count=5 --format='%(committerdate:short) %(refname:short)'
-diff <(git ls-remote --heads --tags ssh://git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git | sort) \
-     <(git ls-remote --heads --tags ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git | sort) && echo IDENTICAL
-origin  ssh://git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git (fetch)
-origin  ssh://git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git (push)
-2025-08-14 main
-2025-08-14 origin
-2025-08-14 origin/main
-2025-08-13 export-2025-08-13
-2025-08-13 origin/export-2025-08-13
-1c1
-< 59b52c590b21fa4bae0d3a43429887032dc3a560      refs/heads/export-2025-08-13
----
-> 74c9ef28f4a3c57e676426ec6e7b1be165ea752a      refs/heads/export-2025-08-13
+cd ~/dev-ci/bamboo-specs
+git fetch origin
+git fetch ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git +refs/heads/export-2025-08-13:refs/remotes/prodtmp/export-2025-08-13
+git log -1 --format='dev  %h %cI %an %s' origin/export-2025-08-13
+git log -1 --format='prod %h %cI %an %s' prodtmp/export-2025-08-13
+git merge-base --is-ancestor origin/export-2025-08-13 prodtmp/export-2025-08-13 && echo "dev is behind prod"
+git merge-base --is-ancestor prodtmp/export-2025-08-13 origin/export-2025-08-13 && echo "dev is ahead of prod"
+git update-ref -d refs/remotes/prodtmp/export-2025-08-13
 
 
-[sikaj01@ip-10-56-128-233 ~]$ history | grep -E "s3 cp|pg_restore|psql|tar |/app/bitbucket" | head -60
-docker exec dev-postgres psql -U <the user that worked earlier> -d bitbucket \
+docker exec dev-postgres psql -U bitbucketuser -d bitbucket \
   -c "select max(created_timestamp), max(updated_timestamp) from sta_pull_request;"
-    5  docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "\dt" | grep -iE "setting|bandana|config"
-    6  docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "SELECT * FROM bandana WHERE bandana_key ILIKE '%url%' OR bandana_key ILIKE '%baseurl%';"
-   29  docker exec -it dev-postgres psql -U bamboouser -d bamboo -c "SELECT * FROM bandana WHERE bandana_key ILIKE '%server%' OR bandana_key ILIKE '%base%';"
-  164  sudo tar -xzf /path/to/relayed/prod-bamboo-crypto.tar.gz -C /app/bamboo/shared/configuration
-  165  sudo tar -xzf prod-bamboo-crypto.tar.gz -C /app/bamboo/shared/configuration
-  189  docker run -d   --name dev-bitbucket   --network dev-net   --restart unless-stopped   -p 7990:7990 -p 7999:7999   -v /app/bitbucket:/var/atlassian/application-data/bitbucket   -e JVM_SUPPORT_RECOMMENDED_ARGS="-Duser.timezone=America/Denver -Dserver.forward-headers-strategy=native"   -e ATL_PROXY_NAME=bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov   -e ATL_PROXY_PORT=443   -e ATL_TOMCAT_SCHEME=https   -e ATL_TOMCAT_SECURE=true   atlassian/bitbucket:9.4.17
-  230  docker exec dev-postgres psql -U bamboo -d bamboo -c   "SELECT plugin_key, bandana_key, bandana_value FROM bandana WHERE bandana_value LIKE '%bamboo-test%' OR bandana_value LIKE '%bitbucket-test%' OR bandana_value LIKE '%artifactory-test%';"
-  231  docker exec dev-postgres psql -U bamboouser -d bamboo -c   "SELECT plugin_key, bandana_key, bandana_value FROM bandana WHERE bandana_value LIKE '%bamboo-test%' OR bandana_value LIKE '%bitbucket-test%' OR bandana_value LIKE '%artifactory-test%';"
-  232  docker exec dev-postgres psql -U bitbucket -d bitbucket -c   "SELECT * FROM app_property WHERE property_value LIKE '%bitbucket-test%' OR property_value LIKE '%bamboo-test%' OR property_value LIKE '%artifactory-test%';"
-  279  docker exec dev-postgres psql -U postgres -c "\du"
-  280  docker exec dev-postgres psql -U artifactory -c "\du"
-  281  docker exec dev-postgres psql -U bamboouser -c "\du"
-  282  docker exec dev-postgres psql -l
-  283  docker exec dev-postgres psql -U artifactory -l
-  284  docker exec dev-postgres psql -U bamboouser -d bamboo -c "\d bandana"
-  285  docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c "\d app_property"
-  287  docker exec dev-postgres psql -U bamboouser -d bamboo -c   "SELECT bandana_key, serialized_data FROM bandana WHERE serialized_data LIKE '%bamboo-test%' OR serialized_data LIKE '%bitbucket-test%' OR serialized_data LIKE '%artifactory-test%';"
-  288  docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c   "SELECT * FROM app_property WHERE prop_value LIKE '%bitbucket-test%' OR prop_value LIKE '%bamboo-test%' OR prop_value LIKE '%artifactory-test%';"
-  307  docker exec dev-postgres psql -U postgres -c "\du"
-  308  docker exec dev-postgres psql -U artifactory -c "\du"
-  309  docker exec dev-postgres psql -U bamboouser -c "\du"
-  310  docker exec dev-postgres psql -l
-  311  docker exec dev-postgres psql -U artifactory -l
-  312  docker exec dev-postgres psql -U bamboouser -d bamboo -c "\d bandana"
-  313  docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c "\d app_property"
-  315  docker exec dev-postgres psql -U bamboouser -d bamboo -c   "SELECT bandana_key, serialized_data FROM bandana WHERE serialized_data LIKE '%bamboo-test%' OR serialized_data LIKE '%bitbucket-test%' OR serialized_data LIKE '%artifactory-test%';"
-  316  docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c   "SELECT * FROM app_property WHERE prop_value LIKE '%bitbucket-test%' OR prop_value LIKE '%bamboo-test%' OR prop_value LIKE '%artifactory-test%';"
-  329  docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c   "UPDATE app_property SET prop_value = 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov' WHERE prop_key = 'instance.url';"
-  367  docker run -d   --name dev-bitbucket   --network dev-net   --restart unless-stopped   -p 7990:7990 -p 7999:7999   -v /app/bitbucket:/var/atlassian/application-data/bitbucket   -e JVM_SUPPORT_RECOMMENDED_ARGS="-Duser.timezone=America/Denver -Dserver.forward-headers-strategy=native"   -e ATL_PROXY_NAME=bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov   -e ATL_PROXY_PORT=443   -e ATL_TOMCAT_SCHEME=https   -e ATL_TOMCAT_SECURE=true   -e SEARCH_ENABLED=true   -e APPLICATION_MODE=default   atlassian/bitbucket:9.4.17
-  368  docker exec dev-postgres psql -U bitbucketuser -d bitbucket -c   "UPDATE app_property SET prop_value = 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov' WHERE prop_key = 'instance.url';"
-  442  tar xzvf elastic-agent-8.19.5-linux-x86_64.tar.gz
-  554  ls -la /app/bitbucket/shared/
-  555  sudo ls -la /app/bitbucket/shared/
-  558  sudo du -sh /app/bitbucket/shared/data /app/bitbucket/shared/config /app/bitbucket/shared/keys /app/bitbucket/shared/bitbucket.properties /app/bitbucket/shared/secrets-config.yaml
-  559  sudo find /app/bitbucket/shared/data -maxdepth 2
-  560  sudo find /app/bitbucket/shared/config -maxdepth 2
-  593  docker exec dev-postgres psql -U "$(docker inspect dev-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' | grep POSTGRES_USER | cut -d= -f2)" -c '\du'
-  594  docker exec dev-postgres psql -U "$(docker inspect dev-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' | grep POSTGRES_USER | cut -d= -f2)" -l
-  619  ps aux | grep -E 'tar|aws s3 cp' | grep -v grep
-  727  ps aux | grep -E 'aws s3 cp|gzip' | grep -v grep
-  757  aws s3 cp s3://cnxs-dev-atlassian-backups/apps/2026-09-19/artifactory_filestore_20260919_021502.tar.gz -   | gzip -t && echo "GZIP OK — archive is intact" || echo "GZIP FAILED — archive is truncated/corrupt"
-  972  history | grep -E "s3 cp|pg_restore|psql|tar |/app/bitbucket" | head -60
--bash: the: No such file or directory
-
-
