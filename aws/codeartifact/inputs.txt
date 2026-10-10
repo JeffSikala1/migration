@@ -1,13 +1,14 @@
-df -h /tmp
-docker exec prod-postgres psql -U bitbucketuser -d bitbucket -c "select id, slug, hierarchy_id from repository where slug = 'bamboo-specs';"
+rm -rf /tmp/bbcheck
 
-cd /tmp/bbcheck
-aws s3 cp s3://cnxs-atlassian-backups/apps/2026-10-10/bitbucket_20261010_021501.tar.gz - \
-  | tar -xzf - --wildcards '*/shared/data/repositories/8/*'
 
-D=$(find /tmp/bbcheck -type d -path '*/shared/data/repositories/8' | head -1)
-echo "repo dir: $D"
-git --git-dir="$D" log -1 --format='%h %cI %s' refs/heads/export-2025-08-13
+sudo git -c safe.directory='*' --git-dir=/app/bitbucket/shared/data/repositories/8 \
+  log -1 --format='%h %cI %s' refs/heads/export-2025-08-13
+sudo stat -c 'created: %w | changed: %z | modified: %y | %n' /app/bitbucket/shared/data/repositories/8
 
 
 
+aws s3 ls s3://cnxs-atlassian-backups/manual/
+aws s3 ls s3://cnxs-atlassian-backups/legacy/
+
+
+aws s3 ls s3://cnxs-atlassian-backups/apps/
