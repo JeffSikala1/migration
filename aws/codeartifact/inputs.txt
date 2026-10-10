@@ -1,11 +1,7 @@
-sudo aureport -if /var/log/audit/audit.log.32 --start 11/26/2025 18:00:00 --end 11/27/2025 00:30:00 -l -i
-sudo ausearch -if /var/log/audit/audit.log.32 --start 11/26/2025 18:00:00 --end 11/27/2025 00:30:00 -m USER_CMD -i | grep -E 'auid=|acct=|cmd=' | head -60
+sudo aureport -if /var/log/audit/audit.log.32 --start 11/26/25 18:00:00 --end 11/27/25 00:30:00 -l -i
+
+sudo ausearch -if /var/log/audit/audit.log.32 --start 11/26/25 18:00:00 --end 11/27/25 00:30:00 -m USER_CMD -i | grep -E 'auid=|acct=|cmd=' | head -60
 
 
-sudo sh -c 'ls -l --time-style=long-iso /home/*/.bash_history'
-sudo sh -c 'grep -nE "rsync|cp -a|cp -r|data-root|daemon\.json" /home/*/.bash_history | head -40'
-sudo sh -c 'ls -lhS /app/docker/containers/*/*-json.log | head -8'
-sudo sh -c 'du -xsh /app/docker/volumes/* | sort -h | tail'
-for c in $(docker ps -q); do docker inspect --format '{{.Name}} {{.HostConfig.LogConfig.Config}}' $c; done
 
-
+sudo awk -F'[(:.]' '/^type=/ {t=$3; if (t>=1764180000 && t<=1764201600) print}' /var/log/audit/audit.log.32 | grep -E 'cp|rsync|mv|docker|systemctl' | head -60
