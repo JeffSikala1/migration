@@ -1,87 +1,131 @@
-[sikaj01@ip-10-56-112-34 ~]$ for a in bitbucket bamboo; do echo "== $a"
-  aws s3 ls s3://cnxs-atlassian-backups/apps/ --recursive --human-readable | grep "${a}_" \
-  | awk '{g=($4=="MiB")?$3/1024:$3; if (NR==1 || g>p+0.5 || g<p-0.5) print $1, $3, $4; p=g}'
-done
-== bitbucket
-2026-01-06 6.9 GiB
-2026-08-21 9.0 GiB
-== bamboo
-2026-01-06 399.9 MiB
-2026-08-21 13.9 GiB
-[sikaj01@ip-10-56-112-34 ~]$ docker info --format '{{.DockerRootDir}}'
-/app/docker
-[sikaj01@ip-10-56-112-34 ~]$ docker inspect cnxs-mgmt-bitbucket --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
-/app/docker/volumes/optbitbucketVolume94/_data -> /opt/atlassian
-/app/docker/volumes/bitbucketVolume/_data -> /var/atlassian/application-data/bitbucket
+[sikaj01@ip-10-56-112-34 ~]$ ls -l --time-style=long-iso /app/bamboobackup/atlassian-backups/bin/
+ls: cannot access '/app/bamboobackup/atlassian-backups/bin/': Permission denied
+[sikaj01@ip-10-56-112-34 ~]$ sudo ls -l --time-style=long-iso /app/bamboobackup/atlassian-backups/bin/
+total 48
+-rwxr-x---. 1 root root 9495 2026-08-28 16:33 nightly_backup.sh
+-rwxr-x---. 1 root root 9352 2026-08-28 16:33 nightly_backup.sh.bak.20260828_163302
+-rwxr-x---. 1 root root 9352 2026-08-28 16:35 nightly_backup.sh.bak.20260828_163555
+-rwxr-x---. 1 root root 6509 2026-08-21 19:36 secrets_backup_daily.sh
+-rwxr-x---. 1 root root  409 2026-08-21 19:35 weekly_backup.sh
+[sikaj01@ip-10-56-112-34 ~]$ sudo sed -n '1,60p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+#!/usr/bin/env bash
+set -euo pipefail
 
-[sikaj01@ip-10-56-112-34 ~]$ sudo ls -ld /var/lib/docker/volumes/bitbucketVolume /app/docker/volumes/bitbucketVolume 2>&1
-drwx-----x. 3 root root 19 Nov 25  2025 /app/docker/volumes/bitbucketVolume
-drwx-----x. 5 root root 95 Mar 25  2026 /var/lib/docker/volumes/bitbucketVolume
-[sikaj01@ip-10-56-112-34 ~]$ sudo git -c safe.directory='*' --git-dir=/var/lib/docker/volumes/bitbucketVolume/_data/shared/data/repositories/8 \
-  log -1 --format='%h %cI %s' refs/heads/export-2025-08-13 2>&1
-59b52c5 2025-08-13T21:03:10-05:00 added in all the build specs that were previously missed
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 cp s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/volumes.inspect.json -
-[
-    {
-        "CreatedAt": "2025-11-26T20:14:23Z",
-        "Driver": "local",
-        "Labels": null,
-        "Mountpoint": "/app/docker/volumes/bitbucketVolume/_data",
-        "Name": "bitbucketVolume",
-        "Options": null,
-        "Scope": "local"
-    },
-    {
-        "CreatedAt": "2025-11-26T20:15:06Z",
-        "Driver": "local",
-        "Labels": null,
-        "Mountpoint": "/app/docker/volumes/optbitbucketVolume/_data",
-        "Name": "optbitbucketVolume",
-        "Options": null,
-        "Scope": "local"
-    },
-    {
-        "CreatedAt": "2025-11-26T20:15:12Z",
-        "Driver": "local",
-        "Labels": null,
-        "Mountpoint": "/app/docker/volumes/pgdataVolume16/_data",
-        "Name": "pgdataVolume16",
-        "Options": null,
-        "Scope": "local"
-    }
-]
-[sikaj01@ip-10-56-112-34 ~]$ sudo crontab -l | grep -i backup
-15 2 * * * /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-0 3 * * 0 /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
-# Daily Secrets Manager backup (encrypted to S3)
-55 1 * * * /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
-0 4 * * * find /app/bamboobackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -nE '/var/lib/docker|/app/docker|Volume'/app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+# ===== Config =====
+BUCKET="s3://cnxs-atlassian-backups"
+DATE="$(date +%F)"
+TS="$(date +%Y%m%d_%H%M%S)"
+BIN_BASE="/app/bamboobackup/atlassian-backups"     # script + logs stay here (small)
+STAGE_ROOT="${STAGE_ROOT:-/backup-staging}"        # actual tar/dump staging - NOT on /app
+STAGE="${STAGE_ROOT}/${DATE}/${TS}"
+LOGDIR="${BIN_BASE}/logs"
+LOG="${LOGDIR}/nightly-${DATE}.log"
+HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
+AWS_REGION="${AWS_REGION:-us-east-1}"
 
-^C
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -nE '/var/lib/docker|/app/docker|Volume' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-22:  ["bitbucketVolume"]="shared/keys"
-23:  ["optbitbucketVolume"]=""
-24:  ["bambooVolume"]="shared/configuration"
-25:  ["optbambooVolume"]=""
-26:  ["nginxVolume"]=""
-158:BITBUCKET_VOL_PATH="$(resolve_volume_path bitbucketVolume)"
-159:OPTBITBUCKET_VOL_PATH="$(resolve_volume_path optbitbucketVolume)"
-160:BAMBOO_VOL_PATH="$(resolve_volume_path bambooVolume)"
-161:OPTBAMBOO_VOL_PATH="$(resolve_volume_path optbambooVolume)"
-163:echo "  - bitbucketVolume    -> ${BITBUCKET_VOL_PATH}"
-164:echo "  - optbitbucketVolume -> ${OPTBITBUCKET_VOL_PATH}"
-165:echo "  - bambooVolume       -> ${BAMBOO_VOL_PATH}"
-166:echo "  - optbambooVolume    -> ${OPTBAMBOO_VOL_PATH}"
-176:sanity_check_tar "$STAGE/apps/bitbucket_${TS}.tar.gz" "bitbucketVolume" "${VOLUME_SANITY_PATH[bitbucketVolume]}"
-177:sanity_check_tar "$STAGE/apps/bamboo_${TS}.tar.gz"    "bambooVolume"    "${VOLUME_SANITY_PATH[bambooVolume]}"
-183:NGINX_VOL_PATH="$(resolve_volume_path nginxVolume)"
-184:echo "  - nginxVolume -> ${NGINX_VOL_PATH}"
-206:    "bitbucketVolume": "${BITBUCKET_VOL_PATH}",
-207:    "optbitbucketVolume": "${OPTBITBUCKET_VOL_PATH}",
-208:    "bambooVolume": "${BAMBOO_VOL_PATH}",
-209:    "optbambooVolume": "${OPTBAMBOO_VOL_PATH}",
-210:    "nginxVolume": "${NGINX_VOL_PATH}"
-248:  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
-260:    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-atlassian-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=atlassian-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
-[sikaj01@ip-10-56-112-34 ~]$ 
+PG_CONTAINER="${PG_CONTAINER:-prod-postgres}"
+DB_LIST=(${DB_LIST:-bitbucket bamboo})   # space-separated, override if needed
+
+# Named volumes this script backs up, and which subdir minimally proves the
+# tar actually captured live content (used by the post-backup sanity check).
+declare -A VOLUME_SANITY_PATH=(
+  ["bitbucketVolume"]="shared/keys"
+  ["optbitbucketVolume"]=""
+  ["bambooVolume"]="shared/configuration"
+  ["optbambooVolume"]=""
+  ["nginxVolume"]=""
+)
+
+mkdir -p "$STAGE" "$LOGDIR"
+exec > >(tee -a "$LOG") 2>&1
+
+echo "==== Nightly backup start: ${TS} host=${HOSTNAME} ===="
+echo "Staging to: ${STAGE} (filesystem: $(df -h --output=target "$STAGE_ROOT" | tail -1))"
+
+# ===== Helpers =====
+need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: missing required command: $1"; exit 2; }; }
+need aws
+need docker
+need tar
+
+have_jq=0
+if command -v jq >/dev/null 2>&1; then
+  have_jq=1
+else
+  echo "WARN: jq not found; metadata.json will be minimal."
+fi
+
+s3_put_dir() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest" --recursive
+}
+
+s3_put_file() {
+  local src="$1" dest="$2"
+  aws s3 cp "$src" "$dest"
+}
+
+# Resolve a named Docker volume
+resolve_volume_path() {
+  local vol="$1"
+[sikaj01@ip-10-56-112-34 ~]$ sudo grep -n -A15 -E 'resolve_volume_path\(\)|sanity_check_tar\(\)' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+59:resolve_volume_path() {
+60-  local vol="$1"
+61-  local path
+62-  if ! path="$(docker volume inspect "$vol" --format '{{.Mountpoint}}' 2>/dev/null)"; then
+63-    echo "ERROR: docker volume '$vol' not found — cannot resolve mountpoint. Aborting."
+64-    exit 4
+65-  fi
+66-  if [[ -z "$path" || ! -d "$path" ]]; then
+67-    echo "ERROR: resolved mountpoint for volume '$vol' is empty or does not exist: '$path'. Aborting."
+68-    exit 4
+69-  fi
+70-  echo "$path"
+71-}
+72-
+73-# Post-backup sanity check
+74:sanity_check_tar() {
+75-  local tarfile="$1" vol="$2" expect_subpath="$3"
+76-  local size_bytes
+77-  size_bytes="$(stat -c '%s' "$tarfile" 2>/dev/null || echo 0)"
+78-  echo "  - sanity: ${tarfile} = ${size_bytes} bytes"
+79-
+80-  if [[ "$size_bytes" -lt 10240 ]]; then
+81-    echo "  WARN: ${tarfile} is suspiciously small (<10KB) for volume '${vol}' — likely capturing an empty or stale path."
+82-  fi
+83-
+84-  if [[ -n "$expect_subpath" ]]; then
+85-    local match_count
+86-    match_count="$(tar -tzf "$tarfile" 2>/dev/null | grep -c "${expect_subpath}" || true)"
+87-    if [[ "${match_count:-0}" -eq 0 ]]; then
+88-      echo "  WARN: ${tarfile} does NOT contain expected path '*${expect_subpath}*' for volume '${vol}'. This backup may be incomplete — investigate before relying on it for restore."
+89-    else
+[sikaj01@ip-10-56-112-34 ~]$ docker volume ls
+DRIVER    VOLUME NAME
+local     bambooVolume
+local     bitbucketVolume
+local     nginxVolume
+local     optbambooVolume
+local     optbitbucketVolume
+local     optbitbucketVolume94
+local     pgdataVolume16
+[sikaj01@ip-10-56-112-34 ~]$ for c in $(docker ps --format '{{.Names}}'); do echo "== $c"; docker inspect "$c" --format '{{range .Mounts}}{{.Name}} -> {{.Source}}{{"\n"}}{{end}}'; done
+== prod-bamboo
+bambooVolume -> /app/docker/volumes/bambooVolume/_data
+
+== cnxs-mgmt-bitbucket
+optbitbucketVolume94 -> /app/docker/volumes/optbitbucketVolume94/_data
+bitbucketVolume -> /app/docker/volumes/bitbucketVolume/_data
+
+== prod-postgres
+pgdataVolume16 -> /app/docker/volumes/pgdataVolume16/_data
+
+== nginx
+nginxVolume -> /app/docker/volumes/nginxVolume/_data
+
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'length(Snapshots)'
+767
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'sort_by(Snapshots,&StartTime)[0].StartTime' 
+"2026-01-06T15:11:29.645000+00:00"
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'sort_by(Snapshots,&StartTime)[-1].StartTime'
+"2026-10-10T02:47:10.402000+00:00"
