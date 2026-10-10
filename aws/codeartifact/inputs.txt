@@ -1,70 +1,10 @@
-git remote -v
-git for-each-ref --sort=-committerdate --count=5 --format='%(committerdate:short) %(refname:short)'
-diff <(git ls-remote --heads --tags ssh://git@bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git | sort) \
-     <(git ls-remote --heads --tags ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git | sort) && echo IDENTICAL
-
-
-
-
-history | grep -E "s3 cp|pg_restore|psql|tar |/app/bitbucket" | head -60
-docker exec dev-postgres psql -U <the user that worked earlier> -d bitbucket \
-  -c "select max(created_timestamp), max(updated_timestamp) from sta_pull_request;"
-
-
-
+git rev-list --count 59b52c5..74c9ef2
+git log --reverse --format='%cI %an %s' 59b52c5..74c9ef2 | head -5
 
 
 aws s3 ls s3://cnxs-atlassian-backups/apps/ | tail -5
-aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-20/ --human-readable
 aws s3 ls s3://cnxs-atlassian-backups/apps/2026-10-10/ --human-readable
+aws s3 ls s3://cnxs-atlassian-backups/apps/ --recursive --human-readable | grep -i bitbucket | tail -15
 aws s3 ls s3://cnxs-atlassian-backups/manual/
 aws s3 ls s3://cnxs-atlassian-backups/legacy/
-aws s3 ls s3://cnxs-atlassian-backups/postgres/ --recursive | grep 'bitbucket_' | awk '{print $3, $4}' | sort -n | head -5
-sudo crontab -l
 
-
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/apps/ | tail -5
-aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-20/ --human-readable
-aws s3 ls s3://cnxs-atlassian-backups/apps/2026-10-10/ --human-readable
-aws s3 ls s3://cnxs-atlassian-backups/manual/
-aws s3 ls s3://cnxs-atlassian-backups/legacy/
-aws s3 ls s3://cnxs-atlassian-backups/postgres/ --recursive | grep 'bitbucket_' | awk '{print $3, $4}' | sort -n | head -5
-sudo crontab -l
-                           PRE 2026-10-07/
-                           PRE 2026-10-08/
-                           PRE 2026-10-09/
-                           PRE 2026-10-10/
-2026-05-04 21:07:24         65 test_upload.txt
-2026-08-20 02:21:07  399.9 MiB bamboo_20260820_021501.tar.gz
-2026-08-20 02:21:07    6.9 GiB bitbucket_20260820_021501.tar.gz
-2026-10-10 02:43:58   14.0 GiB bamboo_20261010_021501.tar.gz
-2026-10-10 02:43:58    8.8 GiB bitbucket_20261010_021501.tar.gz
-                           PRE bitbucket-upgrade-20260311_201200/
-                           PRE 2026-05-01/
-2026-05-05 14:49:28          0 
-7547641 postgres/2026-01-06/bitbucket_20260106_020027.dump
-7547651 postgres/2026-01-06/bitbucket_20260106_021501.dump
-7547704 postgres/2026-01-06/bitbucket_20260106_144109.dump
-7547928 postgres/2026-01-06/bitbucket_20260106_150158.dump
-7549817 postgres/2026-01-07/bitbucket_20260107_021502.dump
-#Ansible: CIS 1.3.2 - Run aide filesystem integrity check
-0 5 * * * /usr/sbin/aide --check
-
-#0 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/aws_script.sh 2>&1
-#15 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/cnxs_script.sh 2>&1
-#30 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/devops_script.sh 2>&1
-#45 * * * * su ec2-user /home/ec2-user/bitbucket_mirror_data/docker_script.sh 2>&1
-
-
-# Nightly at 02:15
-15 2 * * * /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-
-# Weekly Sunday at 03:00
-0 3 * * 0 /app/bamboobackup/atlassian-backups/bin/weekly_backup.sh
-
-# Daily Secrets Manager backup (encrypted to S3)
-55 1 * * * /app/bamboobackup/atlassian-backups/bin/secrets_backup_daily.sh
-
-0 4 * * * find /app/bamboobackup/atlassian-backups/staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
-
-[sikaj01@ip-10-56-112-34 ~]$ 
