@@ -1,14 +1,11 @@
-sudo du -xsh /app/docker/containers /app/docker/volumes/* /app/restore-staging /app/build-artifacts 2>/dev/null | sort -h | tail -15
+sudo aureport -if /var/log/audit/audit.log.32 --start 11/26/2025 18:00:00 --end 11/27/2025 00:30:00 -l -i
+sudo ausearch -if /var/log/audit/audit.log.32 --start 11/26/2025 18:00:00 --end 11/27/2025 00:30:00 -m USER_CMD -i | grep -E 'auid=|acct=|cmd=' | head -60
 
 
-sudo ls -l --time-style=long-iso /root/.bash_history /home/*/.bash_history 2>/dev/null
-sudo grep -nE 'rsync|cp -a|cp -r|data-root|daemon\.json|/app/docker|var/lib/docker' /root/.bash_history /home/*/.bash_history 2>/dev/null | head -40
-sudo grep -l 'daemon.json' /root/.viminfo /home/*/.viminfo 2>/dev/null
+sudo sh -c 'ls -l --time-style=long-iso /home/*/.bash_history'
+sudo sh -c 'grep -nE "rsync|cp -a|cp -r|data-root|daemon\.json" /home/*/.bash_history | head -40'
+sudo sh -c 'ls -lhS /app/docker/containers/*/*-json.log | head -8'
+sudo sh -c 'du -xsh /app/docker/volumes/* | sort -h | tail'
+for c in $(docker ps -q); do docker inspect --format '{{.Name}} {{.HostConfig.LogConfig.Config}}' $c; done
 
 
-sudo ls -l --time-style=long-iso /var/log/secure* /var/log/audit/ /var/log/messages* /var/log/wtmp* 2>/dev/null
-sudo last -f /var/log/wtmp -F 2>/dev/null | tail -5
-sudo find /root /home /etc /var/log -xdev -newermt '2025-11-26 19:00' ! -newermt '2025-11-27 00:00' -type f 2>/dev/null | head -30
-
-
-aws ssm get-document --name SSM-SessionManagerRunShell --query Content --output text
