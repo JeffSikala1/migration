@@ -1,5 +1,32 @@
-I think I have a clear understanding on what happen with the bitbucket. About a month and a half ago we moved the volume months from /var/lib/docker to /app. The live data moved however the backups weren't updated until some weeks ago around the time I was working on dev bitbucket restore, when I caught the mismatch in the script. The issue is the backup I used was using the old /var/lib/docker that had stale volume from the initial export from DISC from last year. That explains why we saw really old code in dev.
-The more recent backups have the live data in prod but there is a gap between we moved from var/lib/docker to /app.
-
-
-Draft: I can do a one time mirror from prod to dev on all repos to ensure all is the same to resolve this. Or we import via the spec scanner only on bamboo specs. 
+[sikaj01@ip-10-56-112-34 ~]$ sudo cat /etc/fstab
+#
+UUID=e1f0d2ec-93af-4d46-8039-6fd7a938a4de     /           xfs    defaults,noatime  1   1
+UUID=E147-FCAD        /boot/efi       vfat    defaults,noatime,uid=0,gid=0,umask=0077,shortname=winnt,x-systemd.automount 0 2
+tmpfs /dev/shm tmpfs defaults,nodev,noexec,nosuid 0 0
+# For docker volumes at /app/docker/volumes
+/dev/nvme1n1p1 /app xfs defaults 0 2
+[sikaj01@ip-10-56-112-34 ~]$ sudo stat -c '%n  born: %w  modified: %y' /app /app/docker /app/docker/volumes /app/docker/volumes/bitbucketVolume /app/docker/volumes/pgdataVolume16 /app/bamboobackup /app/restore-staging /var/lib/docker/volumes/bitbucketVolume
+/app  born: 2022-11-12 01:05:53.956484000 +0000  modified: 2026-08-25 11:49:14.040462808 +0000
+/app/docker  born: 2025-11-26 19:59:42.783774417 +0000  modified: 2026-09-22 13:19:54.334415885 +0000
+/app/docker/volumes  born: 2025-11-26 20:13:31.316890914 +0000  modified: 2026-09-22 13:19:54.384415807 +0000
+/app/docker/volumes/bitbucketVolume  born: 2025-11-26 20:14:23.567087410 +0000  modified: 2025-11-25 19:43:16.300027992 +0000
+/app/docker/volumes/pgdataVolume16  born: 2025-11-26 20:14:23.567087410 +0000  modified: 2025-11-25 19:41:02.739701010 +0000
+/app/bamboobackup  born: 2025-11-26 22:59:23.939795723 +0000  modified: 2026-08-21 19:33:50.400558625 +0000
+/app/restore-staging  born: 2026-08-25 11:49:14.040462808 +0000  modified: 2026-08-25 13:54:07.988576391 +0000
+/var/lib/docker/volumes/bitbucketVolume  born: 2025-11-25 19:43:16.300027992 +0000  modified: 2026-03-25 14:25:08.179220748 +0000
+[sikaj01@ip-10-56-112-34 ~]$ sudo xfs_info /app | grep -o 'crc=[01]'
+crc=1
+[sikaj01@ip-10-56-112-34 ~]$ sudo ls -l --time-style=long-iso /etc/docker/
+total 4
+-rw-r-----. 1 root root 127 2026-05-01 16:24 daemon.json
+[sikaj01@ip-10-56-112-34 ~]$ sudo cat /etc/docker/daemon.json
+{
+  "data-root": "/app/docker",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "5"
+  }
+}
+[sikaj01@ip-10-56-112-34 ~]$ sudo stat -c '%n  born: %w  modified: %y' /app/docker /app/docker/volumes/bitbucketVolume
+/app/docker  born: 2025-11-26 19:59:42.783774417 +0000  modified: 2026-09-22 13:19:54.334415885 +0000
