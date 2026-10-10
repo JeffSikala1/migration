@@ -1,248 +1,104 @@
-[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'Snapshots[].[VolumeId,State]' --output text | sort | uniq -c
-    271 vol-04e3115aea57b5c70   completed
-    225 vol-05ebadfa92a493533   completed
-    271 vol-08f7bca75e08f0d3f   completed
-[sikaj01@ip-10-56-112-34 ~]$ lsblk -o NAME,SIZE,SERIAL,MOUNTPOINT
-NAME           SIZE SERIAL               MOUNTPOINT
-nvme1n1        300G vol04e3115aea57b5c70 
-├─nvme1n1p1    300G                      /app
-└─nvme1n1p128    1M                      
-nvme0n1        150G vol08f7bca75e08f0d3f 
-├─nvme0n1p1    150G                      /
-├─nvme0n1p127    1M                      
-└─nvme0n1p128   10M                      /boot/efi
-[sikaj01@ip-10-56-112-34 ~]$ df -hT / /app /backup-staging /var/lib/docker
-Filesystem     Type  Size  Used Avail Use% Mounted on
-/dev/nvme0n1p1 xfs   150G   60G   91G  40% /
-/dev/nvme1n1p1 xfs   300G  158G  143G  53% /app
-/dev/nvme0n1p1 xfs   150G   60G   91G  40% /
-/dev/nvme0n1p1 xfs   150G   60G   91G  40% /
-[sikaj01@ip-10-56-112-34 ~]$ sudo ls -l /app/bamboobackup/atlassian-backups/logs/ | grep -E 'nightly-2026-08-(19|20|21|22)'
--rw-r-----. 1 root root 1632433 Aug 21 20:59 nightly-2026-08-21.log
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-20.log | head -20
-grep: /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-20.log: No such file or directory
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-20.log | head -20
-grep: /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-20.log: No such file or directory
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/atlassian-backups/logs/*
-grep: /app/bamboobackup/atlassian-backups/logs/*: No such file or directory
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/
-grep: /app/bamboobackup/: Is a directory
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/*
-grep: /app/bamboobackup/*: No such file or directory
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/^C
-[sikaj01@ip-10-56-112-34 ~]$ ls -alh /app/bamboobackup/
-ls: cannot open directory '/app/bamboobackup/': Permission denied
-[sikaj01@ip-10-56-112-34 ~]$ sudo !!
-sudo ls -alh /app/bamboobackup/
-total 4.0K
-drwxr-x---.  3 root root   31 Aug 21 19:33 .
-dr-xr-xr-x. 24 root root 4.0K Aug 25 11:49 ..
-drwxr-x---.  5 root root   44 Aug 22 01:55 atlassian-backups
-[sikaj01@ip-10-56-112-34 ~]$ sudo ls -alh /app/bamboobackup/atlassian-backups
-total 12K
-drwxr-x---. 5 root root   44 Aug 22 01:55 .
-drwxr-x---. 3 root root   31 Aug 21 19:33 ..
-drwxr-x---. 2 root root  176 Aug 28 16:41 bin
-drwxr-x---. 2 root root 8.0K Oct 10 02:15 logs
-drwxr-xr-x. 3 root root   21 Aug 22 01:55 staging
-[sikaj01@ip-10-56-112-34 ~]$ sudo ls -alh /app/bamboobackup/atlassian-backups/logs
-total 74M
-drwxr-x---. 2 root root 8.0K Oct 10 02:15 .
-drwxr-x---. 5 root root   44 Aug 22 01:55 ..
--rw-r-----. 1 root root 1.6M Aug 21 20:59 nightly-2026-08-21.log
--rw-r-----. 1 root root  234 Aug 24 16:41 nightly-2026-08-24.log
--rw-r--r--. 1 root root 1.6M Aug 26 02:41 nightly-2026-08-26.log
--rw-r--r--. 1 root root 1.6M Aug 27 02:40 nightly-2026-08-27.log
--rw-r--r--. 1 root root 1.6M Aug 28 02:41 nightly-2026-08-28.log
--rw-r--r--. 1 root root 1.6M Aug 29 02:45 nightly-2026-08-29.log
--rw-r--r--. 1 root root 1.6M Aug 30 02:46 nightly-2026-08-30.log
--rw-r--r--. 1 root root 1.6M Aug 31 02:46 nightly-2026-08-31.log
--rw-r--r--. 1 root root 1.6M Sep  1 02:45 nightly-2026-09-01.log
--rw-r--r--. 1 root root 1.6M Sep  2 02:45 nightly-2026-09-02.log
--rw-r--r--. 1 root root 1.6M Sep  3 02:48 nightly-2026-09-03.log
--rw-r--r--. 1 root root 1.6M Sep  4 02:45 nightly-2026-09-04.log
--rw-r--r--. 1 root root 1.6M Sep  5 02:49 nightly-2026-09-05.log
--rw-r--r--. 1 root root 1.6M Sep  6 02:45 nightly-2026-09-06.log
--rw-r--r--. 1 root root 1.6M Sep  7 02:46 nightly-2026-09-07.log
--rw-r--r--. 1 root root 1.6M Sep  8 02:45 nightly-2026-09-08.log
--rw-r--r--. 1 root root 1.6M Sep  9 02:46 nightly-2026-09-09.log
--rw-r--r--. 1 root root 1.6M Sep 10 02:45 nightly-2026-09-10.log
--rw-r--r--. 1 root root 1.6M Sep 11 02:47 nightly-2026-09-11.log
--rw-r--r--. 1 root root 1.6M Sep 12 02:44 nightly-2026-09-12.log
--rw-r--r--. 1 root root 1.6M Sep 13 02:46 nightly-2026-09-13.log
--rw-r--r--. 1 root root 1.6M Sep 14 02:46 nightly-2026-09-14.log
--rw-r--r--. 1 root root 1.6M Sep 15 02:51 nightly-2026-09-15.log
--rw-r--r--. 1 root root 1.6M Sep 16 02:45 nightly-2026-09-16.log
--rw-r--r--. 1 root root 1.6M Sep 17 02:46 nightly-2026-09-17.log
--rw-r--r--. 1 root root 1.6M Sep 18 02:44 nightly-2026-09-18.log
--rw-r--r--. 1 root root 1.7M Sep 19 02:57 nightly-2026-09-19.log
--rw-r--r--. 1 root root 1.6M Sep 20 02:44 nightly-2026-09-20.log
--rw-r--r--. 1 root root 1.6M Sep 21 02:47 nightly-2026-09-21.log
--rw-r--r--. 1 root root 1.6M Sep 22 02:46 nightly-2026-09-22.log
--rw-r--r--. 1 root root 1.6M Sep 23 02:45 nightly-2026-09-23.log
--rw-r--r--. 1 root root 1.6M Sep 24 02:44 nightly-2026-09-24.log
--rw-r--r--. 1 root root 1.6M Sep 25 02:46 nightly-2026-09-25.log
--rw-r--r--. 1 root root 1.6M Sep 26 02:46 nightly-2026-09-26.log
--rw-r--r--. 1 root root 1.6M Sep 27 02:47 nightly-2026-09-27.log
--rw-r--r--. 1 root root 1.6M Sep 28 02:46 nightly-2026-09-28.log
--rw-r--r--. 1 root root 1.6M Sep 29 02:47 nightly-2026-09-29.log
--rw-r--r--. 1 root root 1.6M Sep 30 02:45 nightly-2026-09-30.log
--rw-r--r--. 1 root root 1.6M Oct  1 02:46 nightly-2026-10-01.log
--rw-r--r--. 1 root root 1.6M Oct  2 02:46 nightly-2026-10-02.log
--rw-r--r--. 1 root root 1.6M Oct  3 02:46 nightly-2026-10-03.log
--rw-r--r--. 1 root root 1.6M Oct  4 02:45 nightly-2026-10-04.log
--rw-r--r--. 1 root root 1.6M Oct  5 02:52 nightly-2026-10-05.log
--rw-r--r--. 1 root root 1.6M Oct  6 02:45 nightly-2026-10-06.log
--rw-r--r--. 1 root root 1.6M Oct  7 02:45 nightly-2026-10-07.log
--rw-r--r--. 1 root root 1.6M Oct  8 02:45 nightly-2026-10-08.log
--rw-r--r--. 1 root root 1.6M Oct  9 02:51 nightly-2026-10-09.log
--rw-r--r--. 1 root root 1.6M Oct 10 02:47 nightly-2026-10-10.log
--rw-r--r--. 1 root root 1.8K Aug 22 01:55 secrets-backup-2026-08-22.log
--rw-r--r--. 1 root root 1.8K Aug 23 01:55 secrets-backup-2026-08-23.log
--rw-r--r--. 1 root root 1.8K Aug 24 01:55 secrets-backup-2026-08-24.log
--rw-r--r--. 1 root root 1.8K Aug 25 01:55 secrets-backup-2026-08-25.log
--rw-r--r--. 1 root root 1.8K Aug 26 01:55 secrets-backup-2026-08-26.log
--rw-r--r--. 1 root root 1.8K Aug 27 01:55 secrets-backup-2026-08-27.log
--rw-r--r--. 1 root root 1.8K Aug 28 01:55 secrets-backup-2026-08-28.log
--rw-r--r--. 1 root root 1.8K Aug 29 01:55 secrets-backup-2026-08-29.log
--rw-r--r--. 1 root root 1.8K Aug 30 01:55 secrets-backup-2026-08-30.log
--rw-r--r--. 1 root root 1.8K Aug 31 01:55 secrets-backup-2026-08-31.log
--rw-r--r--. 1 root root 1.8K Sep  1 01:55 secrets-backup-2026-09-01.log
--rw-r--r--. 1 root root 1.8K Sep  2 01:55 secrets-backup-2026-09-02.log
--rw-r--r--. 1 root root 1.8K Sep  3 01:55 secrets-backup-2026-09-03.log
--rw-r--r--. 1 root root 1.8K Sep  4 01:55 secrets-backup-2026-09-04.log
--rw-r--r--. 1 root root 1.8K Sep  5 01:55 secrets-backup-2026-09-05.log
--rw-r--r--. 1 root root 1.8K Sep  6 01:55 secrets-backup-2026-09-06.log
--rw-r--r--. 1 root root 1.8K Sep  7 01:55 secrets-backup-2026-09-07.log
--rw-r--r--. 1 root root 1.8K Sep  8 01:55 secrets-backup-2026-09-08.log
--rw-r--r--. 1 root root 1.8K Sep  9 01:55 secrets-backup-2026-09-09.log
--rw-r--r--. 1 root root 1.8K Sep 10 01:55 secrets-backup-2026-09-10.log
--rw-r--r--. 1 root root 1.8K Sep 11 01:55 secrets-backup-2026-09-11.log
--rw-r--r--. 1 root root 1.8K Sep 12 01:55 secrets-backup-2026-09-12.log
--rw-r--r--. 1 root root 1.8K Sep 13 01:55 secrets-backup-2026-09-13.log
--rw-r--r--. 1 root root 1.8K Sep 14 01:55 secrets-backup-2026-09-14.log
--rw-r--r--. 1 root root 1.8K Sep 15 01:55 secrets-backup-2026-09-15.log
--rw-r--r--. 1 root root 1.8K Sep 16 01:55 secrets-backup-2026-09-16.log
--rw-r--r--. 1 root root 1.8K Sep 17 01:55 secrets-backup-2026-09-17.log
--rw-r--r--. 1 root root 1.8K Sep 18 01:55 secrets-backup-2026-09-18.log
--rw-r--r--. 1 root root 1.8K Sep 19 01:55 secrets-backup-2026-09-19.log
--rw-r--r--. 1 root root 1.8K Sep 20 01:55 secrets-backup-2026-09-20.log
--rw-r--r--. 1 root root 1.8K Sep 21 01:55 secrets-backup-2026-09-21.log
--rw-r--r--. 1 root root 1.8K Sep 22 01:55 secrets-backup-2026-09-22.log
--rw-r--r--. 1 root root 1.8K Sep 23 01:55 secrets-backup-2026-09-23.log
--rw-r--r--. 1 root root 1.8K Sep 24 01:55 secrets-backup-2026-09-24.log
--rw-r--r--. 1 root root 1.8K Sep 25 01:55 secrets-backup-2026-09-25.log
--rw-r--r--. 1 root root 1.8K Sep 26 01:55 secrets-backup-2026-09-26.log
--rw-r--r--. 1 root root 1.8K Sep 27 01:55 secrets-backup-2026-09-27.log
--rw-r--r--. 1 root root 1.8K Sep 28 01:55 secrets-backup-2026-09-28.log
--rw-r--r--. 1 root root 1.8K Sep 29 01:55 secrets-backup-2026-09-29.log
--rw-r--r--. 1 root root 1.8K Sep 30 01:55 secrets-backup-2026-09-30.log
--rw-r--r--. 1 root root 1.8K Oct  1 01:55 secrets-backup-2026-10-01.log
--rw-r--r--. 1 root root 1.8K Oct  2 01:55 secrets-backup-2026-10-02.log
--rw-r--r--. 1 root root 1.8K Oct  3 01:55 secrets-backup-2026-10-03.log
--rw-r--r--. 1 root root 1.8K Oct  4 01:55 secrets-backup-2026-10-04.log
--rw-r--r--. 1 root root 1.8K Oct  5 01:55 secrets-backup-2026-10-05.log
--rw-r--r--. 1 root root 1.8K Oct  6 01:55 secrets-backup-2026-10-06.log
--rw-r--r--. 1 root root 1.8K Oct  7 01:55 secrets-backup-2026-10-07.log
--rw-r--r--. 1 root root 1.8K Oct  8 01:55 secrets-backup-2026-10-08.log
--rw-r--r--. 1 root root 2.8K Oct  9 01:55 secrets-backup-2026-10-09.log
--rw-r--r--. 1 root root 2.8K Oct 10 01:55 secrets-backup-2026-10-10.log
-[sikaj01@ip-10-56-112-34 ~]$ sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-21.log | head -20
-8:  - bitbucketVolume    -> /app/docker/volumes/bitbucketVolume/_data
-9:  - optbitbucketVolume -> /app/docker/volumes/optbitbucketVolume/_data
-10:  - bambooVolume       -> /app/docker/volumes/bambooVolume/_data
-11:  - optbambooVolume    -> /app/docker/volumes/optbambooVolume/_data
-13:tar: app/docker/volumes/bitbucketVolume/_data/tmp/2026_08_11_21_43_14_237/2026_08_21_13_40_40.jfr: file changed as we read it
-27:  - bitbucketVolume    -> /app/docker/volumes/bitbucketVolume/_data
-28:  - optbitbucketVolume -> /app/docker/volumes/optbitbucketVolume/_data
-29:  - bambooVolume       -> /app/docker/volumes/bambooVolume/_data
-30:  - optbambooVolume    -> /app/docker/volumes/optbambooVolume/_data
-37:  - nginxVolume -> /app/docker/volumes/nginxVolume/_data
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-20/
-2026-08-20 02:21:07  419276181 bamboo_20260820_021501.tar.gz
-2026-08-20 02:21:07 7460976440 bitbucket_20260820_021501.tar.gz
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-21/
-2026-08-21 02:21:21  419276181 bamboo_20260821_021502.tar.gz
-2026-08-21 20:56:09 14964130383 bamboo_20260821_203345.tar.gz
-2026-08-21 02:21:21 7460976440 bitbucket_20260821_021502.tar.gz
-2026-08-21 20:56:09 9621244824 bitbucket_20260821_203345.tar.gz
-[sikaj01@ip-10-56-112-34 ~]$ sudo sed -n '150,215p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-  docker exec "$PG_CONTAINER" pg_dump -U postgres -Fc "$DB" \
-    > "$STAGE/postgres/${DB}_${TS}.dump"
+[sikaj01@ip-10-56-112-34 ~]$ for v in vol-04e3115aea57b5c70 vol-05ebadfa92a493533 vol-08f7bca75e08f0d3f; do
+  echo "== $v"
+  aws ec2 describe-snapshots --region us-east-1 --owner-ids self \
+    --filters Name=tag:Purpose,Values=atlassian-backup Name=volume-id,Values=$v \
+    --query '[sort_by(Snapshots,&StartTime)[0].StartTime, sort_by(Snapshots,&StartTime)[-1].StartTime, Snapshots[0].VolumeSize]' --output text
+done
+== vol-04e3115aea57b5c70
+2026-01-06T15:11:32.211000+00:00        2026-10-10T02:47:10.402000+00:00        150
+== vol-05ebadfa92a493533
+2026-01-06T15:11:30.946000+00:00        2026-08-21T20:59:21.033000+00:00        150
+== vol-08f7bca75e08f0d3f
+2026-01-06T15:11:29.645000+00:00        2026-10-10T02:47:08.680000+00:00        150
+[sikaj01@ip-10-56-112-34 ~]$ snapdays=$(aws ec2 describe-snapshots --region us-east-1 --owner-ids self \
+  --filters Name=tag:Purpose,Values=atlassian-backup Name=volume-id,Values=vol-04e3115aea57b5c70 \
+  --query 'Snapshots[].StartTime' --output text | tr '\t' '\n' | cut -c1-10 | sort -u)
+d=2026-01-06; while [[ "$d" < "2026-10-11" ]]; do grep -qx "$d" <<< "$snapdays" || echo "no snapshot: $d"; d=$(date -d "$d + 1 day" +%F); done
+no snapshot: 2026-01-14
+no snapshot: 2026-01-15
+no snapshot: 2026-04-30
+no snapshot: 2026-05-01
+no snapshot: 2026-08-22
+no snapshot: 2026-08-23
+no snapshot: 2026-08-24
+no snapshot: 2026-08-25
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-volumes --region us-east-1 --volume-ids vol-05ebadfa92a493533 --output json
+
+An error occurred (InvalidVolume.NotFound) when calling the DescribeVolumes operation: The volume 'vol-05ebadfa92a493533' does not exist.
+[sikaj01@ip-10-56-112-34 ~]$ sudo sed -n '238,290p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+
+INSTANCE_ID="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/instance-id)"
+
+AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
+  http://169.254.169.254/latest/meta-data/placement/availability-zone)"
+
+REGION="${AZ::-1}"
+
+VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
+  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
+
+declare -A VOL_PURPOSE
+VOL_PURPOSE["vol-08f7bca75e08f0d3f"]="root"
+VOL_PURPOSE["vol-05ebadfa92a493533"]="app"
+VOL_PURPOSE["vol-04e3115aea57b5c70"]="backup"
+
+for VOL in $VOL_IDS; do
+  echo "  - snapshotting volume $VOL"
+  PURPOSE_TAG="${VOL_PURPOSE[$VOL]:-unknown}"
+  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
+    --description "Nightly Atlassian backup ${HOSTNAME} ${TS}" \
+    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-atlassian-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=atlassian-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
+    --query SnapshotId --output text)"
+  echo "    created snapshot: $SNAP_ID"
 done
 
-# ===== 2) Atlassian volumes (tar) =====
-echo "[2/5] Atlassian volume backups..."
-mkdir -p "$STAGE/apps"
+echo "==== Nightly backup completed OK ===="
 
-BITBUCKET_VOL_PATH="$(resolve_volume_path bitbucketVolume)"
-OPTBITBUCKET_VOL_PATH="$(resolve_volume_path optbitbucketVolume)"
-BAMBOO_VOL_PATH="$(resolve_volume_path bambooVolume)"
-OPTBAMBOO_VOL_PATH="$(resolve_volume_path optbambooVolume)"
-
-echo "  - bitbucketVolume    -> ${BITBUCKET_VOL_PATH}"
-echo "  - optbitbucketVolume -> ${OPTBITBUCKET_VOL_PATH}"
-echo "  - bambooVolume       -> ${BAMBOO_VOL_PATH}"
-echo "  - optbambooVolume    -> ${OPTBAMBOO_VOL_PATH}"
-
-preflight_check_space "$BITBUCKET_VOL_PATH" "$OPTBITBUCKET_VOL_PATH" "$BAMBOO_VOL_PATH" "$OPTBAMBOO_VOL_PATH"
-
-tar_tolerant -czf "$STAGE/apps/bitbucket_${TS}.tar.gz" -C / \
-  "${BITBUCKET_VOL_PATH#/}" "${OPTBITBUCKET_VOL_PATH#/}"
-
-tar_tolerant -czf "$STAGE/apps/bamboo_${TS}.tar.gz" -C / \
-  "${BAMBOO_VOL_PATH#/}" "${OPTBAMBOO_VOL_PATH#/}"
-
-sanity_check_tar "$STAGE/apps/bitbucket_${TS}.tar.gz" "bitbucketVolume" "${VOLUME_SANITY_PATH[bitbucketVolume]}"
-sanity_check_tar "$STAGE/apps/bamboo_${TS}.tar.gz"    "bambooVolume"    "${VOLUME_SANITY_PATH[bambooVolume]}"
-
-# ===== 3) NGINX + TLS/certs/config =====
-echo "[3/5] NGINX + TLS backup..."
-mkdir -p "$STAGE/nginx"
-
-NGINX_VOL_PATH="$(resolve_volume_path nginxVolume)"
-echo "  - nginxVolume -> ${NGINX_VOL_PATH}"
-
-tar -czf "$STAGE/nginx/nginx_tls_${TS}.tar.gz" \
-  /etc/nginx \
-  "$NGINX_VOL_PATH" \
-  /etc/ssl \
-  /etc/pki \
-  2>/dev/null || true
-
-# ===== 4) Metadata =====
-echo "[4/5] Metadata..."
-if [[ "$have_jq" -eq 1 ]]; then
-  cat > "$STAGE/metadata.json" <<JSON
-{
-  "timestamp": "${TS}",
-  "date": "${DATE}",
-  "host": "${HOSTNAME}",
-  "region": "${AWS_REGION}",
-  "containers": $(docker ps --format '{{json .}}' | jq -s '.'),
-  "docker_volumes": $(docker volume ls --format '{{.Name}}' | jq -R -s -c 'split("\n")[:-1]'),
-  "docker_root_dir": "$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo unknown)",
-  "resolved_volume_paths": {
-    "bitbucketVolume": "${BITBUCKET_VOL_PATH}",
-    "optbitbucketVolume": "${OPTBITBUCKET_VOL_PATH}",
-    "bambooVolume": "${BAMBOO_VOL_PATH}",
-    "optbambooVolume": "${OPTBAMBOO_VOL_PATH}",
-    "nginxVolume": "${NGINX_VOL_PATH}"
-  }
-}
-JSON
-else
-  cat > "$STAGE/metadata.json" <<JSON
-[sikaj01@ip-10-56-112-34 ~]$ sudo diff /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.20260828_163302 /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-85c85,87
-<     if ! tar -tzf "$tarfile" | grep -q "${expect_subpath}"; then
----
->     local match_count
->     match_count="$(tar -tzf "$tarfile" 2>/dev/null | grep -c "${expect_subpath}" || true)"
->     if [[ "${match_count:-0}" -eq 0 ]]; then
-88c90
-<       echo "  OK: ${tarfile} contains expected path '*${expect_subpath}*'"
----
->       echo "  OK: ${tarfile} contains expected path '*${expect_subpath}*' (${match_count} matches)"
-191a194
-> echo "[4/5] Metadata..."
+echo "Cleaning up local staging..."
+rm -rf "$STAGE"
+[sikaj01@ip-10-56-112-34 ~]$ sudo du -sh /app/docker/volumes/optbitbucketVolume/_data /app/docker/volumes/optbitbucketVolume94/_data /app/docker/volumes/optbambooVolume/_data
+649M    /app/docker/volumes/optbitbucketVolume/_data
+736M    /app/docker/volumes/optbitbucketVolume94/_data
+8.7G    /app/docker/volumes/optbambooVolume/_data
+[sikaj01@ip-10-56-112-34 ~]$ sudo cat /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-24.log
+==== Nightly backup start: 20260824_164118 host=ip-10-56-112-34.ec2.internal ====
+Staging to: /backup-staging/2026-08-24/20260824_164118 (filesystem: /)
+[1/5] Postgres dumps...
+  - dumping globals (roles/grants)
+  - dumping bitbucket
+[sikaj01@ip-10-56-112-34 ~]$ sudo journalctl -u crond --since "2026-08-21 18:00" --until "2026-08-26 04:00" --no-pager | grep -iE 'nightly|backup'
+[sikaj01@ip-10-56-112-34 ~]$ sudo ls -l --time-style=long-iso /var/spool/cron/
+total 4
+-rw-------. 1 root root 828 2026-04-29 19:30 root
+[sikaj01@ip-10-56-112-34 ~]$ sudo find / -xdev -path /var/lib/docker -prune -o \( -name 'nightly_backup*' -o -name 'weekly_backup*' -o -name 'secrets_backup*' \) -print 2>/dev/null
+[sikaj01@ip-10-56-112-34 ~]$ sudo ls -la /app
+total 40
+dr-xr-xr-x. 24 root root  4096 Aug 25 11:49 .
+dr-xr-xr-x. 24 root root 16384 Aug 21 19:24 ..
+drwxr-xr-x.  3 root root    17 Mar  6  2025 app
+drwxr-x---.  2 root root    76 Jul 27 19:34 atlassian-startup
+drwxr-x---.  3 root root    31 Aug 21 19:33 bamboobackup
+lrwxrwxrwx.  1 root root     7 Nov 12  2022 bin -> usr/bin
+dr-xr-xr-x.  4 root root  4096 Aug 29  2025 boot
+dr-x------.  3 root root   285 Oct 30  2024 build-artifacts
+drwxr-xr-x.  3 root root   136 Nov 12  2022 dev
+drwx--x---. 12 root root   171 Sep 22 13:19 docker
+drwxr-xr-x. 96 root root  8192 Sep 25  2025 etc
+drwxr-xr-x.  5 root root    65 Oct 30  2024 home
+lrwxrwxrwx.  1 root root     7 Nov 12  2022 lib -> usr/lib
+lrwxrwxrwx.  1 root root     9 Nov 12  2022 lib64 -> usr/lib64
+drwxr-xr-x.  2 root root     6 Nov 12  2022 local
+drwxr-xr-x.  2 root root     6 Apr  9  2019 media
+drwxr-xr-x.  3 root root    20 Sep 25  2025 mnt
+drwxr-xr-x. 11 root root   172 Sep 23  2025 opt
+drwxr-xr-x.  2 root root     6 Nov 12  2022 proc
+drwxr-x---.  4 root root    86 Aug 25 13:54 restore-staging
+dr-xr-x---. 11 root root  4096 Sep 25  2025 root
+drwxr-xr-x.  2 root root     6 Nov 12  2022 run
+lrwxrwxrwx.  1 root root     8 Nov 12  2022 sbin -> usr/sbin
+drwxr-xr-x.  2 root root     6 Apr  9  2019 srv
+drwxr-xr-x.  2 root root     6 Nov 12  2022 sys
+drwxrwxrwt.  8 root root   104 Sep 25  2025 tmp
+drwxr-xr-x. 13 root root   155 Nov 12  2022 usr
+drwxr-xr-x. 20 root root   280 Oct 30  2024 var
