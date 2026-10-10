@@ -1,72 +1,3 @@
-[sikaj01@ip-10-56-112-34 ~]$ for v in vol-04e3115aea57b5c70 vol-05ebadfa92a493533 vol-08f7bca75e08f0d3f; do
-  echo "== $v"
-  aws ec2 describe-snapshots --region us-east-1 --owner-ids self \
-    --filters Name=tag:Purpose,Values=atlassian-backup Name=volume-id,Values=$v \
-    --query '[sort_by(Snapshots,&StartTime)[0].StartTime, sort_by(Snapshots,&StartTime)[-1].StartTime, Snapshots[0].VolumeSize]' --output text
-done
-== vol-04e3115aea57b5c70
-2026-01-06T15:11:32.211000+00:00        2026-10-10T02:47:10.402000+00:00        150
-== vol-05ebadfa92a493533
-2026-01-06T15:11:30.946000+00:00        2026-08-21T20:59:21.033000+00:00        150
-== vol-08f7bca75e08f0d3f
-2026-01-06T15:11:29.645000+00:00        2026-10-10T02:47:08.680000+00:00        150
-[sikaj01@ip-10-56-112-34 ~]$ snapdays=$(aws ec2 describe-snapshots --region us-east-1 --owner-ids self \
-  --filters Name=tag:Purpose,Values=atlassian-backup Name=volume-id,Values=vol-04e3115aea57b5c70 \
-  --query 'Snapshots[].StartTime' --output text | tr '\t' '\n' | cut -c1-10 | sort -u)
-d=2026-01-06; while [[ "$d" < "2026-10-11" ]]; do grep -qx "$d" <<< "$snapdays" || echo "no snapshot: $d"; d=$(date -d "$d + 1 day" +%F); done
-no snapshot: 2026-01-14
-no snapshot: 2026-01-15
-no snapshot: 2026-04-30
-no snapshot: 2026-05-01
-no snapshot: 2026-08-22
-no snapshot: 2026-08-23
-no snapshot: 2026-08-24
-no snapshot: 2026-08-25
-[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-volumes --region us-east-1 --volume-ids vol-05ebadfa92a493533 --output json
-
-An error occurred (InvalidVolume.NotFound) when calling the DescribeVolumes operation: The volume 'vol-05ebadfa92a493533' does not exist.
-[sikaj01@ip-10-56-112-34 ~]$ sudo sed -n '238,290p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-
-INSTANCE_ID="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
-  http://169.254.169.254/latest/meta-data/instance-id)"
-
-AZ="$(curl -sH "X-aws-ec2-metadata-token: $TOKEN_IMDS" \
-  http://169.254.169.254/latest/meta-data/placement/availability-zone)"
-
-REGION="${AZ::-1}"
-
-VOL_IDS="$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
-  --query "Reservations[].Instances[].BlockDeviceMappings[].Ebs.VolumeId" --output text)"
-
-declare -A VOL_PURPOSE
-VOL_PURPOSE["vol-08f7bca75e08f0d3f"]="root"
-VOL_PURPOSE["vol-05ebadfa92a493533"]="app"
-VOL_PURPOSE["vol-04e3115aea57b5c70"]="backup"
-
-for VOL in $VOL_IDS; do
-  echo "  - snapshotting volume $VOL"
-  PURPOSE_TAG="${VOL_PURPOSE[$VOL]:-unknown}"
-  SNAP_ID="$(aws ec2 create-snapshot --region "$REGION" --volume-id "$VOL" \
-    --description "Nightly Atlassian backup ${HOSTNAME} ${TS}" \
-    --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=cnxs-atlassian-nightly},{Key=Host,Value=${HOSTNAME}},{Key=Date,Value=${DATE}},{Key=Timestamp,Value=${TS}},{Key=Purpose,Value=atlassian-backup},{Key=VolumePurpose,Value=${PURPOSE_TAG}}]" \
-    --query SnapshotId --output text)"
-  echo "    created snapshot: $SNAP_ID"
-done
-
-echo "==== Nightly backup completed OK ===="
-
-echo "Cleaning up local staging..."
-rm -rf "$STAGE"
-[sikaj01@ip-10-56-112-34 ~]$ sudo du -sh /app/docker/volumes/optbitbucketVolume/_data /app/docker/volumes/optbitbucketVolume94/_data /app/docker/volumes/optbambooVolume/_data
-649M    /app/docker/volumes/optbitbucketVolume/_data
-736M    /app/docker/volumes/optbitbucketVolume94/_data
-8.7G    /app/docker/volumes/optbambooVolume/_data
-[sikaj01@ip-10-56-112-34 ~]$ sudo cat /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-24.log
-==== Nightly backup start: 20260824_164118 host=ip-10-56-112-34.ec2.internal ====
-Staging to: /backup-staging/2026-08-24/20260824_164118 (filesystem: /)
-[1/5] Postgres dumps...
-  - dumping globals (roles/grants)
-  - dumping bitbucket
 [sikaj01@ip-10-56-112-34 ~]$ sudo journalctl -u crond --since "2026-08-21 18:00" --until "2026-08-26 04:00" --no-pager | grep -iE 'nightly|backup'
 [sikaj01@ip-10-56-112-34 ~]$ sudo ls -l --time-style=long-iso /var/spool/cron/
 total 4
@@ -102,3 +33,62 @@ drwxr-xr-x.  2 root root     6 Nov 12  2022 sys
 drwxrwxrwt.  8 root root   104 Sep 25  2025 tmp
 drwxr-xr-x. 13 root root   155 Nov 12  2022 usr
 drwxr-xr-x. 20 root root   280 Oct 30  2024 var
+[sikaj01@ip-10-56-112-34 ~]$ aws ec2 describe-volumes --region us-east-1 --volume-ids vol-04e3115aea57b5c70 vol-08f7bca75e08f0d3f \
+  --query 'Volumes[].[VolumeId,Size,CreateTime,SnapshotId,Attachments[0].Device,Attachments[0].AttachTime]' --output text
+vol-04e3115aea57b5c70   300     2024-11-22T20:52:41.526000+00:00        snap-0d50ad1071099f758  /dev/sdc        2025-09-25T15:13:42+00:00
+vol-08f7bca75e08f0d3f   150     2025-09-25T04:19:16.464000+00:00        snap-07f37f092c903d913  /dev/xvda       2025-09-25T04:30:05+00:00
+[sikaj01@ip-10-56-112-34 ~]$ for v in vol-05ebadfa92a493533 vol-04e3115aea57b5c70; do
+  echo "== $v"
+  aws cloudtrail lookup-events --region us-east-1 --lookup-attributes AttributeKey=ResourceName,AttributeValue=$v \
+    --start-time 2026-08-15T00:00:00Z --end-time 2026-09-05T00:00:00Z \
+    --query 'Events[].[EventTime,EventName,Username]' --output text | sort
+done
+== vol-05ebadfa92a493533
+
+An error occurred (AccessDeniedException) when calling the LookupEvents operation: User: arn:aws:sts::339713019047:assumed-role/mgmt-ssm-role/i-01d7e7fcb80559abb is not authorized to perform: cloudtrail:LookupEvents because no identity-based policy allows the cloudtrail:LookupEvents action
+== vol-04e3115aea57b5c70
+
+An error occurred (AccessDeniedException) when calling the LookupEvents operation: User: arn:aws:sts::339713019047:assumed-role/mgmt-ssm-role/i-01d7e7fcb80559abb is not authorized to perform: cloudtrail:LookupEvents because no identity-based policy allows the cloudtrail:LookupEvents action
+
+
+
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ for v in vol-05ebadfa92a493533 vol-04e3115aea57b5c70; do
+  echo "== $v"
+  aws cloudtrail lookup-events --region us-east-1 --lookup-attributes AttributeKey=ResourceName,AttributeValue=$v \
+    --start-time 2026-08-15T00:00:00Z --end-time 2026-09-05T00:00:00Z \
+    --query 'Events[].[EventTime,EventName,Username]' --output text | sort
+done
+== vol-05ebadfa92a493533
+2026-08-15T02:21:55+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-16T02:21:44+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-17T02:21:56+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-18T02:21:39+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-19T02:22:02+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-20T02:21:44+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-21T02:22:24+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-21T20:59:21+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-25T11:25:42+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-25T11:26:58+00:00       DetachVolume    i-01d7e7fcb80559abb
+2026-08-25T11:28:12+00:00       DetachVolume    jssikala@gsa.gov
+2026-08-25T11:28:50+00:00       DeleteVolume    jssikala@gsa.gov
+== vol-04e3115aea57b5c70
+2026-08-15T02:21:56+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-16T02:21:45+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-17T02:21:58+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-18T02:21:41+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-19T02:22:03+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-20T02:21:45+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-21T02:22:25+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-21T20:59:22+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-24T17:22:53+00:00       ModifyVolume    i-01d7e7fcb80559abb
+2026-08-24T17:41:47+00:00       ModifyVolume    jssikala@gsa.gov
+2026-08-26T02:41:19+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-27T02:40:51+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-28T02:41:53+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-29T02:45:39+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-30T02:46:14+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-08-31T02:46:10+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-09-01T02:45:35+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-09-02T02:45:45+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-09-03T02:48:13+00:00       CreateSnapshot  i-01d7e7fcb80559abb
+2026-09-04T02:45:50+00:00       CreateSnapshot  i-01d7e7fcb80559abb
