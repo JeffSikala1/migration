@@ -1,2 +1,14 @@
-sudo crontab -l | grep -i backup
-sudo grep -nE '/var/lib/docker|/app/docker|Volume' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+ls -l --time-style=long-iso /app/bamboobackup/atlassian-backups/bin/
+sudo sed -n '1,60p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+sudo grep -n -A15 -E 'resolve_volume_path\(\)|sanity_check_tar\(\)' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+
+
+docker volume ls
+for c in $(docker ps --format '{{.Names}}'); do echo "== $c"; docker inspect "$c" --format '{{range .Mounts}}{{.Name}} -> {{.Source}}{{"\n"}}{{end}}'; done
+
+
+aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'length(Snapshots)'
+aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'sort_by(Snapshots,&StartTime)[0].StartTime'
+aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'sort_by(Snapshots,&StartTime)[-1].StartTime'
+
+
