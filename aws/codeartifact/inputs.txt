@@ -1,12 +1,15 @@
-ls -l --time-style=long-iso /app/bamboobackup/atlassian-backups/bin/
-sudo sed -n '1,60p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-sudo grep -n -A15 -E 'resolve_volume_path\(\)|sanity_check_tar\(\)' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+# 1. Which volumes do the snapshots cover, and which disk holds /app?
+aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'Snapshots[].[VolumeId,State]' --output text | sort | uniq -c
+lsblk -o NAME,SIZE,SERIAL,MOUNTPOINT
+df -hT / /app /backup-staging /var/lib/docker
 
+# 2. What did the pre-fix run do? (the log and the S3 listing show the timestamps)
+sudo ls -l /app/bamboobackup/atlassian-backups/logs/ | grep -E 'nightly-2026-08-(19|20|21|22)'
+sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-20.log | head -20
+sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-21.log | head -20
+aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-20/
+aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-21/
 
-docker volume ls
-for c in $(docker ps --format '{{.Names}}'); do echo "== $c"; docker inspect "$c" --format '{{range .Mounts}}{{.Name}} -> {{.Source}}{{"\n"}}{{end}}'; done
-
-
-aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'length(Snapshots)'
-aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'sort_by(Snapshots,&StartTime)[0].StartTime'
-aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'sort_by(Snapshots,&StartTime)[-1].StartTime'
+# 3. How each volume is tarred, and what the Aug 28 edit changed
+sudo sed -n '150,215p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+sudo diff /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.20260828_163302 /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
