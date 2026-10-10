@@ -1,15 +1,27 @@
-# 1. Which volumes do the snapshots cover, and which disk holds /app?
-aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=tag:Purpose,Values=atlassian-backup --query 'Snapshots[].[VolumeId,State]' --output text | sort | uniq -c
-lsblk -o NAME,SIZE,SERIAL,MOUNTPOINT
-df -hT / /app /backup-staging /var/lib/docker
+# A. First/last snapshot per disk, days with no snapshot of the /app disk, and the third disk
+for v in vol-04e3115aea57b5c70 vol-05ebadfa92a493533 vol-08f7bca75e08f0d3f; do
+  echo "== $v"
+  aws ec2 describe-snapshots --region us-east-1 --owner-ids self \
+    --filters Name=tag:Purpose,Values=atlassian-backup Name=volume-id,Values=$v \
+    --query '[sort_by(Snapshots,&StartTime)[0].StartTime, sort_by(Snapshots,&StartTime)[-1].StartTime, Snapshots[0].VolumeSize]' --output text
+done
 
-# 2. What did the pre-fix run do? (the log and the S3 listing show the timestamps)
-sudo ls -l /app/bamboobackup/atlassian-backups/logs/ | grep -E 'nightly-2026-08-(19|20|21|22)'
-sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-20.log | head -20
-sudo grep -nE 'var/lib/docker|app/docker' /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-21.log | head -20
-aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-20/
-aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-21/
+snapdays=$(aws ec2 describe-snapshots --region us-east-1 --owner-ids self \
+  --filters Name=tag:Purpose,Values=atlassian-backup Name=volume-id,Values=vol-04e3115aea57b5c70 \
+  --query 'Snapshots[].StartTime' --output text | tr '\t' '\n' | cut -c1-10 | sort -u)
+d=2026-01-06; while [[ "$d" < "2026-10-11" ]]; do grep -qx "$d" <<< "$snapdays" || echo "no snapshot: $d"; d=$(date -d "$d + 1 day" +%F); done
 
-# 3. How each volume is tarred, and what the Aug 28 edit changed
-sudo sed -n '150,215p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-sudo diff /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh.bak.20260828_163302 /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+aws ec2 describe-volumes --region us-east-1 --volume-ids vol-05ebadfa92a493533 --output json
+
+# B. How the script picks disks to snapshot, and what is in the opt volumes
+sudo sed -n '238,290p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
+sudo du -sh /app/docker/volumes/optbitbucketVolume/_data /app/docker/volumes/optbitbucketVolume94/_data /app/docker/volumes/optbambooVolume/_data
+
+# C. The Aug 22-25 gap
+sudo cat /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-24.log
+sudo journalctl -u crond --since "2026-08-21 18:00" --until "2026-08-26 04:00" --no-pager | grep -iE 'nightly|backup'
+sudo ls -l --time-style=long-iso /var/spool/cron/
+
+# D. Where the old script lived (root disk only, skipping the stale docker tree)
+sudo find / -xdev -path /var/lib/docker -prune -o \( -name 'nightly_backup*' -o -name 'weekly_backup*' -o -name 'secrets_backup*' \) -print 2>/dev/null
+sudo ls -la /app
