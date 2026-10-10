@@ -1,8 +1,14 @@
-sudo cat /etc/fstab
-sudo stat -c '%n  born: %w  modified: %y' /app /app/docker /app/docker/volumes /app/docker/volumes/bitbucketVolume /app/docker/volumes/pgdataVolume16 /app/bamboobackup /app/restore-staging /var/lib/docker/volumes/bitbucketVolume
-sudo xfs_info /app | grep -o 'crc=[01]'
+sudo du -xsh /app/docker/containers /app/docker/volumes/* /app/restore-staging /app/build-artifacts 2>/dev/null | sort -h | tail -15
 
 
-sudo ls -l --time-style=long-iso /etc/docker/
-sudo cat /etc/docker/daemon.json
-sudo stat -c '%n  born: %w  modified: %y' /app/docker /app/docker/volumes/bitbucketVolume
+sudo ls -l --time-style=long-iso /root/.bash_history /home/*/.bash_history 2>/dev/null
+sudo grep -nE 'rsync|cp -a|cp -r|data-root|daemon\.json|/app/docker|var/lib/docker' /root/.bash_history /home/*/.bash_history 2>/dev/null | head -40
+sudo grep -l 'daemon.json' /root/.viminfo /home/*/.viminfo 2>/dev/null
+
+
+sudo ls -l --time-style=long-iso /var/log/secure* /var/log/audit/ /var/log/messages* /var/log/wtmp* 2>/dev/null
+sudo last -f /var/log/wtmp -F 2>/dev/null | tail -5
+sudo find /root /home /etc /var/log -xdev -newermt '2025-11-26 19:00' ! -newermt '2025-11-27 00:00' -type f 2>/dev/null | head -30
+
+
+aws ssm get-document --name SSM-SessionManagerRunShell --query Content --output text
