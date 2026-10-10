@@ -1,27 +1,11 @@
-# A. First/last snapshot per disk, days with no snapshot of the /app disk, and the third disk
-for v in vol-04e3115aea57b5c70 vol-05ebadfa92a493533 vol-08f7bca75e08f0d3f; do
+# when vol-04e3 was created, from which snapshot, and when it was attached
+aws ec2 describe-volumes --region us-east-1 --volume-ids vol-04e3115aea57b5c70 vol-08f7bca75e08f0d3f \
+  --query 'Volumes[].[VolumeId,Size,CreateTime,SnapshotId,Attachments[0].Device,Attachments[0].AttachTime]' --output text
+
+# who detached or deleted the old /app disk, and when
+for v in vol-05ebadfa92a493533 vol-04e3115aea57b5c70; do
   echo "== $v"
-  aws ec2 describe-snapshots --region us-east-1 --owner-ids self \
-    --filters Name=tag:Purpose,Values=atlassian-backup Name=volume-id,Values=$v \
-    --query '[sort_by(Snapshots,&StartTime)[0].StartTime, sort_by(Snapshots,&StartTime)[-1].StartTime, Snapshots[0].VolumeSize]' --output text
+  aws cloudtrail lookup-events --region us-east-1 --lookup-attributes AttributeKey=ResourceName,AttributeValue=$v \
+    --start-time 2026-08-15T00:00:00Z --end-time 2026-09-05T00:00:00Z \
+    --query 'Events[].[EventTime,EventName,Username]' --output text | sort
 done
-
-snapdays=$(aws ec2 describe-snapshots --region us-east-1 --owner-ids self \
-  --filters Name=tag:Purpose,Values=atlassian-backup Name=volume-id,Values=vol-04e3115aea57b5c70 \
-  --query 'Snapshots[].StartTime' --output text | tr '\t' '\n' | cut -c1-10 | sort -u)
-d=2026-01-06; while [[ "$d" < "2026-10-11" ]]; do grep -qx "$d" <<< "$snapdays" || echo "no snapshot: $d"; d=$(date -d "$d + 1 day" +%F); done
-
-aws ec2 describe-volumes --region us-east-1 --volume-ids vol-05ebadfa92a493533 --output json
-
-# B. How the script picks disks to snapshot, and what is in the opt volumes
-sudo sed -n '238,290p' /app/bamboobackup/atlassian-backups/bin/nightly_backup.sh
-sudo du -sh /app/docker/volumes/optbitbucketVolume/_data /app/docker/volumes/optbitbucketVolume94/_data /app/docker/volumes/optbambooVolume/_data
-
-# C. The Aug 22-25 gap
-sudo cat /app/bamboobackup/atlassian-backups/logs/nightly-2026-08-24.log
-sudo journalctl -u crond --since "2026-08-21 18:00" --until "2026-08-26 04:00" --no-pager | grep -iE 'nightly|backup'
-sudo ls -l --time-style=long-iso /var/spool/cron/
-
-# D. Where the old script lived (root disk only, skipping the stale docker tree)
-sudo find / -xdev -path /var/lib/docker -prune -o \( -name 'nightly_backup*' -o -name 'weekly_backup*' -o -name 'secrets_backup*' \) -print 2>/dev/null
-sudo ls -la /app
