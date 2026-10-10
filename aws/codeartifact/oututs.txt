@@ -1,43 +1,17 @@
-[sikaj01@ip-10-56-112-34 ~]$ docker exec prod-postgres psql -U bitbucketuser -d bitbucket -c "select id, slug from repository where slug = 'bamboo-specs';"
- id |     slug     
-----+--------------
-  8 | bamboo-specs
+[sikaj01@ip-10-56-112-34 bbcheck]$ df -h /tmp
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs            16G   12K   16G   1% /tmp
+[sikaj01@ip-10-56-112-34 bbcheck]$ docker exec prod-postgres psql -U bitbucketuser -d bitbucket -c "select id, slug, hierarchy_id from repository where slug = 'bamboo-specs';"
+ id |     slug     |     hierarchy_id     
+----+--------------+----------------------
+  8 | bamboo-specs | a8c5c6165f199d0f5648
 (1 row)
 
-[sikaj01@ip-10-56-112-34 ~]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-10-10/bitbucket_20261010_021501.tar.gz - | tar -tzf - | head -15
-app/docker/volumes/bitbucketVolume/_data/
-app/docker/volumes/bitbucketVolume/_data/.cache/
-app/docker/volumes/bitbucketVolume/_data/.cache/JNA/
-app/docker/volumes/bitbucketVolume/_data/.cache/JNA/temp/
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/1cee3567742ae0c4d6443ffec1ee7ad3.8f3f333480b6f734312b53c79b56b0b3.atlassian-analytics.log
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/bb98b7c06ebbf542b4f4f7a24efc2222.b42f580adf6d41fc851412fc9ac7be6d.atlassian-analytics.log
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/bb98b7c06ebbf542b4f4f7a24efc2222.683ed8f0c4bf2dfdffebd0c18e1af08b.atlassian-analytics.log
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/3936b051316c2020aee4a1975ca9e0d785b1144238072b4ef18b9ff1d8eb2b22.a0bd2d6e13bec5a82bbcd0dda7053ffde208b9bd4bead37a4e9b296eeb1c1202.atlassian-analytics.log
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/3936b051316c2020aee4a1975ca9e0d785b1144238072b4ef18b9ff1d8eb2b22.0d36f9852fec0ee32cc36d8430d3fca1457310068a49508b6db1c8ddc14917a1.atlassian-analytics.log
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/3936b051316c2020aee4a1975ca9e0d785b1144238072b4ef18b9ff1d8eb2b22.a0673a8c5fa0f111c64df4c50f2f3bcf330e761e3eef59bcc951c563d4218754.atlassian-analytics.log
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/3936b051316c2020aee4a1975ca9e0d785b1144238072b4ef18b9ff1d8eb2b22.deebdf6e9e6bffbc5dff53b3c20434a397835d77f48fcc178f158b3bb07b32d3.atlassian-analytics.log
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/3936b051316c2020aee4a1975ca9e0d785b1144238072b4ef18b9ff1d8eb2b22.27907185209c2269c6353d55bf7ff16c102934347711390c6c389f029f3eb232.atlassian-analytics.log
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/bb98b7c06ebbf542b4f4f7a24efc2222.128ff0b44a19e5c0881c402db8576c0d.atlassian-analytics.log
-app/docker/volumes/bitbucketVolume/_data/analytics-logs/3936b051316c2020aee4a1975ca9e0d785b1144238072b4ef18b9ff1d8eb2b22.e3990a0fc4e5e74638b36b72efb6ee8b760bbe70c5df49af46695554369a614b.atlassian-analytics.log
-download failed: s3://cnxs-atlassian-backups/apps/2026-10-10/bitbucket_20261010_021501.tar.gz to - [Errno 32] Broken pipe
-[sikaj01@ip-10-56-112-34 ~]$ mkdir -p /tmp/bbcheck && cd /tmp/bbcheck
+[sikaj01@ip-10-56-112-34 bbcheck]$ cd /tmp/bbcheck
 [sikaj01@ip-10-56-112-34 bbcheck]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-10-10/bitbucket_20261010_021501.tar.gz - \
-  | tar -xzf - --wildcards '*/repositories/<ID>/*'
-^C^Cfatal error: 
-
-
-
-[sikaj01@ip-10-56-112-34 bbcheck]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-10-10/bitbucket_20261010_021501.tar.gz - \
-  | tar -xzf - --wildcards '*/repositories/bamboo-specs/*'
-tar: */repositories/bamboo-specs/*: Not found in archive
-tar: Exiting with failure status due to previous errors
-
-
-[sikaj01@ip-10-56-112-34 bbcheck]$ aws s3 cp s3://cnxs-atlassian-backups/apps/2026-10-10/bitbucket_20261010_021501.tar.gz - \
-  | tar -xzf - --wildcards '*/repositories/bamboo-specs/*'
-tar: */repositories/bamboo-specs/*: Not found in archive
-tar: Exiting with failure status due to previous errors
-[sikaj01@ip-10-56-112-34 bbcheck]$ D=$(find /tmp/bbcheck -maxdepth 6 -type d -path '*/repositories/*' -name 'bamboo-specs' | head -1)
-git --git-dir="$D" log -1 --format='%h %cI %s' refs/heads/export-2025-08-13
-fatal: not a git repository: ''
+  | tar -xzf - --wildcards '*/shared/data/repositories/8/*'
+[sikaj01@ip-10-56-112-34 bbcheck]$ D=$(find /tmp/bbcheck -type d -path '*/shared/data/repositories/8' | head -1)
+echo "repo dir: $D"
+repo dir: /tmp/bbcheck/app/docker/volumes/bitbucketVolume/_data/shared/data/repositories/8
+[sikaj01@ip-10-56-112-34 bbcheck]$ git --git-dir="$D" log -1 --format='%h %cI %s' refs/heads/export-2025-08-13
+74c9ef28f 2026-10-03T02:03:53Z Start releases updated with env for artifactory
