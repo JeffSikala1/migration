@@ -1,3 +1,18 @@
-aws s3 ls s3://cnxs-atlassian-backups/legacy/2026-05-01/ --recursive --human-readable | head -20
-aws s3 ls s3://cnxs-atlassian-backups/manual/bitbucket-upgrade-20260311_201200/ --human-readable
+cd ~ && mkdir -p /tmp/bbcheck2 && cd /tmp/bbcheck2
+aws s3 cp s3://cnxs-atlassian-backups/legacy/2026-05-01/homes/bitbucketVolume_20260501_0516.tar.gz - | tar -tzf - | head -5
+aws s3 cp s3://cnxs-atlassian-backups/legacy/2026-05-01/homes/bitbucketVolume_20260501_0516.tar.gz - \
+  | tar -xzf - --wildcards '*/shared/data/repositories/8/*'
+D=$(find /tmp/bbcheck2 -type d -path '*/shared/data/repositories/8' | head -1)
+echo "repo dir: $D"
+git --git-dir="$D" log -1 --format='%h %cI %s' refs/heads/export-2025-08-13
+cd ~ && rm -rf /tmp/bbcheck2
 
+
+
+on .233
+
+docker exec dev-postgres psql -U bitbucketuser -d bitbucket -tAc "select id from repository" | sort > /tmp/db_ids.txt
+sudo ls /app/bitbucket/shared/data/repositories | sort > /tmp/disk_ids.txt
+wc -l /tmp/db_ids.txt /tmp/disk_ids.txt
+echo "in DB but not on disk:"; comm -23 /tmp/db_ids.txt /tmp/disk_ids.txt
+rm /tmp/db_ids.txt /tmp/disk_ids.txt
