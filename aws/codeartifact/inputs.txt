@@ -1,11 +1,13 @@
-# when vol-04e3 was created, from which snapshot, and when it was attached
-aws ec2 describe-volumes --region us-east-1 --volume-ids vol-04e3115aea57b5c70 vol-08f7bca75e08f0d3f \
-  --query 'Volumes[].[VolumeId,Size,CreateTime,SnapshotId,Attachments[0].Device,Attachments[0].AttachTime]' --output text
+# the Aug 25 snapshot of vol-05eb: did it complete, and is it tagged?
+aws ec2 describe-snapshots --region us-east-1 --owner-ids self --filters Name=volume-id,Values=vol-05ebadfa92a493533 \
+  --query 'sort_by(Snapshots,&StartTime)[-3:].[SnapshotId,StartTime,State,VolumeSize,Tags]' --output json
 
-# who detached or deleted the old /app disk, and when
-for v in vol-05ebadfa92a493533 vol-04e3115aea57b5c70; do
-  echo "== $v"
-  aws cloudtrail lookup-events --region us-east-1 --lookup-attributes AttributeKey=ResourceName,AttributeValue=$v \
-    --start-time 2026-08-15T00:00:00Z --end-time 2026-09-05T00:00:00Z \
-    --query 'Events[].[EventTime,EventName,Username]' --output text | sort
-done
+# what is mounted where
+grep -v '^\s*#' /etc/fstab
+findmnt -rn -o TARGET,SOURCE | grep -vE 'proc|sys|cgroup|/dev|/run|docker'
+
+# was the journal covering Aug 22 and were there disk-full errors Aug 21-24
+sudo journalctl --disk-usage
+sudo journalctl --since "2026-08-22 01:50" --until "2026-08-22 02:30" --no-pager | head -40
+sudo grep -rIl -i "no space left" /app/docker/volumes/pgdataVolume16/_data/log /app/docker/volumes/bitbucketVolume/_data/log 2>/dev/null | head
+sudo ls -l /var/log/cron* /var/spool/mail/ 2>&1 | head
