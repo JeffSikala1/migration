@@ -1,18 +1,20 @@
-cd ~ && mkdir -p /tmp/bbcheck2 && cd /tmp/bbcheck2
-aws s3 cp s3://cnxs-atlassian-backups/legacy/2026-05-01/homes/bitbucketVolume_20260501_0516.tar.gz - | tar -tzf - | head -5
-aws s3 cp s3://cnxs-atlassian-backups/legacy/2026-05-01/homes/bitbucketVolume_20260501_0516.tar.gz - \
+aws s3 ls s3://cnxs-atlassian-backups/apps/2026-08-20/ --human-readable
+
+
+
+cd ~ && mkdir -p /tmp/bbcheck3 && cd /tmp/bbcheck3
+aws s3 cp s3://cnxs-atlassian-backups/apps/2026-08-20/bitbucket_20260820_021501.tar.gz - \
   | tar -xzf - --wildcards '*/shared/data/repositories/8/*'
-D=$(find /tmp/bbcheck2 -type d -path '*/shared/data/repositories/8' | head -1)
+D=$(find /tmp/bbcheck3 -type d -path '*/shared/data/repositories/8' | head -1)
 echo "repo dir: $D"
 git --git-dir="$D" log -1 --format='%h %cI %s' refs/heads/export-2025-08-13
-cd ~ && rm -rf /tmp/bbcheck2
+cd ~ && rm -rf /tmp/bbcheck3
 
 
 
-on .233
+git log -1 --before='2026-08-20T02:15:00Z' --format='%h %cI %s' 74c9ef2
 
-docker exec dev-postgres psql -U bitbucketuser -d bitbucket -tAc "select id from repository" | sort > /tmp/db_ids.txt
-sudo ls /app/bitbucket/shared/data/repositories | sort > /tmp/disk_ids.txt
-wc -l /tmp/db_ids.txt /tmp/disk_ids.txt
-echo "in DB but not on disk:"; comm -23 /tmp/db_ids.txt /tmp/disk_ids.txt
-rm /tmp/db_ids.txt /tmp/disk_ids.txt
+
+
+
+aws s3 cp s3://cnxs-atlassian-backups/legacy/2026-05-01/dbdumps/bitbucket_db_20260501_0253.gz - | gunzip | grep -a -m5 "bamboo-specs"
