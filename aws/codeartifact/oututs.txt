@@ -1,29 +1,89 @@
-[sikaj01@ip-10-56-112-34 ~]$ sudo aureport -if /var/log/audit/audit.log.32 --start 11/26/25 18:00:00 --end 11/27/25 00:30:00 -l -i
-Email option is specified but /usr/lib/sendmail doesn't seem executable.
-
-Login Report
-============================================
-# date time auid host term exe success event
-============================================
-1. 11/26/25 18:52:39 ec2-user 10.56.112.33 /dev/pts/0 /usr/sbin/sshd yes 7963
-2. 11/26/25 19:22:07 ec2-user 10.56.112.33 /dev/pts/0 /usr/sbin/sshd yes 8163
-3. 11/26/25 19:43:25 ec2-user 10.56.112.33 /dev/pts/0 /usr/sbin/sshd yes 8304
-4. 11/26/25 19:52:18 ec2-user 10.56.112.33 /dev/pts/2 /usr/sbin/sshd yes 8403
-5. 11/26/25 20:08:37 ec2-user 10.56.112.33 /dev/pts/0 /usr/sbin/sshd yes 8589
-6. 11/26/25 20:14:40 ec2-user 10.56.112.33 /dev/pts/2 /usr/sbin/sshd yes 8663
-7. 11/26/25 22:56:03 ec2-user 10.56.112.33 /dev/pts/0 /usr/sbin/sshd yes 9663
-[sikaj01@ip-10-56-112-34 ~]$ sudo ausearch -if /var/log/audit/audit.log.32 --start 11/26/25 18:00:00 --end 11/27/25 00:30:00 -m USER_CMD -i | grep -E 'auid=|acct=|cmd=' | head -60
-Email option is specified but /usr/lib/sendmail doesn't seem executable.
-type=USER_CMD msg=audit(11/26/25 18:52:55.728:7971) : pid=4174297 uid=ec2-user auid=ec2-user ses=213 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su exe=/usr/bin/sudo terminal=pts/0 res=success' 
-type=USER_CMD msg=audit(11/26/25 19:24:40.075:8177) : pid=4181325 uid=ec2-user auid=ec2-user ses=219 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su - exe=/usr/bin/sudo terminal=pts/0 res=success' 
-type=USER_CMD msg=audit(11/26/25 19:43:28.460:8312) : pid=4185610 uid=ec2-user auid=ec2-user ses=223 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su - exe=/usr/bin/sudo terminal=pts/0 res=success' 
-type=USER_CMD msg=audit(11/26/25 19:52:21.062:8411) : pid=4187773 uid=ec2-user auid=ec2-user ses=227 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su - exe=/usr/bin/sudo terminal=pts/2 res=success' 
-type=USER_CMD msg=audit(11/26/25 19:53:48.352:8429) : pid=4188162 uid=ec2-user auid=ec2-user ses=227 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su - exe=/usr/bin/sudo terminal=pts/2 res=success' 
-type=USER_CMD msg=audit(11/26/25 20:04:06.324:8516) : pid=4190545 uid=ec2-user auid=ec2-user ses=227 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su - exe=/usr/bin/sudo terminal=pts/2 res=success' 
-type=USER_CMD msg=audit(11/26/25 20:04:12.724:8532) : pid=4190574 uid=ec2-user auid=ec2-user ses=227 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su - exe=/usr/bin/sudo terminal=pts/2 res=success' 
-type=USER_CMD msg=audit(11/26/25 20:08:46.945:8597) : pid=4191606 uid=ec2-user auid=ec2-user ses=230 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su - exe=/usr/bin/sudo terminal=pts/0 res=success' 
-type=USER_CMD msg=audit(11/26/25 20:14:44.407:8673) : pid=4193081 uid=ec2-user auid=ec2-user ses=232 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su - exe=/usr/bin/sudo terminal=pts/2 res=success' 
-type=USER_CMD msg=audit(11/26/25 22:56:06.849:9671) : pid=32712 uid=ec2-user auid=ec2-user ses=255 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 msg='cwd=/home/ec2-user cmd=su - exe=/usr/bin/sudo terminal=pts/0 res=success' 
-[sikaj01@ip-10-56-112-34 ~]$ sudo awk -F'[(:.]' '/^type=/ {t=$3; if (t>=1764180000 && t<=1764201600) print}' /var/log/audit/audit.log.32 | grep -E 'cp|rsync|mv|docker|systemctl' | head -60
-[sikaj01@ip-10-56-112-34 ~]$ 
-
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ aws ec2 describe-instances --filters Name=private-ip-address,Values=10.56.112.33 --query 'Reservations[].Instances[].[InstanceId,Tags[?Key==`Name`].Value|[0]]' --output text
+i-0ce510b7b13dd4f29     HarleyDavidson
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo ausearch -if /var/log/audit/audit.log.<N> --start 11/26/25 19:40:00 --end 11/26/25 20:20:00 -m USER_LOGIN,USER_START,USER_CMD -i
+bash: N: No such file or directory
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo ausearch -if /var/log/audit/audit.log.32 --session 227 -i | grep -E 'type=(USER_LOGIN|USER_AUTH|CRYPTO|USER_ACCT|USER_START)'
+<no matches>
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ aws ec2 describe-instances --filters Name=private-ip-address,Values=10.56.112.33 --query 'Reservations[].Instances[].[InstanceId,Tags[?Key==`Name`].Value|[0]]' --output text
+i-0ce510b7b13dd4f29     HarleyDavidson
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo ls -alh /var/log/audit/
+total 654M
+drwx------.  2 root root  16K Oct  8 13:17 .
+drwxr-xr-x. 13 root root  16K Oct 10 00:00 ..
+-rw-------.  1 root root 2.8M Oct 10 18:54 audit.log
+-r--------.  1 root root  11M Oct  8 13:17 audit.log.1
+-r--------.  1 root root  11M Jul 30 20:23 audit.log.10
+-r--------.  1 root root  11M Jul 23 17:06 audit.log.11
+-r--------.  1 root root  11M Jul 16 02:53 audit.log.12
+-r--------.  1 root root  11M Jul  9 15:07 audit.log.13
+-r--------.  1 root root  11M Jul  1 16:27 audit.log.14
+-r--------.  1 root root  11M Jun 24 05:48 audit.log.15
+-r--------.  1 root root  11M Jun 16 03:03 audit.log.16
+-r--------.  1 root root  11M Jun  9 07:43 audit.log.17
+-r--------.  1 root root  11M Jun  1 15:09 audit.log.18
+-r--------.  1 root root  11M May 22 18:08 audit.log.19
+-r--------.  1 root root  11M Sep 30 19:29 audit.log.2
+-r--------.  1 root root  11M May 14 14:20 audit.log.20
+-r--------.  1 root root  11M May  6 16:48 audit.log.21
+-r--------.  1 root root  11M Apr 28 14:17 audit.log.22
+-r--------.  1 root root  11M Apr 18 21:54 audit.log.23
+-r--------.  1 root root  11M Apr  8  2026 audit.log.24
+-r--------.  1 root root  11M Apr  4  2026 audit.log.25
+-r--------.  1 root root  11M Mar 31  2026 audit.log.26
+-r--------.  1 root root  11M Mar 27  2026 audit.log.27
+-r--------.  1 root root  11M Mar 23  2026 audit.log.28
+-r--------.  1 root root  11M Mar 19  2026 audit.log.29
+-r--------.  1 root root  11M Sep 22 15:23 audit.log.3
+-r--------.  1 root root  11M Mar 16  2026 audit.log.30
+-r--------.  1 root root  11M Mar 12  2026 audit.log.31
+-r--------.  1 root root  11M Mar  6  2026 audit.log.32
+-r--------.  1 root root  11M Feb 25  2026 audit.log.33
+-r--------.  1 root root  11M Feb 15  2026 audit.log.34
+-r--------.  1 root root  11M Feb  4  2026 audit.log.35
+-r--------.  1 root root  11M Jan 26  2026 audit.log.36
+-r--------.  1 root root  11M Jan 15  2026 audit.log.37
+-r--------.  1 root root  11M Jan  6  2026 audit.log.38
+-r--------.  1 root root  11M Dec 24  2025 audit.log.39
+-r--------.  1 root root  11M Sep 14 19:09 audit.log.4
+-r--------.  1 root root  11M Dec 15  2025 audit.log.40
+-r--------.  1 root root  11M Dec  8  2025 audit.log.41
+-r--------.  1 root root  11M Nov 28  2025 audit.log.42
+-r--------.  1 root root  11M Nov 19  2025 audit.log.43
+-r--------.  1 root root  11M Nov  8  2025 audit.log.44
+-r--------.  1 root root  11M Oct 27  2025 audit.log.45
+-r--------.  1 root root  11M Oct 16  2025 audit.log.46
+-r--------.  1 root root  11M Oct  5  2025 audit.log.47
+-r--------.  1 root root  11M Sep 24  2025 audit.log.48
+-r--------.  1 root root  11M Sep 13  2025 audit.log.49
+-r--------.  1 root root  11M Sep  5 05:00 audit.log.5
+-r--------.  1 root root  11M Sep  2  2025 audit.log.50
+-r--------.  1 root root  11M Aug 21  2025 audit.log.51
+-r--------.  1 root root  11M Aug  6  2025 audit.log.52
+-r--------.  1 root root  11M Jul 21  2025 audit.log.53
+-r--------.  1 root root  11M Jul  3  2025 audit.log.54
+-r--------.  1 root root  11M Jun 16  2025 audit.log.55
+-r--------.  1 root root  11M May 30  2025 audit.log.56
+-r--------.  1 root root  11M May 14  2025 audit.log.57
+-r--------.  1 root root  11M Apr 28  2025 audit.log.58
+-r--------.  1 root root  11M Apr 14  2025 audit.log.59
+-r--------.  1 root root  11M Aug 28 00:05 audit.log.6
+-r--------.  1 root root  11M Mar 30  2025 audit.log.60
+-r--------.  1 root root  11M Mar 18  2025 audit.log.61
+-r--------.  1 root root  11M Mar  3  2025 audit.log.62
+-r--------.  1 root root  11M Feb 17  2025 audit.log.63
+-r--------.  1 root root  11M Feb  2  2025 audit.log.64
+-r--------.  1 root root  11M Jan 23  2025 audit.log.65
+-r--------.  1 root root  11M Aug 20 22:22 audit.log.7
+-r--------.  1 root root  11M Aug 13 21:55 audit.log.8
+-r--------.  1 root root  11M Aug  7 14:45 audit.log.9
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo ausearch -if /var/log/audit/audit.log.42 --session 227 -i | grep -E 'type=(USER_LOGIN|USER_AUTH|CRYPTO|USER_ACCT|USER_START)'
+<no matches>
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=SendSSHPublicKey --start-time 2025-11-26T18:30:00Z --end-time 2025-11-26T20:30:00Z
+{
+    "Events": []
+}
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=StartSession --start-time 2025-11-26T18:30:00Z --end-time 2025-11-26T20:30:00Z
+{
+    "Events": []
+}
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
