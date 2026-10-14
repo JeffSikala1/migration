@@ -1,1 +1,13 @@
-sudo docker exec -i dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory -c "select realm, count(*) from access_users group by 1 order by 1;" -c "select count(*) from access_users where username like '\''%@usda.gov'\'';"'
+sudo docker exec -i dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory' <<'SQL'
+select user_id, username from access_users where username like '%@usda.gov';
+
+select e.id as missing_user_id
+from unnest(array[
+  2004,2008,2010,2012,2017,2020,2022,2023,2026,2029,2034,2042,2045,2047,2048,2051,
+  1002,3,2006,2007,1003,2030,2038,2039,2040,2002,2053
+]) as e(id)
+left join access_users u on u.user_id = e.id
+where u.user_id is null;
+SQL
+
+
