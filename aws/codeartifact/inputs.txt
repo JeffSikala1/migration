@@ -1,7 +1,8 @@
-sudo docker ps --format '{{.Names}}\t{{.Image}}\t{{.Ports}}'
-sudo find / -name system.yaml -path '*artifactory*' 2>/dev/null
+mkdir -p ~/artifactory-db-backups && chmod 700 ~/artifactory-db-backups
+(umask 077; sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -Fc artifactory' > ~/artifactory-db-backups/artifactory_$(date +%Y%m%d_%H%M%S).dump)
+ls -l ~/artifactory-db-backups
+sudo docker exec -i dev-postgres pg_restore -l < ~/artifactory-db-backups/artifactory_*.dump | head -15
 
 
+sudo docker exec dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory -c "\dt access*" -c "\d access_users" -c "select count(*) from access_users;"'
 
-curl -sf -u admin:${artifactory_dev_admin_token} https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users
-curl -sf -u admin:${artifactory_dev_admin_token} https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/nathan.kim
