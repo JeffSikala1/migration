@@ -1,105 +1,115 @@
-[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory \
- -c "select realm, count(*) from access_users group by realm order by 1;" \
- -c "select user_id, username, realm, status, email, (password is null) as no_pw, last_login_time from access_users order by username;" \
- -c "\d access_groups" -c "\d access_users_groups"'
-[sudo] password for sikaj01: 
-  realm   | count 
-----------+-------
- internal |    32
- saml     |    23
-(2 rows)
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec -i dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory' <<'SQL'
+select u.username, u.realm,
+       string_agg(g.group_name, ', ' order by g.group_name) as groups
+from access_users u
+left join access_users_groups ug on ug.user_id = u.user_id
+left join access_groups g on g.group_id = ug.group_id
+group by u.user_id, u.username, u.realm
+order by regexp_replace(u.username, '@.*$', ''), u.username;
 
- user_id |            username            |  realm   | status  |               email               | no_pw | last_login_time 
----------+--------------------------------+----------+---------+-----------------------------------+-------+-----------------
-    2003 | abitha.bakthavachalam          | saml     | enabled | abitha.bakthavachalam@gsa.gov     | t     |               0
-    2004 | abitha.bakthavachalam@gsa.gov  | saml     | enabled | abitha.bakthavachalam@gsa.gov     | t     |               0
-    2005 | abitha.bakthavachalam@usda.gov | internal | enabled | abitha.bakthavachalam@usda.gov    | t     |               0
-    1002 | admin                          | internal | enabled | jeff.sikala@gsa.gov               | f     |   1785780193046
-       3 | anonymous                      | internal | enabled |                                   | t     |               0
-    2006 | avupload                       | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
-    2007 | docker-uploader                | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
-    2008 | eli.tatro@gsa.gov              | saml     | enabled |                                   | t     |               0
-    2009 | eli.tatro@usda.gov             | internal | enabled | eli.tatro@usda.gov                | t     |               0
-    2010 | gavin.ecker@gsa.gov            | saml     | enabled |                                   | t     |               0
-    2011 | gavin.ecker@usda.gov           | internal | enabled | gavin.ecker@usda.gov              | t     |               0
-    2012 | james.hyland@gsa.gov           | saml     | enabled | james.hyland@gsa.gov              | t     |               0
-    2013 | james.hyland@usda.gov          | internal | enabled | james.hyland@usda.gov             | t     |               0
-    2014 | jared.curtis@usda.gov          | internal | enabled | jared.curtis@usda.gov             | t     |               0
-    2015 | jeff.sikala                    | saml     | enabled | jeff.sikala@gsa.gov               | t     |               0
-    1003 | jeff.sikala@gsa.gov            | internal | enabled | jeff.sikala@gsa.gov               | f     |   1791996874561
-    2016 | jeff.sikala@usda.gov           | internal | enabled | jeff.sikala@usda.gov              | t     |               0
-    2017 | john.zehetner@gsa.gov          | saml     | enabled | john.zehetner@gsa.gov             | t     |               0
-    2018 | john.zehetner@usda.gov         | internal | enabled | john.zehetner@usda.gov            | t     |               0
-    2019 | kristian.fitzgerald            | saml     | enabled | kristian.fitzgerald@gsa.gov       | t     |               0
-    2020 | kristian.fitzgerald@gsa.gov    | saml     | enabled |                                   | t     |               0
-    2021 | kristian.fitzgerald@usda.gov   | internal | enabled | kristian.fitzgerald@usda.gov      | t     |               0
-    2022 | madhav.kundala                 | saml     | enabled | madhav.kundala@gsa.gov            | f     |   1791477263207
-    2023 | madhav.kundala@gsa.gov         | saml     | enabled | madhav.kundala@gsa.gov            | t     |               0
-    2024 | madhav.kundala@usda.gov        | internal | enabled | madhav.kundala@usda.gov           | t     |               0
-    2025 | mark.hotra                     | saml     | enabled |                                   | t     |               0
-    2026 | mark.hotra@gsa.gov             | saml     | enabled |                                   | t     |               0
-    2027 | mark.hotra@usda.gov            | internal | enabled | mark.hotra@usda.gov               | t     |               0
-    2028 | nathan.kim                     | saml     | enabled |                                   | t     |               0
-    2029 | nathan.kim@gsa.gov             | saml     | enabled |                                   | t     |               0
-    2030 | owasp_report_upload            | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
-    2031 | philippe.thai@usda.gov         | internal | enabled | philippe.thai@usda.gov            | t     |               0
-    2032 | robert.torrey@usda.gov         | internal | enabled | robert.torrey@usda.gov            | t     |               0
-    2033 | robert.wernsman                | saml     | enabled | robert.wernsman@gsa.gov           | t     |               0
-    2034 | robert.wernsman@gsa.gov        | saml     | enabled | robert.wernsman@gsa.gov           | t     |               0
-    2035 | robert.wernsman@usda.gov       | internal | enabled | robert.wernsman@usda.gov          | t     |               0
-    2036 | rohith.janga@usda.gov          | internal | enabled | rohith.janga@usda.gov             | t     |               0
-    2037 | rupak.barua@usda.gov           | internal | enabled | rupak.barua@usda.gov              | t     |               0
-    2038 | sa_bamboo                      | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
-    2039 | sa_conexus                     | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
-    2040 | sa_snyk                        | internal | enabled | sa_snyk@gsa.gov                   | f     |               0
-    2041 | sasikanth.dale                 | saml     | enabled | sasikanth.dale@gsa.gov            | t     |               0
-    2042 | sasikanth.dale@gsa.gov         | saml     | enabled | sasikanth.dale@gsa.gov            | t     |               0
-    2043 | sasikanth.dale@usda.gov        | internal | enabled | sasikanth.dale@usda.gov           | t     |               0
-    2002 | schema-test-user               | internal | enabled | jeff.sikala@usda.gov              | t     |               0
-    2044 | shahbaz.qureshi@usda.gov       | internal | enabled | shahbaz.qureshi@usda.gov          | t     |               0
-    2045 | shilpika.pamarthi@gsa.gov      | saml     | enabled | shilpika.pamarthi@gsa.gov         | t     |               0
-    2046 | shilpika.pamarthi@usda.gov     | internal | enabled | shilpika.pamarthi@usda.gov        | t     |               0
-    2047 | stephen.tefft@gsa.gov          | saml     | enabled |                                   | t     |               0
-    2048 | steven.kuzmich@gsa.gov         | saml     | enabled |                                   | t     |               0
-    2049 | steven.kuzmich@usda.gov        | internal | enabled | steven.kuzmich@usda.gov           | t     |               0
-    2050 | sucharita.conjeevaram@usda.gov | internal | enabled | sucharita.conjeevaram@usda.gov    | t     |               0
-    2051 | tyler.goll@gsa.gov             | saml     | enabled | tyler.goll@gsa.gov                | t     |               0
-    2052 | tyler.goll@usda.gov            | internal | enabled | tyler.goll@usda.gov               | t     |               0
-    2053 | uploader                       | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
+select u.realm as user_realm, ug.realm as membership_realm, count(*)
+from access_users_groups ug join access_users u using (user_id)
+group by 1, 2 order by 1, 2;
+
+select group_name, realm, realm_attributes from access_groups order by group_name;
+
+\d access_users_custom_data
+SQL
+            username            |  realm   |                                                      groups                                                      
+--------------------------------+----------+------------------------------------------------------------------------------------------------------------------
+ abitha.bakthavachalam          | saml     | nsfs_developers, nsfs_qa, nsfs_users
+ abitha.bakthavachalam@gsa.gov  | saml     | nsfs_developers, nsfs_qa, nsfs_users
+ abitha.bakthavachalam@usda.gov | internal | nsfs_developers, nsfs_qa, nsfs_users
+ admin                          | internal | 
+ anonymous                      | internal | 
+ avupload                       | internal | avupload
+ docker-uploader                | internal | anon_read_only
+ eli.tatro@gsa.gov              | saml     | nsfs_users
+ eli.tatro@usda.gov             | internal | nsfs_developers, nsfs_qa, nsfs_users
+ gavin.ecker@gsa.gov            | saml     | nsfs_users
+ gavin.ecker@usda.gov           | internal | nsfs_devops, nsfs_users
+ james.hyland@gsa.gov           | saml     | nsfs_developers, nsfs_qa, nsfs_users
+ james.hyland@usda.gov          | internal | nsfs_developers, nsfs_qa, nsfs_users
+ jared.curtis@usda.gov          | internal | docker_push_group, nsfs_developers, nsfs_users
+ jeff.sikala                    | saml     | admins, nsfs_users
+ jeff.sikala@gsa.gov            | internal | admins, nsfs_users, readers
+ jeff.sikala@usda.gov           | internal | nsfs_devops, nsfs_users
+ john.zehetner@gsa.gov          | saml     | nsfs_developers, nsfs_users
+ john.zehetner@usda.gov         | internal | nsfs_developers, nsfs_users
+ kristian.fitzgerald            | saml     | docker_push_group, nsfs_developers, nsfs_users
+ kristian.fitzgerald@gsa.gov    | saml     | nsfs_developers, nsfs_users
+ kristian.fitzgerald@usda.gov   | internal | docker_push_group, nsfs_developers, nsfs_users
+ madhav.kundala                 | saml     | nsfs_developers, nsfs_users
+ madhav.kundala@gsa.gov         | saml     | admins, nsfs_developers, nsfs_users
+ madhav.kundala@usda.gov        | internal | admins, docker_push_group, nsfs_administrators, nsfs_developers, nsfs_devops, nsfs_qa, nsfs_security, nsfs_users
+ mark.hotra                     | saml     | nsfs_developers, nsfs_users
+ mark.hotra@gsa.gov             | saml     | nsfs_developers, nsfs_users
+ mark.hotra@usda.gov            | internal | docker_push_group, nsfs_developers, nsfs_users
+ nathan.kim                     | saml     | nsfs_users
+ nathan.kim@gsa.gov             | saml     | nsfs_users
+ owasp_report_upload            | internal | 
+ philippe.thai@usda.gov         | internal | nsfs_developers, nsfs_qa, nsfs_users
+ robert.torrey@usda.gov         | internal | nsfs_users
+ robert.wernsman                | saml     | docker_push_group, nsfs_developers, nsfs_users
+ robert.wernsman@gsa.gov        | saml     | docker_push_group, nsfs_developers, nsfs_users
+ robert.wernsman@usda.gov       | internal | docker_push_group, nsfs_developers, nsfs_users
+ rohith.janga@usda.gov          | internal | docker_push_group, nsfs_developers, nsfs_users
+ rupak.barua@usda.gov           | internal | nsfs_developers, nsfs_qa, nsfs_users
+ sa_bamboo                      | internal | anon_read_only, conexus_release_local_create, readers
+ sa_conexus                     | internal | anon_read_only, keys, uploadOnly
+ sa_snyk                        | internal | anon_read_only
+ sasikanth.dale                 | saml     | anon_read_only, conexus_release_local_create, docker_push_group, nsfs_developers, nsfs_users, readers
+ sasikanth.dale@gsa.gov         | saml     | anon_read_only, conexus_release_local_create, docker_push_group, nsfs_developers, nsfs_users, readers
+ sasikanth.dale@usda.gov        | internal | conexus_release_local_create, docker_push_group, nsfs_developers, nsfs_users
+ schema-test-user               | internal | nsfs_users, readers
+ shahbaz.qureshi@usda.gov       | internal | docker_push_group, nsfs_devops, nsfs_users
+ shilpika.pamarthi@gsa.gov      | saml     | nsfs_developers, nsfs_users
+ shilpika.pamarthi@usda.gov     | internal | nsfs_developers, nsfs_qa, nsfs_users
+ stephen.tefft@gsa.gov          | saml     | nsfs_users
+ steven.kuzmich@gsa.gov         | saml     | nsfs_developers, nsfs_users
+ steven.kuzmich@usda.gov        | internal | nsfs_developers, nsfs_users
+ sucharita.conjeevaram@usda.gov | internal | nsfs_developers, nsfs_qa, nsfs_users
+ tyler.goll@gsa.gov             | saml     | admins, docker_push_group, nsfs_devops, nsfs_users
+ tyler.goll@usda.gov            | internal | admins, docker_push_group, nsfs_devops, nsfs_users
+ uploader                       | internal | anon_read_only, uploadOnly
 (55 rows)
 
-                        Table "public.access_groups"
-      Column      |          Type           | Collation | Nullable | Default 
-------------------+-------------------------+-----------+----------+---------
- group_id         | bigint                  |           | not null | 
- group_name       | character varying(64)   |           | not null | 
- description      | character varying(1024) |           |          | 
- auto_join        | smallint                |           | not null | 
- realm            | character varying(255)  |           |          | 
- realm_attributes | character varying(512)  |           |          | 
- created          | bigint                  |           | not null | 
- modified         | bigint                  |           | not null | 
- lowercase_name   | character varying(64)   |           | not null | 
- external_id      | character varying(64)   |           |          | 
-Indexes:
-    "access_groups_pk" PRIMARY KEY, btree (group_id)
-    "access_group_lower_name_idx" btree (lowercase_name)
-    "access_groups_name_idx" UNIQUE, btree (group_name)
-Referenced by:
-    TABLE "access_groups_custom_data" CONSTRAINT "access_groups_data_users_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-    TABLE "access_permissions_actions_v2" CONSTRAINT "access_perm_act_v2_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-    TABLE "access_permission_action" CONSTRAINT "access_perm_action_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id) ON DELETE CASCADE
-    TABLE "access_project_groups" CONSTRAINT "access_project_groups_group_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-    TABLE "access_users_groups" CONSTRAINT "access_users_groups_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
+ user_realm | membership_realm | count 
+------------+------------------+-------
+ internal   | internal         |    78
+ internal   | saml             |     2
+ saml       | saml             |    58
+(3 rows)
 
-                 Table "public.access_users_groups"
-  Column  |          Type          | Collation | Nullable | Default 
-----------+------------------------+-----------+----------+---------
- user_id  | bigint                 |           | not null | 
- group_id | bigint                 |           | not null | 
- realm    | character varying(255) |           |          | 
+          group_name          |  realm   | realm_attributes 
+------------------------------+----------+------------------
+ admins                       | internal | 
+ anon_read_only               | internal | 
+ avupload                     | internal | 
+ conexus_release_local_create | internal | 
+ docker_push_group            | internal | 
+ keys                         | internal | 
+ nsfs_administrators          | internal | 
+ nsfs_developers              | internal | 
+ nsfs_devops                  | internal | 
+ nsfs_qa                      | internal | 
+ nsfs_security                | internal | 
+ nsfs_users                   | internal | 
+ readers                      | internal | 
+ uploadOnly                   | internal | 
+(14 rows)
+
+                    Table "public.access_users_custom_data"
+       Column       |          Type           | Collation | Nullable | Default 
+--------------------+-------------------------+-----------+----------+---------
+ user_id            | bigint                  |           | not null | 
+ prop_key           | character varying(255)  |           | not null | 
+ prop_value         | character varying(2048) |           |          | 
+ prop_sensitive     | smallint                |           | not null | 
+ prop_cluster_local | smallint                |           |          | 
 Indexes:
-    "access_users_groups_pk" PRIMARY KEY, btree (user_id, group_id)
+    "access_users_data_pk" PRIMARY KEY, btree (user_id, prop_key)
+    "access_users_data_key_idx" btree (prop_key)
+    "access_users_data_value_idx" btree (prop_value)
 Foreign-key constraints:
-    "access_users_groups_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
-    "access_users_groups_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
+    "access_users_data_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
