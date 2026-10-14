@@ -1,8 +1,6 @@
-mkdir -p ~/artifactory-db-backups && chmod 700 ~/artifactory-db-backups
-(umask 077; sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -Fc artifactory' > ~/artifactory-db-backups/artifactory_$(date +%Y%m%d_%H%M%S).dump)
-ls -l ~/artifactory-db-backups
-sudo docker exec -i dev-postgres pg_restore -l < ~/artifactory-db-backups/artifactory_*.dump | head -15
+sudo docker exec dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory \
+ -c "select realm, count(*) from access_users group by realm order by 1;" \
+ -c "select user_id, username, realm, status, email, (password is null) as no_pw, last_login_time from access_users order by username;" \
+ -c "\d access_groups" -c "\d access_users_groups"'
 
-
-sudo docker exec dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory -c "\dt access*" -c "\d access_users" -c "select count(*) from access_users;"'
 
