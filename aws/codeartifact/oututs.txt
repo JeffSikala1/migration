@@ -1,80 +1,38 @@
-[sikaj01@ip-10-56-128-233 ~]$ sudo bash -s <<'EOF'
-set -euo pipefail
-add_user() {
-  u="$1"; uid="$2"; pub="$3"
-  id "$u" >/dev/null 2>&1 || useradd -m -u "$uid" -g users -G wheel,docker "$u"
-  for g in wheel docker; do
-    id -nG "$u" | tr ' ' '\n' | grep -qx "$g" || usermod -aG "$g" "$u"
-  done
-  install -d -m 700 -o "$u" -g users "/home/$u/.ssh"
-  touch "/home/$u/.ssh/authorized_keys"
-  grep -qxF "$pub" "/home/$u/.ssh/authorized_keys" || printf '%s\n' "$pub" >> "/home/$u/.ssh/authorized_keys"
-  chown "$u:users" "/home/$u/.ssh/authorized_keys"
-  chmod 600 "/home/$u/.ssh/authorized_keys"
-  command -v restorecon >/dev/null && restorecon -R "/home/$u/.ssh" || true
-  id "$u"
-}
-
-EOF
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker ps --format '{{.Names}}\t{{.Image}}\t{{.Ports}}'
 [sudo] password for sikaj01: 
-uid=1002(pgollt01) gid=100(users) groups=100(users),10(wheel),991(docker)
-uid=1015(pkundm01) gid=100(users) groups=100(users),10(wheel),991(docker)
-uid=1036(ezehb01) gid=100(users) groups=100(users),10(wheel),991(docker)
-[sikaj01@ip-10-56-128-233 ~]$ sudo passwd pgollt01
-Changing password for user pgollt01.
-New password: 
-BAD PASSWORD: The password is shorter than 16 characters
-New password: 
-BAD PASSWORD: The password is shorter than 16 characters
-New password: 
-Retype new password: 
-passwd: all authentication tokens updated successfully.
-[sikaj01@ip-10-56-128-233 ~]$ sudo passwd pkundm01
-Changing password for user pkundm01.
-New password: 
-Retype new password: 
-passwd: all authentication tokens updated successfully.
-[sikaj01@ip-10-56-128-233 ~]$ sudo passwd ezehb01
-Changing password for user ezehb01.
-New password: 
-Retype new password: 
-passwd: all authentication tokens updated successfully.
-[sikaj01@ip-10-56-128-233 ~]$ 
+dev-bitbucket   atlassian/bitbucket:9.4.17      0.0.0.0:7990->7990/tcp, 0.0.0.0:7999->7999/tcp
+dev-bamboo      atlassian/bamboo:10.2.11        0.0.0.0:8085->8085/tcp, 0.0.0.0:8443->8443/tcp, 54663/tcp
+dev-nginx       nginx:1.29.3    0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
+dev-artifactory releases-docker.jfrog.io/jfrog/artifactory-oss:7.104.14 0.0.0.0:8081-8082->8081-8082/tcp
+dev-postgres    postgres:15-alpine      5432/tcp
+[sikaj01@ip-10-56-128-233 ~]$ sudo find / -name system.yaml -path '*artifactory*' 2>/dev/null
+[sikaj01@ip-10-56-128-233 ~]$ sudo find / -name *.yaml -path '*artifactory*' 2>/dev/null
+/var/lib/docker/overlay2/79baae9c187acef8278655c4d4e40f6264fc18b710119b0aecf532678a4cc521/diff/opt/jfrog/artifactory/app/bin/diagnostics/diagnostics.yaml
+/var/lib/docker/overlay2/79baae9c187acef8278655c4d4e40f6264fc18b710119b0aecf532678a4cc521/diff/opt/jfrog/artifactory/app/bin/migrationDockerInfo.yaml
+/var/lib/docker/overlay2/79baae9c187acef8278655c4d4e40f6264fc18b710119b0aecf532678a4cc521/diff/opt/jfrog/artifactory/app/frontend/bin/server/dist/node_modules/@jfrog/ui-platform-common-constants/.jfrog/projects/npm.yaml
+/var/lib/docker/overlay2/79baae9c187acef8278655c4d4e40f6264fc18b710119b0aecf532678a4cc521/diff/opt/jfrog/artifactory/app/frontend/bin/server/dist/node_modules/@newrelic/security-agent/lib/nr-security-agent/resources/default-policy.yaml
+/var/lib/docker/overlay2/79baae9c187acef8278655c4d4e40f6264fc18b710119b0aecf532678a4cc521/diff/opt/jfrog/artifactory/app/frontend/bin/server/dist/node_modules/node-cache/.nycrc.yaml
+/var/lib/docker/overlay2/79baae9c187acef8278655c4d4e40f6264fc18b710119b0aecf532678a4cc521/diff/opt/jfrog/artifactory/app/misc/etc/filebeat.yaml
+/var/lib/docker/overlay2/79baae9c187acef8278655c4d4e40f6264fc18b710119b0aecf532678a4cc521/diff/opt/jfrog/artifactory/app/misc/etc/system.basic-template.yaml
+/var/lib/docker/overlay2/79baae9c187acef8278655c4d4e40f6264fc18b710119b0aecf532678a4cc521/diff/opt/jfrog/artifactory/app/misc/etc/system.full-template.yaml
+/var/lib/docker/overlay2/eddb595a82f2baa207b8040904c70d17c59efa30d594801fa83b1afc816c9543/diff/var/opt/jfrog/artifactory/etc/filebeat.yaml
+/var/lib/docker/overlay2/eddb595a82f2baa207b8040904c70d17c59efa30d594801fa83b1afc816c9543/diff/var/opt/jfrog/artifactory/etc/system.basic-template.yaml
+/var/lib/docker/overlay2/eddb595a82f2baa207b8040904c70d17c59efa30d594801fa83b1afc816c9543/diff/var/opt/jfrog/artifactory/etc/system.full-template.yaml
+/var/lib/docker/overlay2/a4843c126d039d71af0e34c8b7b8f85f6910fb62b8ec3424c56389c953ebad4b/diff/var/opt/jfrog/artifactory/etc/filebeat.yaml
+/var/lib/docker/overlay2/a4843c126d039d71af0e34c8b7b8f85f6910fb62b8ec3424c56389c953ebad4b/diff/var/opt/jfrog/artifactory/etc/system.basic-template.yaml
+/var/lib/docker/overlay2/a4843c126d039d71af0e34c8b7b8f85f6910fb62b8ec3424c56389c953ebad4b/diff/var/opt/jfrog/artifactory/etc/system.full-template.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/opt/jfrog/artifactory/app/frontend/bin/server/dist/node_modules/@jfrog/ui-platform-common-constants/.jfrog/projects/npm.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/opt/jfrog/artifactory/app/frontend/bin/server/dist/node_modules/@newrelic/security-agent/lib/nr-security-agent/resources/default-policy.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/opt/jfrog/artifactory/app/frontend/bin/server/dist/node_modules/node-cache/.nycrc.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/opt/jfrog/artifactory/app/bin/diagnostics/diagnostics.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/opt/jfrog/artifactory/app/bin/migrationDockerInfo.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/opt/jfrog/artifactory/app/misc/etc/filebeat.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/opt/jfrog/artifactory/app/misc/etc/system.basic-template.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/opt/jfrog/artifactory/app/misc/etc/system.full-template.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/var/opt/jfrog/artifactory/etc/filebeat.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/var/opt/jfrog/artifactory/etc/system.basic-template.yaml
+/var/lib/docker/overlay2/20508f66618c0bc0bec282d1646f2e996fdc3f6f250ec065fa3ebd5aef33280c/merged/var/opt/jfrog/artifactory/etc/system.full-template.yaml
 
 
-[sikaj01@ip-10-56-128-47 ~]$ sudo bash -s <<'EOF'
-> set -euo pipefail
-> add_user() {
->   u="$1"; uid="$2"; pub="$3"
->   id "$u" >/dev/null 2>&1 || useradd -m -u "$uid" -g users -G wheel,docker "$u"
->   for g in wheel docker; do
->     id -nG "$u" | tr ' ' '\n' | grep -qx "$g" || usermod -aG "$g" "$u"
->   done
->   install -d -m 700 -o "$u" -g users "/home/$u/.ssh"
->   touch "/home/$u/.ssh/authorized_keys"
->   grep -qxF "$pub" "/home/$u/.ssh/authorized_keys" || printf '%s\n' "$pub" >> "/home/$u/.ssh/authorized_keys"
->   chown "$u:users" "/home/$u/.ssh/authorized_keys"
->   chmod 600 "/home/$u/.ssh/authorized_keys"
->   command -v restorecon >/dev/null && restorecon -R "/home/$u/.ssh" || true
->   id "$u"
-> }
-
-> EOF
-uid=1002(pgollt01) gid=100(users) groups=100(users),10(wheel),991(docker)
-uid=1015(pkundm01) gid=100(users) groups=100(users),10(wheel),991(docker)
-uid=1036(ezehb01) gid=100(users) groups=100(users),10(wheel),991(docker)
-[sikaj01@ip-10-56-128-47 ~]$ sudo passwd pgollt01
-Changing password for user pgollt01.
-New password: 
-Retype new password: 
-passwd: all authentication tokens updated successfully.
-[sikaj01@ip-10-56-128-47 ~]$ sudo passwd pkundm01
-Changing password for user pkundm01.
-New password: 
-Retype new password: 
-passwd: all authentication tokens updated successfully.
-[sikaj01@ip-10-56-128-47 ~]$ sudo passwd ezehb01
-Changing password for user ezehb01.
-New password: 
-Retype new password: 
-passwd: all authentication tokens updated successfully.
+[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ curl -sf -u admin:${artifactory_dev_admin_token} https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users
+[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ curl -sf -u admin:${artifactory_dev_admin_token} https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users/nathan.kim
