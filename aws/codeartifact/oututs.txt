@@ -1,99 +1,105 @@
-[sikaj01@ip-10-56-128-233 ~]$ mkdir -p ~/artifactory-db-backups && chmod 700 ~/artifactory-db-backups
-[sikaj01@ip-10-56-128-233 ~]$ (umask 077; sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -Fc artifactory' > ~/artifactory-db-backups/artifactory_$(date +%Y%m%d_%H%M%S).dump)
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory \
+ -c "select realm, count(*) from access_users group by realm order by 1;" \
+ -c "select user_id, username, realm, status, email, (password is null) as no_pw, last_login_time from access_users order by username;" \
+ -c "\d access_groups" -c "\d access_users_groups"'
 [sudo] password for sikaj01: 
-[sikaj01@ip-10-56-128-233 ~]$ ls -l ~/artifactory-db-backups
-total 32620
--rw-------. 1 sikaj01 users 33402263 Oct 14 17:55 artifactory_20261014_175457.dump
-[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec -i dev-postgres pg_restore -l < ~/artifactory-db-backups/artifactory_*.dump | head -15
-;
-; Archive created at 2026-10-14 17:55:10 UTC
-;     dbname: artifactory
-;     TOC Entries: 714
-;     Compression: -1
-;     Dump Version: 1.14-0
-;     Format: CUSTOM
-;     Integer: 4 bytes
-;     Offset: 8 bytes
-;     Dumped from database version: 15.18
-;     Dumped by pg_dump version: 15.18
-;
-;
-; Selected TOC Entries:
-;
-[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory -c "\dt access*" -c "\d access_users" -c "select count(*) from access_users;"'
-                          List of relations
- Schema |                 Name                 | Type  |    Owner    
---------+--------------------------------------+-------+-------------
- public | access_configs                       | table | artifactory
- public | access_db_check                      | table | artifactory
- public | access_distributed_lock              | table | artifactory
- public | access_emails_log                    | table | artifactory
- public | access_environments                  | table | artifactory
- public | access_federation_log                | table | artifactory
- public | access_federation_servers            | table | artifactory
- public | access_groups                        | table | artifactory
- public | access_groups_custom_data            | table | artifactory
- public | access_master_key_status             | table | artifactory
- public | access_nodes                         | table | artifactory
- public | access_permission_action             | table | artifactory
- public | access_permission_names_mapper       | table | artifactory
- public | access_permissions                   | table | artifactory
- public | access_permissions_actions_v2        | table | artifactory
- public | access_permissions_custom_data       | table | artifactory
- public | access_permissions_targets_v2        | table | artifactory
- public | access_permissions_v2                | table | artifactory
- public | access_permissions_v2_ref            | table | artifactory
- public | access_platform_config               | table | artifactory
- public | access_project_groups                | table | artifactory
- public | access_project_resource_environments | table | artifactory
- public | access_project_resources             | table | artifactory
- public | access_project_shared_resources      | table | artifactory
- public | access_project_users                 | table | artifactory
- public | access_projects                      | table | artifactory
- public | access_role_environment_actions      | table | artifactory
- public | access_roles                         | table | artifactory
- public | access_schema_version                | table | artifactory
- public | access_servers                       | table | artifactory
- public | access_tasks                         | table | artifactory
- public | access_tokens                        | table | artifactory
- public | access_topology                      | table | artifactory
- public | access_unique_ids                    | table | artifactory
- public | access_users                         | table | artifactory
- public | access_users_custom_data             | table | artifactory
- public | access_users_groups                  | table | artifactory
-(37 rows)
+  realm   | count 
+----------+-------
+ internal |    32
+ saml     |    23
+(2 rows)
 
-                           Table "public.access_users"
-         Column         |          Type          | Collation | Nullable | Default 
-------------------------+------------------------+-----------+----------+---------
- user_id                | bigint                 |           | not null | 
- username               | character varying(255) |           | not null | 
- password               | character varying(500) |           |          | 
- allowed_ips            | character varying(255) |           |          | 
- created                | bigint                 |           | not null | 
- modified               | bigint                 |           | not null | 
- firstname              | character varying(35)  |           |          | 
- lastname               | character varying(35)  |           |          | 
- email                  | character varying(255) |           |          | 
- realm                  | character varying(255) |           |          | 
- status                 | character varying(32)  |           | not null | 
- last_login_time        | bigint                 |           | not null | 
- last_login_ip          | character varying(42)  |           |          | 
- failed_attempts        | bigint                 |           | not null | 
- status_last_modified   | bigint                 |           | not null | 
- password_last_modified | bigint                 |           | not null | 
+ user_id |            username            |  realm   | status  |               email               | no_pw | last_login_time 
+---------+--------------------------------+----------+---------+-----------------------------------+-------+-----------------
+    2003 | abitha.bakthavachalam          | saml     | enabled | abitha.bakthavachalam@gsa.gov     | t     |               0
+    2004 | abitha.bakthavachalam@gsa.gov  | saml     | enabled | abitha.bakthavachalam@gsa.gov     | t     |               0
+    2005 | abitha.bakthavachalam@usda.gov | internal | enabled | abitha.bakthavachalam@usda.gov    | t     |               0
+    1002 | admin                          | internal | enabled | jeff.sikala@gsa.gov               | f     |   1785780193046
+       3 | anonymous                      | internal | enabled |                                   | t     |               0
+    2006 | avupload                       | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
+    2007 | docker-uploader                | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
+    2008 | eli.tatro@gsa.gov              | saml     | enabled |                                   | t     |               0
+    2009 | eli.tatro@usda.gov             | internal | enabled | eli.tatro@usda.gov                | t     |               0
+    2010 | gavin.ecker@gsa.gov            | saml     | enabled |                                   | t     |               0
+    2011 | gavin.ecker@usda.gov           | internal | enabled | gavin.ecker@usda.gov              | t     |               0
+    2012 | james.hyland@gsa.gov           | saml     | enabled | james.hyland@gsa.gov              | t     |               0
+    2013 | james.hyland@usda.gov          | internal | enabled | james.hyland@usda.gov             | t     |               0
+    2014 | jared.curtis@usda.gov          | internal | enabled | jared.curtis@usda.gov             | t     |               0
+    2015 | jeff.sikala                    | saml     | enabled | jeff.sikala@gsa.gov               | t     |               0
+    1003 | jeff.sikala@gsa.gov            | internal | enabled | jeff.sikala@gsa.gov               | f     |   1791996874561
+    2016 | jeff.sikala@usda.gov           | internal | enabled | jeff.sikala@usda.gov              | t     |               0
+    2017 | john.zehetner@gsa.gov          | saml     | enabled | john.zehetner@gsa.gov             | t     |               0
+    2018 | john.zehetner@usda.gov         | internal | enabled | john.zehetner@usda.gov            | t     |               0
+    2019 | kristian.fitzgerald            | saml     | enabled | kristian.fitzgerald@gsa.gov       | t     |               0
+    2020 | kristian.fitzgerald@gsa.gov    | saml     | enabled |                                   | t     |               0
+    2021 | kristian.fitzgerald@usda.gov   | internal | enabled | kristian.fitzgerald@usda.gov      | t     |               0
+    2022 | madhav.kundala                 | saml     | enabled | madhav.kundala@gsa.gov            | f     |   1791477263207
+    2023 | madhav.kundala@gsa.gov         | saml     | enabled | madhav.kundala@gsa.gov            | t     |               0
+    2024 | madhav.kundala@usda.gov        | internal | enabled | madhav.kundala@usda.gov           | t     |               0
+    2025 | mark.hotra                     | saml     | enabled |                                   | t     |               0
+    2026 | mark.hotra@gsa.gov             | saml     | enabled |                                   | t     |               0
+    2027 | mark.hotra@usda.gov            | internal | enabled | mark.hotra@usda.gov               | t     |               0
+    2028 | nathan.kim                     | saml     | enabled |                                   | t     |               0
+    2029 | nathan.kim@gsa.gov             | saml     | enabled |                                   | t     |               0
+    2030 | owasp_report_upload            | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
+    2031 | philippe.thai@usda.gov         | internal | enabled | philippe.thai@usda.gov            | t     |               0
+    2032 | robert.torrey@usda.gov         | internal | enabled | robert.torrey@usda.gov            | t     |               0
+    2033 | robert.wernsman                | saml     | enabled | robert.wernsman@gsa.gov           | t     |               0
+    2034 | robert.wernsman@gsa.gov        | saml     | enabled | robert.wernsman@gsa.gov           | t     |               0
+    2035 | robert.wernsman@usda.gov       | internal | enabled | robert.wernsman@usda.gov          | t     |               0
+    2036 | rohith.janga@usda.gov          | internal | enabled | rohith.janga@usda.gov             | t     |               0
+    2037 | rupak.barua@usda.gov           | internal | enabled | rupak.barua@usda.gov              | t     |               0
+    2038 | sa_bamboo                      | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
+    2039 | sa_conexus                     | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
+    2040 | sa_snyk                        | internal | enabled | sa_snyk@gsa.gov                   | f     |               0
+    2041 | sasikanth.dale                 | saml     | enabled | sasikanth.dale@gsa.gov            | t     |               0
+    2042 | sasikanth.dale@gsa.gov         | saml     | enabled | sasikanth.dale@gsa.gov            | t     |               0
+    2043 | sasikanth.dale@usda.gov        | internal | enabled | sasikanth.dale@usda.gov           | t     |               0
+    2002 | schema-test-user               | internal | enabled | jeff.sikala@usda.gov              | t     |               0
+    2044 | shahbaz.qureshi@usda.gov       | internal | enabled | shahbaz.qureshi@usda.gov          | t     |               0
+    2045 | shilpika.pamarthi@gsa.gov      | saml     | enabled | shilpika.pamarthi@gsa.gov         | t     |               0
+    2046 | shilpika.pamarthi@usda.gov     | internal | enabled | shilpika.pamarthi@usda.gov        | t     |               0
+    2047 | stephen.tefft@gsa.gov          | saml     | enabled |                                   | t     |               0
+    2048 | steven.kuzmich@gsa.gov         | saml     | enabled |                                   | t     |               0
+    2049 | steven.kuzmich@usda.gov        | internal | enabled | steven.kuzmich@usda.gov           | t     |               0
+    2050 | sucharita.conjeevaram@usda.gov | internal | enabled | sucharita.conjeevaram@usda.gov    | t     |               0
+    2051 | tyler.goll@gsa.gov             | saml     | enabled | tyler.goll@gsa.gov                | t     |               0
+    2052 | tyler.goll@usda.gov            | internal | enabled | tyler.goll@usda.gov               | t     |               0
+    2053 | uploader                       | internal | enabled | OCIO-EAS-CONEXUS-SYSTEMS@usda.gov | f     |               0
+(55 rows)
+
+                        Table "public.access_groups"
+      Column      |          Type           | Collation | Nullable | Default 
+------------------+-------------------------+-----------+----------+---------
+ group_id         | bigint                  |           | not null | 
+ group_name       | character varying(64)   |           | not null | 
+ description      | character varying(1024) |           |          | 
+ auto_join        | smallint                |           | not null | 
+ realm            | character varying(255)  |           |          | 
+ realm_attributes | character varying(512)  |           |          | 
+ created          | bigint                  |           | not null | 
+ modified         | bigint                  |           | not null | 
+ lowercase_name   | character varying(64)   |           | not null | 
+ external_id      | character varying(64)   |           |          | 
 Indexes:
-    "access_users_pk" PRIMARY KEY, btree (user_id)
-    "access_users_username_idx" UNIQUE, btree (username)
-    "access_users_username_varchar_idx" UNIQUE, btree (username varchar_pattern_ops)
+    "access_groups_pk" PRIMARY KEY, btree (group_id)
+    "access_group_lower_name_idx" btree (lowercase_name)
+    "access_groups_name_idx" UNIQUE, btree (group_name)
 Referenced by:
-    TABLE "access_permission_action" CONSTRAINT "access_perm_action_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id) ON DELETE CASCADE
-    TABLE "access_permissions_actions_v2" CONSTRAINT "access_perm_action_v2_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
-    TABLE "access_project_users" CONSTRAINT "access_project_users_user_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
-    TABLE "access_users_custom_data" CONSTRAINT "access_users_data_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
-    TABLE "access_users_groups" CONSTRAINT "access_users_groups_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
+    TABLE "access_groups_custom_data" CONSTRAINT "access_groups_data_users_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
+    TABLE "access_permissions_actions_v2" CONSTRAINT "access_perm_act_v2_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
+    TABLE "access_permission_action" CONSTRAINT "access_perm_action_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id) ON DELETE CASCADE
+    TABLE "access_project_groups" CONSTRAINT "access_project_groups_group_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
+    TABLE "access_users_groups" CONSTRAINT "access_users_groups_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
 
- count 
--------
-    55
-(1 row)
+                 Table "public.access_users_groups"
+  Column  |          Type          | Collation | Nullable | Default 
+----------+------------------------+-----------+----------+---------
+ user_id  | bigint                 |           | not null | 
+ group_id | bigint                 |           | not null | 
+ realm    | character varying(255) |           |          | 
+Indexes:
+    "access_users_groups_pk" PRIMARY KEY, btree (user_id, group_id)
+Foreign-key constraints:
+    "access_users_groups_groups_fk" FOREIGN KEY (group_id) REFERENCES access_groups(group_id)
+    "access_users_groups_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
