@@ -1,11 +1,46 @@
-[ -n "$artifactory_dev_admin_token" ] && echo set || echo EMPTY
+[sikaj01@ip-10-56-128-233 ~]$ [ -n "$artifactory_dev_admin_token" ] && echo set || echo EMPTY
 curl -i -u admin:"$artifactory_dev_admin_token" https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users | head -20
+set
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0   0     0   0     0     0     0  --:--:--  0:00:50 --:--:--     0^C
+[sikaj01@ip-10-56-128-233 ~]$ ^C
+[sikaj01@ip-10-56-128-233 ~]$ source ~/.bashrc 
+[sikaj01@ip-10-56-128-233 ~]$ curl -i -u admin:"$artifactory_dev_admin_token" https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/security/users | head -20
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0   0     0   0     0     0     0  --:--:--  0:01:33 --:--:--     0^C
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker inspect dev-artifactory --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
+/app/jfrog -> /var/opt/jfrog/artifactory
 
-
-sudo docker inspect dev-artifactory --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
-
-sudo docker inspect dev-artifactory --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -i database | sed -E 's/(PASSWORD)=.*/\1=****/I'
-
-sudo docker exec dev-artifactory sh -c "sed -E 's/(password|token|key): .*/\1: ****/I' /var/opt/jfrog/artifactory/etc/system.yaml"
-
-sudo docker exec dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -l'
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker inspect dev-artifactory --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -i database | sed -E 's/(PASSWORD)=.*/\1=****/I'
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-artifactory sh -c "sed -E 's/(password|token|key): .*/\1: ****/I' /var/opt/jfrog/artifactory/etc/system.yaml"
+configVersion: 1
+shared:
+    security:
+    database:
+        type: postgresql
+        driver: org.postgresql.Driver
+        url: jdbc:postgresql://dev-postgres:5432/artifactory
+        username: artifactory
+        password: ****
+router:
+    entrypoints:
+        externalPort: 8082
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -l'
+                                                       List of databases
+    Name     |    Owner    | Encoding |  Collate   |   Ctype    | ICU Locale | Locale Provider |       Access privileges       
+-------------+-------------+----------+------------+------------+------------+-----------------+-------------------------------
+ artifactory | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
+ bamboo      | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
+             |             |          |            |            |            |                 | bamboouser=CTc/artifactory
+ bitbucket   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =Tc/artifactory              +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory  +
+             |             |          |            |            |            |                 | bitbucketuser=CTc/artifactory
+ postgres    | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | 
+ template0   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory
+ template1   | artifactory | UTF8     | en_US.utf8 | en_US.utf8 |            | libc            | =c/artifactory               +
+             |             |          |            |            |            |                 | artifactory=CTc/artifactory
+(6 rows)
