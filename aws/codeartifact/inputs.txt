@@ -29,3 +29,36 @@ create_user() {
 create_user pkundm01 <uid> 'ssh-rsa AAAA... pkundm01'
 create_user pgollt01 <uid> 'ssh-rsa AAAA... pgollt01'
 create_user ezehb01  <uid> 'ssh-rsa AAAA... ezehb01'
+
+
+
+
+sudo bash -s <<'EOF'
+set -euo pipefail
+add_user() {
+  u="$1"; uid="$2"; pub="$3"
+  id "$u" >/dev/null 2>&1 || useradd -m -u "$uid" -g users -G wheel,docker "$u"
+  for g in wheel docker; do
+    id -nG "$u" | tr ' ' '\n' | grep -qx "$g" || usermod -aG "$g" "$u"
+  done
+  install -d -m 700 -o "$u" -g users "/home/$u/.ssh"
+  touch "/home/$u/.ssh/authorized_keys"
+  grep -qxF "$pub" "/home/$u/.ssh/authorized_keys" || printf '%s\n' "$pub" >> "/home/$u/.ssh/authorized_keys"
+  chown "$u:users" "/home/$u/.ssh/authorized_keys"
+  chmod 600 "/home/$u/.ssh/authorized_keys"
+  command -v restorecon >/dev/null && restorecon -R "/home/$u/.ssh" || true
+  id "$u"
+}
+add_user pgollt01 1002 'ssh-rsa AAAA... pgollt01'
+add_user pkundm01 1015 'ssh-rsa AAAA... pkundm01'
+add_user ezehb01  1036 'ssh-rsa AAAA... ezehb01'
+EOF
+
+
+
+  sudo passwd pgollt01
+  sudo passwd -e pgollt01
+  sudo passwd pkundm01
+  sudo passwd -e pkundm01
+  sudo passwd ezehb01
+  sudo passwd -e ezehb01
