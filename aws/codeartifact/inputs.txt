@@ -1,19 +1,48 @@
-sudo docker exec -i dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory' <<'SQL'
-select u.username, u.realm,
-       string_agg(g.group_name, ', ' order by g.group_name) as groups
-from access_users u
-left join access_users_groups ug on ug.user_id = u.user_id
-left join access_groups g on g.group_id = ug.group_id
-group by u.user_id, u.username, u.realm
-order by regexp_replace(u.username, '@.*$', ''), u.username;
+sudo docker exec -i dev-postgres sh -c 'psql -v ON_ERROR_STOP=1 -v finish=ROLLBACK -U "${POSTGRES_USER:-postgres}" -d artifactory' <<'SQL'
+BEGIN;
 
-select u.realm as user_realm, ug.realm as membership_realm, count(*)
-from access_users_groups ug join access_users u using (user_id)
-group by 1, 2 order by 1, 2;
+DO $$
+DECLARE n int;
+BEGIN
+  UPDATE access_users
+     SET realm = 'internal',
+         modified = (extract(epoch from now()) * 1000)::bigint
+   WHERE realm = 'saml'
+     AND user_id IN (2004,2008,2010,2012,2017,2020,2022,2023,2026,2029,2034,2042,2045,2047,2048,2051);
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 16 THEN RAISE EXCEPTION 'expected 16 users, updated %', n; END IF;
 
-select group_name, realm, realm_attributes from access_groups order by group_name;
+  UPDATE access_users_groups SET realm = 'internal'
+   WHERE realm = 'saml'
+     AND user_id IN (2004,2008,2010,2012,2017,2020,2022,2023,2026,2029,2034,2042,2045,2047,2048,2051);
 
-\d access_users_custom_data
+  INSERT INTO access_users_groups (user_id, group_id, realm)
+  SELECT v.user_id, g.group_id, 'internal'
+    FROM (VALUES
+      (2008,'nsfs_developers'),(2008,'nsfs_qa'),
+      (2010,'nsfs_devops'),
+      (2020,'docker_push_group'),
+      (2023,'docker_push_group'),(2023,'nsfs_administrators'),(2023,'nsfs_devops'),
+      (2023,'nsfs_qa'),(2023,'nsfs_security'),
+      (2026,'docker_push_group'),
+      (2045,'nsfs_qa')
+    ) AS v(user_id, group_name)
+    JOIN access_groups g ON g.group_name = v.group_name
+  ON CONFLICT DO NOTHING;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 11 THEN RAISE EXCEPTION 'expected 11 memberships, inserted %', n; END IF;
+END $$;
+
+SELECT u.user_id, u.username, u.realm, (u.password IS NULL) AS no_pw,
+       string_agg(g.group_name, ', ' ORDER BY g.group_name) AS groups
+  FROM access_users u
+  LEFT JOIN access_users_groups ug ON ug.user_id = u.user_id
+  LEFT JOIN access_groups g ON g.group_id = ug.group_id
+ WHERE u.user_id IN (2004,2008,2010,2012,2017,2020,2022,2023,2026,2029,2034,2042,2045,2047,2048,2051)
+ GROUP BY u.user_id, u.username, u.realm
+ ORDER BY u.username;
+
+SELECT realm, count(*) FROM access_users GROUP BY 1 ORDER BY 1;
+
+:finish;
 SQL
-
-
