@@ -1,6 +1,7 @@
 sudo docker exec dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory \
- -c "select realm, count(*) from access_users group by realm order by 1;" \
- -c "select user_id, username, realm, status, email, (password is null) as no_pw, last_login_time from access_users order by username;" \
- -c "\d access_groups" -c "\d access_users_groups"'
+ -c "select u.username, u.realm, string_agg(g.group_name, '\'', '\'' order by g.group_name) as groups from access_users u left join access_users_groups ug on ug.user_id=u.user_id left join access_groups g on g.group_id=ug.group_id group by u.user_id, u.username, u.realm order by regexp_replace(u.username,'\''@.*$'\'',''\'''\''), u.username;" \
+ -c "select u.realm as user_realm, ug.realm as membership_realm, count(*) from access_users_groups ug join access_users u using(user_id) group by 1,2 order by 1,2;" \
+ -c "select group_name, realm, realm_attributes from access_groups order by group_name;" \
+ -c "\d access_users_custom_data"'
 
 
