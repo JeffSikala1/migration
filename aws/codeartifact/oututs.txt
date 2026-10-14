@@ -1,83 +1,80 @@
-bash-5.2$ bash
-[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ id pkundm01; id pgollt01; id ezehb01
-uid=1015(pkundm01) gid=100(users) groups=100(users),10(wheel),991(docker)
+[sikaj01@ip-10-56-128-233 ~]$ sudo bash -s <<'EOF'
+set -euo pipefail
+add_user() {
+  u="$1"; uid="$2"; pub="$3"
+  id "$u" >/dev/null 2>&1 || useradd -m -u "$uid" -g users -G wheel,docker "$u"
+  for g in wheel docker; do
+    id -nG "$u" | tr ' ' '\n' | grep -qx "$g" || usermod -aG "$g" "$u"
+  done
+  install -d -m 700 -o "$u" -g users "/home/$u/.ssh"
+  touch "/home/$u/.ssh/authorized_keys"
+  grep -qxF "$pub" "/home/$u/.ssh/authorized_keys" || printf '%s\n' "$pub" >> "/home/$u/.ssh/authorized_keys"
+  chown "$u:users" "/home/$u/.ssh/authorized_keys"
+  chmod 600 "/home/$u/.ssh/authorized_keys"
+  command -v restorecon >/dev/null && restorecon -R "/home/$u/.ssh" || true
+  id "$u"
+}
+
+EOF
+[sudo] password for sikaj01: 
 uid=1002(pgollt01) gid=100(users) groups=100(users),10(wheel),991(docker)
+uid=1015(pkundm01) gid=100(users) groups=100(users),10(wheel),991(docker)
 uid=1036(ezehb01) gid=100(users) groups=100(users),10(wheel),991(docker)
-[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ sudo ls -l /efs/devopsdata/{pkundm01,pgollt01,ezehb01}/.ssh/
-/efs/devopsdata/ezehb01/.ssh/:
-total 16
--rw-------. 1 ezehb01 users  761 Mar  9  2026 authorized_keys
--rw-------. 1 ezehb01 users 3389 May 13 13:18 id_rsa
--rw-r-----. 1 ezehb01 users  750 May 13 13:18 id_rsa.pub
--rw-r--r--. 1 ezehb01 users 2522 Oct 13 18:16 known_hosts
-
-/efs/devopsdata/pgollt01/.ssh/:
-total 20
--rw-------. 1 pgollt01 users 1155 Sep 22  2025 authorized_keys
--r--------. 1 pgollt01 users 1679 Oct  6  2025 certsotest.pem
--rw-------. 1 pgollt01 users 3434 Sep 26  2025 id_rsa
--rw-r-----. 1 pgollt01 users  744 Sep 26  2025 id_rsa.pub
--rw-r--r--. 1 pgollt01 users 3647 Jul 28 16:25 known_hosts
-
-/efs/devopsdata/pkundm01/.ssh/:
-total 64
--rw-------. 1 pkundm01 users  2635 Jun 22 19:45 argocd
--rw-r-----. 1 pkundm01 users   591 Jun 22 19:45 argocd.pub
--rw-------. 1 pkundm01 users  3667 Jul 14 03:37 authorized_keys
--rw-------. 1 pkundm01 users  2700 Sep 28 20:29 cloudshellkey
--rw-------. 1 pkundm01 users  2643 Sep 28 20:29 cloudshellkey.bak
--rw-r-----. 1 pkundm01 users   600 Jun 23 17:03 cloudshellkey.pub
--rw-------. 1 pkundm01 users  2675 Sep 29 13:16 id_rsa
--rw-r-----. 1 pkundm01 users   591 Aug  4  2025 id_rsa.pub
--rw-------. 1 pkundm01 users 12938 Oct  8 19:23 known_hosts
--rw-------. 1 pkundm01 users  4292 Aug 22  2025 known_hosts.old
--rw-r-----. 1 pkundm01 users   416 Aug 28  2025 temp
--rw-r-----. 1 pkundm01 users   568 Aug 28  2025 temp2
-[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ ssh -G 10.56.128.233 | grep -Ei 'identityfile|forwardagent'
-identityfile ~/.ssh/id_rsa
-identityfile ~/.ssh/id_ecdsa
-identityfile ~/.ssh/id_ecdsa_sk
-identityfile ~/.ssh/id_ed25519
-identityfile ~/.ssh/id_ed25519_sk
-identityfile ~/.ssh/id_xmss
-identityfile ~/.ssh/id_dsa
-forwardagent no
-[sikaj01@ip-10-56-112-33 certificates_exp_checking_scripts]$ 
+[sikaj01@ip-10-56-128-233 ~]$ sudo passwd pgollt01
+Changing password for user pgollt01.
+New password: 
+BAD PASSWORD: The password is shorter than 16 characters
+New password: 
+BAD PASSWORD: The password is shorter than 16 characters
+New password: 
+Retype new password: 
+passwd: all authentication tokens updated successfully.
+[sikaj01@ip-10-56-128-233 ~]$ sudo passwd pkundm01
+Changing password for user pkundm01.
+New password: 
+Retype new password: 
+passwd: all authentication tokens updated successfully.
+[sikaj01@ip-10-56-128-233 ~]$ sudo passwd ezehb01
+Changing password for user ezehb01.
+New password: 
+Retype new password: 
+passwd: all authentication tokens updated successfully.
+[sikaj01@ip-10-56-128-233 ~]$ 
 
 
+[sikaj01@ip-10-56-128-47 ~]$ sudo bash -s <<'EOF'
+> set -euo pipefail
+> add_user() {
+>   u="$1"; uid="$2"; pub="$3"
+>   id "$u" >/dev/null 2>&1 || useradd -m -u "$uid" -g users -G wheel,docker "$u"
+>   for g in wheel docker; do
+>     id -nG "$u" | tr ' ' '\n' | grep -qx "$g" || usermod -aG "$g" "$u"
+>   done
+>   install -d -m 700 -o "$u" -g users "/home/$u/.ssh"
+>   touch "/home/$u/.ssh/authorized_keys"
+>   grep -qxF "$pub" "/home/$u/.ssh/authorized_keys" || printf '%s\n' "$pub" >> "/home/$u/.ssh/authorized_keys"
+>   chown "$u:users" "/home/$u/.ssh/authorized_keys"
+>   chmod 600 "/home/$u/.ssh/authorized_keys"
+>   command -v restorecon >/dev/null && restorecon -R "/home/$u/.ssh" || true
+>   id "$u"
+> }
 
-
-
-[sikaj01@ip-10-56-128-233 ~]$ id sikaj01
-uid=1001(sikaj01) gid=100(users) groups=100(users),10(wheel),991(docker)
-[sikaj01@ip-10-56-128-233 ~]$ groups
-users wheel docker
-[sikaj01@ip-10-56-128-233 ~]$ getent passwd sikaj01
-sikaj01:x:1001:100::/home/sikaj01:/bin/bash
-[sikaj01@ip-10-56-128-233 ~]$ sudo ls -ld /home/sikaj01 /home/sikaj01/.ssh
-[sudo] password for sikaj01: 
-Sorry, try again.
-[sudo] password for sikaj01: 
-drwx------. 9 sikaj01 users 16384 Oct 10 16:08 /home/sikaj01
-drwxr-x---. 2 sikaj01 users    48 Sep  9 15:39 /home/sikaj01/.ssh
-[sikaj01@ip-10-56-128-233 ~]$ sudo cat /home/sikaj01/.ssh/authorized_keys | cut -c1-80
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCbCLKmqRGfCx08EkLdoo6Sf9TnXqCG59a3hkGI/A2P
-[sikaj01@ip-10-56-128-233 ~]$ sudo grep -rEn 'wheel|sikaj01' /etc/sudoers /etc/sudoers.d/
-/etc/sudoers:106:## Allows people in group wheel to run all commands
-/etc/sudoers:107:%wheel ALL=(ALL)       ALL
-/etc/sudoers:110:# %wheel       ALL=(ALL)       NOPASSWD: ALL
-[sikaj01@ip-10-56-128-233 ~]$ sudo sshd -T | grep -Ei 'allowusers|allowgroups|passwordauthentication|pubkeyacceptedalgorithms|authorizedkeysfile'
-passwordauthentication no
-pubkeyacceptedalgorithms ecdsa-sha2-nistp256,ecdsa-sha2-nistp256-cert-v01@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp384,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521,ecdsa-sha2-nistp521-cert-v01@openssh.com,ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-512-cert-v01@openssh.com
-authorizedkeysfile .ssh/authorized_keys
-[sikaj01@ip-10-56-128-233 ~]$ cat /proc/sys/crypto/fips_enabled
-0
-[sikaj01@ip-10-56-128-233 ~]$ getent passwd pkundm01 pgollt01 ezehb01
-[sikaj01@ip-10-56-128-233 ~]$ ls -alh /home/
-total 32K
-drwxr-xr-x.  6 root                 root                  80 Jul 21 21:31 .
-dr-xr-xr-x. 21 root                 root                 16K Sep 18 17:03 ..
-drwxr-xr-x.  2 cwagent              cwagent               62 Jan 30  2023 cwagent
-drwxr-xr-x.  2 ec2-instance-connect ec2-instance-connect  62 Jan 30  2023 ec2-instance-connect
-drwx------+  4 ec2-user             ec2-user             111 Jul 21 21:41 ec2-user
-drwx------.  9 sikaj01              users                16K Oct 10 16:08 sikaj01
+> EOF
+uid=1002(pgollt01) gid=100(users) groups=100(users),10(wheel),991(docker)
+uid=1015(pkundm01) gid=100(users) groups=100(users),10(wheel),991(docker)
+uid=1036(ezehb01) gid=100(users) groups=100(users),10(wheel),991(docker)
+[sikaj01@ip-10-56-128-47 ~]$ sudo passwd pgollt01
+Changing password for user pgollt01.
+New password: 
+Retype new password: 
+passwd: all authentication tokens updated successfully.
+[sikaj01@ip-10-56-128-47 ~]$ sudo passwd pkundm01
+Changing password for user pkundm01.
+New password: 
+Retype new password: 
+passwd: all authentication tokens updated successfully.
+[sikaj01@ip-10-56-128-47 ~]$ sudo passwd ezehb01
+Changing password for user ezehb01.
+New password: 
+Retype new password: 
+passwd: all authentication tokens updated successfully.
