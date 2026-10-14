@@ -1,115 +1,74 @@
-[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec -i dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d artifactory' <<'SQL'
-select u.username, u.realm,
-       string_agg(g.group_name, ', ' order by g.group_name) as groups
-from access_users u
-left join access_users_groups ug on ug.user_id = u.user_id
-left join access_groups g on g.group_id = ug.group_id
-group by u.user_id, u.username, u.realm
-order by regexp_replace(u.username, '@.*$', ''), u.username;
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec -i dev-postgres sh -c 'psql -v ON_ERROR_STOP=1 -v finish=ROLLBACK -U "${POSTGRES_USER:-postgres}" -d artifactory' <<'SQL'
+BEGIN;
 
-select u.realm as user_realm, ug.realm as membership_realm, count(*)
-from access_users_groups ug join access_users u using (user_id)
-group by 1, 2 order by 1, 2;
+DO $$
+DECLARE n int;
+BEGIN
+  UPDATE access_users
+     SET realm = 'internal',
+         modified = (extract(epoch from now()) * 1000)::bigint
+   WHERE realm = 'saml'
+     AND user_id IN (2004,2008,2010,2012,2017,2020,2022,2023,2026,2029,2034,2042,2045,2047,2048,2051);
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 16 THEN RAISE EXCEPTION 'expected 16 users, updated %', n; END IF;
 
-select group_name, realm, realm_attributes from access_groups order by group_name;
+  UPDATE access_users_groups SET realm = 'internal'
+   WHERE realm = 'saml'
+     AND user_id IN (2004,2008,2010,2012,2017,2020,2022,2023,2026,2029,2034,2042,2045,2047,2048,2051);
 
-\d access_users_custom_data
-SQL
-            username            |  realm   |                                                      groups                                                      
---------------------------------+----------+------------------------------------------------------------------------------------------------------------------
- abitha.bakthavachalam          | saml     | nsfs_developers, nsfs_qa, nsfs_users
- abitha.bakthavachalam@gsa.gov  | saml     | nsfs_developers, nsfs_qa, nsfs_users
- abitha.bakthavachalam@usda.gov | internal | nsfs_developers, nsfs_qa, nsfs_users
- admin                          | internal | 
- anonymous                      | internal | 
- avupload                       | internal | avupload
- docker-uploader                | internal | anon_read_only
- eli.tatro@gsa.gov              | saml     | nsfs_users
- eli.tatro@usda.gov             | internal | nsfs_developers, nsfs_qa, nsfs_users
- gavin.ecker@gsa.gov            | saml     | nsfs_users
- gavin.ecker@usda.gov           | internal | nsfs_devops, nsfs_users
- james.hyland@gsa.gov           | saml     | nsfs_developers, nsfs_qa, nsfs_users
- james.hyland@usda.gov          | internal | nsfs_developers, nsfs_qa, nsfs_users
- jared.curtis@usda.gov          | internal | docker_push_group, nsfs_developers, nsfs_users
- jeff.sikala                    | saml     | admins, nsfs_users
- jeff.sikala@gsa.gov            | internal | admins, nsfs_users, readers
- jeff.sikala@usda.gov           | internal | nsfs_devops, nsfs_users
- john.zehetner@gsa.gov          | saml     | nsfs_developers, nsfs_users
- john.zehetner@usda.gov         | internal | nsfs_developers, nsfs_users
- kristian.fitzgerald            | saml     | docker_push_group, nsfs_developers, nsfs_users
- kristian.fitzgerald@gsa.gov    | saml     | nsfs_developers, nsfs_users
- kristian.fitzgerald@usda.gov   | internal | docker_push_group, nsfs_developers, nsfs_users
- madhav.kundala                 | saml     | nsfs_developers, nsfs_users
- madhav.kundala@gsa.gov         | saml     | admins, nsfs_developers, nsfs_users
- madhav.kundala@usda.gov        | internal | admins, docker_push_group, nsfs_administrators, nsfs_developers, nsfs_devops, nsfs_qa, nsfs_security, nsfs_users
- mark.hotra                     | saml     | nsfs_developers, nsfs_users
- mark.hotra@gsa.gov             | saml     | nsfs_developers, nsfs_users
- mark.hotra@usda.gov            | internal | docker_push_group, nsfs_developers, nsfs_users
- nathan.kim                     | saml     | nsfs_users
- nathan.kim@gsa.gov             | saml     | nsfs_users
- owasp_report_upload            | internal | 
- philippe.thai@usda.gov         | internal | nsfs_developers, nsfs_qa, nsfs_users
- robert.torrey@usda.gov         | internal | nsfs_users
- robert.wernsman                | saml     | docker_push_group, nsfs_developers, nsfs_users
- robert.wernsman@gsa.gov        | saml     | docker_push_group, nsfs_developers, nsfs_users
- robert.wernsman@usda.gov       | internal | docker_push_group, nsfs_developers, nsfs_users
- rohith.janga@usda.gov          | internal | docker_push_group, nsfs_developers, nsfs_users
- rupak.barua@usda.gov           | internal | nsfs_developers, nsfs_qa, nsfs_users
- sa_bamboo                      | internal | anon_read_only, conexus_release_local_create, readers
- sa_conexus                     | internal | anon_read_only, keys, uploadOnly
- sa_snyk                        | internal | anon_read_only
- sasikanth.dale                 | saml     | anon_read_only, conexus_release_local_create, docker_push_group, nsfs_developers, nsfs_users, readers
- sasikanth.dale@gsa.gov         | saml     | anon_read_only, conexus_release_local_create, docker_push_group, nsfs_developers, nsfs_users, readers
- sasikanth.dale@usda.gov        | internal | conexus_release_local_create, docker_push_group, nsfs_developers, nsfs_users
- schema-test-user               | internal | nsfs_users, readers
- shahbaz.qureshi@usda.gov       | internal | docker_push_group, nsfs_devops, nsfs_users
- shilpika.pamarthi@gsa.gov      | saml     | nsfs_developers, nsfs_users
- shilpika.pamarthi@usda.gov     | internal | nsfs_developers, nsfs_qa, nsfs_users
- stephen.tefft@gsa.gov          | saml     | nsfs_users
- steven.kuzmich@gsa.gov         | saml     | nsfs_developers, nsfs_users
- steven.kuzmich@usda.gov        | internal | nsfs_developers, nsfs_users
- sucharita.conjeevaram@usda.gov | internal | nsfs_developers, nsfs_qa, nsfs_users
- tyler.goll@gsa.gov             | saml     | admins, docker_push_group, nsfs_devops, nsfs_users
- tyler.goll@usda.gov            | internal | admins, docker_push_group, nsfs_devops, nsfs_users
- uploader                       | internal | anon_read_only, uploadOnly
-(55 rows)
+  INSERT INTO access_users_groups (user_id, group_id, realm)
+  SELECT v.user_id, g.group_id, 'internal'
+    FROM (VALUES
+      (2008,'nsfs_developers'),(2008,'nsfs_qa'),
+      (2010,'nsfs_devops'),
+      (2020,'docker_push_group'),
+      (2023,'docker_push_group'),(2023,'nsfs_administrators'),(2023,'nsfs_devops'),
+      (2023,'nsfs_qa'),(2023,'nsfs_security'),
+      (2026,'docker_push_group'),
+      (2045,'nsfs_qa')
+    ) AS v(user_id, group_name)
+    JOIN access_groups g ON g.group_name = v.group_name
+  ON CONFLICT DO NOTHING;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 11 THEN RAISE EXCEPTION 'expected 11 memberships, inserted %', n; END IF;
+END $$;
 
- user_realm | membership_realm | count 
-------------+------------------+-------
- internal   | internal         |    78
- internal   | saml             |     2
- saml       | saml             |    58
-(3 rows)
+SELECT u.user_id, u.username, u.realm, (u.password IS NULL) AS no_pw,
+       string_agg(g.group_name, ', ' ORDER BY g.group_name) AS groups
+  FROM access_users u
+  LEFT JOIN access_users_groups ug ON ug.user_id = u.user_id
+  LEFT JOIN access_groups g ON g.group_id = ug.group_id
+ WHERE u.user_id IN (2004,2008,2010,2012,2017,2020,2022,2023,2026,2029,2034,2042,2045,2047,2048,2051)
+ GROUP BY u.user_id, u.username, u.realm
+ ORDER BY u.username;
 
-          group_name          |  realm   | realm_attributes 
-------------------------------+----------+------------------
- admins                       | internal | 
- anon_read_only               | internal | 
- avupload                     | internal | 
- conexus_release_local_create | internal | 
- docker_push_group            | internal | 
- keys                         | internal | 
- nsfs_administrators          | internal | 
- nsfs_developers              | internal | 
- nsfs_devops                  | internal | 
- nsfs_qa                      | internal | 
- nsfs_security                | internal | 
- nsfs_users                   | internal | 
- readers                      | internal | 
- uploadOnly                   | internal | 
-(14 rows)
+SQLnish;ealm, count(*) FROM access_users GROUP BY 1 ORDER BY 1;
+BEGIN
+DO
+ user_id |           username            |  realm   | no_pw |                                                      groups                                                      
+---------+-------------------------------+----------+-------+------------------------------------------------------------------------------------------------------------------
+    2004 | abitha.bakthavachalam@gsa.gov | internal | t     | nsfs_developers, nsfs_qa, nsfs_users
+    2008 | eli.tatro@gsa.gov             | internal | t     | nsfs_developers, nsfs_qa, nsfs_users
+    2010 | gavin.ecker@gsa.gov           | internal | t     | nsfs_devops, nsfs_users
+    2012 | james.hyland@gsa.gov          | internal | t     | nsfs_developers, nsfs_qa, nsfs_users
+    2017 | john.zehetner@gsa.gov         | internal | t     | nsfs_developers, nsfs_users
+    2020 | kristian.fitzgerald@gsa.gov   | internal | t     | docker_push_group, nsfs_developers, nsfs_users
+    2022 | madhav.kundala                | internal | f     | nsfs_developers, nsfs_users
+    2023 | madhav.kundala@gsa.gov        | internal | t     | admins, docker_push_group, nsfs_administrators, nsfs_developers, nsfs_devops, nsfs_qa, nsfs_security, nsfs_users
+    2026 | mark.hotra@gsa.gov            | internal | t     | docker_push_group, nsfs_developers, nsfs_users
+    2029 | nathan.kim@gsa.gov            | internal | t     | nsfs_users
+    2034 | robert.wernsman@gsa.gov       | internal | t     | docker_push_group, nsfs_developers, nsfs_users
+    2042 | sasikanth.dale@gsa.gov        | internal | t     | anon_read_only, conexus_release_local_create, docker_push_group, nsfs_developers, nsfs_users, readers
+    2045 | shilpika.pamarthi@gsa.gov     | internal | t     | nsfs_developers, nsfs_qa, nsfs_users
+    2047 | stephen.tefft@gsa.gov         | internal | t     | nsfs_users
+    2048 | steven.kuzmich@gsa.gov        | internal | t     | nsfs_developers, nsfs_users
+    2051 | tyler.goll@gsa.gov            | internal | t     | admins, docker_push_group, nsfs_devops, nsfs_users
+(16 rows)
 
-                    Table "public.access_users_custom_data"
-       Column       |          Type           | Collation | Nullable | Default 
---------------------+-------------------------+-----------+----------+---------
- user_id            | bigint                  |           | not null | 
- prop_key           | character varying(255)  |           | not null | 
- prop_value         | character varying(2048) |           |          | 
- prop_sensitive     | smallint                |           | not null | 
- prop_cluster_local | smallint                |           |          | 
-Indexes:
-    "access_users_data_pk" PRIMARY KEY, btree (user_id, prop_key)
-    "access_users_data_key_idx" btree (prop_key)
-    "access_users_data_value_idx" btree (prop_value)
-Foreign-key constraints:
-    "access_users_data_users_fk" FOREIGN KEY (user_id) REFERENCES access_users(user_id)
+  realm   | count 
+----------+-------
+ internal |    48
+ saml     |     7
+(2 rows)
+
+ROLLBACK
