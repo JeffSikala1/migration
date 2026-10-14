@@ -1,1 +1,31 @@
-openssl x509 -noout -subject -issuer -serial -enddate -in Certificate_X509_PEM_61C30BC3C9C800FEAF154AA1A3781BFCDB2430AA.pem
+id sikaj01
+getent passwd sikaj01
+sudo ls -ld /home/sikaj01 /home/sikaj01/.ssh
+sudo cat /home/sikaj01/.ssh/authorized_keys | cut -c1-80
+sudo grep -rEn 'wheel|sikaj01' /etc/sudoers /etc/sudoers.d/
+sudo sshd -T | grep -Ei 'allowusers|allowgroups|passwordauthentication|pubkeyacceptedalgorithms|authorizedkeysfile'
+cat /proc/sys/crypto/fips_enabled
+getent passwd pkundm01 pgollt01 ezehb01
+
+
+
+id pkundm01; id pgollt01; id ezehb01
+sudo ls -l /efs/devopsdata/{pkundm01,pgollt01,ezehb01}/.ssh/
+ssh -G 10.56.128.233 | grep -Ei 'identityfile|forwardagent'
+
+
+
+
+
+create_user() {
+  u="$1"; uid="$2"; key="$3"
+  id "$u" >/dev/null 2>&1 || useradd -m -u "$uid" -g users -G wheel "$u"
+  id -nG "$u" | grep -qw wheel || usermod -aG wheel "$u"
+  install -d -m 700 -o "$u" -g users "/home/$u/.ssh"
+  grep -qxF "$key" "/home/$u/.ssh/authorized_keys" 2>/dev/null || echo "$key" >> "/home/$u/.ssh/authorized_keys"
+  chown "$u:users" "/home/$u/.ssh/authorized_keys"; chmod 600 "/home/$u/.ssh/authorized_keys"
+  restorecon -R "/home/$u/.ssh"
+}
+create_user pkundm01 <uid> 'ssh-rsa AAAA... pkundm01'
+create_user pgollt01 <uid> 'ssh-rsa AAAA... pgollt01'
+create_user ezehb01  <uid> 'ssh-rsa AAAA... ezehb01'
