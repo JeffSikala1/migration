@@ -1,4 +1,4 @@
-sudo docker exec -i dev-postgres sh -c 'psql -v ON_ERROR_STOP=1 -v finish=ROLLBACK -U "${POSTGRES_USER:-postgres}" -d artifactory' <<'SQL'
+sudo docker exec -i dev-postgres sh -c 'psql -v ON_ERROR_STOP=1 -v finish=COMMIT -U "${POSTGRES_USER:-postgres}" -d artifactory' <<'SQL'
 BEGIN;
 
 DO $$
@@ -32,15 +32,6 @@ BEGIN
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 11 THEN RAISE EXCEPTION 'expected 11 memberships, inserted %', n; END IF;
 END $$;
-
-SELECT u.user_id, u.username, u.realm, (u.password IS NULL) AS no_pw,
-       string_agg(g.group_name, ', ' ORDER BY g.group_name) AS groups
-  FROM access_users u
-  LEFT JOIN access_users_groups ug ON ug.user_id = u.user_id
-  LEFT JOIN access_groups g ON g.group_id = ug.group_id
- WHERE u.user_id IN (2004,2008,2010,2012,2017,2020,2022,2023,2026,2029,2034,2042,2045,2047,2048,2051)
- GROUP BY u.user_id, u.username, u.realm
- ORDER BY u.username;
 
 SELECT realm, count(*) FROM access_users GROUP BY 1 ORDER BY 1;
 
