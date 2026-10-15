@@ -1,7 +1,26 @@
-[pgollt01@ip-10-56-112-33 ~]$ export AWS_PROFILE=mgmtvpc
-[pgollt01@ip-10-56-112-33 ~]$ aws configure set region us-east-1
-[pgollt01@ip-10-56-112-33 ~]$ aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+aws sts get-caller-identity --profile mgmtvpc
+aws configure list --profile mgmtvpc
 
-An error occurred (AccessDeniedException) when calling the GetAuthorizationToken operation: User: arn:aws:iam::339713019047:user/tyler.goll is not authorized to perform: ecr:GetAuthorizationToken on resource: * because no identity-based policy allows the ecr:GetAuthorizationToken action
 
-An error occurred (AccessDeniedException) when calling the GetAuthorizationToken operation: User: arn:aws:iam::339713019047:user/tyler.goll is not authorized to perform: ecr:GetAuthorizationToken on resource: * because no identity-based policy allows the ecr:GetAuthorizationToken action
+U=tyler.goll
+aws iam list-attached-user-policies --user-name $U
+aws iam list-user-policies --user-name $U
+aws iam list-groups-for-user --user-name $U
+aws iam get-user --user-name $U --query 'User.PermissionsBoundary'
+# for each group returned:
+aws iam list-attached-group-policies --group-name <GROUP>
+aws iam list-group-policies --group-name <GROUP>
+
+
+
+
+
+
+
+aws iam simulate-principal-policy \
+  --policy-source-arn arn:aws:iam::339713019047:user/tyler.goll \
+  --action-names ecr:GetAuthorizationToken ecr:BatchCheckLayerAvailability ecr:InitiateLayerUpload ecr:UploadLayerPart ecr:CompleteLayerUpload ecr:PutImage ecr:BatchGetImage ecr:GetDownloadUrlForLayer \
+  --query 'EvaluationResults[].[EvalActionName,EvalDecision,OrganizationsDecisionDetail]' --output table
+
+
+aws ecr get-repository-policy --repository-name <repo> --region us-east-1
