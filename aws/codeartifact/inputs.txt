@@ -1,5 +1,10 @@
-for db in bamboo bitbucket; do
+for spec in "bamboo:bitbucket[.]mgmt|artifactory[.]mgmt" "bitbucket:bamboo[.]mgmt"; do
+  db=${spec%%:*}; pat=${spec#*:}
   echo "== $db"
-  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" $db" \
-    | grep -oE '[A-Za-z0-9.-]+\.cnxs\.vpcaas\.fcs\.gsa\.gov|10\.56\.112\.[0-9]+' | sort | uniq -c | sort -rn | head -30
+  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" -a $db" \
+   | awk -v pat="$pat" '/^COPY /{t=$2} $0 ~ pat {c[t]++} END{for(k in c) print c[k], k}' | sort -rn | head -12
 done
+
+
+grep -rEoh '(https?|ssh)://[A-Za-z0-9._@-]+' bamboo-specs/deployment-specs bamboo-specs/_archive | sort | uniq -c | sort -rn | head -40
+grep -rEoh '(ssh|scp|rsync|kubectl|argocd|helm)[^|;&"]{0,80}' bamboo-specs/deployment-specs | sort | uniq -c | sort -rn | head -30
