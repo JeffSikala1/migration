@@ -1,422 +1,83 @@
-[sikaj01@ip-10-56-128-233 ~]$ for spec in "bamboo:bitbucket[.]mgmt|artifactory[.]mgmt" "bitbucket:bamboo[.]mgmt"; do
-  db=${spec%%:*}; pat=${spec#*:}
-  echo "== $db"
-  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" -a $db" \
-   | awk -v pat="$pat" '/^COPY /{t=$2} $0 ~ pat {c[t]++} END{for(k in c) print c[k], k}' | sort -rn | head -12
-done
-== bamboo
+[sikaj01@ip-10-56-128-47 ~]$ docker start ip-10-56-128-47.ec2.internal-ba-1
+ip-10-56-128-47.ec2.internal-ba-1
+[sikaj01@ip-10-56-128-47 ~]$ clear
+[sikaj01@ip-10-56-128-47 ~]$ sudo docker ps --format '{{.Names}}\t{{.Image}}'
+ip-10-56-128-47.ec2.internal-ba-1       339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214
+[sikaj01@ip-10-56-128-47 ~]$ A=ip-10-56-128-47.ec2.internal-ba-1
+[sikaj01@ip-10-56-128-47 ~]$ for f in settings.xml settings-release.xml; do echo "== $f"; sudo docker exec $A sh -c "sed -E 's#(<password>)[^<]*(</password>)#\1****\2#I' /usr/share/maven/conf/$f" | grep -nEi '<id>|<url>|<username>|<password>|<mirrorOf>'; done
+== settings.xml
+10:      <id>central</id>
+11:      <username>uploader</username>
+12:      <password>****</password>
+15:      <id>conexus-feature-repo</id>
+16:      <username>uploader</username>
+17:      <password>****</password>
+20:      <id>ArtifactoryPluginRepos</id>
+21:      <username>uploader</username>
+22:      <password>****</password>
+27:      <id>ArtifactoryPluginRepos</id>
+29:      <url>${bamboo.inject.pluginRepositoryUrl}</url>
+30:      <mirrorOf>*,!conexus-feature-repo</mirrorOf>
+46:          <id>conexus-feature-repo</id>
+48:          <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
+61:          <id>central</id>
+63:          <url>${bamboo.inject.pluginRepositoryUrl}</url>
+66:      <id>artifactory</id>
+== settings-release.xml
+10:      <id>central</id>
+11:      <username>uploader</username>
+12:      <password>****</password>
+17:      <id>Conexus</id>
+19:      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+20:      <mirrorOf>*</mirrorOf>
+36:          <id>central</id>
+46:          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+56:          <id>central</id>
+58:          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+64:          <id>snapshots</id>  
+66:          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
+69:      <id>artifactory</id>
+[sikaj01@ip-10-56-128-47 ~]$ 
+
+
+
+
+[sikaj01@ip-10-56-128-47 ~]$ sudo docker exec $A sh -c 'ls -l /home/bamboo/.ssh/ 2>&1; kubectl config get-contexts 2>&1 | head'
+ls: cannot access '/home/bamboo/.ssh/': No such file or directory
+sh: line 1: kubectl: command not found
+[sikaj01@ip-10-56-128-47 ~]$ aws sts get-caller-identity
+{
+    "UserId": "AROAW3MEBTILITDDJPFGC:i-079b964a2338aaaa6",
+    "Account": "471112718870",
+    "Arn": "arn:aws:sts::471112718870:assumed-role/dev-ssm-role/i-079b964a2338aaaa6"
+}
+[sikaj01@ip-10-56-128-47 ~]$ A=ip-10-56-128-47.ec2.internal-ba-1
+[sikaj01@ip-10-56-128-47 ~]$ sudo docker exec $A sh -c 'ls -l /home/bamboo/.ssh/ 2>&1; kubectl config get-contexts 2>&1 | head'
+ls: cannot access '/home/bamboo/.ssh/': No such file or directory
+sh: line 1: kubectl: command not found
+
+
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t vcs_location bamboo' | grep -oE '(ssh|https?)://[A-Za-z0-9._@-]+(:[0-9]+)?' | sort | uniq -c | sort -rn | head
 [sudo] password for sikaj01: 
-pg_dump: warning: there are circular foreign-key constraints on this table:
-pg_dump: detail: acl_object_identity
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-pg_dump: warning: there are circular foreign-key constraints on this table:
-pg_dump: detail: build
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-pg_dump: warning: there are circular foreign-key constraints on this table:
-pg_dump: detail: buildresultsummary
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
 pg_dump: warning: there are circular foreign-key constraints on this table:
 pg_dump: detail: vcs_location
 pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
 pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-pg_dump: warning: there are circular foreign-key constraints among these tables:
-pg_dump: detail: build
-pg_dump: detail: chain_stage
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-pg_dump: warning: there are circular foreign-key constraints among these tables:
-pg_dump: detail: buildresultsummary
-pg_dump: detail: chain_stage_result
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-232509 public.buildresultsummary_customdata
-52226 public.variable_context
-963 public.variable_definition
-84 public.build_definition
-80 public.user_commit
-43 public.vcs_location
-22 public.audit_log
-12 public.deployment_version_commit
-4 public.variable_baseline_item
-2 public.deployment_environment
-2 public.bandana
-2 public."AO_21D670_WHITELIST_RULES"
-== bitbucket
-6909 public.bb_build_status
-585 public.bb_deployment
-118 public."AO_C77861_AUDIT_ENTITY"
-59 public.sta_service_user
-59 public."AO_FB71B4_SSH_PUBLIC_KEY"
-
-
-
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../bamboo-deployment/
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ git pull
-remote: Enumerating objects: 19, done.
-remote: Counting objects: 100% (19/19), done.
-remote: Compressing objects: 100% (17/17), done.
-remote: Total 17 (delta 14), reused 0 (delta 0), pack-reused 0 (from 0)
-Unpacking objects: 100% (17/17), 1.83 KiB | 2.00 KiB/s, done.
-From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment
-   86c6a2925..619857e19  develop                              -> origin/develop
- * [new branch]          feature/passEnvVarForArtifactoryAuth -> origin/feature/passEnvVarForArtifactoryAuth
-Already up to date.
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ git branch
-  CNXS-62536
-  develop
-  feature/ll-postgres
-* jboss-build-push
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ ll
-total 140
--rwxr-x---. 1 sikaj01 users 11669 Sep  4  2025 bamboo-deployment.py
--rwxr-x---. 1 sikaj01 users  2004 Sep  4  2025 bamboo-deployment.sh
--rwxr-x---. 1 sikaj01 users  3818 Jun 22 14:55 build-determination-migration.sh
--rwxr-x---. 1 sikaj01 users  3842 Sep  4  2025 build-determination.sh
--rw-r-----. 1 sikaj01 users 17725 Mar  7  2026 builder.sh
--rwxr-x---. 1 sikaj01 users  5159 Sep  4  2025 cleanup.py
--rwxr-x---. 1 sikaj01 users  5844 May 14 22:17 deploy-to-artifactory-and-create-bamboo-version-migrate.sh
--rwxr-x---. 1 sikaj01 users  5824 Sep  4  2025 deploy-to-artifactory-and-create-bamboo-version.sh
--rwxr-x---. 1 sikaj01 users  3048 May 14 22:21 deploy-to-artifactory-skip-bamboo-version-migrate.sh
--rwxr-x---. 1 sikaj01 users  3044 Mar 10  2026 deploy-to-artifactory-skip-bamboo-version.sh
--rw-r-----. 1 sikaj01 users 10836 Mar  7  2026 download_artifacts.sh
--rw-r-----. 1 sikaj01 users   261 Feb 20  2026 file.properties
--rwxr-x---. 1 sikaj01 users  3097 Sep  4  2025 httpd-maint.py
--rwxr-x---. 1 sikaj01 users   577 Sep  4  2025 httpd-maint.sh
--rwxr-x---. 1 sikaj01 users  9099 Sep  4  2025 long-lived-setup.py
--rwxr-x---. 1 sikaj01 users 16524 Apr 15  2026 promote.py
--rwxr-x---. 1 sikaj01 users  4841 Sep  4  2025 release.sh
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ cat build-determination-migration.sh 
-#!/usr/bin/env bash
-
-artifactoryRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories"
-user="sa_conexus"
-# Set from global Bamboo variables
-api_key="${bamboo_artifactory_admin_api_key_secret}"
-
-longLivedPrefix="ll-"
-BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
-
-RepositoryBaseUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/"
- 
-## Check to see if this is a long lived branch child
-if [[ "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
-    echo "This is a long lived branch"
-    # Split the parent and child branch name
-    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
-    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-    
-    # Set the plugin repo to conexus-ll-plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${ParentBranchName}" >> file.properties
-    echo "ChildBranchName=${ChildBranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-    
-    # Check that the long lived parent maven repo exists - if it doesn't create it
-    mavenRepoExists=$(curl -s -X GET "$artifactoryRepositoryUrl?type=local&packageType=maven" | grep $BranchName | head -n1)
-    echo "Checking if repo exists"
-    if [[ -z "${mavenRepoExists}" ]]; then
-        echo "Repo does not exist. Creating Maven repo: ${BranchName}"
-        curl -X PUT \
-           -H "Content-type: application/json" \
-           -u "admin:${api_key}" \
-           "$artifactoryRepositoryUrl/${BranchName}" \
-           -d '{ "key": "'${BranchName}'", "rclass" : "local", "packageType": "maven", "repoLayoutRef" : "maven-2-default", "snapshotVersionBehavior": "unique"}'
-        echo "Updating permsissions on new repo"
-        # Getting the anon_read_only permission model, add new repo name, and push changes
-        curl -s -X GET -u "admin:${api_key}" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only \
-            | jq ".repo.repositories += [\"${BranchName}\"]" \
-            | curl -s -X PUT -u "admin:${api_key}" -H "Content-Type: application/json" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only -d@-
-        # Getting the uploadOnly permission model, add new repo name, and push changes
-        curl -s -X GET -u "admin:${api_key}" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly \
-            | jq ".repo.repositories += [\"${BranchName}\"]" \
-            | curl -s -X PUT -u "admin:${api_key}" -H "Content-Type: application/json" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly -d@-
-    else
-        echo "Repo does exist"
-    fi
-elif [[ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
-    echo "Not a long lived branch"
-    # Not a long lived branch
-    BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
-
-    # Set the plugin repo to conexus--plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${BranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-else
-      echo "Cannot determine parent branch"
-      exit 1
-fi
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ ll
-total 140
--rwxr-x---. 1 sikaj01 users 11669 Sep  4  2025 bamboo-deployment.py
--rwxr-x---. 1 sikaj01 users  2004 Sep  4  2025 bamboo-deployment.sh
--rwxr-x---. 1 sikaj01 users  3818 Jun 22 14:55 build-determination-migration.sh
--rwxr-x---. 1 sikaj01 users  3842 Sep  4  2025 build-determination.sh
--rw-r-----. 1 sikaj01 users 17725 Mar  7  2026 builder.sh
--rwxr-x---. 1 sikaj01 users  5159 Sep  4  2025 cleanup.py
--rwxr-x---. 1 sikaj01 users  5844 May 14 22:17 deploy-to-artifactory-and-create-bamboo-version-migrate.sh
--rwxr-x---. 1 sikaj01 users  5824 Sep  4  2025 deploy-to-artifactory-and-create-bamboo-version.sh
--rwxr-x---. 1 sikaj01 users  3048 May 14 22:21 deploy-to-artifactory-skip-bamboo-version-migrate.sh
--rwxr-x---. 1 sikaj01 users  3044 Mar 10  2026 deploy-to-artifactory-skip-bamboo-version.sh
--rw-r-----. 1 sikaj01 users 10836 Mar  7  2026 download_artifacts.sh
--rw-r-----. 1 sikaj01 users   261 Feb 20  2026 file.properties
--rwxr-x---. 1 sikaj01 users  3097 Sep  4  2025 httpd-maint.py
--rwxr-x---. 1 sikaj01 users   577 Sep  4  2025 httpd-maint.sh
--rwxr-x---. 1 sikaj01 users  9099 Sep  4  2025 long-lived-setup.py
--rwxr-x---. 1 sikaj01 users 16524 Apr 15  2026 promote.py
--rwxr-x---. 1 sikaj01 users  4841 Sep  4  2025 release.sh
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ cat deploy-to-artifactory-
-deploy-to-artifactory-and-create-bamboo-version-migrate.sh  deploy-to-artifactory-skip-bamboo-version-migrate.sh        
-deploy-to-artifactory-and-create-bamboo-version.sh          deploy-to-artifactory-skip-bamboo-version.sh                
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ cat deploy-to-artifactory-and-create-bamboo-version-migrate.sh d
-deploy-to-artifactory-and-create-bamboo-version-migrate.sh  deploy-to-artifactory-skip-bamboo-version-migrate.sh        download_artifacts.sh
-deploy-to-artifactory-and-create-bamboo-version.sh          deploy-to-artifactory-skip-bamboo-version.sh                
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ cat deploy-to-artifactory-and-create-bamboo-version-migrate.sh deploy-to-artifactory-skip-bamboo-version-migrate.sh 
-#!/usr/bin/env bash
-
-# Determine if a deploy is needed
-
-longLivedPrefix="ll-"
-BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
-
-# Used for debugging #######################
-#buildVersionQueryArtifact=task-ear
-#buildVersionQueryGroup=gov.gsa.cnxs.task
-#mavenVersion=01.00.000.73
-############################################
-
-RepositoryBaseUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/"
-
-## Check to see if this is a long lived branch child
-if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-    echo "This is a long lived branch"
-    # Split the parent and child branch name
-    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
-    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-
-    # Set the plugin repo to conexus-ll-plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${ParentBranchName}" >> file.properties
-    echo "ChildBranchName=${ChildBranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a long lived parent or child branch
-    if [ -z ${ChildBranchName} ]; then
-        echo "This is a parent long-lived branch"
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName"
-        echo -e "latestVersion=$(curl -s -k -L "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName")" >> file.properties
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child long-lived branch. Not deploying to Artifactory"
-    fi
-
- elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-     echo "Not a long lived branch"
-     # Not a long lived branch
-     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
-
-     # Set the plugin repo to conexus--plugin-repository
-     # Set the branch repo to the parent branch
-     echo "BranchName=${BranchName}" >> file.properties
-     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a development parent or child (feature) branch
-    if [ "$BranchName" == "develop" ]; then
-        echo "This is a development branch"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
-        # The buildVersionQuery variables are defined in the plan as variables
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo -e "latestVersion=$(curl -k -s "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
-    else
-        echo "This is not a develop branch but may be a feature branch"
-        #echo "This is NOT a development branch"
-        #mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-rc-local/"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
-        # The buildVersionQuery variables are defined in the plan as variables
-        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
-        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
-        echo "mavenVersion=$mavenVersion"
-        echo -e "latestVersion=$(curl -k -s "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
-        #---old code start
-        #echo "This is a child (feature) development branch. Not deploying to Artifactory"
-        # Clear out the file.properties contents so that the injection does nothing
-        #echo -e "" > file.properties
-        #---old code end
-    fi
-
-  else
-      echo "Cannot determine parent branch"
-      exit 1
-fi
-echo "contents of file.properties"
-echo " "
-cat file.properties
-#!/usr/bin/env bash
-
-# Determine if a deploy is needed
-
-longLivedPrefix="ll-"
-BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
-
-RepositoryBaseUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/"
-
-## Check to see if this is a long lived branch child
-if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-    echo "This is a long lived branch"
-    # Split the parent and child branch name
-    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
-    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
-
-    # Set the plugin repo to conexus-ll-plugin-repository
-    # Set the branch repo to the parent branch
-    echo "BranchName=${ParentBranchName}" >> file.properties
-    echo "ChildBranchName=${ChildBranchName}" >> file.properties
-    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
-    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
-    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a long lived parent or child branch
-    if [ -z ${ChildBranchName} ]; then
-        echo "This is a parent long-lived branch"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child long-lived branch. Not deploying to Artifactory"
-    fi
-
- elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
-     echo "Not a long lived branch"
-     # Not a long lived branch
-     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
-
-     # Set the plugin repo to conexus--plugin-repository
-     # Set the branch repo to the parent branch
-     echo "BranchName=${BranchName}" >> file.properties
-     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
-     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
-     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
-
-    # Determine if this is a development parent or child (feature) branch
-    if [ "$BranchName" == "develop" ]; then
-        echo "This is a development branch.  Deploying to Artifactory"
-        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
-    else
-        echo "This is a child (feature) development branch. Not deploying to Artifactory"
-    fi
-
-  else
-      echo "Cannot determine parent branch"
-      exit 1
-fi
-[sikaj01@ip-10-56-112-33 bamboo-deployment]$ 
-
-
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ grep -rEoh '(ssh|scp|rsync|kubectl|argocd|helm)[^|;&"]{0,80}' bamboo-specs/deployment-specs | sort | uniq -c | sort -rn | head -30
-     12 kubectl --context=
-      6 ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=
-      3 ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts.git
-      3 ssh/id_argcdbb missing
-      3 ssh/id_argcdbb ] 
-      2 kubectl config view --flatten \
-      1 kubectl rollout (GitOps/ArgoCD expected to sync the repo).
-      1 kubectl not found
-      1 kubectl >/dev/null 2>
-      1 kubectl
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ grep -rEoh '(https?|ssh)://[A-Za-z0-9._@-]+' bamboo-specs/deployment-specs bamboo-specs/_archive | sort | uniq -c | sort -rn | head -40
-    982 https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
-     49 ssh://git@conexus-bitbucket.edc.ds1.usda.gov
-     43 https://conexus-bamboo.edc.ds1.usda.gov
-     37 http://maven.apache.org
-     16 https://maven.apache.org
-     16 http://www.w3.org
-      6 https://releases.jfrog.io
-      6 https://easartifactory.edc.ds1.usda.gov
-      6 https://conexus-bamboo-cert.edc.ds1.usda.gov
-      3 ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
-      3 https://github.com
-      2 https://repo1.maven.org
-      2 https://maven.repository.redhat.com
-      1 https://cnxsartifact-
-
-
-
-      [sikaj01@ip-10-56-128-233 ~]$ for spec in "bamboo:bitbucket[.]mgmt|artifactory[.]mgmt" "bitbucket:bamboo[.]mgmt"; do
-  db=${spec%%:*}; pat=${spec#*:}
-  echo "== $db"
-  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" -a $db" \
-   | awk -v pat="$pat" '/^COPY /{t=$2} $0 ~ pat {c[t]++} END{for(k in c) print c[k], k}' | sort -rn | head -12
-done
-== bamboo
-[sudo] password for sikaj01: 
-pg_dump: warning: there are circular foreign-key constraints on this table:
-pg_dump: detail: acl_object_identity
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-pg_dump: warning: there are circular foreign-key constraints on this table:
-pg_dump: detail: build
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-pg_dump: warning: there are circular foreign-key constraints on this table:
-pg_dump: detail: buildresultsummary
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-pg_dump: warning: there are circular foreign-key constraints on this table:
-pg_dump: detail: vcs_location
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-pg_dump: warning: there are circular foreign-key constraints among these tables:
-pg_dump: detail: build
-pg_dump: detail: chain_stage
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-pg_dump: warning: there are circular foreign-key constraints among these tables:
-pg_dump: detail: buildresultsummary
-pg_dump: detail: chain_stage_result
-pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
-pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
-232509 public.buildresultsummary_customdata
-52226 public.variable_context
-963 public.variable_definition
-84 public.build_definition
-80 public.user_commit
-43 public.vcs_location
-22 public.audit_log
-12 public.deployment_version_commit
-4 public.variable_baseline_item
-2 public.deployment_environment
-2 public.bandana
-2 public."AO_21D670_WHITELIST_RULES"
-== bitbucket
-6909 public.bb_build_status
-585 public.bb_deployment
-118 public."AO_C77861_AUDIT_ENTITY"
-59 public.sta_service_user
-59 public."AO_FB71B4_SSH_PUBLIC_KEY"
-[sikaj01@ip-10-56-128-233 ~]$ grep -rEoh '(https?|ssh)://[A-Za-z0-9._@-]+' bamboo-specs/deployment-specs bamboo-specs/_archive | sort | uniq -c | sort -rn | head -40
-grep: bamboo-specs/deployment-specs: No such file or directory
-grep: bamboo-specs/_archive: No such file or directory
-[sikaj01@ip-10-56-128-233 ~]$ grep -rEoh '(ssh|scp|rsync|kubectl|argocd|helm)[^|;&"]{0,80}' bamboo-specs/deployment-specs | sort | uniq -c | sort -rn | head -30
-grep: bamboo-specs/deployment-specs: No such file or directory
+     43 ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999
+     43 https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t variable_definition bamboo' | grep -oiE '[A-Za-z_.]*(admin_api_key|artifactory_auth|api_key|access_token|uploader)[A-Za-z_.]*' | sort | uniq -c
+      1 api_key
+      1 artifactory_access_token_secret
+      1 artifactory_admin_api_key_secret
+     16 artifactory_auth
+      1 artifactory_auth_secret
+      7 bamboo_artifactory_auth
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t deployment_environment bamboo' | grep -E 'mgmt[.]cnxs' | cut -c1-250 
+2850819 DEV-EKS Deploy Apache OIDC front-end to the DEV EKS cluster     <?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<configuration xml:space="preserve"><taskDefinition><id>1</id><userDescription/><isEnabled>true</isEnabled><pluginKey>com.atla
+2850818 DEV-EKS Deploy WSO2 MI (wso2mi) to the DEV EKS cluster via GitOps (scripts repo)        <?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<configuration xml:space="preserve"><taskDefinition><id>1</id><userDescription/><isEnabled>true</isEnable
+[sikaj01@ip-10-56-128-233 ~]$ getent hosts bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
+10.56.119.26    bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+10.56.119.8     bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+10.56.119.26    artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
+10.56.119.8     artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
+[sikaj01@ip-10-56-128-233 ~]$ 
