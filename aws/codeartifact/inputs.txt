@@ -1,10 +1,12 @@
-for spec in "bamboo:bitbucket[.]mgmt|artifactory[.]mgmt" "bitbucket:bamboo[.]mgmt"; do
-  db=${spec%%:*}; pat=${spec#*:}
-  echo "== $db"
-  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" -a $db" \
-   | awk -v pat="$pat" '/^COPY /{t=$2} $0 ~ pat {c[t]++} END{for(k in c) print c[k], k}' | sort -rn | head -12
-done
+sudo docker ps --format '{{.Names}}\t{{.Image}}'
+A=<agent-container>
+for f in settings.xml settings-release.xml; do echo "== $f"; sudo docker exec $A sh -c "sed -E 's#(<password>)[^<]*(</password>)#\1****\2#I' /usr/share/maven/conf/$f" | grep -nEi '<id>|<url>|<username>|<password>|<mirrorOf>'; done
+sudo docker exec $A sh -c 'ls -l /home/bamboo/.ssh/ 2>&1; kubectl config get-contexts 2>&1 | head'
+aws sts get-caller-identity
 
 
-grep -rEoh '(https?|ssh)://[A-Za-z0-9._@-]+' bamboo-specs/deployment-specs bamboo-specs/_archive | sort | uniq -c | sort -rn | head -40
-grep -rEoh '(ssh|scp|rsync|kubectl|argocd|helm)[^|;&"]{0,80}' bamboo-specs/deployment-specs | sort | uniq -c | sort -rn | head -30
+
+sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t vcs_location bamboo' | grep -oE '(ssh|https?)://[A-Za-z0-9._@-]+(:[0-9]+)?' | sort | uniq -c | sort -rn | head
+sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t variable_definition bamboo' | grep -oiE '[A-Za-z_.]*(admin_api_key|artifactory_auth|api_key|access_token|uploader)[A-Za-z_.]*' | sort | uniq -c
+sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t deployment_environment bamboo' | grep -E 'mgmt[.]cnxs' | cut -c1-250
+getent hosts bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
