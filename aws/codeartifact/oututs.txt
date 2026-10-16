@@ -1,293 +1,422 @@
-[sikaj01@ip-10-56-128-233 ~]$ for db in bamboo bitbucket; do
+[sikaj01@ip-10-56-128-233 ~]$ for spec in "bamboo:bitbucket[.]mgmt|artifactory[.]mgmt" "bitbucket:bamboo[.]mgmt"; do
+  db=${spec%%:*}; pat=${spec#*:}
   echo "== $db"
-  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" $db" \
-    | grep -oE '[A-Za-z0-9.-]+\.cnxs\.vpcaas\.fcs\.gsa\.gov|10\.56\.112\.[0-9]+' | sort | uniq -c | sort -rn | head -30
+  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" -a $db" \
+   | awk -v pat="$pat" '/^COPY /{t=$2} $0 ~ pat {c[t]++} END{for(k in c) print c[k], k}' | sort -rn | head -12
 done
 == bamboo
 [sudo] password for sikaj01: 
- 205274 bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
-  99700 artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
-    262 bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
-      8 bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
-      3 bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
+pg_dump: warning: there are circular foreign-key constraints on this table:
+pg_dump: detail: acl_object_identity
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints on this table:
+pg_dump: detail: build
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints on this table:
+pg_dump: detail: buildresultsummary
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints on this table:
+pg_dump: detail: vcs_location
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints among these tables:
+pg_dump: detail: build
+pg_dump: detail: chain_stage
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints among these tables:
+pg_dump: detail: buildresultsummary
+pg_dump: detail: chain_stage_result
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+232509 public.buildresultsummary_customdata
+52226 public.variable_context
+963 public.variable_definition
+84 public.build_definition
+80 public.user_commit
+43 public.vcs_location
+22 public.audit_log
+12 public.deployment_version_commit
+4 public.variable_baseline_item
+2 public.deployment_environment
+2 public.bandana
+2 public."AO_21D670_WHITELIST_RULES"
 == bitbucket
-  22862 bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
-   7966 bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
-    901 bitbucket-test.dev.cnxs.vpcaas.fcs.gsa.gov
-    443 bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov
-    190 bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
-      2 mgmt.cnxs.vpcaas.fcs.gsa.gov
-      2 dev.cnxs.vpcaas.fcs.gsa.gov
-      2 10.56.112.33
+6909 public.bb_build_status
+585 public.bb_deployment
+118 public."AO_C77861_AUDIT_ENTITY"
+59 public.sta_service_user
+59 public."AO_FB71B4_SSH_PUBLIC_KEY"
 
 
 
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ cd ../bamboo-deployment/
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ git pull
+remote: Enumerating objects: 19, done.
+remote: Counting objects: 100% (19/19), done.
+remote: Compressing objects: 100% (17/17), done.
+remote: Total 17 (delta 14), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (17/17), 1.83 KiB | 2.00 KiB/s, done.
+From ssh://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment
+   86c6a2925..619857e19  develop                              -> origin/develop
+ * [new branch]          feature/passEnvVarForArtifactoryAuth -> origin/feature/passEnvVarForArtifactoryAuth
+Already up to date.
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ git branch
+  CNXS-62536
+  develop
+  feature/ll-postgres
+* jboss-build-push
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ ll
+total 140
+-rwxr-x---. 1 sikaj01 users 11669 Sep  4  2025 bamboo-deployment.py
+-rwxr-x---. 1 sikaj01 users  2004 Sep  4  2025 bamboo-deployment.sh
+-rwxr-x---. 1 sikaj01 users  3818 Jun 22 14:55 build-determination-migration.sh
+-rwxr-x---. 1 sikaj01 users  3842 Sep  4  2025 build-determination.sh
+-rw-r-----. 1 sikaj01 users 17725 Mar  7  2026 builder.sh
+-rwxr-x---. 1 sikaj01 users  5159 Sep  4  2025 cleanup.py
+-rwxr-x---. 1 sikaj01 users  5844 May 14 22:17 deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+-rwxr-x---. 1 sikaj01 users  5824 Sep  4  2025 deploy-to-artifactory-and-create-bamboo-version.sh
+-rwxr-x---. 1 sikaj01 users  3048 May 14 22:21 deploy-to-artifactory-skip-bamboo-version-migrate.sh
+-rwxr-x---. 1 sikaj01 users  3044 Mar 10  2026 deploy-to-artifactory-skip-bamboo-version.sh
+-rw-r-----. 1 sikaj01 users 10836 Mar  7  2026 download_artifacts.sh
+-rw-r-----. 1 sikaj01 users   261 Feb 20  2026 file.properties
+-rwxr-x---. 1 sikaj01 users  3097 Sep  4  2025 httpd-maint.py
+-rwxr-x---. 1 sikaj01 users   577 Sep  4  2025 httpd-maint.sh
+-rwxr-x---. 1 sikaj01 users  9099 Sep  4  2025 long-lived-setup.py
+-rwxr-x---. 1 sikaj01 users 16524 Apr 15  2026 promote.py
+-rwxr-x---. 1 sikaj01 users  4841 Sep  4  2025 release.sh
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ cat build-determination-migration.sh 
+#!/usr/bin/env bash
 
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ ll
-total 32
-drwxr-x---. 4 sikaj01 users 18432 Oct  8 19:53 bamboo-specs
--rwxr-x---. 1 sikaj01 users  2904 Sep 11  2025 clean_repos.sh
--rw-r-----. 1 sikaj01 users  2416 Sep 24  2025 install_artifact.sh
--rwxr-x---. 1 sikaj01 users  4754 Sep 11  2025 split_specs.sh
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ cat bamboo-specs/* | grep mgmt
-        curl -k -L https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt
-        CI=true ; jfrog rt c Artifactory --user=avupload --url=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory --apikey=${bamboo.api_key}
-        curl -k -H "X-JFrog-Art-Api:${bamboo.api_key}" -O "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/jfrog/av_cleanup.spec"
-            export ARTIFACTORY_BASE_URL="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov"
-             -v  "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/help/help/$datetime/help-$datetime.tgz"
-        #echo -e "latestVersion=$(curl -s "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=gov.gsa.cnxs.help&amp;a=help&amp;repos=conexus-release-local")" > file.properties
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
-        npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/
-        #SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
-        npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/
-        #SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
-      - "#!/usr/bin/env bash\n\n# Create the package and upload\necho \"Creating the package\"\ndatetime=$(date +%Y%m%d%H%M%S)\ntar --exclude='.git' --exclude='.gitignore' --exclude='.editorconfig' -zcf wiki-$datetime.tgz wiki/\n\n# Create checksums\necho \"Create checksum\"\nARTIFACT_MD5_CHECKSUM=$(md5sum wiki-$datetime.tgz | awk '{print $1}')\nARTIFACT_SHA1_CHECKSUM=$(shasum -a 1 wiki-$datetime.tgz | awk '{ print $1 }')\nARTIFACT_SHA256_CHECKSUM=$(shasum -a 256 wiki-$datetime.tgz | awk '{ print $1 }')\n\necho \"Upload the package\"\n#curl -H 'X-JFrog-Art-Api:API_KEY' -T wiki-$datetime.tgz \"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/wiki/wiki/$datetime/wiki-$datetime.tgz\"\ncurl --upload-file wiki-$datetime.tgz \\\n     --header \"X-Checksum-MD5:${ARTIFACT_MD5_CHECKSUM}\" \\\n     --header \"X-Checksum-Sha1:${ARTIFACT_SHA1_CHECKSUM}\" \\\n     --header \"X-Checksum-Sha256:${ARTIFACT_SHA256_CHECKSUM}\" \\\n     --header \"X-JFrog-Art-Api:API_KEY'" \\\n     -v  \"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-release-local/gov/gsa/cnxs/wiki/wiki/$datetime/wiki-$datetime.tgz\"\n     \necho \"Remove the package\"\nrm -f wiki-$datetime.tgz\n\n#echo -e \"latestVersion=$(curl -s \"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=gov.gsa.cnxs.wiki&amp;a=wiki&amp;repos=conexus-release-local\")\" > file.properties\necho -e \"latestVersion=$datetime\" > file.properties"
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-        curl -k https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt -o /tmp/USDA_Enterprise_Root_CA.crt
-        jfrog rt c Artifactory --interactive=false --user=owasp_report_upload --url=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory --apikey=${bamboo.api_key}
-        curl -H "X-JFrog-Art-Api:${bamboo.api_key}" -O "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/jfrog/owasp_report_cleanup.spec"
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      - "#!/usr/bin/env bash\n\nPATH=\"$PATH:/opt/Fortify/Fortify_SCA_and_Apps/bin/:/opt/Fortify/Fortify_Apps_and_Tools/bin/\"\nsourceanalyzer -b ${bamboo.ssc_applicationName} -clean\n\nsourceanalyzer -b ${bamboo.ssc_applicationName} mvn -Upackage -DskipTests \\\n    -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ \\\n    -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/\n    \nsourceanalyzer -b ${bamboo.ssc_applicationName} -scan -autoheap -f ${bamboo.ssc_applicationName}_results.fpr\n\nfortifyclient uploadFPR -authtoken ${bamboo.inject_token.Authorization_Token} -applicationVersionID ${bamboo.ssc_applicationVersionId} -url ${bamboo.ssc_url} -f ${bamboo.build.working.directory}/${bamboo.ssc_applicationName}_results.fpr"
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      - "#!/usr/bin/env bash\n#cd ./web/src/main/\n#ls -l \n#npm install -g auditjs\n#cd web/src/main/\n#ls -l\n#auditjs ossi -Usimon.branton-housley@gsa.gov -p 88d8f5bbc9c04d5dde1f42f03b835c01c3080216\n\nnpm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/\nnpm install -g npm-audit-html\necho \"Starting command: npm audit --omit=dev --audit-level=critical\"\nnpm audit --omit=dev --audit-level=critical\necho \"Completed: npm audit --omit=dev --audit-level=critical\"\necho \"Starting command: npm audit --audit-level=low\"\nnpm audit --audit-level=low\necho \"Completed: npm audit --audit-level=low\"\n\n#npm audit --json --prod | npm-audit-html"
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-        echo "Uploading report to " https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-owasp-dc-reports/${datetime}_${bamboo.shortPlanName}.html
-        #curl -v -uowasp_report_upload:AP2VFRtYG3ZhvB1pR3M2xYRNev9egAsuQo21oCmMDKFzD6zZyGqZLVvrUXHes3kL5jr11yS -T ${bamboo.build.working.directory}/target/dependency-check-report.html https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-owasp-dc-reports/${d}_${bamboo.shortPlanName}.html
-               "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-owasp-dc-reports/${datetime}_${bamboo.shortPlanName}.html"
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      - "#!/usr/bin/env bash\n\nPATH=\"$PATH:/opt/Fortify/Fortify_SCA_and_Apps/bin/:/opt/Fortify/Fortify_Apps_and_Tools/bin\"\nsourceanalyzer -b ${bamboo.ssc_applicationName} -clean\n\nsourceanalyzer -b ${bamboo.ssc_applicationName} mvn -Uverify -DskipTests \\\n    -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ \\\n    -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/\n    \nsourceanalyzer -b ${bamboo.ssc_applicationName} -scan -autoheap -f ${bamboo.ssc_applicationName}_results.fpr\n\nfortifyclient uploadFPR -authtoken ${bamboo.inject_token.Authorization_Token} -applicationVersionID ${bamboo.ssc_applicationVersionId} -url ${bamboo.ssc_url} -f ${bamboo.build.working.directory}/${bamboo.ssc_applicationName}_results.fpr"
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-      environment: bamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ bamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-        pushRepository: artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/docker-local/cert-conexus-bamboo-agent:${bamboo.inject.tag}
-        pushRepository: artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/docker-local/prod-conexus-bamboo-agent:${bamboo.inject.tag}
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443/artifactory/file-local/certificates/USDA_Enterprise_Root_CA.crt" -o /etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.pem
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      - "#!/usr/bin/env bash\nsource ~/.bashrc\n\ngit remote set-url origin ${bamboo.planRepository.repositoryUrl}\n\n# Determine the release branch version\nbranch_total_version=$(git branch -a | grep -m 1 \"release/01.00.000\" | awk -F/ '{print $NF}')\necho $branch_total_version\n\n# Checkout the release branch\necho \"Checking out release/$branch_total_version\"\ngit checkout release/$branch_total_version\ngit branch \ngit remote get-url --all origin\n\n# Determine the version in the pom\npom_version=$(cat pom.xml | grep -oPm1 \"(?<=<version>)[^<]+\")\necho \"Pom version: $pom_version\"\n\n# Set the major and minor version\nmajor_version=$(echo $pom_version | awk '{split($0,a,\"[.-]\"); print a[4]}')\nminor_version=$(echo $pom_version | awk '{split($0,a,\"[.-]\"); print a[5]}' | perl -pe 's/RC//g or s/SNAPSHOT//g')\n\necho \"Before change: major version: $major_version minor version: $minor_version\"\n\nif [ -z $minor_version ]; then\n    minor_version=\"1\"\n    echo \"After change: major version: $major_version minor version: $minor_version\"\n    echo \"Changing version from $major_version to $major_version.$minor_version\"\n    # perl -pi -e 's/you/me/g' file1 file2 file3\n    ls -l\n    perl -pi -e \"s/01.00.000.$major_version-RC/01.00.000.$major_version.$minor_version-RC/g or s/01.00.000.$major_version-SNAPSHOT/01.00.000.$major_version.$minor_version-RC/g\" pom.xml web/pom.xml\n    # Commit and Push your changes\n  # Determine the version in the pom\n    new_pom_version=$(cat pom.xml | grep -oPm1 \"(?<=<version>)[^<]+\")\n    echo \"New Pom version: $new_pom_version\"\n    # git push --set-upstream origin release/01.00.000.29\n    git push --set-upstream origin release/$branch_total_version\n    git add .\n    git commit -a -m \"(bamboo) Performing a Mid-Sprint Hotfixto version $major_version.$minor_version\"\n    git push\nelse\n    minor_version_incremented=$((minor_version + 1))\n    echo \"After change: major version: $major_version minor version: $minor_version_incremented\"\n    echo \"Changing version from $major_version.$minor_version to $major_version.$minor_version_incremented\"\n    ls -l\n    perl -pi -e \"s/01.00.000.$major_version.$minor_version-RC/01.00.000.$major_version.$minor_version_incremented-RC/g or s/01.00.000.$major_version.$minor_version-SNAPSHOT/01.00.000.$major_version.$minor_version_incremented-RC/g\" pom.xml web/pom.xml\n    # Determine the version in the pom\n    new_pom_version=$(cat pom.xml | grep -oPm1 \"(?<=<version>)[^<]+\")\n    echo \"New Pom version: $new_pom_version\"\n    # Commit and Push your changes\n    # git push --set-upstream origin release/01.00.000.29\n    git push --set-upstream origin release/$branch_total_version\n    git add .\n    git commit -a -m \"(bamboo) Performing a Mid-Sprint Hotfix to version $major_version.$minor_version_incremented\"\n    git push\nfi\n\n# Now that the version numbers have been changed, start the npm/ng build process\ncd web/src/main\n\nexport NODE_EXTRA_CA_CERTS=/etc/pki/ca-trust/source/anchors/USDA_Enterprise_Root_CA.crt\n\nnpm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/\n\n#SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install\nnpm install\n\n#ng build --configuration production --build-optimizer --output-hashing=all --vendor-chunk --optimization --progress\n#node --max_old_space_size=8192 \\\n#     node_modules/@angular/cli/bin/ng build \\\n#     --configuration production --output-hashing=all --optimization --source-map=true\nng build --configurationproduction --output-hashing=all  --optimization --source-map=true\ncd ../../.."
-      goal: clean deploy -U -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local --settings /usr/share/maven/conf/settings-release.xml
-        echo -e "latestVersion=$(curl -s "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=gov.gsa.cnxs.ui&amp;a=ui-war&amp;repos=conexus-rc-local")" >> file.properties
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        server=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        server=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -Dmaven.test.skip=true -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -Dbamboo.inject.mavenFeatureRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/ -Dbamboo.inject.pluginRepositoryUrl=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes' bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
-        npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm-remote/
-        #SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/google-chrome.repo > /etc/yum.repos.d/google-chrome.repo
-        npm config set registry https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/npm/npm/
-        SASS_BINARY_SITE='https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/node-sass/' npm install
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository -s /usr/share/maven/conf/settings-release.xml
-      environment: bamboo.inject.BranchName="release" bamboo.inject.pluginRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" bamboo.inject.mavenFeatureRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository" ARTIFACTORY_UPLOADER_SECRET="${bamboo.ARTIFACTORY_UPLOADER_SECRET}"
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-        curl -k -u sa_conexus:${bamboo.artifactory_auth_secret} "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/keys/s_bamboo_git" -o ~/.ssh/id_rsa
-      goal: -U clean deploy -DaltDeploymentRepository=central::default::https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-rc-local -s /usr/share/maven/conf/settings-release.xml
-cat: bamboo-specs/_archive: Is a directory
-cat: bamboo-specs/deployment-specs: Is a directory
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ git remote -v
-origin  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git (fetch)
-origin  ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-specs.git (push)
+artifactoryRepositoryUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories"
+user="sa_conexus"
+# Set from global Bamboo variables
+api_key="${bamboo_artifactory_admin_api_key_secret}"
+
+longLivedPrefix="ll-"
+BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
+
+RepositoryBaseUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/"
+ 
+## Check to see if this is a long lived branch child
+if [[ "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
+    echo "This is a long lived branch"
+    # Split the parent and child branch name
+    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
+    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
+    
+    # Set the plugin repo to conexus-ll-plugin-repository
+    # Set the branch repo to the parent branch
+    echo "BranchName=${ParentBranchName}" >> file.properties
+    echo "ChildBranchName=${ChildBranchName}" >> file.properties
+    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
+    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
+    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
+    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
+    
+    # Check that the long lived parent maven repo exists - if it doesn't create it
+    mavenRepoExists=$(curl -s -X GET "$artifactoryRepositoryUrl?type=local&packageType=maven" | grep $BranchName | head -n1)
+    echo "Checking if repo exists"
+    if [[ -z "${mavenRepoExists}" ]]; then
+        echo "Repo does not exist. Creating Maven repo: ${BranchName}"
+        curl -X PUT \
+           -H "Content-type: application/json" \
+           -u "admin:${api_key}" \
+           "$artifactoryRepositoryUrl/${BranchName}" \
+           -d '{ "key": "'${BranchName}'", "rclass" : "local", "packageType": "maven", "repoLayoutRef" : "maven-2-default", "snapshotVersionBehavior": "unique"}'
+        echo "Updating permsissions on new repo"
+        # Getting the anon_read_only permission model, add new repo name, and push changes
+        curl -s -X GET -u "admin:${api_key}" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only \
+            | jq ".repo.repositories += [\"${BranchName}\"]" \
+            | curl -s -X PUT -u "admin:${api_key}" -H "Content-Type: application/json" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/anon_read_only -d@-
+        # Getting the uploadOnly permission model, add new repo name, and push changes
+        curl -s -X GET -u "admin:${api_key}" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly \
+            | jq ".repo.repositories += [\"${BranchName}\"]" \
+            | curl -s -X PUT -u "admin:${api_key}" -H "Content-Type: application/json" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/v2/security/permissions/uploadOnly -d@-
+    else
+        echo "Repo does exist"
+    fi
+elif [[ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]]; then
+    echo "Not a long lived branch"
+    # Not a long lived branch
+    BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
+
+    # Set the plugin repo to conexus--plugin-repository
+    # Set the branch repo to the parent branch
+    echo "BranchName=${BranchName}" >> file.properties
+    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
+    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
+    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
+    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
+else
+      echo "Cannot determine parent branch"
+      exit 1
+fi
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ ll
+total 140
+-rwxr-x---. 1 sikaj01 users 11669 Sep  4  2025 bamboo-deployment.py
+-rwxr-x---. 1 sikaj01 users  2004 Sep  4  2025 bamboo-deployment.sh
+-rwxr-x---. 1 sikaj01 users  3818 Jun 22 14:55 build-determination-migration.sh
+-rwxr-x---. 1 sikaj01 users  3842 Sep  4  2025 build-determination.sh
+-rw-r-----. 1 sikaj01 users 17725 Mar  7  2026 builder.sh
+-rwxr-x---. 1 sikaj01 users  5159 Sep  4  2025 cleanup.py
+-rwxr-x---. 1 sikaj01 users  5844 May 14 22:17 deploy-to-artifactory-and-create-bamboo-version-migrate.sh
+-rwxr-x---. 1 sikaj01 users  5824 Sep  4  2025 deploy-to-artifactory-and-create-bamboo-version.sh
+-rwxr-x---. 1 sikaj01 users  3048 May 14 22:21 deploy-to-artifactory-skip-bamboo-version-migrate.sh
+-rwxr-x---. 1 sikaj01 users  3044 Mar 10  2026 deploy-to-artifactory-skip-bamboo-version.sh
+-rw-r-----. 1 sikaj01 users 10836 Mar  7  2026 download_artifacts.sh
+-rw-r-----. 1 sikaj01 users   261 Feb 20  2026 file.properties
+-rwxr-x---. 1 sikaj01 users  3097 Sep  4  2025 httpd-maint.py
+-rwxr-x---. 1 sikaj01 users   577 Sep  4  2025 httpd-maint.sh
+-rwxr-x---. 1 sikaj01 users  9099 Sep  4  2025 long-lived-setup.py
+-rwxr-x---. 1 sikaj01 users 16524 Apr 15  2026 promote.py
+-rwxr-x---. 1 sikaj01 users  4841 Sep  4  2025 release.sh
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ cat deploy-to-artifactory-
+deploy-to-artifactory-and-create-bamboo-version-migrate.sh  deploy-to-artifactory-skip-bamboo-version-migrate.sh        
+deploy-to-artifactory-and-create-bamboo-version.sh          deploy-to-artifactory-skip-bamboo-version.sh                
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ cat deploy-to-artifactory-and-create-bamboo-version-migrate.sh d
+deploy-to-artifactory-and-create-bamboo-version-migrate.sh  deploy-to-artifactory-skip-bamboo-version-migrate.sh        download_artifacts.sh
+deploy-to-artifactory-and-create-bamboo-version.sh          deploy-to-artifactory-skip-bamboo-version.sh                
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ cat deploy-to-artifactory-and-create-bamboo-version-migrate.sh deploy-to-artifactory-skip-bamboo-version-migrate.sh 
+#!/usr/bin/env bash
+
+# Determine if a deploy is needed
+
+longLivedPrefix="ll-"
+BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
+
+# Used for debugging #######################
+#buildVersionQueryArtifact=task-ear
+#buildVersionQueryGroup=gov.gsa.cnxs.task
+#mavenVersion=01.00.000.73
+############################################
+
+RepositoryBaseUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/"
+
+## Check to see if this is a long lived branch child
+if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
+    echo "This is a long lived branch"
+    # Split the parent and child branch name
+    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
+    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
+
+    # Set the plugin repo to conexus-ll-plugin-repository
+    # Set the branch repo to the parent branch
+    echo "BranchName=${ParentBranchName}" >> file.properties
+    echo "ChildBranchName=${ChildBranchName}" >> file.properties
+    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
+    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
+    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
+    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
+
+    # Determine if this is a long lived parent or child branch
+    if [ -z ${ChildBranchName} ]; then
+        echo "This is a parent long-lived branch"
+        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
+        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
+        echo "mavenVersion=$mavenVersion"
+        echo "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName"
+        echo -e "latestVersion=$(curl -s -k -L "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=$ParentBranchName")" >> file.properties
+        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
+    else
+        echo "This is a child long-lived branch. Not deploying to Artifactory"
+    fi
+
+ elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
+     echo "Not a long lived branch"
+     # Not a long lived branch
+     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
+
+     # Set the plugin repo to conexus--plugin-repository
+     # Set the branch repo to the parent branch
+     echo "BranchName=${BranchName}" >> file.properties
+     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
+     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
+     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
+     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
+
+    # Determine if this is a development parent or child (feature) branch
+    if [ "$BranchName" == "develop" ]; then
+        echo "This is a development branch"
+        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
+        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
+        # The buildVersionQuery variables are defined in the plan as variables
+        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
+        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
+        echo "mavenVersion=$mavenVersion"
+        echo -e "latestVersion=$(curl -k -s "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
+    else
+        echo "This is not a develop branch but may be a feature branch"
+        #echo "This is NOT a development branch"
+        #mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-rc-local/"
+        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
+        # Query Artifactory for the development snapshot version that was used and inject that into a file for use in Bamboo Deployment
+        # The buildVersionQuery variables are defined in the plan as variables
+        echo "buildVersionQueryArtifact=$buildVersionQueryArtifact"
+        echo "buildVersionQueryGroup=$buildVersionQueryGroup"
+        echo "mavenVersion=$mavenVersion"
+        echo -e "latestVersion=$(curl -k -s "https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/search/latestVersion?g=$buildVersionQueryGroup&a=$buildVersionQueryArtifact&v=$mavenVersion&repos=conexus-snapshot-local")" >> file.properties
+        #---old code start
+        #echo "This is a child (feature) development branch. Not deploying to Artifactory"
+        # Clear out the file.properties contents so that the injection does nothing
+        #echo -e "" > file.properties
+        #---old code end
+    fi
+
+  else
+      echo "Cannot determine parent branch"
+      exit 1
+fi
+echo "contents of file.properties"
+echo " "
+cat file.properties
+#!/usr/bin/env bash
+
+# Determine if a deploy is needed
+
+longLivedPrefix="ll-"
+BranchName="$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)"
+
+RepositoryBaseUrl="https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/"
+
+## Check to see if this is a long lived branch child
+if [ "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
+    echo "This is a long lived branch"
+    # Split the parent and child branch name
+    ParentBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f1)
+    ChildBranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2 | cut -d'+' -f2 -s)
+
+    # Set the plugin repo to conexus-ll-plugin-repository
+    # Set the branch repo to the parent branch
+    echo "BranchName=${ParentBranchName}" >> file.properties
+    echo "ChildBranchName=${ChildBranchName}" >> file.properties
+    pluginRepositoryUrl="${RepositoryBaseUrl}conexus-ll-plugin-repository/"
+    mavenFeatureRepositoryUrl="${RepositoryBaseUrl}${ParentBranchName}/"
+    echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
+    echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
+
+    # Determine if this is a long lived parent or child branch
+    if [ -z ${ChildBranchName} ]; then
+        echo "This is a parent long-lived branch"
+        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
+    else
+        echo "This is a child long-lived branch. Not deploying to Artifactory"
+    fi
+
+ elif [ ! "${BranchName:0:3}" = "${longLivedPrefix}" ]; then
+     echo "Not a long lived branch"
+     # Not a long lived branch
+     BranchName=$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)
+
+     # Set the plugin repo to conexus--plugin-repository
+     # Set the branch repo to the parent branch
+     echo "BranchName=${BranchName}" >> file.properties
+     pluginRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
+     mavenFeatureRepositoryUrl="${RepositoryBaseUrl}conexus-plugin-repository/"
+     echo "pluginRepositoryUrl=${pluginRepositoryUrl}" >> file.properties
+     echo "mavenFeatureRepositoryUrl=${mavenFeatureRepositoryUrl}" >> file.properties
+
+    # Determine if this is a development parent or child (feature) branch
+    if [ "$BranchName" == "develop" ]; then
+        echo "This is a development branch.  Deploying to Artifactory"
+        mvn deploy -DskipTests=true -U -Dbamboo.inject.BranchName=$BranchName -Dbamboo.inject.mavenFeatureRepositoryUrl=$mavenFeatureRepositoryUrl -Dbamboo.inject.pluginRepositoryUrl=$pluginRepositoryUrl -DaltDeploymentRepository=central::default::$mavenFeatureRepositoryUrl --s /usr/share/maven/conf/settings.xml
+    else
+        echo "This is a child (feature) development branch. Not deploying to Artifactory"
+    fi
+
+  else
+      echo "Cannot determine parent branch"
+      exit 1
+fi
+[sikaj01@ip-10-56-112-33 bamboo-deployment]$ 
+
+
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ grep -rEoh '(ssh|scp|rsync|kubectl|argocd|helm)[^|;&"]{0,80}' bamboo-specs/deployment-specs | sort | uniq -c | sort -rn | head -30
+     12 kubectl --context=
+      6 ssh -i /home/bamboo/.ssh/id_argcdbb -o IdentitiesOnly=yes -o StrictHostKeyChecking=
+      3 ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts.git
+      3 ssh/id_argcdbb missing
+      3 ssh/id_argcdbb ] 
+      2 kubectl config view --flatten \
+      1 kubectl rollout (GitOps/ArgoCD expected to sync the repo).
+      1 kubectl not found
+      1 kubectl >/dev/null 2>
+      1 kubectl
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ grep -rEoh '(https?|ssh)://[A-Za-z0-9._@-]+' bamboo-specs/deployment-specs bamboo-specs/_archive | sort | uniq -c | sort -rn | head -40
+    982 https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
+     49 ssh://git@conexus-bitbucket.edc.ds1.usda.gov
+     43 https://conexus-bamboo.edc.ds1.usda.gov
+     37 http://maven.apache.org
+     16 https://maven.apache.org
+     16 http://www.w3.org
+      6 https://releases.jfrog.io
+      6 https://easartifactory.edc.ds1.usda.gov
+      6 https://conexus-bamboo-cert.edc.ds1.usda.gov
+      3 ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov
+      3 https://github.com
+      2 https://repo1.maven.org
+      2 https://maven.repository.redhat.com
+      1 https://cnxsartifact-
+
+
+
+      [sikaj01@ip-10-56-128-233 ~]$ for spec in "bamboo:bitbucket[.]mgmt|artifactory[.]mgmt" "bitbucket:bamboo[.]mgmt"; do
+  db=${spec%%:*}; pat=${spec#*:}
+  echo "== $db"
+  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" -a $db" \
+   | awk -v pat="$pat" '/^COPY /{t=$2} $0 ~ pat {c[t]++} END{for(k in c) print c[k], k}' | sort -rn | head -12
+done
+== bamboo
+[sudo] password for sikaj01: 
+pg_dump: warning: there are circular foreign-key constraints on this table:
+pg_dump: detail: acl_object_identity
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints on this table:
+pg_dump: detail: build
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints on this table:
+pg_dump: detail: buildresultsummary
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints on this table:
+pg_dump: detail: vcs_location
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints among these tables:
+pg_dump: detail: build
+pg_dump: detail: chain_stage
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+pg_dump: warning: there are circular foreign-key constraints among these tables:
+pg_dump: detail: buildresultsummary
+pg_dump: detail: chain_stage_result
+pg_dump: hint: You might not be able to restore the dump without using --disable-triggers or temporarily dropping the constraints.
+pg_dump: hint: Consider using a full dump instead of a --data-only dump to avoid this problem.
+232509 public.buildresultsummary_customdata
+52226 public.variable_context
+963 public.variable_definition
+84 public.build_definition
+80 public.user_commit
+43 public.vcs_location
+22 public.audit_log
+12 public.deployment_version_commit
+4 public.variable_baseline_item
+2 public.deployment_environment
+2 public.bandana
+2 public."AO_21D670_WHITELIST_RULES"
+== bitbucket
+6909 public.bb_build_status
+585 public.bb_deployment
+118 public."AO_C77861_AUDIT_ENTITY"
+59 public.sta_service_user
+59 public."AO_FB71B4_SSH_PUBLIC_KEY"
+[sikaj01@ip-10-56-128-233 ~]$ grep -rEoh '(https?|ssh)://[A-Za-z0-9._@-]+' bamboo-specs/deployment-specs bamboo-specs/_archive | sort | uniq -c | sort -rn | head -40
+grep: bamboo-specs/deployment-specs: No such file or directory
+grep: bamboo-specs/_archive: No such file or directory
+[sikaj01@ip-10-56-128-233 ~]$ grep -rEoh '(ssh|scp|rsync|kubectl|argocd|helm)[^|;&"]{0,80}' bamboo-specs/deployment-specs | sort | uniq -c | sort -rn | head -30
+grep: bamboo-specs/deployment-specs: No such file or directory
