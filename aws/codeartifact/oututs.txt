@@ -1,582 +1,182 @@
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker exec $A sh -c 'id; echo HOME=$HOME; ls -la ~/.ssh ~/.kube ~/.aws 2>&1'
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t build_definition bamboo 2>/dev/null' | grep -oE 'https://cnxsartifact-[A-Za-z0-9._/-]*' | sort -u
 [sudo] password for sikaj01: 
-uid=0(root) gid=0(root) groups=0(root)
-HOME=/root
-ls: cannot access '/root/.kube': No such file or directory
-ls: cannot access '/root/.aws': No such file or directory
-/root/.ssh:
-total 4
-drwx------. 1 root root   25 Sep 27 21:15 .
-dr-xr-x---. 1 root root   43 Oct  7 11:30 ..
--rw-r--r--. 1 root root 1074 Sep 27 21:15 known_hosts
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker inspect -f 'net={{.HostConfig.NetworkMode}} user={{.Config.User}}' $A
-net=isolated_nw user=root
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker inspect -f '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' $A
-/cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1 -> /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1
-/opt/bamboo-keys -> /opt/bamboo-keys
-/var/run/docker.sock -> /var/run/docker.sock
-
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' $A | sed 's/=.*/=<redacted>/' | sort
-
-JAVA_HOME=<redacted>
-MAVEN_HOME=<redacted>
-MAVEN_VERSION=<redacted>
-PATH=<redacted>
-[sikaj01@ip-10-56-128-47 ~]$ ls -l /opt/bamboo-keys 2>&1
-ls: cannot open directory /opt/bamboo-keys: Permission denied
-[sikaj01@ip-10-56-128-47 ~]$ sudo !!
-sudo ls -l /opt/bamboo-keys 2>&1
-total 16
--rw-------. 1 root root 3381 Sep  9 18:39 bitbucket_ci
--rw-------. 1 root root 3247 Sep  9 18:39 bitbucket_ci_jgit
--rw-r--r--. 1 root root  759 Sep  9 18:15 bitbucket_ci_jgit.pub
--rw-r--r--. 1 root root  745 Sep  9 18:15 bitbucket_ci.pub
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker stop $A
-ip-10-56-128-47.ec2.internal-ba-1
-
-
-
-[sikaj01@ip-10-56-128-233 ~]$ for t in variable_definition build_definition deployment_environment; do
-  echo "== $t"
-  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" -a -t $t bamboo 2>/dev/null" \
-   | grep -oE '(ssh|https?)://[A-Za-z0-9._@-]+(:[0-9]+)?' | sort | uniq -c | sort -rn | head -20
-done
-== variable_definition
-[sudo] password for sikaj01: 
-    705 ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999
-    258 https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
-== build_definition
-    226 https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov
-     94 https://conexus-artifactory.edc.ds1.usda.gov
-     37 http://maven.apache.org
-     19 https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov:443
-     16 https://maven.apache.org
-     16 http://www.w3.org
-      2 https://repo1.maven.org
-      2 https://maven.repository.redhat.com
-      2 http://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999
-      1 https://releases.jfrog.io
-      1 https://github.com
-      1 https://conexus-artifactory.edc.ds1.usda.gov:443
-      1 https://cnxsartifact-
-== deployment_environment
-      2 ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999
-[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec -i dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d bamboo' <<'SQL'
-select variable_key,
-       case when variable_value like 'BAMSCRT%' then 'encrypted'
-            else 'PLAINTEXT len='||length(variable_value) end as shape,
-       count(*)
-from variable_definition
-where variable_key ~* 'artifactory|api_key|token|auth|inject|ssc|url'
-group by 1,2 order by 1;
-> select variable_key, left(variable_value,90)
-from variable_definition
-where variable_value ~* 'mgmt\.cnxs|usda\.gov' and variable_value not like 'BAMSCRT%'
-group by 1,2 order by 1;
-SQL
-           variable_key           |       shape       | count 
-----------------------------------+-------------------+-------
- api_key                          | PLAINTEXT len=73  |     1
- artifactory_access_token_secret  | encrypted         |     1
- artifactory_admin_api_key_secret | encrypted         |     1
- artifactory_admin_password       | encrypted         |     1
- artifactory_admin_username       | PLAINTEXT len=5   |     1
- artifactory_auth                 | PLAINTEXT len=73  |    16
- artifactory_auth_secret          | encrypted         |     1
- artifactory_sa_bamboo_password   | encrypted         |     1
- artifactory_sa_conexus_password  | encrypted         |     1
- bamboo_artifactory_auth          | PLAINTEXT len=71  |     7
- inject."errors"                  | PLAINTEXT len=3   |     1
- inject."message"                 | PLAINTEXT len=28  |     1
- inject."status"                  | PLAINTEXT len=4   |     1
- inject.BranchName                | PLAINTEXT len=7   |   129
- inject.ChildBranchName           | PLAINTEXT len=0   |     5
- inject.ParentBranchName          | PLAINTEXT len=7   |     3
- inject.RawBranchName             | PLAINTEXT len=7   |     3
- inject.isLongLived               | PLAINTEXT len=5   |     5
- inject.latestVersion             | PLAINTEXT len=32  |    70
- inject.latestVersion             | PLAINTEXT len=122 |     4
- inject.latestVersion             | PLAINTEXT len=93  |     5
- inject.latestVersion             | PLAINTEXT len=76  |     1
- inject.latestVersion             | PLAINTEXT len=79  |     3
- inject.latestVersion             | PLAINTEXT len=121 |     2
- inject.latestVersion             | PLAINTEXT len=147 |     2
- inject.latestVersion             | PLAINTEXT len=98  |     2
- inject.latestVersion             | PLAINTEXT len=127 |     5
- inject.latestVersion             | PLAINTEXT len=96  |     2
- inject.latestVersion             | PLAINTEXT len=95  |     3
- inject.latestVersion             | PLAINTEXT len=148 |     1
- inject.latestVersion             | PLAINTEXT len=125 |     2
- inject.latestVersion             | PLAINTEXT len=134 |     3
- inject.latestVersion             | PLAINTEXT len=123 |    11
- inject.latestVersion             | PLAINTEXT len=112 |     2
- inject.latestVersion             | PLAINTEXT len=31  |    50
- inject.latestVersion             | PLAINTEXT len=111 |     2
- inject.latestVersion             | PLAINTEXT len=91  |     2
- inject.latestVersion             | PLAINTEXT len=128 |     4
- inject.latestVersion             | PLAINTEXT len=1   |     1
- inject.latestVersion             | PLAINTEXT len=30  |     5
- inject.latestVersion             | PLAINTEXT len=150 |     4
- inject.latestVersion             | PLAINTEXT len=94  |     2
- inject.latestVersion             | PLAINTEXT len=102 |     2
- inject.latestVersion             | PLAINTEXT len=149 |    10
- inject.mavenArtifactId           | PLAINTEXT len=18  |     3
- inject.mavenFeatureRepositoryUrl | PLAINTEXT len=84  |    12
- inject.mavenFeatureRepositoryUrl | PLAINTEXT len=87  |   117
- inject.mavenRawVersion           | PLAINTEXT len=22  |     3
- inject.mavenVersion              | PLAINTEXT len=41  |     3
- inject.mavenVersion              | PLAINTEXT len=21  |     1
- inject.pluginRepositoryUrl       | PLAINTEXT len=87  |   129
- inject.}                         | PLAINTEXT len=0   |     1
- planRepository.1.repositoryUrl   | PLAINTEXT len=82  |     3
- planRepository.1.repositoryUrl   | PLAINTEXT len=75  |    13
- planRepository.1.repositoryUrl   | PLAINTEXT len=65  |    24
- planRepository.1.repositoryUrl   | PLAINTEXT len=67  |    21
- planRepository.1.repositoryUrl   | PLAINTEXT len=74  |     7
- planRepository.1.repositoryUrl   | PLAINTEXT len=77  |    49
- planRepository.1.repositoryUrl   | PLAINTEXT len=72  |    15
- planRepository.1.repositoryUrl   | PLAINTEXT len=68  |   156
- planRepository.2.repositoryUrl   | PLAINTEXT len=82  |   129
- planRepository.repositoryUrl     | PLAINTEXT len=82  |     3
- planRepository.repositoryUrl     | PLAINTEXT len=67  |    21
- planRepository.repositoryUrl     | PLAINTEXT len=72  |    15
- planRepository.repositoryUrl     | PLAINTEXT len=75  |    13
- planRepository.repositoryUrl     | PLAINTEXT len=65  |    24
- planRepository.repositoryUrl     | PLAINTEXT len=68  |   156
- planRepository.repositoryUrl     | PLAINTEXT len=77  |    49
- planRepository.repositoryUrl     | PLAINTEXT len=74  |     7
- ssc_applicationName              | PLAINTEXT len=10  |     2
- ssc_applicationName              | PLAINTEXT len=20  |     2
- ssc_applicationName              | PLAINTEXT len=18  |     1
- ssc_applicationName              | PLAINTEXT len=12  |    18
- ssc_applicationName              | PLAINTEXT len=11  |     2
- ssc_applicationName              | PLAINTEXT len=8   |     1
- ssc_applicationName              | PLAINTEXT len=19  |     2
- ssc_applicationName              | PLAINTEXT len=14  |     3
- ssc_applicationName              | PLAINTEXT len=15  |     1
- ssc_applicationName              | PLAINTEXT len=25  |     2
- ssc_applicationName              | PLAINTEXT len=22  |     2
- ssc_applicationName              | PLAINTEXT len=17  |     2
- ssc_applicationVersion           | PLAINTEXT len=3   |    25
- ssc_applicationVersion           | PLAINTEXT len=5   |    13
- ssc_applicationVersionId         | PLAINTEXT len=1   |     8
- ssc_applicationVersionId         | PLAINTEXT len=2   |    30
-(85 rows)
-
-           variable_key           |                                          left                                           
-----------------------------------+-----------------------------------------------------------------------------------------
- hostName                         | api.eauth.usda.gov
- hostName                         | api.cert.eauth.usda.gov
- inject.mavenFeatureRepositoryUrl | https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
- inject.mavenFeatureRepositoryUrl | https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/
- inject.pluginRepositoryUrl       | https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reconciliation.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/vendoremulator.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/task.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/webservices.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/contract-mod.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/rest.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git
- planRepository.1.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws.git
- planRepository.2.repositoryUrl   | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/vendoremulator.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/rest.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reconciliation.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/task.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ws.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/devops/bamboo-deployment.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/webservices.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/ui.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/contract-mod.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/reporting.git
- planRepository.repositoryUrl     | ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/aw/scripts.git
-(28 rows)
-
-[sikaj01@ip-10-56-128-233 ~]$ getent hosts bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
-10.56.119.8     bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
-10.56.119.26    bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
-[sikaj01@ip-10-56-128-233 ~]$ getent hosts bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
-10.56.131.136   bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
-[sikaj01@ip-10-56-128-233 ~]$ cront
-
-
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker ps --format '{{.Names}}\t{{.Image}}'
-ip-10-56-128-47.ec2.internal-ba-1       339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214
-[sikaj01@ip-10-56-128-47 ~]$ A=ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ for f in settings.xml settings-release.xml; do echo "== $f"; sudo docker exec $A sh -c "sed -E 's#(<password>)[^<]*(</password>)#\1****\2#I' /usr/share/maven/conf/$f" | grep -nEi '<id>|<url>|<username>|<password>|<mirrorOf>'; done
-== settings.xml
-10:      <id>central</id>
-11:      <username>uploader</username>
-12:      <password>****</password>
-15:      <id>conexus-feature-repo</id>
-16:      <username>uploader</username>
-17:      <password>****</password>
-20:      <id>ArtifactoryPluginRepos</id>
-21:      <username>uploader</username>
-22:      <password>****</password>
-27:      <id>ArtifactoryPluginRepos</id>
-29:      <url>${bamboo.inject.pluginRepositoryUrl}</url>
-30:      <mirrorOf>*,!conexus-feature-repo</mirrorOf>
-46:          <id>conexus-feature-repo</id>
-48:          <url>${bamboo.inject.mavenFeatureRepositoryUrl}</url>
-61:          <id>central</id>
-63:          <url>${bamboo.inject.pluginRepositoryUrl}</url>
-66:      <id>artifactory</id>
-== settings-release.xml
-10:      <id>central</id>
-11:      <username>uploader</username>
-12:      <password>****</password>
-17:      <id>Conexus</id>
-19:      <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-20:      <mirrorOf>*</mirrorOf>
-36:          <id>central</id>
-46:          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-56:          <id>central</id>
-58:          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-64:          <id>snapshots</id>  
-66:          <url>https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository</url>
-69:      <id>artifactory</id>
-[sikaj01@ip-10-56-128-47 ~]$ clear
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker exec $A sh -c 'ls -l /home/bamboo/.ssh/ 2>&1; kubectl config get-contexts 2>&1 | head'
-ls: cannot access '/home/bamboo/.ssh/': No such file or directory
-sh: line 1: kubectl: command not found
-[sikaj01@ip-10-56-128-47 ~]$ aws sts get-caller-identity
-{
-    "UserId": "AROAW3MEBTILITDDJPFGC:i-079b964a2338aaaa6",
-    "Account": "471112718870",
-    "Arn": "arn:aws:sts::471112718870:assumed-role/dev-ssm-role/i-079b964a2338aaaa6"
-}
-[sikaj01@ip-10-56-128-47 ~]$ A=ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker exec $A sh -c 'ls -l /home/bamboo/.ssh/ 2>&1; kubectl config get-contexts 2>&1 | head'
-ls: cannot access '/home/bamboo/.ssh/': No such file or directory
-sh: line 1: kubectl: command not found
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t vcs_location bamboo' | grep -oE '(ssh|https?)://[A-Za-z0-9._@-]+(:[0-9]+)?' | sort | uniq -c | sort -rn | head
-Error response from daemon: No such container: dev-postgres
-[sikaj01@ip-10-56-128-47 ~]$ Connection to 10.56.128.47 closed by remote host.
-Connection to 10.56.128.47 closed.
-[sikaj01@ip-10-56-112-33 bamboo-specs]$ ssh sikaj01@10.56.128.47
-Authorized uses only. All activity may be monitored and reported.
-Last login: Fri Oct 16 21:11:12 2026 from ip-10-56-112-33.ec2.internal
-   ,     #_
-   ~\_  ####_        Amazon Linux 2
-  ~~  \_#####\
-  ~~     \###|       AL2 End of Life is 2026-06-30.
-  ~~       \#/ ___
-   ~~       V~' '->
-    ~~~         /    A newer version of Amazon Linux is available!
-      ~~._.   _/
-         _/ _/       Amazon Linux 2023, GA and supported until 2029-06-30.
-       _/m/'           https://aws.amazon.com/linux/amazon-linux-2023/
-
-[sikaj01@ip-10-56-128-47 ~]$ A=ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker exec $A sh -c 'id; echo HOME=$HOME; ls -la ~/.ssh ~/.kube ~/.aws 2>&1'
-[sudo] password for sikaj01: 
-uid=0(root) gid=0(root) groups=0(root)
-HOME=/root
-ls: cannot access '/root/.kube': No such file or directory
-ls: cannot access '/root/.aws': No such file or directory
-/root/.ssh:
-total 4
-drwx------. 1 root root   25 Sep 27 21:15 .
-dr-xr-x---. 1 root root   43 Oct  7 11:30 ..
--rw-r--r--. 1 root root 1074 Sep 27 21:15 known_hosts
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker inspect -f 'net={{.HostConfig.NetworkMode}} user={{.Config.User}}' $A
-net=isolated_nw user=root
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker inspect -f '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' $A
-/cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1 -> /cache/bamboo/ip-10-56-128-47.ec2.internal-ba-1
-/opt/bamboo-keys -> /opt/bamboo-keys
-/var/run/docker.sock -> /var/run/docker.sock
-
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' $A | sed 's/=.*/=<redacted>/' | sort
-
-JAVA_HOME=<redacted>
-MAVEN_HOME=<redacted>
-MAVEN_VERSION=<redacted>
-PATH=<redacted>
-[sikaj01@ip-10-56-128-47 ~]$ ls -l /opt/bamboo-keys 2>&1
-ls: cannot open directory /opt/bamboo-keys: Permission denied
-[sikaj01@ip-10-56-128-47 ~]$ sudo !!
-sudo ls -l /opt/bamboo-keys 2>&1
-total 16
--rw-------. 1 root root 3381 Sep  9 18:39 bitbucket_ci
--rw-------. 1 root root 3247 Sep  9 18:39 bitbucket_ci_jgit
--rw-r--r--. 1 root root  759 Sep  9 18:15 bitbucket_ci_jgit.pub
--rw-r--r--. 1 root root  745 Sep  9 18:15 bitbucket_ci.pub
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker stop $A
-ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ IMG=$(sudo docker inspect -f '{{.Config.Image}}' $A)
-[sikaj01@ip-10-56-128-47 ~]$ NET=$(sudo docker inspect -f '{{.HostConfig.NetworkMode}}' $A)
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker run --rm --network "$NET" --entrypoint curl "$IMG" -sk -m 5 -o /dev/null -w '%{http_code}\n' \
->   https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping
-200
-[sikaj01@ip-10-56-128-47 ~]$ sudo tee /usr/local/sbin/dev-block-prod.sh >/dev/null <<'EOF'
-> #!/bin/bash
-> # Dev guardrail: reject container traffic to the prod mgmt NLB. Host traffic is unaffected.
-> set -eu
-> BLOCK="10.56.119.26 10.56.119.8"
-> RULE="-m comment --comment dev-block-prod -j REJECT"
-> case "${1:-start}" in
->   start) for ip in $BLOCK; do iptables -C DOCKER-USER -d "$ip" $RULE 2>/dev/null || iptables -I DOCKER-USER 1 -d "$ip" $RULE; done ;;
->   stop)  for ip in $BLOCK; do iptables -D DOCKER-USER -d "$ip" $RULE 2>/dev/null || true; done ;;
-> esac
-> EOF
-[sikaj01@ip-10-56-128-47 ~]$ sudo chmod 755 /usr/local/sbin/dev-block-prod.sh
-[sikaj01@ip-10-56-128-47 ~]$ sudo tee /etc/systemd/system/dev-block-prod.service >/dev/null <<'EOF'
-> [Unit]
-> Description=Block container traffic to prod mgmt NLB (dev guardrail)
-> After=docker.service
-> Requires=docker.service
-> PartOf=docker.service
-> 
-> [Service]
-> Type=oneshot
-> RemainAfterExit=yes
-> ExecStart=/usr/local/sbin/dev-block-prod.sh start
-> ExecStop=/usr/local/sbin/dev-block-prod.sh stop
-> 
-> [Install]
-> WantedBy=multi-user.target
-> EOF
-[sikaj01@ip-10-56-128-47 ~]$ sudo systemctl daemon-reload && sudo systemctl enable --now dev-block-prod.service
-Created symlink from /etc/systemd/system/multi-user.target.wants/dev-block-prod.service to /etc/systemd/system/dev-block-prod.service.
-[sikaj01@ip-10-56-128-47 ~]$ sudo iptables -L DOCKER-USER -n -v --line-numbers
+https://cnxsartifact-
+[sikaj01@ip-10-56-128-233 ~]$ sudo iptables -L DOCKER-USER -n --line-numbers
 Chain DOCKER-USER (1 references)
-num   pkts bytes target     prot opt in     out     source               destination         
-1        0     0 REJECT     all  --  *      *       0.0.0.0/0            10.56.119.8          /* dev-block-prod */ reject-with icmp-port-unreachable
-2        0     0 REJECT     all  --  *      *       0.0.0.0/0            10.56.119.26         /* dev-block-prod */ reject-with icmp-port-unreachable
-3    2003K 9075M RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0           
-[sikaj01@ip-10-56-128-47 ~]$ IMG=$(sudo docker inspect -f '{{.Config.Image}}' $A)
-[sikaj01@ip-10-56-128-47 ~]$ NET=$(sudo docker inspect -f '{{.HostConfig.NetworkMode}}' $A)
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker run --rm --network "$NET" --entrypoint curl "$IMG" -sk -m 5 -o /dev/null -w '%{http_code}\n' \
->   https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping
-000
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker run --rm --network "$NET" --entrypoint bash "$IMG" -c 'timeout 5 bash -c "</dev/tcp/10.56.119.26/7999" && echo OPEN || echo BLOCKED'
-
-bash: connect: Connection refused
-bash: line 1: /dev/tcp/10.56.119.26/7999: Connection refused
-BLOCKED
-[sikaj01@ip-10-56-128-47 ~]$ 
-[sikaj01@ip-10-56-128-47 ~]$ sudo systemctl disable --now dev-block-prod.service
-Removed symlink /etc/systemd/system/multi-user.target.wants/dev-block-prod.service.
-
-
-
-
-[sikaj01@ip-10-56-128-233 ~]$ getent hosts bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
-10.56.119.8     bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
-10.56.119.26    bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
-[sikaj01@ip-10-56-128-233 ~]$ getent hosts bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
-10.56.131.136   bamboo.dev.cnxs.vpcaas.fcs.gsa.gov
-[sikaj01@ip-10-56-128-233 ~]$ sudo crontab -l
-# Dev/OSS nightly backup (Bitbucket/Bamboo config + Postgres dumps) at 02:15
-15 2 * * * /app/devbackup/bin/dev_nightly_backup.sh
-
-# Weekly rollup, Sunday 03:00
-0 3 * * 0 /app/devbackup/bin/dev_weekly_backup.sh
-
-# Cleanup stale staging older than 1 day
-0 4 * * * find /backup-staging -mindepth 1 -mtime +1 -exec rm -rf {} \;
-30 */2 * * * /app/bbmirror/bin/cnxs_mirror.sh >> /var/log/cnxs_mirror.log 2>&1
-[sikaj01@ip-10-56-128-233 ~]$ sudo cat /app/bbmirror/bin/cnxs_mirror.sh
-#!/usr/bin/env bash
-
-set -uo pipefail
-
-CONF="${MIRROR_CONF:-/app/bbmirror/etc/mirror.env}"
-[[ -r "$CONF" ]] || { echo "ERROR: cannot read $CONF" >&2; exit 1; }
-# shellcheck disable=SC1090
-source "$CONF"
-
-: "${PROD_URL:?}" "${PROD_TOKEN:?}" "${DEV_URL:?}" "${DEV_TOKEN:?}"
-PROJECT_KEY="${PROJECT_KEY:-CNXS}"
-CACHE_DIR="${CACHE_DIR:-/app/bbmirror/cache}"
-LOCK_FILE="${LOCK_FILE:-/app/bbmirror/run/cnxs_mirror.lock}"
-DRY_RUN="${DRY_RUN:-0}"
-ONLY_REPO="${ONLY_REPO:-}"
-# Space-separated repo slugs that are never touched (neither created nor synced).
-# These stay writable/independent in dev (e.g. release start/finish testing).
-EXCLUDE_REPOS="${EXCLUDE_REPOS:-releasetest}"
-
-log() { echo "$(date '+%F %T') $*"; }
-die() { log "ERROR: $*"; exit 1; }
-
-# Guardrails
-[[ "$PROD_URL" != "$DEV_URL" ]] || die "PROD_URL and DEV_URL are identical; refusing to run"
-command -v jq  >/dev/null || die "jq not found"
-command -v git >/dev/null || die "git not found"
-mkdir -p "$CACHE_DIR/$PROJECT_KEY" "$(dirname "$LOCK_FILE")"
-
-# Rerun/overlap safety: one run at a time
-exec 9>"$LOCK_FILE"
-flock -n 9 || { log "Another run is in progress; exiting"; exit 0; }
-
-# --- REST helpers (token passed via curl config on a pipe, not on argv) ----
-api() { # base token method path [json]
-  # Auth header goes to curl via stdin config (-K -), so the token is never on argv.
-  # (A process substitution stored in an array does NOT survive: bash closes it
-  # after the assignment, before curl runs.)
-  local base="$1" token="$2" method="$3" path="$4" data="${5:-}"
-  local args=(-sS --fail --max-time 60 -X "$method" -H 'Accept: application/json' -K -)
-  [[ -n "$data" ]] && args+=(-H 'Content-Type: application/json' --data "$data")
-  curl "${args[@]}" "${base}${path}" <<<"header = \"Authorization: Bearer ${token}\""
-}
-http_code() { # base token path
-  curl -sS -o /dev/null -w '%{http_code}' --max-time 60 \
-    -H 'Accept: application/json' -K - "${1}${3}" \
-    <<<"header = \"Authorization: Bearer ${2}\""
-}
-
-# --- git helpers (token via env, not in URL or argv) ------------------------
-git_with() { # token args...
-  local token="$1"; shift
-  GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 \
-  GIT_CONFIG_KEY_0=http.extraHeader \
-  GIT_CONFIG_VALUE_0="Authorization: Bearer ${token}" git "$@"
-}
-
-list_prod_repos() {
-  local start=0 resp
-  while :; do
-    resp="$(api "$PROD_URL" "$PROD_TOKEN" GET \
-      "/rest/api/1.0/projects/${PROJECT_KEY}/repos?limit=100&start=${start}")" || return 1
-    jq -r '.values[] | [.slug, .name, .state] | @tsv' <<<"$resp"
-    [[ "$(jq -r '.isLastPage' <<<"$resp")" == "true" ]] && break
-    start="$(jq -r '.nextPageStart' <<<"$resp")"
-  done
-}
-
-ensure_dev_project() {
-  local code
-  code="$(http_code "$DEV_URL" "$DEV_TOKEN" "/rest/api/1.0/projects/${PROJECT_KEY}")"
-  case "$code" in
-    200) return 0 ;;
-    404) log "Dev project ${PROJECT_KEY} missing; creating"
-         [[ "$DRY_RUN" == 1 ]] && return 0
-         api "$DEV_URL" "$DEV_TOKEN" POST /rest/api/1.0/projects \
-           "$(jq -n --arg k "$PROJECT_KEY" '{key:$k,name:$k}')" >/dev/null ;;
-    *)   die "Dev project check returned HTTP $code (auth/URL problem?)" ;;
-  esac
-}
-
-ensure_dev_repo() { # slug name
-  local slug="$1" name="$2" code created
-  code="$(http_code "$DEV_URL" "$DEV_TOKEN" "/rest/api/1.0/projects/${PROJECT_KEY}/repos/${slug}")"
-  case "$code" in
-    200) return 0 ;;
-    404) log "  dev repo ${slug} missing; creating"
-         [[ "$DRY_RUN" == 1 ]] && return 0
-         created="$(api "$DEV_URL" "$DEV_TOKEN" POST \
-           "/rest/api/1.0/projects/${PROJECT_KEY}/repos" \
-           "$(jq -n --arg n "$name" '{name:$n,scmId:"git",forkable:false}')")" || return 1
-         # Slug must match prod's, since it is derived from the name
-         [[ "$(jq -r '.slug' <<<"$created")" == "$slug" ]] \
-           || { log "  ERROR: dev slug '$(jq -r '.slug' <<<"$created")' != prod slug '$slug'"; return 1; } ;;
-    *)   log "  ERROR: dev repo check for ${slug} returned HTTP $code"; return 1 ;;
-  esac
-}
-
-sync_default_branch() { # slug  (best-effort, non-fatal)
-  local slug="$1" p d
-  p="$(api "$PROD_URL" "$PROD_TOKEN" GET "/rest/api/1.0/projects/${PROJECT_KEY}/repos/${slug}/branches/default" 2>/dev/null | jq -r '.id // empty')" || return 0
-  d="$(api "$DEV_URL"  "$DEV_TOKEN"  GET "/rest/api/1.0/projects/${PROJECT_KEY}/repos/${slug}/branches/default" 2>/dev/null | jq -r '.id // empty')" || true
-  [[ -n "$p" && "$p" != "$d" ]] || return 0
-  log "  default branch: dev '${d:-none}' -> '$p'"
-  api "$DEV_URL" "$DEV_TOKEN" PUT "/rest/api/1.0/projects/${PROJECT_KEY}/repos/${slug}/branches/default" \
-    "$(jq -n --arg id "$p" '{id:$id}')" >/dev/null 2>&1 || log "  WARN: could not set default branch (non-fatal)"
-}
-
-mirror_repo() { # slug name
-  local slug="$1" name="$2"
-  local gd="${CACHE_DIR}/${PROJECT_KEY}/${slug}.git"
-  local lk="${PROJECT_KEY,,}"
-  local prod_git="${PROD_URL}/scm/${lk}/${slug}.git"
-  local dev_git="${DEV_URL}/scm/${lk}/${slug}.git"
-
-  ensure_dev_repo "$slug" "$name" || return 1
-  [[ "$DRY_RUN" == 1 ]] && { log "  [dry-run] would fetch ${prod_git} and push to ${dev_git}"; return 0; }
-
-  [[ -d "$gd" ]] || git init --bare -q "$gd" || return 1
-  git --git-dir="$gd" remote remove prod >/dev/null 2>&1 || true
-  git --git-dir="$gd" remote add prod "$prod_git" || return 1
-  git --git-dir="$gd" remote set-url --push prod "DISABLED-never-push-to-prod" || return 1
-
-  # Read from prod. Explicit refspecs only (avoids Bitbucket hidden PR refs).
-  git_with "$PROD_TOKEN" --git-dir="$gd" fetch --prune -q prod \
-    '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*' || { log "  ERROR: fetch from prod failed"; return 1; }
-
-  # Safety: never prune dev down to nothing because of an empty fetch
-  if ! git --git-dir="$gd" for-each-ref --count=1 refs/heads | grep -q .; then
-    log "  prod repo has no branches; skipping push"; return 0
-  fi
-
-  # Write to dev only. Force + prune so dev == prod.
-  git_with "$DEV_TOKEN" --git-dir="$gd" push --prune -q "$dev_git" \
-    '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*' || { log "  ERROR: push to dev failed"; return 1; }
-
-  sync_default_branch "$slug"
-  log "  OK"
-}
-
-# ---------------------------------------------------------------------------
-log "=== CNXS mirror start (project=${PROJECT_KEY}, dry_run=${DRY_RUN}) ==="
-TMP="$(mktemp)"; trap 'rm -f "$TMP"' EXIT
-list_prod_repos > "$TMP" || die "could not list prod repos"
-[[ -s "$TMP" ]] || die "prod returned zero repos; refusing to continue"
-log "Prod repos: $(wc -l < "$TMP")"
-
-ensure_dev_project
-
-ok=0; fail=0; skipped=0; failed_list=()
-while IFS=$'\t' read -r slug name state; do
-  [[ -n "$ONLY_REPO" && "$slug" != "$ONLY_REPO" ]] && continue
-  if [[ " ${EXCLUDE_REPOS} " == *" ${slug} "* ]]; then
-    log "- ${slug}: excluded; leaving dev copy untouched"; skipped=$((skipped+1)); continue
-  fi
-  if [[ "$state" != "AVAILABLE" ]]; then
-    log "- ${slug}: state=${state}; skipping"; skipped=$((skipped+1)); continue
-  fi
-  log "- ${slug}"
-  if mirror_repo "$slug" "$name"; then ok=$((ok+1)); else fail=$((fail+1)); failed_list+=("$slug"); fi
-done < "$TMP"
-
-log "=== done: ok=${ok} failed=${fail} skipped=${skipped} ==="
-(( fail == 0 )) || { log "FAILED repos: ${failed_list[*]}"; exit 1; }
+num  target     prot opt source               destination         
+1    RETURN     all  --  0.0.0.0/0            0.0.0.0/0           
+[sikaj01@ip-10-56-128-233 ~]$ sudo docker ps -q | xargs sudo docker inspect -f '{{.Name}} net={{.HostConfig.NetworkMode}}'
+/dev-bitbucket net=dev-net
+/dev-bamboo net=dev-net
+/dev-nginx net=dev-net
+/dev-artifactory net=dev-net
+/dev-postgres net=dev-net
 [sikaj01@ip-10-56-128-233 ~]$ 
 
 
 
 
-
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker run --rm --network "$NET" --entrypoint curl "$IMG" -sk -m 5 -o /dev/null -w '%{http_code}\n' \
->   https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping
-000
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker run --rm --network "$NET" --entrypoint bash "$IMG" -c 'timeout 5 bash -c "</dev/tcp/10.56.119.26/7999" && echo OPEN || echo BLOCKED'
-
-bash: connect: Connection refused
-bash: line 1: /dev/tcp/10.56.119.26/7999: Connection refused
-BLOCKED
-[sikaj01@ip-10-56-128-47 ~]$ 
-[sikaj01@ip-10-56-128-47 ~]$ sudo systemctl disable --now dev-block-prod.service
-Removed symlink /etc/systemd/system/multi-user.target.wants/dev-block-prod.service.
-[sikaj01@ip-10-56-128-47 ~]$ TOK=$(sudo docker exec ip-10-56-128-47.ec2.internal-ba-1 sed -n 's#.*<password>\(.*\)</password>.*#\1#p' /usr/share/maven/conf/settings.xml | head -1)
-Error response from daemon: container ba6b608f7bca3f27aae81b8998c6c603db9a9798c84bfda07e67c0fae9ed76fc is not running
-[sikaj01@ip-10-56-128-47 ~]$ history | grep start
-   19  sudo systemctl start docker
-  182  INFO   | jvm 4    | 2026/09/10 09:29:51 | 2026-09-10 09:29:51,298 INFO [AgentRunnerThread] [lifecycle]   startupTimestamp=1789050591285
-  222  docker inspect ip-10-56-128-47.ec2.internal-ba-1   --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}{{.HostConfig.RestartPolicy.Name}} {{.HostConfig.NetworkMode}}'
-  279  docker start ip-10-56-128-47.ec2.internal-ba-1
-case "${1:-start}" in
-  start) for ip in $BLOCK; do iptables -C DOCKER-USER -d "$ip" $RULE 2>/dev/null || iptables -I DOCKER-USER 1 -d "$ip" $RULE; done ;;
-ExecStart=/usr/local/sbin/dev-block-prod.sh start
-  312  history | grep start
-[sikaj01@ip-10-56-128-47 ~]$ !279
-docker start ip-10-56-128-47.ec2.internal-ba-1
+[sikaj01@ip-10-56-128-47 ~]$ clear
+[sikaj01@ip-10-56-128-47 ~]$ A=ip-10-56-128-47.ec2.internal-ba-1
+[sikaj01@ip-10-56-128-47 ~]$ sudo docker stop $A
+[sudo] password for sikaj01: 
+Sorry, try again.
+[sudo] password for sikaj01: 
 ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ TOK=$(sudo docker exec ip-10-56-128-47.ec2.internal-ba-1 sed -n 's#.*<password>\(.*\)</password>.*#\1#p' /usr/share/maven/conf/settings.xml | head -1)
+[sikaj01@ip-10-56-128-47 ~]$ sudo docker stop $A
+ip-10-56-128-47.ec2.internal-ba-1
+[sikaj01@ip-10-56-128-47 ~]$ sudo systemctl enable --now dev-block-prod.service
+Created symlink from /etc/systemd/system/multi-user.target.wants/dev-block-prod.service to /etc/systemd/system/dev-block-prod.service.
+[sikaj01@ip-10-56-128-47 ~]$ sudo iptables -L DOCKER-USER -n -v --line-numbers    # expect two REJECT rows above the RETURN
+Chain DOCKER-USER (1 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 REJECT     all  --  *      *       0.0.0.0/0            10.56.119.8          /* dev-block-prod */ reject-with icmp-port-unreachable
+2        0     0 REJECT     all  --  *      *       0.0.0.0/0            10.56.119.26         /* dev-block-prod */ reject-with icmp-port-unreachable
+3    2004K 9075M RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+[sikaj01@ip-10-56-128-47 ~]$ IMG=$(sudo docker inspect -f '{{.Config.Image}}' $A)
+[sikaj01@ip-10-56-128-47 ~]$ docker ps
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+[sikaj01@ip-10-56-128-47 ~]$ docker images
+REPOSITORY                                                  TAG                                           IMAGE ID       CREATED        SIZE
+339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   jdk21-node24-angular21-el10-2026-09-28-0214   376e57f4a761   2 weeks ago    4.16GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   jdk21-node24-angular21-el10-2026-07-14-1342   c97abc6c7cab   3 months ago   4.29GB
+[sikaj01@ip-10-56-128-47 ~]$ docker ps -a
+CONTAINER ID   IMAGE                                                                                                   COMMAND                   CREATED      STATUS                       PORTS     NAMES
+ba6b608f7bca   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214   "bash -lc '\n      se…"   9 days ago   Exited (143) 2 minutes ago             ip-10-56-128-47.ec2.internal-ba-1
+[sikaj01@ip-10-56-128-47 ~]$ docker inspect 376e57f4a761
+[
+    {
+        "Id": "sha256:376e57f4a76132c700aa22207cf663831cc3cfedb64d801359ca37ccade9722d",
+        "RepoTags": [
+            "339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214"
+        ],
+        "RepoDigests": [
+            "339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents@sha256:838ad5ec9b7868fc2f9397536db706f386c710477e6f51509b34dfbf40734696"
+        ],
+        "Parent": "",
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-09-28T02:18:02.316576097Z",
+        "Container": "",
+        "ContainerConfig": {
+            "Hostname": "",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": null,
+            "Cmd": null,
+            "Image": "",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": null,
+            "OnBuild": null,
+            "Labels": null
+        },
+        "DockerVersion": "",
+        "Author": "",
+        "Config": {
+            "Hostname": "",
+            "Domainname": "",
+            "User": "root",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "JAVA_HOME=/etc/alternatives/java_sdk_21/",
+                "MAVEN_VERSION=3.9.16",
+                "MAVEN_HOME=/usr/share/maven"
+            ],
+            "Cmd": [
+                "/usr/bin/java",
+                "-jar",
+                "/opt/bamboo-agent.jar",
+                "https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/"
+            ],
+            "ArgsEscaped": true,
+            "Image": "",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": null,
+            "OnBuild": null,
+            "Labels": {
+                "io.buildah.version": "1.33.15",
+                "maintainer": "Madhav Kundala <madhav.kundala@gsa.gov>",
+                "org.label-schema.build-date": "20260922",
+                "org.label-schema.license": "GPLv2",
+                "org.label-schema.name": "CentOS Stream 10 Base Image",
+                "org.label-schema.schema-version": "1.0",
+                "org.label-schema.vendor": "CentOS"
+            }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 4156919488,
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/6ea48295114474bbe24f451aa264cd5dac65bd5ae2adb6c555149b9de88c4e53/diff:/var/lib/docker/overlay2/06e68660d19b73fc19ed9ebd7b7d339280930c9bf002480ead9714aadd67b6e3/diff:/var/lib/docker/overlay2/2d199a309f314fdafb1e96328b62c0252ca822c24a3dac3ac5890f1abce84a9b/diff:/var/lib/docker/overlay2/b41c174cddd6a84457e8020572c018f1d7b449dd3758af7496e515045c439ff8/diff:/var/lib/docker/overlay2/3ba9d0bfdd5fa991d48be7d3cccd1617da457658dd12945b5ac5e2f5ded46bfe/diff:/var/lib/docker/overlay2/44adddcec01e7af65cb184f6eed98f5c794c33020682a060f16d2535736eda71/diff:/var/lib/docker/overlay2/bf54e841242fe6a3a999d8fd3c7926de8f1ed942f895811f8cc539b543e4f6cd/diff:/var/lib/docker/overlay2/3051999beac885f937abe9d794eb4e2be2cd479de899803031970ae157a97a9f/diff:/var/lib/docker/overlay2/5f53efe72904aad68f94c1d4bded944c1eab0c42c61eaae1535b80ce2767ff0f/diff:/var/lib/docker/overlay2/61e01c4fa9c3ddec3ccca5637bb6d05ffa7d8f4b78252c3c02cbd0d5c47c7d2b/diff:/var/lib/docker/overlay2/35e69fe2ebe242b4e7544cf752797faf3f32a1798f57031e82d99e7772bf0e47/diff:/var/lib/docker/overlay2/957aad42f58fc97c8fd85154fc2f134c0eb3e5e372fd0409c54d8ffce8ec86ba/diff:/var/lib/docker/overlay2/97df1a589c514f7682b7c448ac519a71e6ef95f83184c8a50bdf84eeabe7a169/diff:/var/lib/docker/overlay2/54288d190ed3f1da2c1a2223445f7cb196dfce4f5ee1635c30c1946b68b1e740/diff:/var/lib/docker/overlay2/06e6e1e924170301b630688fdf135533c07a4df82fc46381faa4599eff26ffbe/diff:/var/lib/docker/overlay2/cefd391f04e88d05a678341912e2d9487ae6360c68bce09a72f1be5b0abf1cc1/diff:/var/lib/docker/overlay2/f3f30d51c8e307ba769d1ce883a414bc8a9076dabe5557275b8d128579718404/diff:/var/lib/docker/overlay2/1469409c58fbdae66cc835b37af2720a8ca6a4bb61c1aab6fdea0af2e4e81602/diff:/var/lib/docker/overlay2/2534fbdb667797d3fad65da34d7e1f532f403c13e8737f259e522c20a29c3f9c/diff:/var/lib/docker/overlay2/8cc274b24d92f7d51806e642de9132d617fa19e0f78eaa9bc850ffb155f72142/diff:/var/lib/docker/overlay2/9506d5640b7fc47dce8fea6b31eee7aecbf5a3cda5594c014795e0dd569eee3d/diff:/var/lib/docker/overlay2/6989a15e1dbb81c9d4003ed99184f7e51db9a3615b3372fb8b9024e73f897899/diff:/var/lib/docker/overlay2/2ff8ed4ad09d58b21db02f348b578263e9bcf9771c753169b6c807a2ebccb819/diff:/var/lib/docker/overlay2/528f7f4a902b9b6635e1ce9c563bd4b67fd733643555e7bbe17d927473ca067f/diff:/var/lib/docker/overlay2/a3a8d6aaa310744a0f2423c329252e29b7f301f990bb916a0d64602a4f439dd3/diff:/var/lib/docker/overlay2/308d887a6d6c9550b0d03546603bc9af77e837fbfeecd2384dd104a6199734f8/diff:/var/lib/docker/overlay2/eb8eff6b239f204fe12e57e9498d93daa009197053320f77c1b728fdcce7245b/diff:/var/lib/docker/overlay2/f30f4b81543943f50b35ac4a7c40254b95cb582b7dc79e6320199b159adec363/diff:/var/lib/docker/overlay2/0e400c67c3a07f3a6fad393081041c1018eecebf7ce629aa304e10aa7c8a9f59/diff:/var/lib/docker/overlay2/01d62bb4afe63240009e4ffb982ea0869dbd177306ff8da63a20d8898b4c7db3/diff",
+                "MergedDir": "/var/lib/docker/overlay2/eeadee2eaf2cfd78f7e7430c8f60faf5221fb661a698b87ecbace3ba3094de3f/merged",
+                "UpperDir": "/var/lib/docker/overlay2/eeadee2eaf2cfd78f7e7430c8f60faf5221fb661a698b87ecbace3ba3094de3f/diff",
+                "WorkDir": "/var/lib/docker/overlay2/eeadee2eaf2cfd78f7e7430c8f60faf5221fb661a698b87ecbace3ba3094de3f/work"
+            },
+            "Name": "overlay2"
+        },
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:c28e56a8a2607ef537837082d820f500964627eb4de44ddc5836a34501bd872c",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "sha256:16c4c963307b277e7d2fedeab8dac7e22b740efdce1295e5072268ad31b11e8d",
+                "sha256:19f45cf5f0220f8f1c98524e331a7a8652d26a663761386742657a7bd079b128",
+                "sha256:3cf4c405d39750229d02378b4bd9e3748c6e111e62b52abd6fc88fdc3f52f77d",
+                "sha256:767a3b382e53e2d7dba6ee7d99e225b83c762817d26ecaac24cae5eb3887fb05",
+                "sha256:bd62478301f1f6a4e7b8e21869b7a23bcd7ee1f783a76fbaed3e1d5ea00a7685",
+                "sha256:99f3c6b49bf93bcf80ee8702815ce2e666b08f95f433ac2b33ca681beada93af",
+                "sha256:8f3702a90d9787e83be5ae79381295cc4cdae2b70c07d6427e336fdafcaa1222",
+                "sha256:95805eece71b3b2120dff7de10697847694096de5512496225c27094751b0cb4",
+                "sha256:5e1ce10222ff56f976ddf6efbd76603df34c8c26a56ca16a527df294591d3183",
+                "sha256:37ccc14f034cb25bf1bc5aff3eadc51956ca7972abd6d84eb7dcb4620154c7b7",
+                "sha256:d0520e20ee148641fe511caa4e4eb8c5c275d0388c8edd32212234d7c7eddc81",
+                "sha256:c6ac20e33cb3b11fa09751c6aa42d4fb3fa48f326aee32e1d5c86eae380ffdb5",
+                "sha256:cf388c3d4355b26625850779c2445b8e374336b7f23b95511ddce5042b43e45e",
+                "sha256:e56cbc384b20da25b24f6a3433d62c061768b0ab70d83d20f6254ab9ad737ec5",
+                "sha256:6f2796cffee61abe91ebb43a76aa3cf3ecedb4d2f1f47308bd8f98622a413a40",
+                "sha256:c12354a69973e8734e51e2d71d622e675dbdfcd5681f3b0345c74d77d77d866b",
+                "sha256:d7540663b18364ee8c2b2162c5f0c2d5ce04eeacdc76d73f66ef9050c9948c9f",
+                "sha256:a864155f1dc2324bf0d682352807e553b3a7c08e88c19e45426c2fd81ae31cf2",
+                "sha256:305197d90cfe8e1f10e32959ce68edf0ca2f4e4327be15384d8d9438b90223ea",
+                "sha256:9f31d5a6f3dd966abef24c45e1caafcb63d155c63e886d4b2a38835cc9b8fc37",
+                "sha256:491560ef0392e2094a0fb4e4cd368426e47da1e719123f08251053a2baa088f0",
+                "sha256:2d783cacd7523c136cfbc64b60846f00147e5f74e14ddfdecaa69285605fc658",
+                "sha256:b71981529dde490100fabeba42571638a4ca3e91e0f065ad9d19a03540acba90",
+                "sha256:b4005768788971597b5619e05deabc6db0faf373f0f245d263beeaa714989fe2",
+                "sha256:df2f6e348c1284edcc8873f847c455922f3d216c9fbf16a53b7cb7e0e9762ee6",
+                "sha256:eccd7d526f28ffff9b7daae9d708848b67729ff6078bbd77209c43008242dc93",
+                "sha256:5caf8e810243a933cd94e928f7aaacf14b3a124e0b6616b77bfa0f25f252bd3c",
+                "sha256:449be1c47376fd48789bacb3cbd91338e8734e56648ae7070f99ced9e96214a1",
+                "sha256:52070bf3424c9e9f94e587a1619d3629407e5dfbeb64313771c6ea222d53b789"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "0001-01-01T00:00:00Z"
+        }
+    }
+]
+[sikaj01@ip-10-56-128-47 ~]$ TOK=$(sudo docker run --rm --entrypoint sed "$IMG" -n 's#.*<password>\(.*\)</password>.*#\1#p' /usr/share/maven/conf/settings.xml | head -1)
 [sikaj01@ip-10-56-128-47 ~]$ 
-[sikaj01@ip-10-56-128-47 ~]$ printf 'user = "uploader:%s"\n' "$TOK" | curl -sS -K - -o /dev/null -w '%{http_code}\n' https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories; unset TOK
-401
-[sikaj01@ip-10-56-128-47 ~]
+[sikaj01@ip-10-56-128-47 ~]$ getent hosts artifactory.dev.cnxs.vpcaas.fcs.gsa.gov     # confirm this is the dev name first
+10.56.131.136   artifactory.dev.cnxs.vpcaas.fcs.gsa.gov
+[sikaj01@ip-10-56-128-47 ~]$ printf 'user = "uploader:%s"\n' "$TOK" | curl -sSk -K - -o /dev/null -w 'dev=%{http_code}\n' https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories
+dev=401
+[sikaj01@ip-10-56-128-47 ~]$ unset TOK
+[sikaj01@ip-10-56-128-47 ~]$ getent hosts conexus-artifactory.edc.ds1.usda.gov api.eauth.usda.gov
+
+199.134.75.62   api.eauth.wip.edc.usda.gov api.eauth.usda.gov
+[sikaj01@ip-10-56-128-47 ~]$ 
