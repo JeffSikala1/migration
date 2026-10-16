@@ -1,87 +1,25 @@
-A=ip-10-56-128-47.ec2.internal-ba-1
-sudo docker exec $A sh -c 'id; echo HOME=$HOME; ls -la ~/.ssh ~/.kube ~/.aws 2>&1'
-sudo docker inspect -f 'net={{.HostConfig.NetworkMode}} user={{.Config.User}}' $A
-sudo docker inspect -f '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' $A
-sudo docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' $A | sed 's/=.*/=<redacted>/' | sort
-ls -l /opt/bamboo-keys 2>&1
-sudo docker stop $A
-
-
-for t in variable_definition build_definition deployment_environment; do
-  echo "== $t"
-  sudo docker exec dev-postgres sh -c "pg_dump -U \"\${POSTGRES_USER:-postgres}\" -a -t $t bamboo 2>/dev/null" \
-   | grep -oE '(ssh|https?)://[A-Za-z0-9._@-]+(:[0-9]+)?' | sort | uniq -c | sort -rn | head -20
-done
-
-sudo docker exec -i dev-postgres sh -c 'psql -U "${POSTGRES_USER:-postgres}" -d bamboo' <<'SQL'
-select variable_key,
-       case when variable_value like 'BAMSCRT%' then 'encrypted'
-            else 'PLAINTEXT len='||length(variable_value) end as shape,
-       count(*)
-from variable_definition
-where variable_key ~* 'artifactory|api_key|token|auth|inject|ssc|url'
-group by 1,2 order by 1;
-
-select variable_key, left(variable_value,90)
-from variable_definition
-where variable_value ~* 'mgmt\.cnxs|usda\.gov' and variable_value not like 'BAMSCRT%'
-group by 1,2 order by 1;
-SQL
-
-getent hosts bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov
-
-
-
 IMG=$(sudo docker inspect -f '{{.Config.Image}}' $A)
-NET=$(sudo docker inspect -f '{{.HostConfig.NetworkMode}}' $A)
-sudo docker run --rm --network "$NET" --entrypoint curl "$IMG" -sk -m 5 -o /dev/null -w '%{http_code}\n' \
-  https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/system/ping
+TOK=$(sudo docker run --rm --entrypoint sed "$IMG" -n 's#.*<password>\(.*\)</password>.*#\1#p' /usr/share/maven/conf/settings.xml | head -1)
+getent hosts artifactory.dev.cnxs.vpcaas.fcs.gsa.gov     # confirm this is the dev name first
+printf 'user = "uploader:%s"\n' "$TOK" | curl -sSk -K - -o /dev/null -w 'dev=%{http_code}\n' https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories
+unset TOK
+
+
+A=ip-10-56-128-47.ec2.internal-ba-1
+sudo docker stop $A
+sudo systemctl enable --now dev-block-prod.service
+sudo iptables -L DOCKER-USER -n -v --line-numbers    # expect two REJECT rows above the RETURN
 
 
 
 
-sudo tee /usr/local/sbin/dev-block-prod.sh >/dev/null <<'EOF'
-#!/bin/bash
-# Dev guardrail: reject container traffic to the prod mgmt NLB. Host traffic is unaffected.
-set -eu
-BLOCK="10.56.119.26 10.56.119.8"
-RULE="-m comment --comment dev-block-prod -j REJECT"
-case "${1:-start}" in
-  start) for ip in $BLOCK; do iptables -C DOCKER-USER -d "$ip" $RULE 2>/dev/null || iptables -I DOCKER-USER 1 -d "$ip" $RULE; done ;;
-  stop)  for ip in $BLOCK; do iptables -D DOCKER-USER -d "$ip" $RULE 2>/dev/null || true; done ;;
-esac
-EOF
-sudo chmod 755 /usr/local/sbin/dev-block-prod.sh
 
-sudo tee /etc/systemd/system/dev-block-prod.service >/dev/null <<'EOF'
-[Unit]
-Description=Block container traffic to prod mgmt NLB (dev guardrail)
-After=docker.service
-Requires=docker.service
-PartOf=docker.service
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/usr/local/sbin/dev-block-prod.sh start
-ExecStop=/usr/local/sbin/dev-block-prod.sh stop
-
-[Install]
-WantedBy=multi-user.target
-EOF
-sudo systemctl daemon-reload && sudo systemctl enable --now dev-block-prod.service
-sudo iptables -L DOCKER-USER -n -v --line-numbers
-
-
-
-sudo docker run --rm --network "$NET" --entrypoint bash "$IMG" -c 'timeout 5 bash -c "</dev/tcp/10.56.119.26/7999" && echo OPEN || echo BLOCKED'
+getent hosts conexus-artifactory.edc.ds1.usda.gov api.eauth.usda.gov
+sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t build_definition bamboo 2>/dev/null' | grep -oE 'https://cnxsartifact-[A-Za-z0-9._/-]*' | sort -u
 
 
 
 
-sudo systemctl disable --now dev-block-prod.service
 
-
-
-TOK=$(sudo docker exec ip-10-56-128-47.ec2.internal-ba-1 sed -n 's#.*<password>\(.*\)</password>.*#\1#p' /usr/share/maven/conf/settings.xml | head -1)
-printf 'user = "uploader:%s"\n' "$TOK" | curl -sS -K - -o /dev/null -w '%{http_code}\n' https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories; unset TOK
+sudo iptables -L DOCKER-USER -n --line-numbers
+sudo docker ps -q | xargs sudo docker inspect -f '{{.Name}} net={{.HostConfig.NetworkMode}}'
