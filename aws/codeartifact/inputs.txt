@@ -1,9 +1,16 @@
-top -b -d 2 -n 5 | grep -E \
-'Cpu\(s\)|BESClient|falcon-sensor|kswapd'
+ps -eo pid,ppid,etime,%cpu,stat,cmd \
+  | grep -E 'BESClient|__appendfile|find |stat |auditctl' \
+  | grep -v grep
 
 
-sudo tail -n 80 /var/opt/BESClient/__BESData/__Global/Logs/$(date +%Y%m%d).log
+sudo tail -n 30 /var/tmp/bigfixfiledb.log
 
-sudo systemctl status falcon-sensor --no-pager
 
-sudo systemctl status datadog-agent --no-pager
+sudo ls -lh \
+/var/opt/BESClient/__BESData/__SCMData/fileresults.db
+
+
+sudo grep -n -B 5 -A 5 \
+'action:2920284' \
+/var/opt/BESClient/__BESData/__Global/Logs/$(date +%Y%m%d).log \
+| head -65
