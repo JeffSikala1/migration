@@ -1,182 +1,228 @@
-[sikaj01@ip-10-56-128-233 ~]$ sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t build_definition bamboo 2>/dev/null' | grep -oE 'https://cnxsartifact-[A-Za-z0-9._/-]*' | sort -u
-[sudo] password for sikaj01: 
-https://cnxsartifact-
-[sikaj01@ip-10-56-128-233 ~]$ sudo iptables -L DOCKER-USER -n --line-numbers
-Chain DOCKER-USER (1 references)
-num  target     prot opt source               destination         
-1    RETURN     all  --  0.0.0.0/0            0.0.0.0/0           
-[sikaj01@ip-10-56-128-233 ~]$ sudo docker ps -q | xargs sudo docker inspect -f '{{.Name}} net={{.HostConfig.NetworkMode}}'
-/dev-bitbucket net=dev-net
-/dev-bamboo net=dev-net
-/dev-nginx net=dev-net
-/dev-artifactory net=dev-net
-/dev-postgres net=dev-net
-[sikaj01@ip-10-56-128-233 ~]$ 
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ uptime
+ 02:24:13 up 25 days,  1:23,  1 user,  load average: 3.99, 3.64, 2.52
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ top -b -n 1 | head -25
+top - 02:24:33 up 25 days,  1:23,  1 user,  load average: 3.95, 3.65, 2.55
+Tasks: 171 total,   2 running, 168 sleeping,   1 stopped,   0 zombie
+%Cpu(s): 61.8 us, 38.2 sy,  0.0 ni,  0.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem :   7739.6 total,    271.4 free,   3384.2 used,   4084.1 buff/cache
+MiB Swap:      0.0 total,      0.0 free,      0.0 used.   3991.5 avail Mem 
 
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+   2452 root      20   0  771836  60844  14716 R  56.2   0.8   1242:55 BESClient
+   1881 root      20   0 2298896 226360 144224 S  50.0   2.9 754:02.28 falcon-sensor-b
+     53 root      20   0       0      0      0 S   6.2   0.0   5:45.67 kswapd0
+1689532 root      20   0  223188   2120   1764 S   6.2   0.0   0:35.78 sh
+2017098 sikaj01   20   0  224060   3336   2856 R   6.2   0.0   0:00.02 top
+      1 root      20   0  174172  16596   8856 S   0.0   0.2 109:13.09 systemd
+      2 root      20   0       0      0      0 S   0.0   0.0   0:02.20 kthreadd
+      3 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 rcu_gp
+      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 rcu_par_gp
+      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 slub_flushwq
+      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 netns
+      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-events_highpri
+     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 mm_percpu_wq
+     11 root      20   0       0      0      0 I   0.0   0.0   0:00.01 rcu_tasks_kthread
+     12 root      20   0       0      0      0 I   0.0   0.0   0:00.00 rcu_tasks_rude_kthread
+     13 root      20   0       0      0      0 I   0.0   0.0   0:00.01 rcu_tasks_trace_kthread
+     14 root      20   0       0      0      0 S   0.0   0.0   7:58.26 ksoftirqd/0
+     15 root      20   0       0      0      0 I   0.0   0.0  18:16.48 rcu_preempt
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           7.6Gi       3.3Gi       305Mi        14Mi       4.0Gi       3.9Gi
+Swap:             0B          0B          0B
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo systemctl --failed
+  UNIT                            LOAD   ACTIVE SUB    DESCRIPTION                  
+● datadog-agent-action.service    loaded failed failed Datadog Private Action Runner
+● datadog-agent-installer.service loaded failed failed Datadog Installer
 
-
-
-[sikaj01@ip-10-56-128-47 ~]$ clear
-[sikaj01@ip-10-56-128-47 ~]$ A=ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker stop $A
-[sudo] password for sikaj01: 
-Sorry, try again.
-[sudo] password for sikaj01: 
-ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ sudo docker stop $A
-ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ sudo systemctl enable --now dev-block-prod.service
-Created symlink from /etc/systemd/system/multi-user.target.wants/dev-block-prod.service to /etc/systemd/system/dev-block-prod.service.
-[sikaj01@ip-10-56-128-47 ~]$ sudo iptables -L DOCKER-USER -n -v --line-numbers    # expect two REJECT rows above the RETURN
-Chain DOCKER-USER (1 references)
-num   pkts bytes target     prot opt in     out     source               destination         
-1        0     0 REJECT     all  --  *      *       0.0.0.0/0            10.56.119.8          /* dev-block-prod */ reject-with icmp-port-unreachable
-2        0     0 REJECT     all  --  *      *       0.0.0.0/0            10.56.119.26         /* dev-block-prod */ reject-with icmp-port-unreachable
-3    2004K 9075M RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0           
-[sikaj01@ip-10-56-128-47 ~]$ IMG=$(sudo docker inspect -f '{{.Config.Image}}' $A)
-[sikaj01@ip-10-56-128-47 ~]$ docker ps
+LOAD   = Reflects whether the unit definition was properly loaded.
+ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
+SUB    = The low-level unit activation state, values depend on unit type.
+2 loaded units listed.
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo docker stats --no-stream
+CONTAINER ID   NAME      CPU %     MEM USAGE / LIMIT   MEM %     NET I/O   BLOCK I/O   PIDS
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ docker ps
 CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
-[sikaj01@ip-10-56-128-47 ~]$ docker images
-REPOSITORY                                                  TAG                                           IMAGE ID       CREATED        SIZE
-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   jdk21-node24-angular21-el10-2026-09-28-0214   376e57f4a761   2 weeks ago    4.16GB
-339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents   jdk21-node24-angular21-el10-2026-07-14-1342   c97abc6c7cab   3 months ago   4.29GB
-[sikaj01@ip-10-56-128-47 ~]$ docker ps -a
-CONTAINER ID   IMAGE                                                                                                   COMMAND                   CREATED      STATUS                       PORTS     NAMES
-ba6b608f7bca   339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214   "bash -lc '\n      se…"   9 days ago   Exited (143) 2 minutes ago             ip-10-56-128-47.ec2.internal-ba-1
-[sikaj01@ip-10-56-128-47 ~]$ docker inspect 376e57f4a761
-[
-    {
-        "Id": "sha256:376e57f4a76132c700aa22207cf663831cc3cfedb64d801359ca37ccade9722d",
-        "RepoTags": [
-            "339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents:jdk21-node24-angular21-el10-2026-09-28-0214"
-        ],
-        "RepoDigests": [
-            "339713019047.dkr.ecr.us-east-1.amazonaws.com/build-agents@sha256:838ad5ec9b7868fc2f9397536db706f386c710477e6f51509b34dfbf40734696"
-        ],
-        "Parent": "",
-        "Comment": "buildkit.dockerfile.v0",
-        "Created": "2026-09-28T02:18:02.316576097Z",
-        "Container": "",
-        "ContainerConfig": {
-            "Hostname": "",
-            "Domainname": "",
-            "User": "",
-            "AttachStdin": false,
-            "AttachStdout": false,
-            "AttachStderr": false,
-            "Tty": false,
-            "OpenStdin": false,
-            "StdinOnce": false,
-            "Env": null,
-            "Cmd": null,
-            "Image": "",
-            "Volumes": null,
-            "WorkingDir": "",
-            "Entrypoint": null,
-            "OnBuild": null,
-            "Labels": null
-        },
-        "DockerVersion": "",
-        "Author": "",
-        "Config": {
-            "Hostname": "",
-            "Domainname": "",
-            "User": "root",
-            "AttachStdin": false,
-            "AttachStdout": false,
-            "AttachStderr": false,
-            "Tty": false,
-            "OpenStdin": false,
-            "StdinOnce": false,
-            "Env": [
-                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                "JAVA_HOME=/etc/alternatives/java_sdk_21/",
-                "MAVEN_VERSION=3.9.16",
-                "MAVEN_HOME=/usr/share/maven"
-            ],
-            "Cmd": [
-                "/usr/bin/java",
-                "-jar",
-                "/opt/bamboo-agent.jar",
-                "https://bamboo.mgmt.cnxs.vpcaas.fcs.gsa.gov/agentServer/"
-            ],
-            "ArgsEscaped": true,
-            "Image": "",
-            "Volumes": null,
-            "WorkingDir": "",
-            "Entrypoint": null,
-            "OnBuild": null,
-            "Labels": {
-                "io.buildah.version": "1.33.15",
-                "maintainer": "Madhav Kundala <madhav.kundala@gsa.gov>",
-                "org.label-schema.build-date": "20260922",
-                "org.label-schema.license": "GPLv2",
-                "org.label-schema.name": "CentOS Stream 10 Base Image",
-                "org.label-schema.schema-version": "1.0",
-                "org.label-schema.vendor": "CentOS"
-            }
-        },
-        "Architecture": "amd64",
-        "Os": "linux",
-        "Size": 4156919488,
-        "GraphDriver": {
-            "Data": {
-                "LowerDir": "/var/lib/docker/overlay2/6ea48295114474bbe24f451aa264cd5dac65bd5ae2adb6c555149b9de88c4e53/diff:/var/lib/docker/overlay2/06e68660d19b73fc19ed9ebd7b7d339280930c9bf002480ead9714aadd67b6e3/diff:/var/lib/docker/overlay2/2d199a309f314fdafb1e96328b62c0252ca822c24a3dac3ac5890f1abce84a9b/diff:/var/lib/docker/overlay2/b41c174cddd6a84457e8020572c018f1d7b449dd3758af7496e515045c439ff8/diff:/var/lib/docker/overlay2/3ba9d0bfdd5fa991d48be7d3cccd1617da457658dd12945b5ac5e2f5ded46bfe/diff:/var/lib/docker/overlay2/44adddcec01e7af65cb184f6eed98f5c794c33020682a060f16d2535736eda71/diff:/var/lib/docker/overlay2/bf54e841242fe6a3a999d8fd3c7926de8f1ed942f895811f8cc539b543e4f6cd/diff:/var/lib/docker/overlay2/3051999beac885f937abe9d794eb4e2be2cd479de899803031970ae157a97a9f/diff:/var/lib/docker/overlay2/5f53efe72904aad68f94c1d4bded944c1eab0c42c61eaae1535b80ce2767ff0f/diff:/var/lib/docker/overlay2/61e01c4fa9c3ddec3ccca5637bb6d05ffa7d8f4b78252c3c02cbd0d5c47c7d2b/diff:/var/lib/docker/overlay2/35e69fe2ebe242b4e7544cf752797faf3f32a1798f57031e82d99e7772bf0e47/diff:/var/lib/docker/overlay2/957aad42f58fc97c8fd85154fc2f134c0eb3e5e372fd0409c54d8ffce8ec86ba/diff:/var/lib/docker/overlay2/97df1a589c514f7682b7c448ac519a71e6ef95f83184c8a50bdf84eeabe7a169/diff:/var/lib/docker/overlay2/54288d190ed3f1da2c1a2223445f7cb196dfce4f5ee1635c30c1946b68b1e740/diff:/var/lib/docker/overlay2/06e6e1e924170301b630688fdf135533c07a4df82fc46381faa4599eff26ffbe/diff:/var/lib/docker/overlay2/cefd391f04e88d05a678341912e2d9487ae6360c68bce09a72f1be5b0abf1cc1/diff:/var/lib/docker/overlay2/f3f30d51c8e307ba769d1ce883a414bc8a9076dabe5557275b8d128579718404/diff:/var/lib/docker/overlay2/1469409c58fbdae66cc835b37af2720a8ca6a4bb61c1aab6fdea0af2e4e81602/diff:/var/lib/docker/overlay2/2534fbdb667797d3fad65da34d7e1f532f403c13e8737f259e522c20a29c3f9c/diff:/var/lib/docker/overlay2/8cc274b24d92f7d51806e642de9132d617fa19e0f78eaa9bc850ffb155f72142/diff:/var/lib/docker/overlay2/9506d5640b7fc47dce8fea6b31eee7aecbf5a3cda5594c014795e0dd569eee3d/diff:/var/lib/docker/overlay2/6989a15e1dbb81c9d4003ed99184f7e51db9a3615b3372fb8b9024e73f897899/diff:/var/lib/docker/overlay2/2ff8ed4ad09d58b21db02f348b578263e9bcf9771c753169b6c807a2ebccb819/diff:/var/lib/docker/overlay2/528f7f4a902b9b6635e1ce9c563bd4b67fd733643555e7bbe17d927473ca067f/diff:/var/lib/docker/overlay2/a3a8d6aaa310744a0f2423c329252e29b7f301f990bb916a0d64602a4f439dd3/diff:/var/lib/docker/overlay2/308d887a6d6c9550b0d03546603bc9af77e837fbfeecd2384dd104a6199734f8/diff:/var/lib/docker/overlay2/eb8eff6b239f204fe12e57e9498d93daa009197053320f77c1b728fdcce7245b/diff:/var/lib/docker/overlay2/f30f4b81543943f50b35ac4a7c40254b95cb582b7dc79e6320199b159adec363/diff:/var/lib/docker/overlay2/0e400c67c3a07f3a6fad393081041c1018eecebf7ce629aa304e10aa7c8a9f59/diff:/var/lib/docker/overlay2/01d62bb4afe63240009e4ffb982ea0869dbd177306ff8da63a20d8898b4c7db3/diff",
-                "MergedDir": "/var/lib/docker/overlay2/eeadee2eaf2cfd78f7e7430c8f60faf5221fb661a698b87ecbace3ba3094de3f/merged",
-                "UpperDir": "/var/lib/docker/overlay2/eeadee2eaf2cfd78f7e7430c8f60faf5221fb661a698b87ecbace3ba3094de3f/diff",
-                "WorkDir": "/var/lib/docker/overlay2/eeadee2eaf2cfd78f7e7430c8f60faf5221fb661a698b87ecbace3ba3094de3f/work"
-            },
-            "Name": "overlay2"
-        },
-        "RootFS": {
-            "Type": "layers",
-            "Layers": [
-                "sha256:c28e56a8a2607ef537837082d820f500964627eb4de44ddc5836a34501bd872c",
-                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
-                "sha256:16c4c963307b277e7d2fedeab8dac7e22b740efdce1295e5072268ad31b11e8d",
-                "sha256:19f45cf5f0220f8f1c98524e331a7a8652d26a663761386742657a7bd079b128",
-                "sha256:3cf4c405d39750229d02378b4bd9e3748c6e111e62b52abd6fc88fdc3f52f77d",
-                "sha256:767a3b382e53e2d7dba6ee7d99e225b83c762817d26ecaac24cae5eb3887fb05",
-                "sha256:bd62478301f1f6a4e7b8e21869b7a23bcd7ee1f783a76fbaed3e1d5ea00a7685",
-                "sha256:99f3c6b49bf93bcf80ee8702815ce2e666b08f95f433ac2b33ca681beada93af",
-                "sha256:8f3702a90d9787e83be5ae79381295cc4cdae2b70c07d6427e336fdafcaa1222",
-                "sha256:95805eece71b3b2120dff7de10697847694096de5512496225c27094751b0cb4",
-                "sha256:5e1ce10222ff56f976ddf6efbd76603df34c8c26a56ca16a527df294591d3183",
-                "sha256:37ccc14f034cb25bf1bc5aff3eadc51956ca7972abd6d84eb7dcb4620154c7b7",
-                "sha256:d0520e20ee148641fe511caa4e4eb8c5c275d0388c8edd32212234d7c7eddc81",
-                "sha256:c6ac20e33cb3b11fa09751c6aa42d4fb3fa48f326aee32e1d5c86eae380ffdb5",
-                "sha256:cf388c3d4355b26625850779c2445b8e374336b7f23b95511ddce5042b43e45e",
-                "sha256:e56cbc384b20da25b24f6a3433d62c061768b0ab70d83d20f6254ab9ad737ec5",
-                "sha256:6f2796cffee61abe91ebb43a76aa3cf3ecedb4d2f1f47308bd8f98622a413a40",
-                "sha256:c12354a69973e8734e51e2d71d622e675dbdfcd5681f3b0345c74d77d77d866b",
-                "sha256:d7540663b18364ee8c2b2162c5f0c2d5ce04eeacdc76d73f66ef9050c9948c9f",
-                "sha256:a864155f1dc2324bf0d682352807e553b3a7c08e88c19e45426c2fd81ae31cf2",
-                "sha256:305197d90cfe8e1f10e32959ce68edf0ca2f4e4327be15384d8d9438b90223ea",
-                "sha256:9f31d5a6f3dd966abef24c45e1caafcb63d155c63e886d4b2a38835cc9b8fc37",
-                "sha256:491560ef0392e2094a0fb4e4cd368426e47da1e719123f08251053a2baa088f0",
-                "sha256:2d783cacd7523c136cfbc64b60846f00147e5f74e14ddfdecaa69285605fc658",
-                "sha256:b71981529dde490100fabeba42571638a4ca3e91e0f065ad9d19a03540acba90",
-                "sha256:b4005768788971597b5619e05deabc6db0faf373f0f245d263beeaa714989fe2",
-                "sha256:df2f6e348c1284edcc8873f847c455922f3d216c9fbf16a53b7cb7e0e9762ee6",
-                "sha256:eccd7d526f28ffff9b7daae9d708848b67729ff6078bbd77209c43008242dc93",
-                "sha256:5caf8e810243a933cd94e928f7aaacf14b3a124e0b6616b77bfa0f25f252bd3c",
-                "sha256:449be1c47376fd48789bacb3cbd91338e8734e56648ae7070f99ced9e96214a1",
-                "sha256:52070bf3424c9e9f94e587a1619d3629407e5dfbeb64313771c6ea222d53b789"
-            ]
-        },
-        "Metadata": {
-            "LastTagTime": "0001-01-01T00:00:00Z"
-        }
-    }
-]
-[sikaj01@ip-10-56-128-47 ~]$ TOK=$(sudo docker run --rm --entrypoint sed "$IMG" -n 's#.*<password>\(.*\)</password>.*#\1#p' /usr/share/maven/conf/settings.xml | head -1)
-[sikaj01@ip-10-56-128-47 ~]$ 
-[sikaj01@ip-10-56-128-47 ~]$ getent hosts artifactory.dev.cnxs.vpcaas.fcs.gsa.gov     # confirm this is the dev name first
-10.56.131.136   artifactory.dev.cnxs.vpcaas.fcs.gsa.gov
-[sikaj01@ip-10-56-128-47 ~]$ printf 'user = "uploader:%s"\n' "$TOK" | curl -sSk -K - -o /dev/null -w 'dev=%{http_code}\n' https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories
-dev=401
-[sikaj01@ip-10-56-128-47 ~]$ unset TOK
-[sikaj01@ip-10-56-128-47 ~]$ getent hosts conexus-artifactory.edc.ds1.usda.gov api.eauth.usda.gov
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ ps -eo pid,ppid,user,%cpu.%mem,etime,cmd \
+> --sort=-%cpu | head -20
+error: unknown AIX field descriptor
 
-199.134.75.62   api.eauth.wip.edc.usda.gov api.eauth.usda.gov
-[sikaj01@ip-10-56-128-47 ~]$ 
+Usage:
+ ps [options]
+
+ Try 'ps --help <simple|list|output|threads|misc|all>'
+  or 'ps --help <s|l|o|t|m|a>'
+ for additional help text.
+
+For more details see ps(1).
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ ps -eo pid,ppid,user,%cpu,%mem,etime,cmd --sort=-%cpu | head -20
+    PID    PPID USER     %CPU %MEM     ELAPSED CMD
+1689532 1689522 root      5.9  0.0       13:22 /bin/sh -c '/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile' > /var/opt/BESClient/__BESData/__SCMData/07ac6e0569e04a1176f548e9713b94b5772da863.out 2> /var/opt/BESClient/__BESData/__SCMData/07ac6e0569e04a1176f548e9713b94b5772da863.out.err && echo 'exit_code: 0' > /var/opt/BESClient/__BESData/__SCMData/07ac6e0569e04a1176f548e9713b94b5772da863.out.metadata || echo 'exit_code: 1' > /var/opt/BESClient/__BESData/__SCMData/07ac6e0569e04a1176f548e9713b94b5772da863.out.metadata 
+   2452       1 root      3.4  0.7 25-01:26:28 /opt/BESClient/bin/BESClient
+   1881    1879 root      2.0  2.8 25-01:26:35 falcon-sensor-bpf
+1532185       1 dd-agent  1.2  1.5    10:31:32 /opt/datadog-agent/bin/agent/agent run -p /opt/datadog-agent/run/agent.pid
+1426009 1426008 root      0.7  1.8    22:37:47 /opt/nessus_agent/sbin/nessus-agent-module -q
+1689531 1689522 root      0.6  0.0       13:22 grep -v ^d
+   2363       1 root      0.4  0.1 25-01:26:29 sshd: /usr/sbin/sshd -D [listener] 0 of 10-60 startups
+      1       0 root      0.3  0.2 25-01:26:40 /usr/lib/systemd/systemd --switched-root --system --deserialize=32
+   2035       1 root      0.1  0.6 25-01:26:34 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent -config /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml -envconfig /opt/aws/amazon-cloudwatch-agent/etc/env-config.json -otelconfig /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.yaml -pidfile /opt/aws/amazon-cloudwatch-agent/var/amazon-cloudwatch-agent.pid
+   2547    1946 root      0.1  1.3 25-01:26:25 /opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/components/agentbeat filebeat -E setup.ilm.enabled=false -E setup.template.enabled=false -E management.enabled=true -E management.restart_on_output_change=true -E logging.level=info -E logging.to_stderr=true -E gc_percent=${FILEBEAT_GOGC:100} -E filebeat.config.modules.enabled=false -E logging.event_data.to_stderr=true -E logging.event_data.to_files=false -E http.enabled=true -E http.host=unix:///opt/Elastic/Agent/data/tmp/ktLNdx1PfhBC4oi1tvoCSIRxrimpcSAg.sock -E path.data=/opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/run/aws-cloudwatch-3f9da240-abe1-11ed-a92c-29b7c3d5d102
+   2738    1946 root      0.1  1.4 25-01:26:22 /opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/components/agentbeat filebeat -E setup.ilm.enabled=false -E setup.template.enabled=false -E management.enabled=true -E management.restart_on_output_change=true -E logging.level=info -E logging.to_stderr=true -E gc_percent=${FILEBEAT_GOGC:100} -E filebeat.config.modules.enabled=false -E logging.event_data.to_stderr=true -E logging.event_data.to_files=false -E http.enabled=true -E http.host=unix:///opt/Elastic/Agent/data/tmp/_ergWj_UEGyqfJSndBvLVP7q4D2kI4uZ.sock -E path.data=/opt/Elastic/Agent/data/elastic-agent-8.19.5-cf5c85/run/log-3f9da240-abe1-11ed-a92c-29b7c3d5d102
+1518586 1518524 sikaj01   0.1  5.5    12:02:58 /efs/devopsdata/sikaj01/.vscode-server/cli/servers/Stable-7debcd0e2acdea1c52de81bf9ee1620444407dda/server/node --dns-result-order=ipv4first /efs/devopsdata/sikaj01/.vscode-server/cli/servers/Stable-7debcd0e2acdea1c52de81bf9ee1620444407dda/server/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=false
+      2       0 root      0.0  0.0 25-01:26:40 [kthreadd]
+      3       2 root      0.0  0.0 25-01:26:40 [rcu_gp]
+      4       2 root      0.0  0.0 25-01:26:40 [rcu_par_gp]
+      5       2 root      0.0  0.0 25-01:26:40 [slub_flushwq]
+      6       2 root      0.0  0.0 25-01:26:40 [netns]
+      8       2 root      0.0  0.0 25-01:26:40 [kworker/0:0H-events_highpri]
+     10       2 root      0.0  0.0 25-01:26:40 [mm_percpu_wq]
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ top -b -d 2 -n 5 | grep -E \
+'Cpu\(s\)|BESClient|falcon-sensor|kswapd'
+%Cpu(s): 45.7 us, 45.7 sy,  0.0 ni,  8.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+   2452 root      20   0  771836  60844  14716 R  50.0   0.8   1247:39 BESClient
+   1881 root      20   0 2309140 226156 143980 S  43.8   2.9 758:44.94 falcon-sensor-b
+     53 root      20   0       0      0      0 S   0.0   0.0   5:45.77 kswapd0
+%Cpu(s): 51.9 us, 45.9 sy,  0.0 ni,  2.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+   2452 root      20   0  771836  60844  14716 R  48.5   0.8   1247:40 BESClient
+   1881 root      20   0 2309140 226064 143980 S  48.0   2.9 758:45.91 falcon-sensor-b
+     53 root      20   0       0      0      0 S   0.0   0.0   5:45.77 kswapd0
+%Cpu(s): 56.2 us, 42.4 sy,  0.0 ni,  1.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+   1881 root      20   0 2298896 225780 143980 S  49.0   2.8 758:46.90 falcon-sensor-b
+   2452 root      20   0  771836  60844  14716 R  47.5   0.8   1247:41 BESClient
+     53 root      20   0       0      0      0 S   0.0   0.0   5:45.77 kswapd0
+%Cpu(s): 43.0 us, 54.2 sy,  0.0 ni,  2.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+   2452 root      20   0  771836  60844  14716 R  50.7   0.8   1247:42 BESClient
+   1881 root      20   0 2309140 225680 143980 S  48.8   2.8 758:47.88 falcon-sensor-b
+     53 root      20   0       0      0      0 S   0.0   0.0   5:45.77 kswapd0
+%Cpu(s): 53.2 us, 43.5 sy,  0.0 ni,  3.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+   2452 root      20   0  771836  60844  14716 R  48.5   0.8   1247:43 BESClient
+   1881 root      20   0 2298896 225720 143980 S  46.0   2.8 758:48.81 falcon-sensor-b
+     53 root      20   0       0      0      0 S   0.0   0.0   5:45.77 kswapd0
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo tail -n 80 /var/opt/BESClient/__BESData/__Global/Logs/$(date +%Y%m%d).log
+   Command succeeded appendfile   find /etc/cron* /lib /lib64 /usr/lib /usr/lib64 /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -xdev \( -type d -o -type f \) \( ! -user root -o !-group root -o -perm -755 ! -perm 755 \) -exec stat --print='%A|%a|%u|%g|%U|%G|%m|%n\n' {} \; | awk -F/ '{print $0"|"$NF}' >> $TMPDBFILE (action:2920284)
+   Command succeeded appendfile  (action:2920284)
+   Command succeeded appendfile   if [[ $finished != 0 ]] (action:2920284)
+   Command succeeded appendfile   then (action:2920284)
+   Command succeeded appendfile     rm -f $TMPDBFILE (action:2920284)
+   Command succeeded appendfile     echo "`date` - There was error while searching. Aborting." (action:2920284)
+   Command succeeded appendfile   else (action:2920284)
+   Command succeeded appendfile     mv $TMPDBFILE $DBFILE (action:2920284)
+   Command succeeded appendfile     echo "`date` - Done importing" (action:2920284)
+   Command succeeded appendfile   fi (action:2920284)
+   Command succeeded appendfile  (action:2920284)
+   Command succeeded appendfile   echo "`date` - All done" (action:2920284)
+   Command succeeded appendfile fi (action:2920284)
+   Command started - wait mkdir -p /var/opt/BESClient/__BESData/__SCMData (action:2920284)
+   Command succeeded (Exit Code=0) wait mkdir -p /var/opt/BESClient/__BESData/__SCMData (action:2920284)
+   Command started - wait chmod +x "/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile" (action:2920284)
+   Command succeeded (Exit Code=0) wait chmod +x "/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile" (action:2920284)
+   Command started - wait /bin/sh -c "'/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile' > /var/tmp/bigfixfiledb.log 2> /var/tmp/bigfixfiledb.log.err && echo 'exit_code: 0' > /var/tmp/bigfixfiledb.log.metadata || echo 'exit_code: 1' > /var/tmp/bigfixfiledb.log.metadata " (action:2920284)
+At 02:04:49 +0000 - 
+   Encrypted Report posted successfully
+At 02:05:25 +0000 - 
+   Successful Synchronization with site 'opsite1159' (version 2216425) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite1159'
+At 02:06:05 +0000 - 
+   PollForCommands: Requesting commands
+   PollForCommands: commands to process: 0
+At 02:09:26 +0000 - 
+   Successful Synchronization with site 'actionsite' (version 2220493) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/actionsite'
+At 02:11:16 +0000 - 
+   Encrypted Report posted successfully
+At 02:12:26 +0000 - 
+   Successful Synchronization with site 'CustomSite_ForeScout' (version 1606070) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/CustomSite_ForeScout'
+   Successful Synchronization with site 'CustomSite_GSA_Software_-2d_Linux' (version 2140562) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/CustomSite_GSA_Software_-2d_Linux'
+   Successful Synchronization with site 'CustomSite_OCIO_SNOWAPI' (version 1606070) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/CustomSite_OCIO_SNOWAPI'
+At 02:13:26 +0000 - 
+   Successful Synchronization with site 'opsite1063' (version 2209865) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite1063'
+   Successful Synchronization with site 'opsite1079' (version 1606070) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite1079'
+   Successful Synchronization with site 'opsite1117' (version 2136421) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite1117'
+   Successful Synchronization with site 'opsite1121' (version 1973088) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite1121'
+At 02:13:27 +0000 - 
+   Successful Synchronization with site 'opsite114' (version 2064386) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite114'
+   Successful Synchronization with site 'opsite126' (version 2067759) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite126'
+   Successful Synchronization with site 'opsite188' (version 1606070) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite188'
+   Successful Synchronization with site 'opsite215' (version 1606070) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite215'
+   Successful Synchronization with site 'opsite343' (version 1606070) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/opsite343'
+At 02:14:26 +0000 - actionsite (http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/actionsite)
+   Command succeeded (Exit Code=0) wait /bin/sh -c "'/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile' > /var/tmp/bigfixfiledb.log 2> /var/tmp/bigfixfiledb.log.err && echo 'exit_code: 0' > /var/tmp/bigfixfiledb.log.metadata || echo 'exit_code: 1' > /var/tmp/bigfixfiledb.log.metadata " (action:2920284)
+   Command succeeded delete "/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile" (action:2920284)
+   Command succeeded delete No '/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile' exists to delete, no failure reported (action:2920284)
+   Command succeeded (file created) appendfile RPCV="$(sudo -Hiu root env | grep ^PATH= | cut -d= -f2)"; echo "$RPCV" | grep -i "::" && echo "root's path contains an empty directory (::)"; echo "$RPCV" | grep -i ":$" && echo "root's path contains a trailing (:)"; for x in $(echo "$RPCV" | tr ":" " "); do [ -d "$x" ] && ls -ldH "$x" | awk '$9 == "." {print "PATH contains current working directory (.)"} $3 != "root" {print $9, "is not owned by root"} substr($1,6,1) != "-" {print $9, "is group writable"} substr($1,9,1) != "-" {print $9, "is world writable"}' || echo "$x is not a directory"; done (action:2920284)
+   Command succeeded appendfile RPCV="$(sudo -Hiu root env | grep ^PATH= | cut -d= -f2)"; echo "$RPCV" | grep -i "::" && echo "root's path contains an empty directory (::)"; echo "$RPCV" | grep -i ":$" && echo "root's path contains a trailing (:)"; for x in $(echo "$RPCV" | tr ":" " "); do [ -d "$x" ] && ls -ldH "$x" | awk '$9 == "." {print "PATH contains current working directory (.)"}$3 != "root" {print $9, "is not owned by root"} substr($1,6,1) != "-" {print $9, "is group writable"} substr($1,9,1) != "-" {print $9, "is world writable"}' || echo "$x is not a directory"; done(action:2920284)
+   Command started - wait mkdir -p /var/opt/BESClient/__BESData/__SCMData (action:2920284)
+   Command succeeded (Exit Code=0) wait mkdir -p /var/opt/BESClient/__BESData/__SCMData (action:2920284)
+   Command started - wait chmod +x "/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile" (action:2920284)
+   Command succeeded (Exit Code=0) wait chmod +x "/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile" (action:2920284)
+   Command started - wait /bin/sh -c "'/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile' > /var/opt/BESClient/__BESData/__SCMData/ce1499c53fe3568200ac873fe8634406887636a9.out 2> /var/opt/BESClient/__BESData/__SCMData/ce1499c53fe3568200ac873fe8634406887636a9.out.err && echo 'exit_code: 0' > /var/opt/BESClient/__BESData/__SCMData/ce1499c53fe3568200ac873fe8634406887636a9.out.metadata || echo 'exit_code: 1' > /var/opt/BESClient/__BESData/__SCMData/ce1499c53fe3568200ac873fe8634406887636a9.out.metadata " (action:2920284)
+At 02:14:28 +0000 - 
+   Encrypted Report posted successfully
+At 02:14:28 +0000 - actionsite (http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/actionsite)
+   Command succeeded (Exit Code=0) wait /bin/sh -c "'/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile' > /var/opt/BESClient/__BESData/__SCMData/ce1499c53fe3568200ac873fe8634406887636a9.out 2> /var/opt/BESClient/__BESData/__SCMData/ce1499c53fe3568200ac873fe8634406887636a9.out.err && echo 'exit_code: 0' > /var/opt/BESClient/__BESData/__SCMData/ce1499c53fe3568200ac873fe8634406887636a9.out.metadata || echo 'exit_code: 1' > /var/opt/BESClient/__BESData/__SCMData/ce1499c53fe3568200ac873fe8634406887636a9.out.metadata " (action:2920284)
+   Command succeeded delete "/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile" (action:2920284)
+   Command succeeded delete No '/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile' exists to delete, no failure reported (action:2920284)
+   Command succeeded (file created) appendfile for partition in $(findmnt -n -l -k -it $(awk '/nodev/ { print $2 }' /proc/filesystems | paste -sd,) | grep -Pv "noexec|nosuid" | awk '{print $1}'); do cat /var/opt/BESClient/__BESData/__SCMData/fileresults.db | grep -v "^d" | while read line; do perm=$(echo $line | awk -F"|" '{print $1}'); part=$(echo $line | awk -F"|" '{print $5}'); perm=$(echo $perm | egrep '^...[sS]..[sS]...|^...[sS]......|^......[sS]...'); file=$(echo $line | awk -F"|" '{print $6}'); if [ ! -z "$perm" ]; then if [ "$part" = "$partition" ]; then auditctl=$(cat /etc/audit/audit.rules | grep $file); auditd=$(cat /etc/audit/rules.d/* | grep $file); if [ -z "$auditctl" ] || [ -z "$auditd" ]; then echo "Entry for file $file is not present in auditctl or /etc/audit/rules.d/"; fi; fi; fi; done; done (action:2920284)
+   Command succeeded appendfile for partition in $(findmnt -n -l -k -it $(awk '/nodev/ { print $2 }' /proc/filesystems | paste -sd,) | grep -Pv "noexec|nosuid" | awk '{print $1}'); do cat /var/opt/BESClient/__BESData/__SCMData/fileresults.db | grep -v "^d" | while read line; do perm=$(echo $line | awk -F"|" '{print $1}'); part=$(echo $line | awk -F"|" '{print $5}'); perm=$(echo $perm | egrep '^...[sS]..[sS]...|^...[sS]......|^......[sS]...'); file=$(echo $line | awk -F"|" '{print $6}'); if [ ! -z "$perm" ]; then if [ "$part" = "$partition" ]; then auditctl=$(cat /etc/audit/audit.rules | grep $file); auditd=$(cat /etc/audit/rules.d/* | grep $file); if [ -z "$auditctl" ] || [ -z "$auditd" ]; then echo "Entry for file $file is not present in auditctl or /etc/audit/rules.d/"; fi; fi; fi; done; done (action:2920284)
+   Command started - wait mkdir -p /var/opt/BESClient/__BESData/__SCMData (action:2920284)
+   Command succeeded (Exit Code=0) wait mkdir -p /var/opt/BESClient/__BESData/__SCMData (action:2920284)
+   Command started - wait chmod +x "/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile" (action:2920284)
+   Command succeeded (Exit Code=0) wait chmod +x "/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile" (action:2920284)
+   Command started - wait /bin/sh -c "'/var/opt/BESClient/__BESData/CustomSite_GSA_Amazon_Linux_2023/__appendfile' > /var/opt/BESClient/__BESData/__SCMData/07ac6e0569e04a1176f548e9713b94b5772da863.out 2> /var/opt/BESClient/__BESData/__SCMData/07ac6e0569e04a1176f548e9713b94b5772da863.out.err && echo 'exit_code: 0' > /var/opt/BESClient/__BESData/__SCMData/07ac6e0569e04a1176f548e9713b94b5772da863.out.metadata || echo 'exit_code: 1' > /var/opt/BESClient/__BESData/__SCMData/07ac6e0569e04a1176f548e9713b94b5772da863.out.metadata " (action:2920284)
+At 02:15:30 +0000 - 
+   Encrypted Report posted successfully
+At 02:16:33 +0000 - 
+   Encrypted Report posted successfully
+At 02:25:08 +0000 - actionsite (http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/actionsite)
+   Relevant - {Policy} - [CDM Bigfix] - Generate list of Linux and Solaris Admin users (fixlet:646803)
+At 02:25:09 +0000 - 
+   Encrypted Report posted successfully
+At 02:26:16 +0000 - 
+   Encrypted Report posted successfully
+At 02:34:27 +0000 - 
+   Successful Synchronization with site 'CustomSite_CDM_BigFix' (version 2217502) - 'http://BigFix.gsa.gov:52311/cgi-bin/bfgather.exe/CustomSite_CDM_BigFix'
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo systemctl status falcon-sensor --no-pager
+● falcon-sensor.service - CrowdStrike Falcon Sensor
+     Loaded: loaded (/usr/lib/systemd/system/falcon-sensor.service; enabled; preset: disabled)
+     Active: active (running) since Tue 2026-09-22 01:01:15 UTC; 3 weeks 4 days ago
+   Main PID: 1879 (falcond)
+      Tasks: 64 (limit: 9194)
+     Memory: 537.2M
+        CPU: 12h 42min 6.656s
+     CGroup: /system.slice/falcon-sensor.service
+             └─sensor.falcon
+               ├─1879 /opt/CrowdStrike/falcond
+               └─1881 falcon-sensor-bpf
+
+Oct 16 00:00:04 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1881]: LogLevelUpdate: none = trace level 0.
+Oct 16 15:55:49 ip-10-56-112-33.ec2.internal systemd[1]: /usr/lib/systemd/system/falcon-sensor…e accordingly.
+Oct 16 15:56:15 ip-10-56-112-33.ec2.internal systemd[1]: /usr/lib/systemd/system/falcon-sensor…e accordingly.
+Oct 16 15:56:17 ip-10-56-112-33.ec2.internal systemd[1]: /usr/lib/systemd/system/falcon-sensor…e accordingly.
+Oct 16 15:56:18 ip-10-56-112-33.ec2.internal systemd[1]: /usr/lib/systemd/system/falcon-sensor…e accordingly.
+Oct 16 19:31:53 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1881]: CrowdStrike(4): calling close
+Oct 16 20:27:59 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1881]: CrowdStrike(4): calling close
+Oct 17 00:00:06 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1881]: CrowdStrike(6): AFLAGS updated to 0. error_log is now OFF
+Oct 17 00:00:06 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1881]: No traceLevel set via falconctl defaulting to none
+Oct 17 00:00:06 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1881]: LogLevelUpdate: none = trace level 0.
+Hint: Some lines were ellipsized, use -l to show in full.
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ sudo systemctl status datadog-agent --no-pager
+● datadog-agent.service - Datadog Agent
+     Loaded: loaded (/usr/lib/systemd/system/datadog-agent.service; enabled; preset: disabled)
+     Active: active (running) since Fri 2026-10-16 15:56:18 UTC; 10h ago
+   Main PID: 1532185 (agent)
+      Tasks: 11 (limit: 9194)
+     Memory: 101.1M
+        CPU: 8min 17.569s
+     CGroup: /system.slice/datadog-agent.service
+             └─1532185 /opt/datadog-agent/bin/agent/agent run -p /opt/datadog-agent/run/agent.pid
+
+Oct 17 02:34:25 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:25 UTC | CORE | WARN | (pkg/config/nodetreemodel/config.go:644 in checkKnownKey) | config key network_c…v6 is unknown
+Oct 17 02:34:25 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:25 UTC | CORE | WARN | (pkg/config/nodetreemodel/config.go:644 in checkKnownKey) | config key network_c…v4 is unknown
+Oct 17 02:34:25 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:25 UTC | CORE | WARN | (pkg/config/nodetreemodel/config.go:644 in checkKnownKey) | config key network_c…v6 is unknown
+Oct 17 02:34:25 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:25 UTC | CORE | WARN | (pkg/config/nodetreemodel/config.go:644 in checkKnownKey) | config key network_c…on is unknown
+Oct 17 02:34:25 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:25 UTC | CORE | WARN | (pkg/config/nodetreemodel/config.go:644 in checkKnownKey) | config key network_c…up is unknown
+Oct 17 02:34:25 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:25 UTC | CORE | WARN | (pkg/config/nodetreemodel/config.go:644 in checkKnownKey) | config key network_c…ns is unknown
+Oct 17 02:34:35 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:35 UTC | CORE | WARN | (pkg/collector/corechecks/system/disk/diskv2/disk.go:708 in getPartitionUsage) |…t is invalid.
+Oct 17 02:34:35 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:35 UTC | CORE | WARN | (pkg/collector/corechecks/system/disk/diskv2/disk.go:708 in getPartitionUsage) |…t is invalid.
+Oct 17 02:34:50 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:50 UTC | CORE | WARN | (pkg/collector/corechecks/system/disk/diskv2/disk.go:708 in getPartitionUsage) |…t is invalid.
+Oct 17 02:34:50 ip-10-56-112-33.ec2.internal agent[1532185]: 2026-10-17 02:34:50 UTC | CORE | WARN | (pkg/collector/corechecks/system/disk/diskv2/disk.go:708 in getPartitionUsage) |…t is invalid.
+Hint: Some lines were ellipsized, use -l to show in full.
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
