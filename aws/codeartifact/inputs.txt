@@ -1,25 +1,9 @@
-IMG=$(sudo docker inspect -f '{{.Config.Image}}' $A)
-TOK=$(sudo docker run --rm --entrypoint sed "$IMG" -n 's#.*<password>\(.*\)</password>.*#\1#p' /usr/share/maven/conf/settings.xml | head -1)
-getent hosts artifactory.dev.cnxs.vpcaas.fcs.gsa.gov     # confirm this is the dev name first
-printf 'user = "uploader:%s"\n' "$TOK" | curl -sSk -K - -o /dev/null -w 'dev=%{http_code}\n' https://artifactory.dev.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories
-unset TOK
+top -b -d 2 -n 5 | grep -E \
+'Cpu\(s\)|BESClient|falcon-sensor|kswapd'
 
 
-A=ip-10-56-128-47.ec2.internal-ba-1
-sudo docker stop $A
-sudo systemctl enable --now dev-block-prod.service
-sudo iptables -L DOCKER-USER -n -v --line-numbers    # expect two REJECT rows above the RETURN
+sudo tail -n 80 /var/opt/BESClient/__BESData/__Global/Logs/$(date +%Y%m%d).log
 
+sudo systemctl status falcon-sensor --no-pager
 
-
-
-
-getent hosts conexus-artifactory.edc.ds1.usda.gov api.eauth.usda.gov
-sudo docker exec dev-postgres sh -c 'pg_dump -U "${POSTGRES_USER:-postgres}" -a -t build_definition bamboo 2>/dev/null' | grep -oE 'https://cnxsartifact-[A-Za-z0-9._/-]*' | sort -u
-
-
-
-
-
-sudo iptables -L DOCKER-USER -n --line-numbers
-sudo docker ps -q | xargs sudo docker inspect -f '{{.Name}} net={{.HostConfig.NetworkMode}}'
+sudo systemctl status datadog-agent --no-pager
