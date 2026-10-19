@@ -1,76 +1,14 @@
-# 1. What does the release settings file actually contain? (redact the password)
-grep -nE '<(id|url|username|mirrorOf)>' /usr/share/maven/conf/settings-release.xml
-
-# 2. Does the same URL work with the uploader token? (-f + explicit failure)
-URL=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/external/atlassian/jgitflow/jgitflow-maven-plugin/1.0-m5.1/jgitflow-maven-plugin-1.0-m5.1.pom
-curl -sS -f -o /dev/null -w '%{http_code}\n' -u "uploader:<TOKEN>" "$URL" || echo "FAILED"
-
-# 3. Anonymous, for comparison
-curl -sS -f -o /dev/null -w '%{http_code}\n' "$URL" || echo "FAILED"
-
-# 4. Does the repo exist on new, and who can read it?
-curl -sS -f -u "admin:<TOKEN>" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-plugin-repository | head
-
-
-
-
-
-
------------------
-
-
-
-
-W=/cache/bamboo/ip-10-56-112-35.ec2.internal-ba-3/xml-data/build-dir/SR-BSSR-JOB1
-cp -a "$W/.git" /tmp/billingsftp-git-backup-20261019
-cd "$W"
-
-
-
-git rev-parse 02.00.000.131^{commit}
-git log --oneline -5 02.00.000.131
-git fsck --unreachable --no-reflogs 2>/dev/null | grep commit
-git reflog --all | grep -i 131
-
-
+git rev-parse dc262060^1 dc262060^2
+git log --graph --oneline -8 dc262060
+git merge-base --is-ancestor 5887815bcc7eb7ea235d90938093c3cce8c84f8b dc262060 && echo "tip is in tag history"
 
 
 
 export GIT_SSH_COMMAND='ssh -i /opt/bamboo-keys/bitbucket_ci -o IdentitiesOnly=yes'
 git push ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/billingsftp.git \
-  <SHA>:refs/heads/release/02.00.000.131
+  5887815bcc7eb7ea235d90938093c3cce8c84f8b:refs/heads/release/02.00.000.131
 
 
 
-
-git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/billingsftp.git 'release/*'
-
-
-
-
-
---------------------------------
-
-
-B=/tmp/billingsftp-git-backup-20261019
-ls -ld "$B"        # confirm it exists and note the owner
-git config --global --add safe.directory "$B"
-
-
-
-export GIT_DIR=$B
-git rev-parse '02.00.000.131^{commit}'
-git log --oneline -5 02.00.000.131
-git fsck --unreachable --no-reflogs 2>/dev/null | grep commit
-git reflog --all | grep -i 131
-
-
-
-
-du -sh "$B"; ls "$B/objects" | head -3; ls "$B/refs/tags" | grep 131
-
-
-
-
-
-git log -3 --format='%H %an %ad %s' <sha>
+git ls-remote --heads ssh://git@bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov:7999/cnxs/billingsftp.git 'release/02.00.000.131'
+unset GIT_DIR GIT_SSH_COMMAND
