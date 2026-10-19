@@ -1,20 +1,12 @@
-sudo wc -l \
-/var/opt/BESClient/__BESData/__SCMData/fileresults.db
+# 1. What does the release settings file actually contain? (redact the password)
+grep -nE '<(id|url|username|mirrorOf)>' /usr/share/maven/conf/settings-release.xml
 
+# 2. Does the same URL work with the uploader token? (-f + explicit failure)
+URL=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-plugin-repository/external/atlassian/jgitflow/jgitflow-maven-plugin/1.0-m5.1/jgitflow-maven-plugin-1.0-m5.1.pom
+curl -sS -f -o /dev/null -w '%{http_code}\n' -u "uploader:<TOKEN>" "$URL" || echo "FAILED"
 
-sudo grep -vc '^d' \
-/var/opt/BESClient/__BESData/__SCMData/fileresults.db
+# 3. Anonymous, for comparison
+curl -sS -f -o /dev/null -w '%{http_code}\n' "$URL" || echo "FAILED"
 
-
-sudo pstree -ap 2452
-
-
-
-ps -p 1689521 -o pid,etime,time,%cpu,stat,cmd
-
-
-
-sudo wc -l /var/opt/BESClient/__BESData/__SCMData/fileresults.db
-sudo grep -vc '^d' /var/opt/BESClient/__BESData/__SCMData/fileresults.db
-
-
+# 4. Does the repo exist on new, and who can read it?
+curl -sS -f -u "admin:<TOKEN>" https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/api/repositories/conexus-plugin-repository | head
