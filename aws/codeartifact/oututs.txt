@@ -1,24 +1,66 @@
-[sikaj01@ip-10-56-128-233 ~]$ sudo bash oneshot_mirror_all.sh 
-[sudo] password for sikaj01: 
-syntax-ok
-[sikaj01@ip-10-56-128-233 ~]$ sudo bash oneshot_mirror_all.sh 
-syntax-ok
-[sikaj01@ip-10-56-128-233 ~]$ sudo cp -p /app/bbmirror/bin/oneshot_mirror_all.sh /app/bbmirror/bin/oneshot_mirror_all.sh.bak 2>/dev/null
-[sikaj01@ip-10-56-128-233 ~]$ sudo grep -nE 'FORCE_EXISTING:-|push -q|old-refs' /app/bbmirror/bin/oneshot_mirror_all.sh
-19:FORCE_EXISTING="${FORCE_EXISTING:-1}"       # 1 = overwrite dev repos that already have content
-140:    mkdir -p "$STATE_DIR/old-refs"
-141:    git_with "$DEV_TOKEN" ls-remote "$dev_git" > "$STATE_DIR/old-refs/${id}.txt" 2>/dev/null \
-143:    if [[ "$st" == content && ! -s "$STATE_DIR/old-refs/${id}.txt" ]]; then
-148:  git_with "$DEV_TOKEN" --git-dir="$gd" push -q "$dev_git" \
-151:  git_with "$DEV_TOKEN" --git-dir="$gd" push -q --prune "$dev_git" \
-[sikaj01@ip-10-56-128-233 ~]$ sudo install -m 600 /dev/null /app/bbmirror/etc/oneshot.env
-[sikaj01@ip-10-56-128-233 ~]$ sudo grep -E '^(PROD_URL|DEV_URL)=' /app/bbmirror/etc/mirror.env | sudo tee /app/bbmirror/etc/oneshot.env >/dev/null
-[sikaj01@ip-10-56-128-233 ~]$ read -rsp 'PROD token: ' P; echo; read -rsp 'DEV token: ' D; echo
-PROD token: 
-DEV token: 
-[sikaj01@ip-10-56-128-233 ~]$ printf 'PROD_TOKEN=%s\nDEV_TOKEN=%s\n' "$P" "$D" | sudo tee -a /app/bbmirror/etc/oneshot.env >/dev/null; unset P D
-[sikaj01@ip-10-56-128-233 ~]$ sudo cut -d= -f1 /app/bbmirror/etc/oneshot.env
-PROD_URL
-DEV_URL
-PROD_TOKEN
-DEV_TOKEN
+[sikaj01@ip-10-56-128-233 ~]$ sudo grep -E '^(PROD_URL|DEV_URL)=' /app/bbmirror/etc/oneshot.env
+PROD_URL="https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov"
+DEV_URL="https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov"
+[sikaj01@ip-10-56-128-233 ~]$ sudo bash -c 'source /app/bbmirror/etc/oneshot.env
+for t in PROD DEV; do u=${t}_URL; k=${t}_TOKEN
+  printf "%s: " $t; curl -sS -o /dev/null -w "%{http_code}\n" -K - "${!u}/rest/api/1.0/projects?limit=1" <<<"header = \"Authorization: Bearer ${!k}\""
+done'
+PROD: 200
+DEV: 200
+[sikaj01@ip-10-56-128-233 ~]$ ll
+total 708
+-rw-r-----. 1 sikaj01 users  14743 Sep  1 19:45 artifactory-config-current.xml
+drwx------. 2 sikaj01 users     46 Oct 14 17:54 artifactory-db-backups
+drwxr-x---. 7 sikaj01 users  16384 Aug 14 14:17 artifactory-migration
+-rw-r--r--. 1 sikaj01 users 290502 Aug  3 17:17 artifactory_pre_admin_reset_20260803.dump
+-rw-r--r--. 1 sikaj01 users 293881 Aug 10 15:11 artifactory_pre_repo_insert_20260810.dump
+-rw-r-----. 1 sikaj01 users   7223 Oct  5 20:37 cnxs_mirror.sh
+-rwxr-x---. 1 sikaj01 users    572 Sep 18 14:44 dev-atlassian-backup-write.json
+-rw-r-----. 1 sikaj01 users   8155 Sep 18 22:22 dev_nightly_backup.sh
+-rw-r-----. 1 sikaj01 users  10560 Aug 19 18:04 ec2_investigate.sh
+-rw-r-----. 1 sikaj01 users  52283 Aug 19 18:10 ec2_report_ip-10-56-128-233.ec2.internal_2026-08-19_1807.txt
+drwxr-x---. 3 sikaj01 users     95 Sep  3 19:34 elastic-install
+-rw-r-----. 1 sikaj01 users   9802 Oct 21 14:01 oneshot_mirror_all.sh
+-rwxr-x---. 1 sikaj01 users   5613 Sep 18 14:44 setup_dev_backup.sh
+[sikaj01@ip-10-56-128-233 ~]$ sudo /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee ~/oneshot_dryrun.log | tail -40
+2026-10-21 14:17:40 - DEVOPS/scripts
+2026-10-21 14:17:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:40   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/devops/scripts.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/devops/scripts.git
+2026-10-21 14:17:40 - AW/scripts
+2026-10-21 14:17:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:40   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/aw/scripts.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/aw/scripts.git
+2026-10-21 14:17:40 - CNXST/task
+2026-10-21 14:17:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:40   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/task.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/task.git
+2026-10-21 14:17:40 - CNXST/temp-application-01
+2026-10-21 14:17:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:40   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/temp-application-01.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/temp-application-01.git
+2026-10-21 14:17:40 - CNXST/temp-utility-module
+2026-10-21 14:17:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:40   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/temp-utility-module.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/temp-utility-module.git
+2026-10-21 14:17:40 - DEVOPS/terraform
+2026-10-21 14:17:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:40   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/devops/terraform.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/devops/terraform.git
+2026-10-21 14:17:40 - CNXST/testautomation
+2026-10-21 14:17:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:40   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/testautomation.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/testautomation.git
+2026-10-21 14:17:40 - CNXST/ui
+2026-10-21 14:17:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:40   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/ui.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/ui.git
+2026-10-21 14:17:40 - CNXST/ui-public
+2026-10-21 14:17:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:40   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/ui-public.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/ui-public.git
+2026-10-21 14:17:40 - DEVOPS/vendor-certificate-lifecycle-management
+2026-10-21 14:17:41   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:41   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/devops/vendor-certificate-lifecycle-management.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/devops/vendor-certificate-lifecycle-management.git
+2026-10-21 14:17:41 - CNXST/vendoremulator
+2026-10-21 14:17:41   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:41   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/vendoremulator.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/vendoremulator.git
+2026-10-21 14:17:41 - CNXST/webservices
+2026-10-21 14:17:41   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:41   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/webservices.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/webservices.git
+2026-10-21 14:17:41 - CNXST/ws
+2026-10-21 14:17:41   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:17:41   [dry-run] would mirror https://bitbucket.mgmt.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/ws.git -> https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/cnxst/ws.git
+2026-10-21 14:17:41 === done: ok=61 failed=0 skipped=36 (of which dev-already-had-content=0) ===
+[sikaj01@ip-10-56-128-233 ~]$ 
