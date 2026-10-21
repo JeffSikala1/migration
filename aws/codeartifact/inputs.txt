@@ -1,33 +1,5 @@
-ls -la /app/jfrog/artifactory/security
-docker run --rm --entrypoint ls releases-docker.jfrog.io/jfrog/artifactory-pro:7.117.21 /opt/jfrog/artifactory/app/third-party/java/lib/security
+cat start-artifactory.sh
 
 
-RM=$(docker inspect artifactory --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^JF_SHARED_RESTRICTEDMODE_ENABLED=')
-echo "$RM"      # must print a value, otherwise stop here
-
-docker stop -t 180 artifactory
-docker rename artifactory artifactory-old
-docker update --restart=no artifactory-old
-
-docker run -d --name artifactory \
-  --network prod-net \
-  --restart unless-stopped \
-  --ulimit nofile=32768:65536 \
-  -e "$RM" \
-  -v /app/jfrog/artifactory/var:/var/opt/jfrog/artifactory \
-  -v /app/jfrog/artifactory/security:/opt/jfrog/artifactory/app/third-party/java/lib/security \
-  releases-docker.jfrog.io/jfrog/artifactory-pro:7.117.21
-
-
-
-docker logs -f artifactory
-docker exec artifactory curl -s localhost:8082/router/api/v1/system/health
-docker ps
-
-
-
-
-docker stop artifactory && docker rm artifactory
-docker rename artifactory-old artifactory
-docker update --restart=unless-stopped artifactory
-docker start artifactory
+   systemctl is-enabled artifactory.service
+   systemctl status artifactory.service --no-pager
