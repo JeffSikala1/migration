@@ -1,17 +1,30 @@
-grep -c 'resuming/overwriting' ~/oneshot_dryrun.log
-grep -cE 'dev repo missing|exists but is empty' ~/oneshot_dryrun.log
-grep -E 'ERROR|WARN|state=|Prod repos visible' ~/oneshot_dryrun.log
-df -h /app
-
-sudo bash -c 'source /app/bbmirror/etc/oneshot.env
-start=0
-while :; do
-  r=$(curl -sS --fail -K - "$PROD_URL/rest/api/1.0/repos?limit=100&start=$start" <<<"header = \"Authorization: Bearer $PROD_TOKEN\"")
-  jq -r ".values[] | [.project.key,.project.type,.state] | @tsv" <<<"$r"
-  [ "$(jq -r .isLastPage <<<"$r")" = true ] && break
-  start=$(jq -r .nextPageStart <<<"$r")
-done' | sort | uniq -c
+sudo bash -c '
+source /app/bbmirror/etc/oneshot.env
+heads() { GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Bearer $2" git ls-remote --heads "$1" | sort; }
+for r in devops/bamboo-specs devops/scripts devops/terraform; do
+  diff <(heads "$PROD_URL/scm/$r.git" "$PROD_TOKEN") <(heads "$DEV_URL/scm/$r.git" "$DEV_TOKEN") >/dev/null && echo "$r: heads match" || echo "$r: DIFFER"
+done'
 
 
 
-sudo ONLY_PROJECT=DEVOPS DRY_RUN=0 /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee -a ~/oneshot_run.log
+sudo DRY_RUN=0 /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee -a ~/oneshot_run.log | grep -vE '^remote:'
+
+
+sudo bash -c '
+source /app/bbmirror/etc/oneshot.env
+OUT=/app/bbmirror/run/oneshot/restrictions_$(date +%Y%m%d_%H%M%S); mkdir -p "$OUT"; chmod 700 "$OUT"
+get() { curl -sS --fail -K - -H "Accept: application/json" "$DEV_URL$1" <<<"header = \"Authorization: Bearer $DEV_TOKEN\""; }
+for k in AW CNXST DEVOPS DOC USDA; do
+  get "/rest/branch-permissions/2.0/projects/$k/restrictions?limit=100" > "$OUT/project_$k.json" || echo "ERR project $k"
+  printf "project %-7s restrictions=%s\n" $k "$(jq ".size" "$OUT/project_$k.json" 2>/dev/null)"
+  for s in $(get "/rest/api/1.0/projects/$k/repos?limit=100" | jq -r ".values[].slug"); do
+    get "/rest/branch-permissions/2.0/projects/$k/repos/$s/restrictions?limit=100" > "$OUT/repo_${k}__$s.json" || { echo "ERR $k/$s"; continue; }
+    n=$(jq ".size" "$OUT/repo_${k}__$s.json")
+    [ "$n" != 0 ] && printf "  %s/%s: %s  %s\n" $k $s $n "$(jq -r "[.values[]|.type+\"@\"+.matcher.displayId]|join(\", \")" "$OUT/repo_${k}__$s.json")"
+  done
+done
+echo "backup dir: $OUT"'
+
+
+
+sudo ONLY_PROJECT=DEVOPS ONLY_REPO=bamboo-deployment DRY_RUN=0 /app/bbmirror/bin/oneshot_mirror_all.sh
