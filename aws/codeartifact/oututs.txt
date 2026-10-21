@@ -8468,3 +8468,522 @@ other:
   concurrent-build-plugin:
     number-of-concurrent-builds: system-default
     execution-strategy: block-triggering
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+version: 2
+deployment:
+  name: 13-TaskJMSk8s
+  source-plan: DIM-JMSIM
+release-naming: ${bamboo.inject.latestVersion}
+environments:
+- test
+- dev
+- cert
+- prod
+test:
+  description: QA
+  triggers: &id001 []
+  tasks:
+  - clean
+  - checkout:
+      repository: AWS-Scripts-feature-cicdsplit
+      force-clean-build: false
+  - script:
+      interpreter: SHELL
+      scripts:
+      - dnf install gettext -y
+      description: Temp task to install gettext till image is updated
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      file: ../deploy/jboss_updatemanifest.sh
+      argument: -s jms
+      working-dir: devvpc/k8s
+  - vcs-commit:
+      repository: AWS-Scripts-feature-cicdsplit
+      message: Manifest updated for JMS Test
+  final-tasks: []
+  variables: {}
+  requirements: []
+  notifications:
+  - events:
+    - deployment-finished
+    recipients:
+    - emails:
+      - conexus_dbops@gsa.gov
+    - emails:
+      - conexus_devsecops@gsa.gov
+    - emails:
+      - conexus_qa@gsa.gov
+dev:
+  triggers: *id001
+  tasks:
+  - clean
+  - checkout:
+      repository: AWS-Scripts-feature-cicdsplit
+      force-clean-build: false
+  - script:
+      interpreter: SHELL
+      scripts:
+      - dnf install gettext -y
+      description: Temp task to install gettext till image is updated
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      file: ../deploy/jboss_updatemanifest.sh
+      argument: -s jms
+      working-dir: devvpc/k8s
+  - vcs-commit:
+      repository: AWS-Scripts-feature-cicdsplit
+      message: Manifest updated for Jms Dev
+  final-tasks: []
+  variables: {}
+  requirements: []
+  notifications:
+  - events:
+    - deployment-finished
+    recipients:
+    - emails:
+      - conexus_devsecops@gsa.gov
+cert:
+  description: Staging
+  triggers: *id001
+  tasks:
+  - clean
+  - checkout:
+      repository: AWS-Scripts-feature-cicdsplit
+      force-clean-build: false
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      file: ../deploy/jboss_updatemanifest.sh
+      argument: -s jms
+      working-dir: devvpc/k8s
+  - vcs-commit:
+      repository: AWS-Scripts-feature-cicdsplit
+      message: Manifest updated for Jms Cert
+  final-tasks: []
+  variables: {}
+  requirements: []
+  notifications:
+  - events:
+    - deployment-finished
+    recipients:
+    - emails:
+      - conexus_dbops@gsa.gov
+    - emails:
+      - conexus_devsecops@gsa.gov
+    - emails:
+      - conexus_qa@gsa.gov
+prod:
+  triggers: *id001
+  tasks:
+  - clean
+  - checkout:
+      repository: AWS-Scripts-feature-cicdsplit
+      force-clean-build: false
+  - script:
+      interpreter: SHELL
+      scripts:
+      - dnf install gettext -y
+      description: Temp task to install gettext till image is updated
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      file: ../deploy/jboss_updatemanifest.sh
+      argument: -s jms
+      working-dir: devvpc/k8s
+  - vcs-commit:
+      repository: AWS-Scripts-feature-cicdsplit
+      message: Manifest updated for Jms Prod
+  final-tasks: []
+  variables: {}
+  requirements: []
+  notifications:
+  - events:
+    - deployment-finished
+    recipients:
+    - emails:
+      - conexus_dbops@gsa.gov
+    - emails:
+      - conexus_devsecops@gsa.gov
+    - emails:
+      - conexus_qa@gsa.gov
+---
+version: 2
+deployment:
+  name: 13-TaskJMSk8s
+deployment-permissions:
+- groups:
+  - bamboo-prod_nsfsdevelopers
+  permissions:
+  - view
+  - view-configuration
+  - create-release
+- users:
+  - madhav.kundala@gsa.gov
+  permissions:
+  - view
+  - edit
+  - clone
+  - admin
+  - view-configuration
+  - approve-release
+  - create-release
+- groups:
+  - bamboo-prod_nsfsdevops
+  - bamboo-prod_nsfsqa
+  permissions:
+  - view
+  - view-configuration
+  - approve-release
+  - create-release
+- roles:
+  - logged-in
+  - anonymous
+  permissions:
+  - view
+environment-permissions:
+- test:
+  - users:
+    - madhav.kundala@gsa.gov
+    groups:
+    - bamboo-prod_nsfsdevops
+    permissions:
+    - view
+    - edit
+    - deploy
+    - view-configuration
+  - roles:
+    - logged-in
+    - anonymous
+    permissions:
+    - view
+  - groups:
+    - bamboo-prod_nsfsqa
+    permissions:
+    - view
+    - deploy
+    - view-configuration
+- dev:
+  - users:
+    - madhav.kundala@gsa.gov
+    groups:
+    - bamboo-prod_nsfsdevops
+    permissions:
+    - view
+    - edit
+    - deploy
+    - view-configuration
+  - roles:
+    - logged-in
+    - anonymous
+    permissions:
+    - view
+  - groups:
+    - bamboo-prod_nsfsdevelopers
+    permissions:
+    - view
+    - deploy
+- cert:
+  - users:
+    - madhav.kundala@gsa.gov
+    groups:
+    - bamboo-prod_nsfsdevops
+    permissions:
+    - view
+    - edit
+    - deploy
+    - view-configuration
+  - roles:
+    - logged-in
+    - anonymous
+    permissions:
+    - view
+- prod:
+  - users:
+    - madhav.kundala@gsa.gov
+    groups:
+    - bamboo-prod_nsfsdevops
+    permissions:
+    - view
+    - edit
+    - deploy
+    - view-configuration
+  - roles:
+    - logged-in
+    - anonymous
+    permissions:
+    - view
+...
+
+
+
+
+
+---
+version: 2
+deployment:
+  name: 24-Portalk8s
+  source-plan: DIM-POR
+release-naming: ${bamboo.inject.latestVersion}
+environments:
+- test
+- dev
+- cert
+- prod
+test:
+  description: QA
+  triggers: &id001 []
+  tasks:
+  - clean
+  - checkout:
+      repository: AWS-Scripts-feature-cicdsplit
+      force-clean-build: false
+  - script:
+      interpreter: SHELL
+      scripts:
+      - dnf install gettext -y
+      description: Temp task to install gettext till image is updated
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      file: ../deploy/jboss_updatemanifest.sh
+      argument: -s portal
+      working-dir: devvpc/k8s
+  - vcs-commit:
+      repository: AWS-Scripts-feature-cicdsplit
+      message: Manifest updated for Portal Test
+  final-tasks: []
+  variables: {}
+  requirements: []
+  notifications:
+  - events:
+    - deployment-finished
+    recipients:
+    - emails:
+      - conexus_dbops@gsa.gov
+    - emails:
+      - conexus_devsecops@gsa.gov
+    - emails:
+      - conexus_qa@gsa.gov
+dev:
+  triggers: *id001
+  tasks:
+  - clean
+  - checkout:
+      repository: AWS-Scripts-feature-cicdsplit
+      force-clean-build: false
+  - script:
+      interpreter: SHELL
+      scripts:
+      - dnf install gettext -y
+      description: Temp task to install gettext till image is updated
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      file: ../deploy/jboss_updatemanifest.sh
+      argument: -s portal
+      working-dir: devvpc/k8s
+  - vcs-commit:
+      repository: AWS-Scripts-feature-cicdsplit
+      message: Manifest updated for Portal Dev
+  final-tasks: []
+  variables: {}
+  requirements: []
+  notifications:
+  - events:
+    - deployment-finished
+    recipients:
+    - emails:
+      - conexus_devsecops@gsa.gov
+cert:
+  description: Staging
+  triggers: *id001
+  tasks:
+  - clean
+  - checkout:
+      repository: AWS-Scripts-feature-cicdsplit
+      force-clean-build: false
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      file: ../deploy/jboss_updatemanifest.sh
+      argument: -s portal
+      working-dir: devvpc/k8s
+  - vcs-commit:
+      repository: AWS-Scripts-feature-cicdsplit
+      message: Manifest updated for Portal Cert
+  final-tasks: []
+  variables: {}
+  requirements: []
+  notifications:
+  - events:
+    - deployment-finished
+    recipients:
+    - emails:
+      - conexus_dbops@gsa.gov
+    - emails:
+      - conexus_devsecops@gsa.gov
+    - emails:
+      - conexus_qa@gsa.gov
+prod:
+  triggers: *id001
+  tasks:
+  - clean
+  - checkout:
+      repository: AWS-Scripts-feature-cicdsplit
+      force-clean-build: false
+  - script:
+      interpreter: SHELL
+      scripts:
+      - dnf install gettext -y
+      description: Temp task to install gettext till image is updated
+  - script:
+      interpreter: BINSH_OR_CMDEXE
+      file: ../deploy/jboss_updatemanifest.sh
+      argument: -s portal
+      working-dir: devvpc/k8s
+  - vcs-commit:
+      repository: AWS-Scripts-feature-cicdsplit
+      message: Manifest updated for Portal Prod
+  final-tasks: []
+  variables: {}
+  requirements: []
+  notifications:
+  - events:
+    - deployment-finished
+    recipients:
+    - emails:
+      - conexus_dbops@gsa.gov
+    - emails:
+      - conexus_devsecops@gsa.gov
+    - emails:
+      - conexus_qa@gsa.gov
+---
+version: 2
+deployment:
+  name: 24-Portalk8s
+deployment-permissions:
+- groups:
+  - bamboo-prod_nsfsdevelopers
+  permissions:
+  - view
+  - view-configuration
+  - create-release
+- users:
+  - madhav.kundala@gsa.gov
+  permissions:
+  - view
+  - edit
+  - clone
+  - admin
+  - view-configuration
+  - approve-release
+  - create-release
+- groups:
+  - bamboo-prod_nsfsdevops
+  - bamboo-prod_nsfsqa
+  permissions:
+  - view
+  - view-configuration
+  - approve-release
+  - create-release
+- roles:
+  - logged-in
+  - anonymous
+  permissions:
+  - view
+environment-permissions:
+- test:
+  - users:
+    - madhav.kundala@gsa.gov
+    groups:
+    - bamboo-prod_nsfsdevops
+    permissions:
+    - view
+    - edit
+    - deploy
+    - view-configuration
+  - roles:
+    - logged-in
+    - anonymous
+    permissions:
+    - view
+  - groups:
+    - bamboo-prod_nsfsqa
+    permissions:
+    - view
+    - deploy
+    - view-configuration
+- dev:
+  - users:
+    - madhav.kundala@gsa.gov
+    groups:
+    - bamboo-prod_nsfsdevops
+    permissions:
+    - view
+    - edit
+    - deploy
+    - view-configuration
+  - roles:
+    - logged-in
+    - anonymous
+    permissions:
+    - view
+  - groups:
+    - bamboo-prod_nsfsdevelopers
+    permissions:
+    - view
+    - deploy
+- cert:
+  - users:
+    - madhav.kundala@gsa.gov
+    groups:
+    - bamboo-prod_nsfsdevops
+    permissions:
+    - view
+    - edit
+    - deploy
+    - view-configuration
+  - roles:
+    - logged-in
+    - anonymous
+    permissions:
+    - view
+- prod:
+  - users:
+    - madhav.kundala@gsa.gov
+    groups:
+    - bamboo-prod_nsfsdevops
+    permissions:
+    - view
+    - edit
+    - deploy
+    - view-configuration
+  - roles:
+    - logged-in
+    - anonymous
+    permissions:
+    - view
+...
