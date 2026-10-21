@@ -30,3 +30,11 @@ sudo grep -E '^(PROD_URL|DEV_URL)=' /app/bbmirror/etc/mirror.env | sudo tee /app
 read -rsp 'PROD token: ' P; echo; read -rsp 'DEV token: ' D; echo
 printf 'PROD_TOKEN=%s\nDEV_TOKEN=%s\n' "$P" "$D" | sudo tee -a /app/bbmirror/etc/oneshot.env >/dev/null; unset P D
 sudo cut -d= -f1 /app/bbmirror/etc/oneshot.env      # expect: PROD_URL DEV_URL PROD_TOKEN DEV_TOKEN, names only
+
+
+
+
+sudo bash -c 'source /app/bbmirror/etc/oneshot.env
+for t in PROD DEV; do u=${t}_URL; k=${t}_TOKEN
+  printf "%s: " $t; curl -sS -o /dev/null -w "%{http_code}\n" -K - "${!u}/rest/api/1.0/projects?limit=1" <<<"header = \"Authorization: Bearer ${!k}\""
+done'
