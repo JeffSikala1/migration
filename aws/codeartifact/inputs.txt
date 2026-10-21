@@ -1,40 +1,10 @@
-df -h /app
-sudo /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee ~/oneshot_dryrun.log | tail -40
-
-
-
-
-sudo ONLY_PROJECT=DEVOPS DRY_RUN=0 /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee -a ~/oneshot_run.log
-
-
-
-sudo bash -c '
-source /app/bbmirror/etc/oneshot.env
-heads() { GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Bearer $2" git ls-remote --heads "$1" | sort; }
-for r in devops/bamboo-specs devops/bamboo-deployment; do
-  diff <(heads "$PROD_URL/scm/$r.git" "$PROD_TOKEN") <(heads "$DEV_URL/scm/$r.git" "$DEV_TOKEN") >/dev/null && echo "$r: heads match" || echo "$r: DIFFER"
-done'
-
-
-
-sudo cp -p /app/bbmirror/bin/oneshot_mirror_all.sh /app/bbmirror/bin/oneshot_mirror_all.sh.bak 2>/dev/null
-# ...run your tee block here...
-sudo grep -nE 'FORCE_EXISTING:-|push -q|old-refs' /app/bbmirror/bin/oneshot_mirror_all.sh
-
-
-
-
-
-sudo install -m 600 /dev/null /app/bbmirror/etc/oneshot.env
-sudo grep -E '^(PROD_URL|DEV_URL)=' /app/bbmirror/etc/mirror.env | sudo tee /app/bbmirror/etc/oneshot.env >/dev/null
-read -rsp 'PROD token: ' P; echo; read -rsp 'DEV token: ' D; echo
-printf 'PROD_TOKEN=%s\nDEV_TOKEN=%s\n' "$P" "$D" | sudo tee -a /app/bbmirror/etc/oneshot.env >/dev/null; unset P D
-sudo cut -d= -f1 /app/bbmirror/etc/oneshot.env      # expect: PROD_URL DEV_URL PROD_TOKEN DEV_TOKEN, names only
-
-
-
+sudo grep -E '^(PROD_URL|DEV_URL)=' /app/bbmirror/etc/oneshot.env
 
 sudo bash -c 'source /app/bbmirror/etc/oneshot.env
 for t in PROD DEV; do u=${t}_URL; k=${t}_TOKEN
   printf "%s: " $t; curl -sS -o /dev/null -w "%{http_code}\n" -K - "${!u}/rest/api/1.0/projects?limit=1" <<<"header = \"Authorization: Bearer ${!k}\""
 done'
+
+
+
+sudo /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee ~/oneshot_dryrun.log | tail -40
