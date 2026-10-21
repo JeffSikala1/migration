@@ -1,10 +1,17 @@
-sudo grep -E '^(PROD_URL|DEV_URL)=' /app/bbmirror/etc/oneshot.env
+grep -c 'resuming/overwriting' ~/oneshot_dryrun.log
+grep -cE 'dev repo missing|exists but is empty' ~/oneshot_dryrun.log
+grep -E 'ERROR|WARN|state=|Prod repos visible' ~/oneshot_dryrun.log
+df -h /app
 
 sudo bash -c 'source /app/bbmirror/etc/oneshot.env
-for t in PROD DEV; do u=${t}_URL; k=${t}_TOKEN
-  printf "%s: " $t; curl -sS -o /dev/null -w "%{http_code}\n" -K - "${!u}/rest/api/1.0/projects?limit=1" <<<"header = \"Authorization: Bearer ${!k}\""
-done'
+start=0
+while :; do
+  r=$(curl -sS --fail -K - "$PROD_URL/rest/api/1.0/repos?limit=100&start=$start" <<<"header = \"Authorization: Bearer $PROD_TOKEN\"")
+  jq -r ".values[] | [.project.key,.project.type,.state] | @tsv" <<<"$r"
+  [ "$(jq -r .isLastPage <<<"$r")" = true ] && break
+  start=$(jq -r .nextPageStart <<<"$r")
+done' | sort | uniq -c
 
 
 
-sudo /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee ~/oneshot_dryrun.log | tail -40
+sudo ONLY_PROJECT=DEVOPS DRY_RUN=0 /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee -a ~/oneshot_run.log
