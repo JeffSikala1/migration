@@ -1,1 +1,22 @@
-Cert was already renewed, valid until 1/14/2027. I updated the monitoring script for it while you’re out,
+df -h /app
+sudo /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee ~/oneshot_dryrun.log | tail -40
+
+
+
+
+sudo ONLY_PROJECT=DEVOPS DRY_RUN=0 /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee -a ~/oneshot_run.log
+
+
+
+sudo bash -c '
+source /app/bbmirror/etc/oneshot.env
+heads() { GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Bearer $2" git ls-remote --heads "$1" | sort; }
+for r in devops/bamboo-specs devops/bamboo-deployment; do
+  diff <(heads "$PROD_URL/scm/$r.git" "$PROD_TOKEN") <(heads "$DEV_URL/scm/$r.git" "$DEV_TOKEN") >/dev/null && echo "$r: heads match" || echo "$r: DIFFER"
+done'
+
+
+
+sudo cp -p /app/bbmirror/bin/oneshot_mirror_all.sh /app/bbmirror/bin/oneshot_mirror_all.sh.bak 2>/dev/null
+# ...run your tee block here...
+sudo grep -nE 'FORCE_EXISTING:-|push -q|old-refs' /app/bbmirror/bin/oneshot_mirror_all.sh
