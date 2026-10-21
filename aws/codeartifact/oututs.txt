@@ -1,182 +1,203 @@
-[sikaj01@ip-10-56-128-233 ~]$ grep -c 'resuming/overwriting' ~/oneshot_dryrun.log
-59
-[sikaj01@ip-10-56-128-233 ~]$ grep -cE 'dev repo missing|exists but is empty' ~/oneshot_dryrun.log
-2
-[sikaj01@ip-10-56-128-233 ~]$ grep -E 'ERROR|WARN|state=|Prod repos visible' ~/oneshot_dryrun.log
-2026-10-21 14:17:36 Prod repos visible to token: 97  (compare with the UI count)
-[sikaj01@ip-10-56-128-233 ~]$ df -h /app
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/nvme0n1p1  800G  362G  439G  46% /
-[sikaj01@ip-10-56-128-233 ~]$ sudo bash -c 'source /app/bbmirror/etc/oneshot.env
-start=0
-while :; do
-  r=$(curl -sS --fail -K - "$PROD_URL/rest/api/1.0/repos?limit=100&start=$start" <<<"header = \"Authorization: Bearer $PROD_TOKEN\"")
-  jq -r ".values[] | [.project.key,.project.type,.state] | @tsv" <<<"$r"
-  [ "$(jq -r .isLastPage <<<"$r")" = true ] && break
-  start=$(jq -r .nextPageStart <<<"$r")
-done' | sort | uniq -c
-      1 AW      NORMAL  AVAILABLE
-     35 CNXS    NORMAL  AVAILABLE
-     33 CNXST   NORMAL  AVAILABLE
-     18 DEVOPS  NORMAL  AVAILABLE
-      8 DOC     NORMAL  AVAILABLE
-      1 USDA    NORMAL  AVAILABLE
-      1 ~JEFF.SIKALA_GSA.GOV    PERSONAL        AVAILABLE
-[sikaj01@ip-10-56-128-233 ~]$ sudo ONLY_PROJECT=DEVOPS DRY_RUN=0 /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee -a ~/oneshot_run.log
-2026-10-21 14:22:46 === ONE-TIME mirror start (dry_run=0, only_project='DEVOPS', only_repo='') ===
-2026-10-21 14:22:46 Prod repos visible to token: 97  (compare with the UI count)
-2026-10-21 14:22:46 - DEVOPS/ansible-deploy
-2026-10-21 14:22:46   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:47   OK
-2026-10-21 14:22:47 - DEVOPS/antivirus
-2026-10-21 14:22:47   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:47   OK
-2026-10-21 14:22:47 - DEVOPS/apache-oidc-builder
-2026-10-21 14:22:47   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:48   OK
-2026-10-21 14:22:48 - DEVOPS/artifactory-docker-compose
-2026-10-21 14:22:48   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:48   OK
-2026-10-21 14:22:48 - DEVOPS/awx_17.1.0
-2026-10-21 14:22:48   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:49   OK
-2026-10-21 14:22:49 - DEVOPS/bamboo-deployment
-2026-10-21 14:22:49   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-remote:                             *%%%%%.                                    
-remote:                         %%%         %%%                                
-remote:                      ,%#               %%                              
-remote:                     %%                   %%                            
-remote:                    %#                     %%                           
-remote:                   %%                       %                           
-remote:                   %(                       %%                          
-remote:                   %%%%%%%%%%%%%%%%%%%%%%%%%%%                          
-remote:                 %#%*%#///////%# %%///////%%%%%%                        
-remote:                ,% %*%%******%#   %%******%(%%,%                        
-remote:                  %%/ %%/**%%/%%%%%%%(**#%( %%#                         
-remote:                   %%          %%%          %(                          
-remote:                    %                      .%                           
-remote:                    *%        %%%%%       .%                            
-remote:                      %#                 %%                             
-remote:                       .%%            .%%                               
-remote:                       .%%.%%,     %%%.%%/                              
-remote:                 %%%%%%##%.  #%%%%%.  .%((%%%%%%                        
-remote:             %%#(((((((((%%,         #%%(((((((((#%%.                   
-remote:       %%%((((((((((((((((((%%%, .%%%((((((((((((((((((#%%*             
-remote:     %%(((((((((((((((((((((((((%(((((((((((((((((((((((((#%.           
-remote:   ,%(((((((((((((((((((((((((((((((((((((((((((((((((((((((%#          
-remote:   %#((((((((((((((((((((((((((((((((((((((((((((((((((((((((%          
-remote:   %%%%%%%%%%%%%(((((((((((((((((((((((((((((((((%%%%%%%%%%%%%          
-remote:  %%            %####((((((###%%%%%%%%#(((((((((%            ,%         
-remote: ,%             %%%%%%#.               %%%((((((%*            %%        
-remote: #%                                       %%%#                %%        
-remote: .%                             .%%%%%%%%%                    %#        
-remote:  %                         #%%%                              %         
-remote:  %                     %%%%                                  %*        
-remote: /%************/#%%%%%%######%%*                        ..,*/(%%        
-remote:               %%######(((((((##################%%                      
-remote:               %%######(((((((((((((((((((((((((%%                      
-remote: //////////////%%%%%%%%#########################%%/////////  ///        
-remote: ----------------------------------------------------        
-remote: Branch refs/heads/develop can only be modified through pull requests.        
-remote: Check your branch permissions configuration with the project administrator.        
-remote: ----------------------------------------------------        
-remote: 
-remote: 
-To https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/devops/bamboo-deployment.git
+[sikaj01@ip-10-56-128-233 ~]$ sudo bash -c '
+source /app/bbmirror/etc/oneshot.env
+heads() { GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: Bearer $2" git ls-remote --heads "$1" | sort; }
+for r in devops/bamboo-specs devops/scripts devops/terraform; do
+  diff <(heads "$PROD_URL/scm/$r.git" "$PROD_TOKEN") <(heads "$DEV_URL/scm/$r.git" "$DEV_TOKEN") >/dev/null && echo "$r: heads match" || echo "$r: DIFFER"
+done'
+[sudo] password for sikaj01: 
+devops/bamboo-specs: heads match
+devops/scripts: heads match
+devops/terraform: heads match
+[sikaj01@ip-10-56-128-233 ~]$ sudo DRY_RUN=0 /app/bbmirror/bin/oneshot_mirror_all.sh 2>&1 | tee -a ~/oneshot_run.log | grep -vE '^remote:'
+2026-10-21 14:34:32 === ONE-TIME mirror start (dry_run=0, only_project='', only_repo='') ===
+2026-10-21 14:34:32 Prod repos visible to token: 97  (compare with the UI count)
+2026-10-21 14:34:32 - DEVOPS/ansible-deploy
+2026-10-21 14:34:32   already mirrored by this one-time run; skipping
+2026-10-21 14:34:32 - DEVOPS/antivirus
+2026-10-21 14:34:32   already mirrored by this one-time run; skipping
+2026-10-21 14:34:32 - DEVOPS/apache-oidc-builder
+2026-10-21 14:34:32   already mirrored by this one-time run; skipping
+2026-10-21 14:34:32 - CNXST/api_gateway
+2026-10-21 14:34:32   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:34:33   OK
+2026-10-21 14:34:33 - DEVOPS/artifactory-docker-compose
+2026-10-21 14:34:33   already mirrored by this one-time run; skipping
+2026-10-21 14:34:33 - DEVOPS/awx_17.1.0
+2026-10-21 14:34:33   already mirrored by this one-time run; skipping
+2026-10-21 14:34:33 - DEVOPS/bamboo-deployment
+2026-10-21 14:34:33   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:34:34   OK
+2026-10-21 14:34:34 - DEVOPS/bamboo-specs
+2026-10-21 14:34:34   already mirrored by this one-time run; skipping
+2026-10-21 14:34:34 - CNXST/billingsftp
+2026-10-21 14:34:34   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:34:35   OK
+2026-10-21 14:34:35 - CNXST/bsstwiki
+2026-10-21 14:34:35   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:34:36   OK
+2026-10-21 14:34:36 - DEVOPS/certificate-generation
+2026-10-21 14:34:36   already mirrored by this one-time run; skipping
+2026-10-21 14:34:36 - CNXST/cnxs-unified-automation
+2026-10-21 14:34:36   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:35:30   OK
+2026-10-21 14:35:30 - DEVOPS/code_scanning
+2026-10-21 14:35:30   already mirrored by this one-time run; skipping
+2026-10-21 14:35:30 - CNXST/common
+2026-10-21 14:35:31   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:35:31   OK
+2026-10-21 14:35:31 - CNXST/common-rest
+2026-10-21 14:35:31   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:35:32   OK
+2026-10-21 14:35:32 - DEVOPS/conexus-ansible
+2026-10-21 14:35:32   already mirrored by this one-time run; skipping
+2026-10-21 14:35:32 - DEVOPS/conexus-ansible-jboss-config-testing
+2026-10-21 14:35:32   already mirrored by this one-time run; skipping
+2026-10-21 14:35:32 - DEVOPS/conexus-jboss-ansible
+2026-10-21 14:35:32   already mirrored by this one-time run; skipping
+2026-10-21 14:35:32 - DEVOPS/conexus_sftp
+2026-10-21 14:35:32   already mirrored by this one-time run; skipping
+2026-10-21 14:35:32 - CNXST/contract-mod
+2026-10-21 14:35:32   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:35:33   OK
+2026-10-21 14:35:33 - CNXST/datafile
+2026-10-21 14:35:33   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:37:52   OK
+2026-10-21 14:37:52 - CNXST/dba_scripts
+2026-10-21 14:37:52   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:37:53   OK
+2026-10-21 14:37:53 - DOC/dependency-track
+2026-10-21 14:37:53   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:37:54   OK
+2026-10-21 14:37:54 - CNXST/development-utils
+2026-10-21 14:37:54   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:37:55   OK
+2026-10-21 14:37:55 - DOC/docker-apache-local
+2026-10-21 14:37:55   dev repo missing; will create
+2026-10-21 14:37:56   prod repo has no branches; nothing to push
+2026-10-21 14:37:56 - DOC/docker-bamboo-agents
+2026-10-21 14:37:56   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:37:58   OK
+2026-10-21 14:37:58 - DOC/docker-jboss-local
+2026-10-21 14:37:58   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+To https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/doc/docker-jboss-local.git
  ! [remote rejected] develop -> develop (pre-receive hook declined)
- ! [remote rejected] feature/fixForDisabledAnonymous -> feature/fixForDisabledAnonymous (pre-receive hook declined)
- ! [remote rejected] feature/passEnvVarForArtifactoryAuth -> feature/passEnvVarForArtifactoryAuth (pre-receive hook declined)
- ! [remote rejected] jboss-build-push -> jboss-build-push (pre-receive hook declined)
-error: failed to push some refs to 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/devops/bamboo-deployment.git'
-2026-10-21 14:22:50   ERROR: push to dev failed
-2026-10-21 14:22:50 - DEVOPS/bamboo-specs
-2026-10-21 14:22:50   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-remote: 
-remote: Create pull request for export-2025-08-13:        
-remote:   https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/projects/DEVOPS/repos/bamboo-specs/pull-requests?create&sourceBranch=refs%2Fheads%2Fexport-2025-08-13        
-remote: 
-2026-10-21 14:22:53   OK
-2026-10-21 14:22:53 - DEVOPS/certificate-generation
-2026-10-21 14:22:53   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:53   OK
-2026-10-21 14:22:53 - DEVOPS/code_scanning
-2026-10-21 14:22:53   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:54   OK
-2026-10-21 14:22:54 - DEVOPS/conexus-ansible
-2026-10-21 14:22:54   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-remote: 
-remote: Create pull request for feature/new-conexus-cert-apache-ssl-certificate:        
-remote:   https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/projects/DEVOPS/repos/conexus-ansible/pull-requests?create&sourceBranch=refs%2Fheads%2Ffeature%2Fnew-conexus-cert-apache-ssl-certificate        
-remote: 
-2026-10-21 14:22:55   OK
-2026-10-21 14:22:55 - DEVOPS/conexus-ansible-jboss-config-testing
-2026-10-21 14:22:55   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:55   OK
-2026-10-21 14:22:55 - DEVOPS/conexus-jboss-ansible
-2026-10-21 14:22:55   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:56   OK
-2026-10-21 14:22:56 - DEVOPS/conexus_sftp
-2026-10-21 14:22:56   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:57   OK
-2026-10-21 14:22:57 - DEVOPS/httpd24u-builder
-2026-10-21 14:22:57   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:57   OK
-2026-10-21 14:22:57 - DEVOPS/icinga2
-2026-10-21 14:22:57   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:58   OK
-2026-10-21 14:22:58 - DEVOPS/scripts
-2026-10-21 14:22:58   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:22:58   OK
-2026-10-21 14:22:58 - DEVOPS/terraform
-2026-10-21 14:22:58   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-2026-10-21 14:23:10   OK
-2026-10-21 14:23:10 - DEVOPS/vendor-certificate-lifecycle-management
-2026-10-21 14:23:10   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
-remote:                             *%%%%%.                                    
-remote:                         %%%         %%%                                
-remote:                      ,%#               %%                              
-remote:                     %%                   %%                            
-remote:                    %#                     %%                           
-remote:                   %%                       %                           
-remote:                   %(                       %%                          
-remote:                   %%%%%%%%%%%%%%%%%%%%%%%%%%%                          
-remote:                 %#%*%#///////%# %%///////%%%%%%                        
-remote:                ,% %*%%******%#   %%******%(%%,%                        
-remote:                  %%/ %%/**%%/%%%%%%%(**#%( %%#                         
-remote:                   %%          %%%          %(                          
-remote:                    %                      .%                           
-remote:                    *%        %%%%%       .%                            
-remote:                      %#                 %%                             
-remote:                       .%%            .%%                               
-remote:                       .%%.%%,     %%%.%%/                              
-remote:                 %%%%%%##%.  #%%%%%.  .%((%%%%%%                        
-remote:             %%#(((((((((%%,         #%%(((((((((#%%.                   
-remote:       %%%((((((((((((((((((%%%, .%%%((((((((((((((((((#%%*             
-remote:     %%(((((((((((((((((((((((((%(((((((((((((((((((((((((#%.           
-remote:   ,%(((((((((((((((((((((((((((((((((((((((((((((((((((((((%#          
-remote:   %#((((((((((((((((((((((((((((((((((((((((((((((((((((((((%          
-remote:   %%%%%%%%%%%%%(((((((((((((((((((((((((((((((((%%%%%%%%%%%%%          
-remote:  %%            %####((((((###%%%%%%%%#(((((((((%            ,%         
-remote: ,%             %%%%%%#.               %%%((((((%*            %%        
-remote: #%                                       %%%#                %%        
-remote: .%                             .%%%%%%%%%                    %#        
-remote:  %                         #%%%                              %         
-remote:  %                     %%%%                                  %*        
-remote: /%************/#%%%%%%######%%*                        ..,*/(%%        
-remote:               %%######(((((((##################%%                      
-remote:               %%######(((((((((((((((((((((((((%%                      
-remote: //////////////%%%%%%%%#########################%%/////////  ///        
-remote: ----------------------------------------------------        
-remote: Branch refs/heads/master can only be modified through pull requests.        
-remote: Check your branch permissions configuration with the project administrator.        
-remote: ----------------------------------------------------        
-remote: 
-remote: 
-To https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/devops/vendor-certificate-lifecycle-management.git
- ! [remote rejected] master -> master (pre-receive hook declined)
- ! [remote rejected] feature/updating-lumen-prod-outbound-exp-date -> feature/updating-lumen-prod-outbound-exp-date (pre-receive hook declined)
-error: failed to push some refs to 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/devops/vendor-certificate-lifecycle-management.git'
-2026-10-21 14:23:10   ERROR: push to dev failed
-2026-10-21 14:23:10 === done: ok=16 failed=2 skipped=0 (of which dev-already-had-content=0) ===
-2026-10-21 14:23:10 FAILED repos: DEVOPS/bamboo-deployment DEVOPS/vendor-certificate-lifecycle-management
-[sikaj01@ip-10-56-128-233 ~]$ 
+ ! [remote rejected] main -> main (pre-receive hook declined)
+ ! [remote rejected] 8.1.3-2-pg -> 8.1.3-2-pg (pre-receive hook declined)
+ ! [remote rejected] 8.1.3-3-pg -> 8.1.3-3-pg (pre-receive hook declined)
+ ! [remote rejected] 8.1.3-4-rhel-10 -> 8.1.3-4-rhel-10 (pre-receive hook declined)
+error: failed to push some refs to 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/doc/docker-jboss-local.git'
+2026-10-21 14:37:59   ERROR: push to dev failed
+2026-10-21 14:37:59 - DOC/docker-mgmt-startup
+2026-10-21 14:37:59   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:37:59   OK
+2026-10-21 14:37:59 - DOC/docker-oracle-local
+2026-10-21 14:37:59   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:38:00   OK
+2026-10-21 14:38:00 - DOC/docker-postgres-local
+2026-10-21 14:38:00   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:38:01   OK
+2026-10-21 14:38:01 - CNXST/domain
+2026-10-21 14:38:01   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:38:07   OK
+2026-10-21 14:38:07 - CNXST/dpa
+2026-10-21 14:38:07   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:38:07   OK
+2026-10-21 14:38:07 - CNXST/env
+2026-10-21 14:38:07   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:38:08   OK
+2026-10-21 14:38:08 - CNXST/functional-automation
+2026-10-21 14:38:08   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:38:10   OK
+2026-10-21 14:38:10 - CNXST/help
+2026-10-21 14:38:10   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:38:42   OK
+2026-10-21 14:38:42 - CNXST/help-working-files
+2026-10-21 14:38:42   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:39:00   OK
+2026-10-21 14:39:00 - DEVOPS/httpd24u-builder
+2026-10-21 14:39:00   already mirrored by this one-time run; skipping
+2026-10-21 14:39:00 - CNXST/icam
+2026-10-21 14:39:00   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:39:02   OK
+2026-10-21 14:39:02 - DEVOPS/icinga2
+2026-10-21 14:39:02   already mirrored by this one-time run; skipping
+2026-10-21 14:39:02 - CNXST/iconectiv
+2026-10-21 14:39:02   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:39:02   OK
+2026-10-21 14:39:02 - DOC/old-conexus-oracle-jboss-docker
+2026-10-21 14:39:02   dev repo exists but is empty; will populate
+2026-10-21 14:39:02   prod repo has no branches; nothing to push
+2026-10-21 14:39:02 - CNXST/pricing
+2026-10-21 14:39:02   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:39:03   OK
+2026-10-21 14:39:03 - CNXST/reconciliation
+2026-10-21 14:39:03   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:39:05   OK
+2026-10-21 14:39:05 - CNXST/refdata_processing
+2026-10-21 14:39:05   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:39:06   OK
+2026-10-21 14:39:06 - CNXST/reporting
+2026-10-21 14:39:06   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:39:07   OK
+2026-10-21 14:39:07 - CNXST/rest
+2026-10-21 14:39:07   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:39:19   OK
+2026-10-21 14:39:19 - CNXST/schema
+2026-10-21 14:39:19   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:39:23   OK
+2026-10-21 14:39:23 - USDA/scripts
+2026-10-21 14:39:23   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+To https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/usda/scripts.git
+ ! [remote rejected] develop -> develop (pre-receive hook declined)
+ ! [remote rejected] feature/fixPrismaFindings -> feature/fixPrismaFindings (pre-receive hook declined)
+ ! [remote rejected] feature/CNXS-76009-deploy -> feature/CNXS-76009-deploy (pre-receive hook declined)
+ ! [remote rejected] feature/Release-173-CNXS-76558 -> feature/Release-173-CNXS-76558 (pre-receive hook declined)
+ ! [remote rejected] feature/deployCNXS-76523 -> feature/deployCNXS-76523 (pre-receive hook declined)
+ ! [remote rejected] feature/first-aws-release-builds -> feature/first-aws-release-builds (pre-receive hook declined)
+ ! [remote rejected] feature/fixSFTPTZ -> feature/fixSFTPTZ (pre-receive hook declined)
+ ! [remote rejected] feature/ironbankrepo -> feature/ironbankrepo (pre-receive hook declined)
+error: failed to push some refs to 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/usda/scripts.git'
+2026-10-21 14:40:06   ERROR: push to dev failed
+2026-10-21 14:40:06 - DEVOPS/scripts
+2026-10-21 14:40:06   already mirrored by this one-time run; skipping
+2026-10-21 14:40:06 - AW/scripts
+2026-10-21 14:40:06   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+To https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/aw/scripts.git
+ ! [remote rejected] develop -> develop (pre-receive hook declined)
+ ! [remote rejected] feature/cicdsplit -> feature/cicdsplit (pre-receive hook declined)
+error: failed to push some refs to 'https://bitbucket.dev.cnxs.vpcaas.fcs.gsa.gov/scm/aw/scripts.git'
+2026-10-21 14:40:13   ERROR: push to dev failed
+2026-10-21 14:40:13 - CNXST/task
+2026-10-21 14:40:13   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:14   OK
+2026-10-21 14:40:14 - CNXST/temp-application-01
+2026-10-21 14:40:14   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:15   OK
+2026-10-21 14:40:15 - CNXST/temp-utility-module
+2026-10-21 14:40:15   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:15   OK
+2026-10-21 14:40:15 - DEVOPS/terraform
+2026-10-21 14:40:15   already mirrored by this one-time run; skipping
+2026-10-21 14:40:15 - CNXST/testautomation
+2026-10-21 14:40:15   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:16   OK
+2026-10-21 14:40:16 - CNXST/ui
+2026-10-21 14:40:16   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:28   OK
+2026-10-21 14:40:28 - CNXST/ui-public
+2026-10-21 14:40:28   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:39   OK
+2026-10-21 14:40:39 - DEVOPS/vendor-certificate-lifecycle-management
+2026-10-21 14:40:39   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:39   OK
+2026-10-21 14:40:39 - CNXST/vendoremulator
+2026-10-21 14:40:39   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:40   OK
+2026-10-21 14:40:40 - CNXST/webservices
+2026-10-21 14:40:40   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:42   OK
+2026-10-21 14:40:42 - CNXST/ws
+2026-10-21 14:40:42   resuming/overwriting (created by this run, or FORCE_EXISTING=1)
+2026-10-21 14:40:44   OK
+2026-10-21 14:40:44 === done: ok=58 failed=3 skipped=36 (of which dev-already-had-content=0) ===
+2026-10-21 14:40:44 FAILED repos: DOC/docker-jboss-local USDA/scripts AW/scripts
