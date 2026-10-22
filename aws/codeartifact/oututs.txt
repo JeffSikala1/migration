@@ -1,114 +1,30 @@
-[sikaj01@ip-10-56-128-81 apache]$ unset ART_TOKEN
-[sikaj01@ip-10-56-128-81 apache]$ rm -f ~/scripts/devvpc/dockers/apache/*.tar.gz
-[sikaj01@ip-10-56-128-81 apache]$ git status
-On branch feature/cicdsplit
-Your branch is up to date with 'origin/feature/cicdsplit'.
-
-nothing to commit, working tree clean
-[sikaj01@ip-10-56-128-81 apache]$ git -C ~/scripts status -s
-
-
-
-
-[sikaj01@ip-10-56-112-33 scripts]$ aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 \
-    --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2 \
-    --query 'imageDetails[0].[imageTags,imageSizeInBytes,imagePushedAt]'
-[
-    [
-        "1.1.4-2.0.60-20260629.173245-2"
-    ],
-    2247126715,
-    "2026-10-22T18:24:24.744000+00:00"
-]
-[sikaj01@ip-10-56-112-33 scripts]$ git pull
-Already up to date.
-[sikaj01@ip-10-56-112-33 scripts]$ cd devvpc/k8s/apache/dev
-[sikaj01@ip-10-56-112-33 dev]$ sed -i "s#conexus-apache-oidc:60-20260629.173245-2#conexus-apache-oidc:$TAG#" run-httpd.yaml
-[sikaj01@ip-10-56-112-33 dev]$ git diff 
-diff --git a/devvpc/k8s/apache/dev/run-httpd.yaml b/devvpc/k8s/apache/dev/run-httpd.yaml
-index 9212290..e0a51de 100644
---- a/devvpc/k8s/apache/dev/run-httpd.yaml
-+++ b/devvpc/k8s/apache/dev/run-httpd.yaml
-@@ -20,7 +20,7 @@ spec:
-           type: RuntimeDefault
-       initContainers:
-       - name: initdatacopy
--        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1.4-2.0.60-20260629.173245-2
-         imagePullPolicy: Always
-         args: ["/bin/sh", "-c", "cp -a /app/. /mnt/app/; cp -a /usr/. /mnt/usr/; cp -a /var/. /mnt/var/; cp -a /etc/. /mnt/etc/; cp -a /tmp/. /mnt/tmp/; ls -al /run; cp -a /run/. /mnt/run/ 2>&1"]
-         securityContext:
-@@ -43,7 +43,7 @@ spec:
-             mountPath: /mnt/run
-       containers:
-       - name: conexus-httpd
--        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-+        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1.4-2.0.60-20260629.173245-2
-[sikaj01@ip-10-56-112-33 dev]$ kud
-bash: kud: command not found
-[sikaj01@ip-10-56-112-33 dev]$ kubectl config current-context
-arn:aws:eks:us-east-1:471112718870:cluster/cnxsdev-selfmanaged
-[sikaj01@ip-10-56-112-33 dev]$ kubectl apply -f run-httpd.yaml
-deployment.apps/conexus-httpd configured
-[sikaj01@ip-10-56-112-33 dev]$ 
-
-
-
-sikaj01@ip-10-56-112-33 dev]$ kubectl config current-context
-arn:aws:eks:us-east-1:471112718870:cluster/cnxsdev-selfmanaged
-[sikaj01@ip-10-56-112-33 dev]$ kubectl apply -f run-httpd.yaml
-deployment.apps/conexus-httpd configured
-[sikaj01@ip-10-56-112-33 dev]$ kubectl rollout status deploy/conexus-httpd -n ingress-nginx --timeout=300s
-deployment "conexus-httpd" successfully rolled out
-[sikaj01@ip-10-56-112-33 dev]$ kubectl get pods -n ingress-nginx | grep httpd
-conexus-brms-httpd-59bcb44d95-gv4ct                   1/1     Running   0             27d
-conexus-httpd-646f875c69-scz6v                        1/1     Running   0             17d
-conexus-swagger-httpd-66b797c8b4-7srfj                1/1     Running   0             27d
-[sikaj01@ip-10-56-112-33 dev]$ kubectl logs -n ingress-nginx deploy/conexus-httpd --tail=30
-Defaulted container "conexus-httpd" out of: conexus-httpd, initdatacopy (init)
-time=[22/Oct/2026:18:38:16 +0000], bytes_in=379, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=366, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYGDd1gjQKMA8h8zRN-wAAAMU"
-time=[22/Oct/2026:18:38:20 +0000], bytes_in=381, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=412, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYHDd1gjQKMA8h8zRN_AAAANY"
-time=[22/Oct/2026:18:38:28 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=424, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYJDd1gjQKMA8h8zRN_QAAANA"
-time=[22/Oct/2026:18:38:31 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=464, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYJzd1gjQKMA8h8zRN_gAAAM4"
-time=[22/Oct/2026:18:38:43 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=525, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYM73zl7Kg4MTKlQ0PWgAAAIo"
-time=[22/Oct/2026:18:38:46 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=459, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYNr3zl7Kg4MTKlQ0PWwAAAJA"
-time=[22/Oct/2026:18:38:50 +0000], bytes_in=382, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=401, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYOtK8apUAqgTfQJ4q3AAAAAQ"
-time=[22/Oct/2026:18:38:58 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=413, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYQr3zl7Kg4MTKlQ0PXAAAAI0"
-time=[22/Oct/2026:18:39:01 +0000], bytes_in=379, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=389, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYRTd1gjQKMA8h8zRN_wAAAMI"
-time=[22/Oct/2026:18:39:05 +0000], bytes_in=381, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=524, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYSTd1gjQKMA8h8zROAAAAANU"
-time=[22/Oct/2026:18:39:13 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=423, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYUTd1gjQKMA8h8zROAQAAAMw"
-time=[22/Oct/2026:18:39:16 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=421, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYVL3zl7Kg4MTKlQ0PXQAAAII"
-time=[22/Oct/2026:18:39:20 +0000], bytes_in=383, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=456, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYWDd1gjQKMA8h8zROAgAAANc"
-time=[22/Oct/2026:18:39:28 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=441, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYYDd1gjQKMA8h8zROAwAAAMs"
-time=[22/Oct/2026:18:39:31 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=510, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYYzd1gjQKMA8h8zROBAAAANQ"
-time=[22/Oct/2026:18:39:35 +0000], bytes_in=380, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=607, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYZzd1gjQKMA8h8zROBQAAANg"
-time=[22/Oct/2026:18:39:43 +0000], bytes_in=379, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=446, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYbzd1gjQKMA8h8zROBgAAAMY"
-time=[22/Oct/2026:18:39:46 +0000], bytes_in=380, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=423, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYcjd1gjQKMA8h8zROBwAAANE"
-time=[22/Oct/2026:18:39:50 +0000], bytes_in=382, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=488, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYdtK8apUAqgTfQJ4q3QAAAAs"
-time=[22/Oct/2026:18:39:58 +0000], bytes_in=380, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=538, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYfjd1gjQKMA8h8zROCAAAAMA"
-time=[22/Oct/2026:18:40:01 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=457, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYgdK8apUAqgTfQJ4q3gAAAAo"
-time=[22/Oct/2026:18:40:05 +0000], bytes_in=383, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=408, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYhdK8apUAqgTfQJ4q3wAAAA0"
-time=[22/Oct/2026:18:40:13 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=503, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYjTd1gjQKMA8h8zROCQAAAM8"
-time=[22/Oct/2026:18:40:16 +0000], bytes_in=379, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=494, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYkNK8apUAqgTfQJ4q4AAAAAw"
-time=[22/Oct/2026:18:40:20 +0000], bytes_in=381, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=403, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYlNK8apUAqgTfQJ4q4QAAAAg"
-time=[22/Oct/2026:18:40:28 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=478, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYnDd1gjQKMA8h8zROCgAAAM4"
-time=[22/Oct/2026:18:40:31 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=524, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYnzd1gjQKMA8h8zROCwAAANI"
-time=[22/Oct/2026:18:40:35 +0000], bytes_in=382, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=458, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYo9K8apUAqgTfQJ4q4gAAABE"
-time=[22/Oct/2026:18:40:43 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=495, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYq9K8apUAqgTfQJ4q4wAAABM"
-time=[22/Oct/2026:18:40:46 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=502, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYrtK8apUAqgTfQJ4q5AAAABU"
+[sikaj01@ip-10-56-112-33 dev]$ kubectl get deploy conexus-httpd -n ingress-nginx -o jsonpath='{range .spec.template.spec.containers[*]}{.image}{"\n"}{end}'
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
+[sikaj01@ip-10-56-112-33 dev]$ kubectl get applications.argoproj.io -A -o custom-columns=NAME:.metadata.name,REPO:.spec.source.repoURL,BRANCH:.spec.source.targetRevision,PATH:.spec.source.path,SYNC:.status.sync.status
+NAME             REPO     BRANCH   PATH     SYNC
+app-argo-jboss   <none>   <none>   <none>   Synced
+[sikaj01@ip-10-56-112-33 dev]$ kubectl get pods -n ingress-nginx -l app.kubernetes.io/name=conexus-httpd
+NAME                             READY   STATUS    RESTARTS   AGE
+conexus-httpd-6d774b549f-l7ksq   1/1     Running   0          118s
+[sikaj01@ip-10-56-112-33 dev]$ kubectl get pods -n ingress-nginx -l app.kubernetes.io/name=conexus-httpd -o jsonpath='{range .items[*]}{.metadata.name}{"  "}{.status.containerStatuses[*].imageID}{"\n"}{end}'
+conexus-httpd-6d774b549f-l7ksq  339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc@sha256:40f64d52a1e8d64aede1ee812b0c4f224a727c87069de30134bc10c747b55e8a
+[sikaj01@ip-10-56-112-33 dev]$ kubectl get deploy conexus-httpd -n ingress-nginx -o jsonpath='{range .spec.template.spec.containers[*]}{.image}{"\n"}{end}'
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1.4-2.0.60-20260629.173245-2
 [sikaj01@ip-10-56-112-33 dev]$ kubectl exec -n ingress-nginx deploy/conexus-httpd -- rpm -q openssl-libs glibc curl
 Defaulted container "conexus-httpd" out of: conexus-httpd, initdatacopy (init)
 error: sqlite failure: CREATE TABLE IF NOT EXISTS 'Packages' (hnum INTEGER PRIMARY KEY AUTOINCREMENT,blob BLOB NOT NULL): attempt to write a readonly database
 error: cannot open Packages index using sqlite - No such file or directory (2)
 error: cannot open Packages database in /usr/lib/sysimage/rpm
 package openssl-libs is not installed
+error: sqlite failure: CREATE TABLE IF NOT EXISTS 'Packages' (hnum INTEGER PRIMARY KEY AUTOINCREMENT,blob BLOB NOT NULL): attempt to write a readonly database
+error: cannot open Packages index using sqlite - No such file or directory (2)
+error: cannot open Packages database in /usr/lib/sysimage/rpm
 package glibc is not installed
-error: sqlite failure: CREATE TABLE IF NOT EXISTS 'Packages' (hnum INTEGER PRIMARY KEY AUTOINCREMENT,blob BLOB NOT NULL): attempt to write a readonly database
-error: cannot open Packages index using sqlite - No such file or directory (2)
-error: cannot open Packages database in /usr/lib/sysimage/rpm
-error: sqlite failure: CREATE TABLE IF NOT EXISTS 'Packages' (hnum INTEGER PRIMARY KEY AUTOINCREMENT,blob BLOB NOT NULL): attempt to write a readonly database
-error: cannot open Packages index using sqlite - No such file or directory (2)
-error: cannot open Packages database in /usr/lib/sysimage/rpm
 package curl is not installed
+error: sqlite failure: CREATE TABLE IF NOT EXISTS 'Packages' (hnum INTEGER PRIMARY KEY AUTOINCREMENT,blob BLOB NOT NULL): attempt to write a readonly database
+error: cannot open Packages index using sqlite - No such file or directory (2)
+error: cannot open Packages database in /usr/lib/sysimage/rpm
 command terminated with exit code 3
 [sikaj01@ip-10-56-112-33 dev]$ 
+
+
