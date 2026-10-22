@@ -1,5 +1,43 @@
-cat start-artifactory.sh
+aws ssm get-inventory --region us-gov-west-1 \
+  --filters "Key=AWS:Application.Name,Values=php,Type=BeginWith" \
+  --query 'Entities[].{id:Id,pkgs:Data."AWS:Application".Content[].Name}'
 
 
-systemctl is-enabled artifactory.service
-systemctl status artifactory.service --no-pager
+aws ssm send-command --document-name AWS-RunShellScript \
+  --targets "Key=instanceids,Values=<ids>" \
+  --parameters 'commands=["command -v php php-fpm php-cgi; (rpm -qa 2>/dev/null; dpkg -l 2>/dev/null) | grep -i php; ps -eo comm | grep -i php; systemctl list-unit-files | grep -i php"]'
+
+
+
+
+docker images --format '{{.Repository}}:{{.Tag}}' | grep -i php
+for c in $(docker ps -q); do
+  echo "== $c"; docker exec $c sh -c 'command -v php php-fpm php-cgi' 2>/dev/null
+done
+
+
+
+
+for i in $(docker images -q | sort -u); do
+  docker run --rm --entrypoint sh $i -c 'command -v php' 2>/dev/null && echo "PHP in $i"
+done
+
+
+
+
+# Installed packages (Amazon Linux 2 and 2023)
+rpm -qa | grep -i php
+
+# Any php binaries on the PATH
+command -v php php-fpm php-cgi
+
+# Running processes and services
+ps -eo pid,comm,args | grep -i '[p]hp'
+systemctl list-unit-files | grep -i php
+
+
+
+aws ssm send-command --region us-gov-west-1 \
+  --document-name AWS-RunShellScript \
+  --targets "Key=instanceids,Values=i-0123456789abcdef0" \
+  --parameters 'commands=["rpm -qa | grep -i php; command -v php php-fpm php-cgi; ps -eo comm | grep -i [p]hp"]'
