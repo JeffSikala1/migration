@@ -1,48 +1,70 @@
-[sikaj01@ip-10-56-128-81 apache]$ docker build --no-cache -t 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1.4-2.0.60-20260629.173245-2
-ERROR: "docker buildx build" requires exactly 1 argument.
-See 'docker buildx build --help'.
+[sikaj01@ip-10-56-128-81 ~]$ cd ~/scripts/devvpc/dockers/apache
+[sikaj01@ip-10-56-128-81 apache]$ git show HEAD:devvpc/dockers/apache/uipublic_conexus-help_url_text
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/conexus-help/conexus-help.tar.gz"
+[sikaj01@ip-10-56-128-81 apache]$ git status
+On branch feature/cicdsplit
+Your branch is up to date with 'origin/feature/cicdsplit'.
 
-Usage:  docker buildx build [OPTIONS] PATH | URL | -
+nothing to commit, working tree clean
+[sikaj01@ip-10-56-128-81 apache]$ read -rsp "Artifactory token: " ART_TOKEN; echo
+Artifactory token: 
+[sikaj01@ip-10-56-128-81 apache]$ BASE=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory
+[sikaj01@ip-10-56-128-81 apache]$ curl -s -X POST "$BASE/api/search/aql" -H "Authorization: Bearer $ART_TOKEN" -H "Content-Type: text/plain" \
+  -d 'items.find({"repo":"conexus-snapshot-local","path":{"$match":"gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT*"}}).include("repo","path","name","size","modified")'
 
-Start a build
-[sikaj01@ip-10-56-128-81 apache]$ docker build --no-cache -t 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1.4-2.0.60-20260629.173245-2 .
-[+] Building 0.2s (24/26)                                                                                                                                             docker:default
- => [internal] load build definition from Dockerfile                                                                                                                            0.0s
- => => transferring dockerfile: 1.79kB                                                                                                                                          0.0s
- => [internal] load metadata for 339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi-minimal:10.1                                                                                0.0s
- => [internal] load .dockerignore                                                                                                                                               0.0s
- => => transferring context: 2B                                                                                                                                                 0.0s
- => [ 1/22] FROM 339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi-minimal:10.1                                                                                                0.1s
- => [internal] load build context                                                                                                                                               0.0s
- => => transferring context: 28.35kB                                                                                                                                            0.0s
- => CACHED [ 2/22] RUN microdnf install dnf -y                                                                                                                                  0.0s
- => CACHED [ 3/22] RUN dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm -y                                                                   0.0s
- => CACHED [ 4/22] RUN dnf update -y                                                                                                                                            0.0s
- => CACHED [ 5/22] RUN dnf install -y httpd mod_auth_openidc mod_ssl less which net-tools procps-ng mod_session mod_proxy_html mod_security curl-minimal                        0.0s
- => CACHED [ 6/22] RUN dnf remove -y --setopt protected_packages=systemd-pam                                                                                                    0.0s
- => CACHED [ 7/22] RUN dnf clean all                                                                                                                                            0.0s
- => CACHED [ 8/22] RUN mkdir -p /app/conexus-ui-public /app/conexus-help                                                                                                        0.0s
- => CACHED [ 9/22] COPY --chmod=0644 ./conexus_vhost.conf /etc/httpd/conf.d/conexus_vhost.conf                                                                                  0.0s
- => CACHED [10/22] COPY --chmod=0644 ./10-auth_openidc.conf /etc/httpd/conf.modules.d/10-auth_openidc.conf                                                                      0.0s
- => CACHED [11/22] COPY --chmod=0644 ./httpd.conf /etc/httpd/conf/httpd.conf                                                                                                    0.0s
- => CACHED [12/22] COPY --chmod=0644 ./00-optional.conf /etc/httpd/conf.modules.d/00-optional.conf                                                                              0.0s
- => CACHED [13/22] COPY --chmod=0644 ./ssl.conf /etc/httpd/conf.d/ssl.conf                                                                                                      0.0s
- => CACHED [14/22] COPY --chmod=0644 --chown=apache:apache ./maintenance.html /var/www/html/errors/maintenance.html                                                             0.0s
- => CACHED [15/22] RUN touch /var/log/httpd/modsec_debug.log /var/log/httpd/modsec_audit.log && chown -R apache:apache /run/httpd /var/log/httpd && chmod 0755 /var/log/httpd   0.0s
- => CACHED [16/22] RUN rm -f /etc/httpd/conf.d/mod_security.conf                                                                                                                0.0s
- => CACHED [17/22] RUN chmod 0644 /etc/httpd/conf.d/*                                                                                                                           0.0s
- => CACHED [18/22] ADD html /var/www/html/                                                                                                                                      0.0s
- => CACHED [19/22] ADD  /app/                                                                                                                                                   0.0s
- => ERROR [20/22] ADD conexus-help.tar.gz /app/                                                                                                                                 0.0s
-------
- > [20/22] ADD conexus-help.tar.gz /app/:
-------
-Dockerfile:36
---------------------
-  34 |     ADD ${UIPUBLICTAR} /app/
-  35 |     #ADD conexus-help /app/conexus-help
-  36 | >>> ADD conexus-help.tar.gz /app/
-  37 |     RUN chown -R apache:apache /app
-  38 |     RUN chmod -R u=rwX,go=rX /app/conexus-help
---------------------
-ERROR: failed to solve: failed to compute cache key: failed to calculate checksum of ref 1e18d68c-5a88-43a5-98bb-ed5e47a38190::1pynec83s6slq0vmaxy320nva: "/conexus-help.tar.gz": not found
+{
+"results" : [ {
+  "repo" : "conexus-snapshot-local",
+  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
+  "name" : "ui-public-02.00.000.60-20260629.172112-1.pom",
+  "size" : 2231,
+  "modified" : "2026-06-29T17:21:14.966Z"
+},{
+  "repo" : "conexus-snapshot-local",
+  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
+  "name" : "ui-public-02.00.000.60-20260629.172112-1-bin.tar.gz",
+  "size" : 7475730,
+  "modified" : "2026-06-29T17:21:15.541Z"
+},{
+  "repo" : "conexus-snapshot-local",
+  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
+  "name" : "maven-metadata.xml",
+  "size" : 842,
+  "modified" : "2026-06-29T17:32:47.555Z"
+},{
+  "repo" : "conexus-snapshot-local",
+  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
+  "name" : "ui-public-02.00.000.60-20260629.173245-2.pom",
+  "size" : 2231,
+  "modified" : "2026-06-29T17:32:46.615Z"
+},{
+  "repo" : "conexus-snapshot-local",
+  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
+  "name" : "ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz",
+  "size" : 7475748,
+  "modified" : "2026-06-29T17:32:47.038Z"
+} ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 5,
+  "total" : 5
+}
+}
+[sikaj01@ip-10-56-128-81 apache]$ curl -s -X POST "$BASE/api/search/aql" -H "Authorization: Bearer $ART_TOKEN" -H "Content-Type: text/plain" \
+  -d 'items.find({"name":{"$match":"conexus-help*.tar.gz"}}).include("repo","path","name","size","modified").sort({"$desc":["modified"]}).limit(5)'
+
+{
+"results" : [ {
+  "repo" : "file-local",
+  "path" : "conexus-help",
+  "name" : "conexus-help.tar.gz",
+  "size" : 684762917,
+  "modified" : "2026-10-04T03:24:28.955Z"
+} ],
+"range" : {
+  "start_pos" : 0,
+  "end_pos" : 1,
+  "total" : 1,
+  "limit" : 5
+}
+}
