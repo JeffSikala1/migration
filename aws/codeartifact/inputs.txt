@@ -1,43 +1,7 @@
 cd ~/scripts/devvpc/dockers/apache
-git -C ~/scripts status -sb
-docker --version && docker images | head -5
-ls -la *.tar.gz 2>/dev/null
-cat targzdownloader.sh cleantargz.sh uipublic_ui-public_url_text uipublic_conexus-help_url_text
-kubectl get deploy -n ingress-nginx -o custom-columns=NAME:.metadata.name,IMAGE:.spec.template.spec.containers[*].image
-
-
-awsm
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
-
-
-TAG=60-20260629.173245-2-patch1
-IMG=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:$TAG
-docker build --no-cache --build-arg UIPUBLICTAR=<ui-public tarball filename> -t $IMG .
-docker push $IMG
-
-
-
-docker run --rm --entrypoint rpm $IMG -q httpd mod_ssl mod_auth_openidc openssl
-kubectl exec -n ingress-nginx deploy/conexus-httpd -- rpm -q httpd mod_ssl mod_auth_openidc openssl
-
-
-
-
-
-cd ~/scripts/devvpc/k8s/apache/dev
-sed -i "s#conexus-apache-oidc:60-20260629.173245-2#conexus-apache-oidc:$TAG#" run-httpd.yaml
-git diff
-
-
-
-
-kud
-kubectl config current-context    # should show cnxsdev-selfmanaged
-kubectl apply -f run-httpd.yaml
-kubectl rollout status deploy/conexus-httpd -n ingress-nginx --timeout=300s
-kubectl get pods -n ingress-nginx | grep httpd
-kubectl describe deploy/conexus-httpd -n ingress-nginx | grep Image
-
-
+ls -la uipublic_*
+cat uipublic_conexus-help_url_text
+curl -fO "$(tr -d '"' < uipublic_ui-public_url_text)"
+ls -la *.tar.gz
 
 
