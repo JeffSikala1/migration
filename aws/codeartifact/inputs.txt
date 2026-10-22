@@ -1,43 +1,27 @@
-cd ~/scripts/devvpc/dockers/apache
-df -h . /var/lib/docker | cat     # need several GB free
-curl -fO  -H "Authorization: Bearer $ART_TOKEN" "$BASE/conexus-snapshot-local/gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT/ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz"
-curl -fo conexus-help.tar.gz -H "Authorization: Bearer $ART_TOKEN" "$BASE/file-local/conexus-help/conexus-help.tar.gz"
+aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 \
+    --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2 \
+    --query 'imageDetails[0].[imageTags,imageSizeInBytes,imagePushedAt]'
+
+
+
 unset ART_TOKEN
-ls -l *.tar.gz                    # expect 7475748 and 684762917 bytes
-tar -tzf conexus-help.tar.gz | head -3   # top-level folder should be conexus-help/
+rm -f ~/scripts/devvpc/dockers/apache/*.tar.gz
+git -C ~/scripts status -s     # should print nothing
 
 
 
 
-OLD=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
+cd ~/scripts && git pull
+cd devvpc/k8s/apache/dev
 TAG=1.1.4-2.0.60-20260629.173245-2
-IMG=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:$TAG
-docker build --no-cache --pull \
-  --build-arg UIPUBLICTAR=ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz \
-  -t $IMG . 2>&1 | tee /tmp/build.log
-grep -n "CACHED" /tmp/build.log
-
-
-
-
-
-docker run --rm --entrypoint rpm $OLD -qa | sort > /tmp/old.txt
-docker run --rm --entrypoint rpm $IMG -qa | sort > /tmp/new.txt
-diff /tmp/old.txt /tmp/new.txt
-
-for i in $OLD $IMG; do docker run --rm --entrypoint sh $i -c "find /app -type f -printf '%s %p\n' | sort | sha256sum"; done
-
-
-
-
-
-TAG=1.1.4-2.0.60-20260629.173245-2
-cd ~/scripts/devvpc/k8s/apache/dev
 sed -i "s#conexus-apache-oidc:60-20260629.173245-2#conexus-apache-oidc:$TAG#" run-httpd.yaml
-git diff                          # exactly 2 image lines changed
+git diff                         # exactly 2 image lines changed
 kud
-kubectl config current-context    # expect cnxsdev-selfmanaged
+kubectl config current-context   # expect cnxsdev-selfmanaged
 kubectl apply -f run-httpd.yaml
 kubectl rollout status deploy/conexus-httpd -n ingress-nginx --timeout=300s
 kubectl get pods -n ingress-nginx | grep httpd
 kubectl logs -n ingress-nginx deploy/conexus-httpd --tail=30
+
+
+kubectl exec -n ingress-nginx deploy/conexus-httpd -- rpm -q openssl-libs glibc curl
