@@ -1,872 +1,114 @@
-[sikaj01@ip-10-56-128-81 ~]$ cd ~/scripts/devvpc/dockers/apache
-[sikaj01@ip-10-56-128-81 apache]$ git show HEAD:devvpc/dockers/apache/uipublic_conexus-help_url_text
-"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/file-local/conexus-help/conexus-help.tar.gz"
+[sikaj01@ip-10-56-128-81 apache]$ unset ART_TOKEN
+[sikaj01@ip-10-56-128-81 apache]$ rm -f ~/scripts/devvpc/dockers/apache/*.tar.gz
 [sikaj01@ip-10-56-128-81 apache]$ git status
 On branch feature/cicdsplit
 Your branch is up to date with 'origin/feature/cicdsplit'.
 
 nothing to commit, working tree clean
-[sikaj01@ip-10-56-128-81 apache]$ read -rsp "Artifactory token: " ART_TOKEN; echo
-Artifactory token: 
-[sikaj01@ip-10-56-128-81 apache]$ BASE=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory
-[sikaj01@ip-10-56-128-81 apache]$ curl -s -X POST "$BASE/api/search/aql" -H "Authorization: Bearer $ART_TOKEN" -H "Content-Type: text/plain" \
-  -d 'items.find({"repo":"conexus-snapshot-local","path":{"$match":"gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT*"}}).include("repo","path","name","size","modified")'
-
-{
-"results" : [ {
-  "repo" : "conexus-snapshot-local",
-  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
-  "name" : "ui-public-02.00.000.60-20260629.172112-1.pom",
-  "size" : 2231,
-  "modified" : "2026-06-29T17:21:14.966Z"
-},{
-  "repo" : "conexus-snapshot-local",
-  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
-  "name" : "ui-public-02.00.000.60-20260629.172112-1-bin.tar.gz",
-  "size" : 7475730,
-  "modified" : "2026-06-29T17:21:15.541Z"
-},{
-  "repo" : "conexus-snapshot-local",
-  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
-  "name" : "maven-metadata.xml",
-  "size" : 842,
-  "modified" : "2026-06-29T17:32:47.555Z"
-},{
-  "repo" : "conexus-snapshot-local",
-  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
-  "name" : "ui-public-02.00.000.60-20260629.173245-2.pom",
-  "size" : 2231,
-  "modified" : "2026-06-29T17:32:46.615Z"
-},{
-  "repo" : "conexus-snapshot-local",
-  "path" : "gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT",
-  "name" : "ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz",
-  "size" : 7475748,
-  "modified" : "2026-06-29T17:32:47.038Z"
-} ],
-"range" : {
-  "start_pos" : 0,
-  "end_pos" : 5,
-  "total" : 5
-}
-}
-[sikaj01@ip-10-56-128-81 apache]$ curl -s -X POST "$BASE/api/search/aql" -H "Authorization: Bearer $ART_TOKEN" -H "Content-Type: text/plain" \
-  -d 'items.find({"name":{"$match":"conexus-help*.tar.gz"}}).include("repo","path","name","size","modified").sort({"$desc":["modified"]}).limit(5)'
-
-{
-"results" : [ {
-  "repo" : "file-local",
-  "path" : "conexus-help",
-  "name" : "conexus-help.tar.gz",
-  "size" : 684762917,
-  "modified" : "2026-10-04T03:24:28.955Z"
-} ],
-"range" : {
-  "start_pos" : 0,
-  "end_pos" : 1,
-  "total" : 1,
-  "limit" : 5
-}
-}
-[sikaj01@ip-10-56-128-81 apache]$ df -h . /var/lib/docker | cat 
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/nvme1n1    500G   39G  462G   8% /home
-/dev/nvme0n1p1  200G   95G  106G  48% /
-[sikaj01@ip-10-56-128-81 apache]$ curl -fO  -H "Authorization: Bearer $ART_TOKEN" "$BASE/conexus-snapshot-local/gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT/ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz"
-  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
-                                 Dload  Upload  Total   Spent   Left   Speed
-100  7.12M 100  7.12M   0      0 91.59M      0                              0
-[sikaj01@ip-10-56-128-81 apache]$ curl -fo conexus-help.tar.gz -H "Authorization: Bearer $ART_TOKEN" "$BASE/file-local/conexus-help/conexus-help.tar.gz"
-  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
-                                 Dload  Upload  Total   Spent   Left   Speed
-100 653.0M 100 653.0M   0      0 26.61M      0   00:24   00:24         27.13M
-[sikaj01@ip-10-56-128-81 apache]$ ls -l *.tar.gz
--rw-r-----. 1 sikaj01 users 684762917 Oct 22 18:15 conexus-help.tar.gz
--rw-r-----. 1 sikaj01 users   7475748 Oct 22 18:15 ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz
-[sikaj01@ip-10-56-128-81 apache]$ tar -tzf conexus-help.tar.gz | head -3
-conexus-help/
-conexus-help/hmfile_hash_a3f3a332.png
-conexus-help/hmfile_hash_e67b375c.png
-[sikaj01@ip-10-56-128-81 apache]$ aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
-WARNING! Your password will be stored unencrypted in /home/sikaj01/.docker/config.json.
-Configure a credential helper to remove this warning. See
-https://docs.docker.com/engine/reference/commandline/login/#credentials-store
-
-Login Succeeded
-[sikaj01@ip-10-56-128-81 apache]$ ll
-total 676076
--rw-r-----. 1 sikaj01 users       786 Aug 31 15:53 00-optional.conf
--rw-r-----. 1 sikaj01 users      1423 Sep 23 16:42 10-auth_openidc.conf
--rw-r-----. 1 sikaj01 users      1689 Oct 22 15:52 Dockerfile
--rwxr-x---. 1 sikaj01 users      1180 Aug 31 15:53 builder.sh
--rwxr-x---. 1 sikaj01 users       301 Aug 31 15:53 cleantargz.sh
--rw-r-----. 1 sikaj01 users 684762917 Oct 22 18:15 conexus-help.tar.gz
--rw-r-----. 1 sikaj01 users      5646 Oct 22 15:52 conexus_vhost.conf
-drwxr-x---. 4 sikaj01 users        39 Aug 31 15:53 html
--rw-r-----. 1 sikaj01 users      3938 Aug 31 15:53 httpd.conf
--rw-r-----. 1 sikaj01 users       963 Aug 31 15:53 maintenance.html
--rw-r-----. 1 sikaj01 users         1 Aug 31 15:53 ssl.conf
--rwxr-x---. 1 sikaj01 users      1715 Aug 31 15:53 targzdownloader.sh
--rw-r-----. 1 sikaj01 users   7475748 Oct 22 18:15 ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz
--rw-r-----. 1 sikaj01 users       106 Oct 22 15:52 uipublic_conexus-help_url_text
--rw-r-----. 1 sikaj01 users        86 Oct 22 15:52 uipublic_image_name_txt
--rw-r-----. 1 sikaj01 users       193 Oct 22 15:52 uipublic_ui-public_url_text
-[sikaj01@ip-10-56-128-81 apache]$ OLD=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-TAG=1.1.4-2.0.60-20260629.173245-2
-IMG=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:$TAG
-docker build --no-cache --pull \
-  --build-arg UIPUBLICTAR=ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz \
-  -t $IMG . 2>&1 | tee /tmp/build.log
-#0 building with "default" instance using docker driver
-
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 1.79kB done
-#1 DONE 0.0s
-
-#2 [auth] sharing credentials for 339713019047.dkr.ecr.us-east-1.amazonaws.com
-#2 DONE 0.0s
-
-#3 [internal] load metadata for 339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi-minimal:10.1
-#3 DONE 0.3s
-
-#4 [internal] load .dockerignore
-#4 transferring context: 2B done
-#4 DONE 0.0s
-
-#5 [ 1/22] FROM 339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi-minimal:10.1@sha256:8266c5a81bf00cc4992baf54cfacee77bb083520922217f24b5c4b2f188f7a3d
-#5 resolve 339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi-minimal:10.1@sha256:8266c5a81bf00cc4992baf54cfacee77bb083520922217f24b5c4b2f188f7a3d 0.0s done
-#5 CACHED
-
-#6 [internal] load build context
-#6 transferring context: 692.41MB 2.1s done
-#6 DONE 2.2s
-
-#7 [ 2/22] RUN microdnf install dnf -y
-#7 0.676 
-#7 0.676 (microdnf:1): librhsm-WARNING **: 18:17:45.268: Found 0 entitlement certificates
-#7 0.682 
-#7 0.682 (microdnf:1): librhsm-WARNING **: 18:17:45.274: Found 0 entitlement certificates
-#7 0.841 Downloading metadata...
-#7 1.322 Downloading metadata...
-#7 1.790 Downloading metadata...
-#7 2.166 Package                                             Repository                Size
-#7 2.166 Installing:                                                                       
-#7 2.166  attr-2.6.0-1.el10_2.x86_64                         ubi-10-baseos-rpms     74.6 kB
-#7 2.166  cracklib-2.9.11-8.el10.x86_64                      ubi-10-baseos-rpms    102.6 kB
-#7 2.166  cracklib-dicts-2.9.11-8.el10.x86_64                ubi-10-baseos-rpms      3.8 MB
-#7 2.166  cryptsetup-libs-2.8.1-2.el10.x86_64                ubi-10-baseos-rpms    599.6 kB
-#7 2.166  dbus-1:1.14.10-5.el10.x86_64                       ubi-10-baseos-rpms      8.7 kB
-#7 2.166  dbus-broker-36-5.el10_2.x86_64                     ubi-10-baseos-rpms    184.7 kB
-#7 2.166  dbus-common-1:1.14.10-5.el10.noarch                ubi-10-baseos-rpms     19.3 kB
-#7 2.166  dbus-libs-1:1.14.10-5.el10.x86_64                  ubi-10-baseos-rpms    161.2 kB
-#7 2.166  device-mapper-10:1.02.210-2.el10.x86_64            ubi-10-baseos-rpms    150.3 kB
-#7 2.166  device-mapper-libs-10:1.02.210-2.el10.x86_64       ubi-10-baseos-rpms    191.5 kB
-#7 2.166  diffutils-3.10-8.el10.x86_64                       ubi-10-baseos-rpms    423.2 kB
-#7 2.166  dnf-4.20.0-22.el10_2.noarch                        ubi-10-baseos-rpms    493.0 kB
-#7 2.166  elfutils-debuginfod-client-0.194-2.el10_2.x86_64   ubi-10-baseos-rpms     50.8 kB
-#7 2.166  elfutils-default-yama-scope-0.194-2.el10_2.noarch  ubi-10-baseos-rpms     15.0 kB
-#7 2.166  elfutils-libelf-0.194-2.el10_2.x86_64              ubi-10-baseos-rpms    212.8 kB
-#7 2.166  elfutils-libs-0.194-2.el10_2.x86_64                ubi-10-baseos-rpms    279.6 kB
-#7 2.166  file-libs-5.45-9.el10.x86_64                       ubi-10-baseos-rpms    787.3 kB
-#7 2.166  gzip-1.13-4.el10_2.x86_64                          ubi-10-baseos-rpms    180.0 kB
-#7 2.166  ima-evm-utils-1.6.2-4.el10.x86_64                  ubi-10-baseos-rpms     74.2 kB
-#7 2.166  keyutils-1.6.3-5.el10.x86_64                       ubi-10-baseos-rpms     81.7 kB
-#7 2.166  kmod-libs-31-13.el10.x86_64                        ubi-10-baseos-rpms     77.2 kB
-#7 2.166  libbpf-2:1.7.0-1.el10.x86_64                       ubi-10-baseos-rpms    197.8 kB
-#7 2.166  libcomps-0.1.21-3.el10.x86_64                      ubi-10-baseos-rpms     81.8 kB
-#7 2.166  libfdisk-2.40.2-18.el10.x86_64                     ubi-10-baseos-rpms    171.1 kB
-#7 2.166  libgomp-14.3.1-4.4.el10.x86_64                     ubi-10-baseos-rpms    377.8 kB
-#7 2.166  libpwquality-1.4.5-12.el10.x86_64                  ubi-10-baseos-rpms    129.8 kB
-#7 2.166  libseccomp-2.5.6-1.el10.x86_64                     ubi-10-baseos-rpms     72.9 kB
-#7 2.166  libxkbcommon-1.7.0-4.el10.x86_64                   ubi-10-appstream-rpms 151.2 kB
-#7 2.166  python3-dnf-4.20.0-22.el10_2.noarch                ubi-10-baseos-rpms    663.9 kB
-#7 2.166  python3-hawkey-0.73.1-15.el10_2.x86_64             ubi-10-baseos-rpms    114.5 kB
-#7 2.166  python3-libcomps-0.1.21-3.el10.x86_64              ubi-10-baseos-rpms     53.5 kB
-#7 2.166  python3-libdnf-0.73.1-15.el10_2.x86_64             ubi-10-baseos-rpms    892.0 kB
-#7 2.166  python3-rpm-4.19.1.1-23.el10.x86_64                ubi-10-baseos-rpms     72.2 kB
-#7 2.166  rpm-build-libs-4.19.1.1-23.el10.x86_64             ubi-10-baseos-rpms    100.8 kB
-#7 2.166  rpm-plugin-systemd-inhibit-4.19.1.1-23.el10.x86_64 ubi-10-appstream-rpms  23.5 kB
-#7 2.166  rpm-sign-libs-4.19.1.1-23.el10.x86_64              ubi-10-baseos-rpms     29.1 kB
-#7 2.166  systemd-257-23.el10_2.2.x86_64                     ubi-10-baseos-rpms      6.1 MB
-#7 2.166  systemd-pam-257-23.el10_2.2.x86_64                 ubi-10-baseos-rpms    336.1 kB
-#7 2.166  tpm2-tss-4.1.3-6.el10.x86_64                       ubi-10-baseos-rpms    452.3 kB
-#7 2.166  util-linux-core-2.40.2-18.el10.x86_64              ubi-10-baseos-rpms    571.7 kB
-#7 2.166  xkeyboard-config-2.41-3.el10.noarch                ubi-10-appstream-rpms   1.0 MB
-#7 2.166 Transaction Summary:
-#7 2.166  Installing:       41 packages
-#7 2.166  Reinstalling:      0 packages
-#7 2.166  Upgrading:         0 packages
-#7 2.166  Obsoleting:        0 packages
-#7 2.166  Removing:          0 packages
-#7 2.166  Downgrading:       0 packages
-#7 2.168 Downloading packages...
-#7 3.494 Running transaction test...
-#7 3.975 Installing: elfutils-libelf;0.194-2.el10_2;x86_64;ubi-10-baseos-rpms
-#7 3.992 Installing: util-linux-core;2.40.2-18.el10;x86_64;ubi-10-baseos-rpms
-#7 4.058 Installing: python3-libdnf;0.73.1-15.el10_2;x86_64;ubi-10-baseos-rpms
-#7 4.096 Installing: python3-hawkey;0.73.1-15.el10_2;x86_64;ubi-10-baseos-rpms
-#7 4.110 Installing: libbpf;2:1.7.0-1.el10;x86_64;ubi-10-baseos-rpms
-#7 4.120 Installing: xkeyboard-config;2.41-3.el10;noarch;ubi-10-appstream-rpms
-#7 4.243 Installing: libxkbcommon;1.7.0-4.el10;x86_64;ubi-10-appstream-rpms
-#7 4.306 useradd: Warning: missing or non-executable shell '/usr/sbin/nologin'
-#7 4.330 Installing: tpm2-tss;4.1.3-6.el10;x86_64;ubi-10-baseos-rpms
-#7 4.366 Installing: libseccomp;2.5.6-1.el10;x86_64;ubi-10-baseos-rpms
-#7 4.376 Installing: libgomp;14.3.1-4.4.el10;x86_64;ubi-10-baseos-rpms
-#7 4.387 Installing: libfdisk;2.40.2-18.el10;x86_64;ubi-10-baseos-rpms
-#7 4.397 Installing: libcomps;0.1.21-3.el10;x86_64;ubi-10-baseos-rpms
-#7 4.408 Installing: python3-libcomps;0.1.21-3.el10;x86_64;ubi-10-baseos-rpms
-#7 4.419 Installing: kmod-libs;31-13.el10;x86_64;ubi-10-baseos-rpms
-#7 4.430 Installing: keyutils;1.6.3-5.el10;x86_64;ubi-10-baseos-rpms
-#7 4.448 Installing: gzip;1.13-4.el10_2;x86_64;ubi-10-baseos-rpms
-#7 4.472 Installing: cracklib;2.9.11-8.el10;x86_64;ubi-10-baseos-rpms
-#7 4.492 Installing: cracklib-dicts;2.9.11-8.el10;x86_64;ubi-10-baseos-rpms
-#7 4.530 Installing: libpwquality;1.4.5-12.el10;x86_64;ubi-10-baseos-rpms
-#7 4.550 Installing: file-libs;5.45-9.el10;x86_64;ubi-10-baseos-rpms
-#7 4.581 Installing: diffutils;3.10-8.el10;x86_64;ubi-10-baseos-rpms
-#7 4.600 Installing: dbus-libs;1:1.14.10-5.el10;x86_64;ubi-10-baseos-rpms
-#7 4.612 Installing: rpm-plugin-systemd-inhibit;4.19.1.1-23.el10;x86_64;ubi-10-appstream-rpms
-#7 4.621 Installing: dbus-common;1:1.14.10-5.el10;noarch;ubi-10-baseos-rpms
-#7 4.637 Installing: dbus-broker;36-5.el10_2;x86_64;ubi-10-baseos-rpms
-#7 4.659 Installing: dbus;1:1.14.10-5.el10;x86_64;ubi-10-baseos-rpms
-#7 4.665 Installing: cryptsetup-libs;2.8.1-2.el10;x86_64;ubi-10-baseos-rpms
-#7 4.680 Installing: device-mapper-libs;10:1.02.210-2.el10;x86_64;ubi-10-baseos-rpms
-#7 4.692 Installing: device-mapper;10:1.02.210-2.el10;x86_64;ubi-10-baseos-rpms
-#7 4.710 Installing: elfutils-debuginfod-client;0.194-2.el10_2;x86_64;ubi-10-baseos-rpms
-#7 4.724 Installing: elfutils-libs;0.194-2.el10_2;x86_64;ubi-10-baseos-rpms
-#7 4.738 Installing: elfutils-default-yama-scope;0.194-2.el10_2;noarch;ubi-10-baseos-rpms
-#7 4.748 Installing: systemd-pam;257-23.el10_2.2;x86_64;ubi-10-baseos-rpms
-#7 4.809 Installing: systemd;257-23.el10_2.2;x86_64;ubi-10-baseos-rpms
-#7 5.167 Creating group 'utmp' with GID 22.
-#7 5.168 Creating group 'input' with GID 104.
-#7 5.168 Creating group 'kvm' with GID 36.
-#7 5.168 Creating group 'render' with GID 105.
-#7 5.168 Creating group 'sgx' with GID 106.
-#7 5.168 Creating group 'systemd-journal' with GID 190.
-#7 5.169 Creating group 'dbus' with GID 81.
-#7 5.169 Creating user 'dbus' (System Message Bus) with UID 81 and GID 81.
-#7 5.488 Installing: rpm-build-libs;4.19.1.1-23.el10;x86_64;ubi-10-baseos-rpms
-#7 5.499 Installing: attr;2.6.0-1.el10_2;x86_64;ubi-10-baseos-rpms
-#7 5.514 Installing: ima-evm-utils;1.6.2-4.el10;x86_64;ubi-10-baseos-rpms
-#7 5.533 Installing: rpm-sign-libs;4.19.1.1-23.el10;x86_64;ubi-10-baseos-rpms
-#7 5.543 Installing: python3-rpm;4.19.1.1-23.el10;x86_64;ubi-10-baseos-rpms
-#7 5.557 Installing: python3-dnf;4.20.0-22.el10_2;noarch;ubi-10-baseos-rpms
-#7 5.659 Installing: dnf;4.20.0-22.el10_2;noarch;ubi-10-baseos-rpms
-#7 5.688 Created symlink '/etc/systemd/system/timers.target.wants/dnf-makecache.timer' → '/usr/lib/systemd/system/dnf-makecache.timer'.
-#7 10.63 Complete.
-#7 DONE 10.7s
-
-#8 [ 3/22] RUN dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm -y
-#8 1.072 Red Hat Universal Base Image 10 (RPMs) - BaseOS 643 kB/s | 180 kB     00:00    
-#8 1.427 Red Hat Universal Base Image 10 (RPMs) - AppStr 1.2 MB/s | 399 kB     00:00    
-#8 1.688 Red Hat Universal Base Image 10 (RPMs) - CodeRe 122 kB/s |  27 kB     00:00    
-#8 1.808 epel-release-latest-10.noarch.rpm               222 kB/s |  19 kB     00:00    
-#8 1.829 Dependencies resolved.
-#8 1.831 ================================================================================
-#8 1.831  Package                 Arch   Version                Repository          Size
-#8 1.831 ================================================================================
-#8 1.831 Installing:
-#8 1.831  epel-release            noarch 10-8.el10_2            @commandline        19 k
-#8 1.831 Installing dependencies:
-#8 1.831  python3-dateutil        noarch 1:2.9.0.post0-1.el10_0 ubi-10-baseos-rpms 340 k
-#8 1.831  python3-dbus            x86_64 1.3.2-8.el10           ubi-10-baseos-rpms 162 k
-#8 1.831  python3-dnf-plugins-core
-#8 1.831                          noarch 4.7.0-10.el10          ubi-10-baseos-rpms 311 k
-#8 1.831  python3-six             noarch 1.16.0-16.el10         ubi-10-baseos-rpms  45 k
-#8 1.831  python3-systemd         x86_64 235-11.el10            ubi-10-baseos-rpms 112 k
-#8 1.831 Installing weak dependencies:
-#8 1.831  dnf-plugins-core        noarch 4.7.0-10.el10          ubi-10-baseos-rpms  41 k
-#8 1.831 
-#8 1.831 Transaction Summary
-#8 1.831 ================================================================================
-#8 1.831 Install  7 Packages
-#8 1.831 
-#8 1.831 Total size: 1.0 M
-#8 1.831 Total download size: 1.0 M
-#8 1.831 Installed size: 3.0 M
-#8 1.832 Downloading Packages:
-#8 1.958 (1/6): dnf-plugins-core-4.7.0-10.el10.noarch.rp 333 kB/s |  41 kB     00:00    
-#8 2.014 (2/6): python3-dbus-1.3.2-8.el10.x86_64.rpm     899 kB/s | 162 kB     00:00    
-#8 2.054 (3/6): python3-dnf-plugins-core-4.7.0-10.el10.n 3.2 MB/s | 311 kB     00:00    
-#8 2.057 (4/6): python3-six-1.16.0-16.el10.noarch.rpm    1.0 MB/s |  45 kB     00:00    
-#8 2.066 (5/6): python3-dateutil-2.9.0.post0-1.el10_0.no 1.4 MB/s | 340 kB     00:00    
-#8 2.086 (6/6): python3-systemd-235-11.el10.x86_64.rpm   3.4 MB/s | 112 kB     00:00    
-#8 2.088 --------------------------------------------------------------------------------
-#8 2.089 Total                                           3.8 MB/s | 1.0 MB     00:00     
-#8 2.153 Running transaction check
-#8 2.175 Transaction check succeeded.
-#8 2.175 Running transaction test
-#8 2.216 Transaction test succeeded.
-#8 2.217 Running transaction
-#8 2.353   Preparing        :                                                        1/1 
-#8 2.534   Installing       : python3-systemd-235-11.el10.x86_64                     1/7 
-#8 2.553   Installing       : python3-six-1.16.0-16.el10.noarch                      2/7 
-#8 2.582   Installing       : python3-dateutil-1:2.9.0.post0-1.el10_0.noarch         3/7 
-#8 2.612   Installing       : python3-dbus-1.3.2-8.el10.x86_64                       4/7 
-#8 2.641   Installing       : python3-dnf-plugins-core-4.7.0-10.el10.noarch          5/7 
-#8 2.660   Installing       : dnf-plugins-core-4.7.0-10.el10.noarch                  6/7 
-#8 2.669   Installing       : epel-release-10-8.el10_2.noarch                        7/7 
-#8 2.674   Running scriptlet: epel-release-10-8.el10_2.noarch                        7/7 
-#8 2.679 Many EPEL packages require the CodeReady Builder (CRB) repository.
-#8 2.679 It is recommended that you run /usr/bin/crb enable to enable the CRB repository.
-#8 2.679 
-#8 2.806 
-#8 2.806 Installed:
-#8 2.806   dnf-plugins-core-4.7.0-10.el10.noarch                                         
-#8 2.806   epel-release-10-8.el10_2.noarch                                               
-#8 2.806   python3-dateutil-1:2.9.0.post0-1.el10_0.noarch                                
-#8 2.806   python3-dbus-1.3.2-8.el10.x86_64                                              
-#8 2.806   python3-dnf-plugins-core-4.7.0-10.el10.noarch                                 
-#8 2.806   python3-six-1.16.0-16.el10.noarch                                             
-#8 2.806   python3-systemd-235-11.el10.x86_64                                            
-#8 2.806 
-#8 2.806 Complete!
-#8 DONE 2.9s
-
-#9 [ 4/22] RUN dnf update -y
-#9 4.844 Extra Packages for Enterprise Linux 10 - x86_64 1.6 MB/s | 6.7 MB     00:04    
-#9 6.113 Last metadata expiration check: 0:00:01 ago on Thu Oct 22 18:18:03 2026.
-#9 6.617 Dependencies resolved.
-#9 6.619 ================================================================================
-#9 6.619  Package                  Arch   Version            Repository             Size
-#9 6.619 ================================================================================
-#9 6.619 Upgrading:
-#9 6.619  curl                     x86_64 8.12.1-4.el10_2.7  ubi-10-baseos-rpms    224 k
-#9 6.619  expat                    x86_64 2.7.3-1.el10_2.5   ubi-10-baseos-rpms    128 k
-#9 6.619  gawk                     x86_64 5.3.0-6.el10_2.1   ubi-10-baseos-rpms    1.1 M
-#9 6.619  glibc                    x86_64 2.39-145.el10_2    ubi-10-baseos-rpms    2.1 M
-#9 6.619  glibc-common             x86_64 2.39-145.el10_2    ubi-10-baseos-rpms    326 k
-#9 6.619  glibc-minimal-langpack   x86_64 2.39-145.el10_2    ubi-10-baseos-rpms     32 k
-#9 6.619  gnutls                   x86_64 3.8.10-5.el10_2    ubi-10-baseos-rpms    1.6 M
-#9 6.619  gnutls-dane              x86_64 3.8.10-5.el10_2    ubi-10-appstream-rpms  44 k
-#9 6.619  gnutls-utils             x86_64 3.8.10-5.el10_2    ubi-10-appstream-rpms 318 k
-#9 6.619  libarchive               x86_64 3.7.7-11.el10_2    ubi-10-baseos-rpms    420 k
-#9 6.619  libcurl-minimal          x86_64 8.12.1-4.el10_2.7  ubi-10-baseos-rpms    302 k
-#9 6.619  libxml2                  x86_64 2.12.5-10.el10_2.4 ubi-10-baseos-rpms    698 k
-#9 6.619  openssl-libs             x86_64 1:3.5.8-2.el10_2   ubi-10-baseos-rpms    2.3 M
-#9 6.619  pcre2                    x86_64 10.44-1.5.el10_2   ubi-10-baseos-rpms    252 k
-#9 6.619  pcre2-syntax             noarch 10.44-1.5.el10_2   ubi-10-baseos-rpms    156 k
-#9 6.619  python-unversioned-command
-#9 6.619                           noarch 3.12.15-1.el10_2   ubi-10-appstream-rpms  17 k
-#9 6.619  python3                  x86_64 3.12.15-1.el10_2   ubi-10-baseos-rpms     34 k
-#9 6.619  python3-libs             x86_64 3.12.15-1.el10_2   ubi-10-baseos-rpms    9.5 M
-#9 6.619  rpm-sequoia              x86_64 1.10.2.1-1.el10_2  ubi-10-baseos-rpms    976 k
-#9 6.619  tzdata                   noarch 2026e-1.el10_2     ubi-10-baseos-rpms    915 k
-#9 6.619  unbound-libs             x86_64 1.24.2-7.el10_2.6  ubi-10-appstream-rpms 565 k
-#9 6.619 Installing weak dependencies:
-#9 6.619  gawk-all-langpacks       x86_64 5.3.0-6.el10_2.1   ubi-10-appstream-rpms 281 k
-#9 6.619  glibc-langpack-en        x86_64 2.39-145.el10_2    ubi-10-baseos-rpms    671 k
-#9 6.619 
-#9 6.619 Transaction Summary
-#9 6.619 ================================================================================
-#9 6.619 Install   2 Packages
-#9 6.619 Upgrade  21 Packages
-#9 6.619 
-#9 6.620 Total download size: 23 M
-#9 6.620 Downloading Packages:
-#9 6.822 (1/23): curl-8.12.1-4.el10_2.7.x86_64.rpm       1.1 MB/s | 224 kB     00:00    
-#9 6.831 (2/23): gawk-all-langpacks-5.3.0-6.el10_2.1.x86 1.3 MB/s | 281 kB     00:00    
-#9 6.841 (3/23): glibc-langpack-en-2.39-145.el10_2.x86_6 3.0 MB/s | 671 kB     00:00    
-#9 6.864 (4/23): expat-2.7.3-1.el10_2.5.x86_64.rpm       3.1 MB/s | 128 kB     00:00    
-#9 6.923 (5/23): glibc-common-2.39-145.el10_2.x86_64.rpm 5.4 MB/s | 326 kB     00:00    
-#9 6.932 (6/23): gawk-5.3.0-6.el10_2.1.x86_64.rpm         11 MB/s | 1.1 MB     00:00    
-#9 6.942 (7/23): glibc-2.39-145.el10_2.x86_64.rpm         21 MB/s | 2.1 MB     00:00    
-#9 6.956 (8/23): glibc-minimal-langpack-2.39-145.el10_2. 997 kB/s |  32 kB     00:00    
-#9 6.978 (9/23): libarchive-3.7.7-11.el10_2.x86_64.rpm    12 MB/s | 420 kB     00:00    
-#9 6.998 (10/23): gnutls-3.8.10-5.el10_2.x86_64.rpm       24 MB/s | 1.6 MB     00:00    
-#9 7.004 (11/23): libcurl-minimal-8.12.1-4.el10_2.7.x86_ 6.2 MB/s | 302 kB     00:00    
-#9 7.016 (12/23): libxml2-2.12.5-10.el10_2.4.x86_64.rpm   18 MB/s | 698 kB     00:00    
-#9 7.052 (13/23): openssl-libs-3.5.8-2.el10_2.x86_64.rpm  43 MB/s | 2.3 MB     00:00    
-#9 7.058 (14/23): pcre2-10.44-1.5.el10_2.x86_64.rpm      4.6 MB/s | 252 kB     00:00    
-#9 7.062 (15/23): pcre2-syntax-10.44-1.5.el10_2.noarch.r 3.3 MB/s | 156 kB     00:00    
-#9 7.084 (16/23): python3-3.12.15-1.el10_2.x86_64.rpm    1.0 MB/s |  34 kB     00:00    
-#9 7.125 (17/23): tzdata-2026e-1.el10_2.noarch.rpm        22 MB/s | 915 kB     00:00    
-#9 7.144 (18/23): rpm-sequoia-1.10.2.1-1.el10_2.x86_64.r  12 MB/s | 976 kB     00:00    
-#9 7.165 (19/23): unbound-libs-1.24.2-7.el10_2.6.x86_64.  14 MB/s | 565 kB     00:00    
-#9 7.177 (20/23): gnutls-dane-3.8.10-5.el10_2.x86_64.rpm 1.4 MB/s |  44 kB     00:00    
-#9 7.204 (21/23): python3-libs-3.12.15-1.el10_2.x86_64.r  65 MB/s | 9.5 MB     00:00    
-#9 7.208 (22/23): gnutls-utils-3.8.10-5.el10_2.x86_64.rp 7.3 MB/s | 318 kB     00:00    
-#9 7.209 (23/23): python-unversioned-command-3.12.15-1.e 527 kB/s |  17 kB     00:00    
-#9 7.211 --------------------------------------------------------------------------------
-#9 7.212 Total                                            38 MB/s |  23 MB     00:00     
-#9 7.527 Running transaction check
-#9 7.704 Transaction check succeeded.
-#9 7.704 Running transaction test
-#9 7.923 Transaction test succeeded.
-#9 7.923 Running transaction
-#9 8.640   Preparing        :                                                        1/1 
-#9 9.275   Upgrading        : tzdata-2026e-1.el10_2.noarch                          1/44 
-#9 9.321   Upgrading        : glibc-common-2.39-145.el10_2.x86_64                   2/44 
-#9 9.331   Upgrading        : glibc-minimal-langpack-2.39-145.el10_2.x86_64         3/44 
-#9 9.335   Running scriptlet: glibc-2.39-145.el10_2.x86_64                          4/44 
-#9 9.388   Upgrading        : glibc-2.39-145.el10_2.x86_64                          4/44 
-#9 9.400   Running scriptlet: glibc-2.39-145.el10_2.x86_64                          4/44 
-#9 9.589   Installing       : glibc-langpack-en-2.39-145.el10_2.x86_64              5/44 
-#9 9.631   Upgrading        : openssl-libs-1:3.5.8-2.el10_2.x86_64                  6/44 
-#9 9.656   Upgrading        : gnutls-3.8.10-5.el10_2.x86_64                         7/44 
-#9 9.670   Upgrading        : libcurl-minimal-8.12.1-4.el10_2.7.x86_64              8/44 
-#9 9.682   Upgrading        : expat-2.7.3-1.el10_2.5.x86_64                         9/44 
-#9 9.691   Upgrading        : python-unversioned-command-3.12.15-1.el10_2.noarch   10/44 
-#9 9.699   Upgrading        : python3-3.12.15-1.el10_2.x86_64                      11/44 
-#9 10.58   Upgrading        : python3-libs-3.12.15-1.el10_2.x86_64                 12/44 
-#9 10.61   Running scriptlet: unbound-libs-1.24.2-7.el10_2.6.x86_64                13/44 
-#9 10.63   Upgrading        : unbound-libs-1.24.2-7.el10_2.6.x86_64                13/44 
-#9 10.64   Upgrading        : gnutls-dane-3.8.10-5.el10_2.x86_64                   14/44 
-#9 10.66   Upgrading        : libxml2-2.12.5-10.el10_2.4.x86_64                    15/44 
-#9 10.68   Upgrading        : pcre2-syntax-10.44-1.5.el10_2.noarch                 16/44 
-#9 10.68   Installing       : gawk-all-langpacks-5.3.0-6.el10_2.1.x86_64           17/44 
-#9 10.73   Upgrading        : gawk-5.3.0-6.el10_2.1.x86_64                         18/44 
-#9 10.75   Upgrading        : pcre2-10.44-1.5.el10_2.x86_64                        19/44 
-#9 10.76   Upgrading        : libarchive-3.7.7-11.el10_2.x86_64                    20/44 
-#9 10.78   Upgrading        : gnutls-utils-3.8.10-5.el10_2.x86_64                  21/44 
-#9 10.80   Upgrading        : curl-8.12.1-4.el10_2.7.x86_64                        22/44 
-#9 10.82   Upgrading        : rpm-sequoia-1.10.2.1-1.el10_2.x86_64                 23/44 
-#9 10.83   Cleanup          : gnutls-utils-3.8.10-4.el10_2.x86_64                  24/44 
-#9 10.84   Cleanup          : libarchive-3.7.7-10.el10_2.x86_64                    25/44 
-#9 10.85   Cleanup          : libxml2-2.12.5-10.el10_2.3.x86_64                    26/44 
-#9 10.86   Cleanup          : rpm-sequoia-1.10.1.1-2.el10.x86_64                   27/44 
-#9 10.87   Cleanup          : gawk-5.3.0-6.el10.x86_64                             28/44 
-#9 10.88   Cleanup          : gnutls-dane-3.8.10-4.el10_2.x86_64                   29/44 
-#9 10.88   Cleanup          : unbound-libs-1.24.2-7.el10_2.5.x86_64                30/44 
-#9 10.89   Cleanup          : gnutls-3.8.10-4.el10_2.x86_64                        31/44 
-#9 10.90   Cleanup          : curl-8.12.1-4.el10_2.4.x86_64                        32/44 
-#9 10.90   Cleanup          : libcurl-minimal-8.12.1-4.el10_2.4.x86_64             33/44 
-#9 10.91   Cleanup          : pcre2-10.44-1.el10.3.x86_64                          34/44 
-#9 10.92   Cleanup          : python3-3.12.14-1.el10_2.x86_64                      35/44 
-#9 10.92   Cleanup          : python-unversioned-command-3.12.14-1.el10_2.noarch   36/44 
-#9 10.93   Cleanup          : pcre2-syntax-10.44-1.el10.3.noarch                   37/44 
-#9 10.95   Cleanup          : python3-libs-3.12.14-1.el10_2.x86_64                 38/44 
-#9 10.97   Cleanup          : openssl-libs-1:3.5.8-1.el10_2.x86_64                 39/44 
-#9 10.98   Cleanup          : expat-2.7.3-1.el10_2.3.x86_64                        40/44 
-#9 10.99   Cleanup          : glibc-2.39-128.el10_2.x86_64                         41/44 
-#9 10.99   Cleanup          : glibc-minimal-langpack-2.39-128.el10_2.x86_64        42/44 
-#9 11.00   Cleanup          : glibc-common-2.39-128.el10_2.x86_64                  43/44 
-#9 11.01   Cleanup          : tzdata-2026c-1.el10_2.noarch                         44/44 
-#9 11.02   Running scriptlet: tzdata-2026c-1.el10_2.noarch                         44/44 
-#9 11.34 
-#9 11.34 Upgraded:
-#9 11.34   curl-8.12.1-4.el10_2.7.x86_64                                                 
-#9 11.34   expat-2.7.3-1.el10_2.5.x86_64                                                 
-#9 11.34   gawk-5.3.0-6.el10_2.1.x86_64                                                  
-#9 11.34   glibc-2.39-145.el10_2.x86_64                                                  
-#9 11.34   glibc-common-2.39-145.el10_2.x86_64                                           
-#9 11.34   glibc-minimal-langpack-2.39-145.el10_2.x86_64                                 
-#9 11.34   gnutls-3.8.10-5.el10_2.x86_64                                                 
-#9 11.34   gnutls-dane-3.8.10-5.el10_2.x86_64                                            
-#9 11.34   gnutls-utils-3.8.10-5.el10_2.x86_64                                           
-#9 11.34   libarchive-3.7.7-11.el10_2.x86_64                                             
-#9 11.34   libcurl-minimal-8.12.1-4.el10_2.7.x86_64                                      
-#9 11.34   libxml2-2.12.5-10.el10_2.4.x86_64                                             
-#9 11.34   openssl-libs-1:3.5.8-2.el10_2.x86_64                                          
-#9 11.34   pcre2-10.44-1.5.el10_2.x86_64                                                 
-#9 11.34   pcre2-syntax-10.44-1.5.el10_2.noarch                                          
-#9 11.34   python-unversioned-command-3.12.15-1.el10_2.noarch                            
-#9 11.34   python3-3.12.15-1.el10_2.x86_64                                               
-#9 11.34   python3-libs-3.12.15-1.el10_2.x86_64                                          
-#9 11.34   rpm-sequoia-1.10.2.1-1.el10_2.x86_64                                          
-#9 11.34   tzdata-2026e-1.el10_2.noarch                                                  
-#9 11.34   unbound-libs-1.24.2-7.el10_2.6.x86_64                                         
-#9 11.34 Installed:
-#9 11.34   gawk-all-langpacks-5.3.0-6.el10_2.1.x86_64                                    
-#9 11.34   glibc-langpack-en-2.39-145.el10_2.x86_64                                      
-#9 11.34 
-#9 11.34 Complete!
-#9 DONE 11.4s
-
-#10 [ 5/22] RUN dnf install -y httpd mod_auth_openidc mod_ssl less which net-tools procps-ng mod_session mod_proxy_html mod_security curl-minimal
-#10 0.914 Last metadata expiration check: 0:00:07 ago on Thu Oct 22 18:18:03 2026.
-#10 0.942 Package curl-8.12.1-4.el10_2.7.x86_64 is already installed.
-#10 0.975 Dependencies resolved.
-#10 0.977 ================================================================================
-#10 0.977  Package           Arch   Version                   Repository             Size
-#10 0.977 ================================================================================
-#10 0.977 Installing:
-#10 0.977  httpd             x86_64 2.4.63-13.el10_2.6        ubi-10-appstream-rpms  56 k
-#10 0.977  less              x86_64 661-3.el10                ubi-10-baseos-rpms    195 k
-#10 0.977  mod_auth_openidc  x86_64 2.4.16.11-1.el10_2.1      ubi-10-appstream-rpms 268 k
-#10 0.977  mod_proxy_html    x86_64 1:2.4.63-13.el10_2.6      ubi-10-appstream-rpms  42 k
-#10 0.977  mod_security      x86_64 2.9.9-1.el10_1            epel                  253 k
-#10 0.977  mod_session       x86_64 2.4.63-13.el10_2.6        ubi-10-appstream-rpms  53 k
-#10 0.977  mod_ssl           x86_64 1:2.4.63-13.el10_2.6      ubi-10-appstream-rpms 116 k
-#10 0.977  net-tools         x86_64 2.0-0.73.20160912git.el10 ubi-10-baseos-rpms    310 k
-#10 0.977  procps-ng         x86_64 4.0.4-11.el10             ubi-10-baseos-rpms    381 k
-#10 0.977  which             x86_64 2.21-44.el10_0            ubi-10-baseos-rpms     42 k
-#10 0.977 Installing dependencies:
-#10 0.977  apr               x86_64 1.7.5-3.el10              ubi-10-appstream-rpms 127 k
-#10 0.977  apr-util          x86_64 1.6.3-23.el10_2.1         ubi-10-appstream-rpms 104 k
-#10 0.977  apr-util-lmdb     x86_64 1.6.3-23.el10_2.1         ubi-10-appstream-rpms  19 k
-#10 0.977  cjose             x86_64 0.6.2.2-7.el10_2.2        ubi-10-appstream-rpms 224 k
-#10 0.977  cyrus-sasl-lib    x86_64 2.1.28-30.el10_2          ubi-10-baseos-rpms    112 k
-#10 0.977  hostname          x86_64 3.23-14.el10              ubi-10-baseos-rpms     33 k
-#10 0.977  httpd-core        x86_64 2.4.63-13.el10_2.6        ubi-10-appstream-rpms 1.5 M
-#10 0.977  httpd-filesystem  noarch 2.4.63-13.el10_2.6        ubi-10-appstream-rpms  20 k
-#10 0.977  httpd-tools       x86_64 2.4.63-13.el10_2.6        ubi-10-appstream-rpms  90 k
-#10 0.977  jansson           x86_64 2.14-3.el10               ubi-10-baseos-rpms     48 k
-#10 0.977  jq                x86_64 1.7.1-11.el10_2.2         ubi-10-baseos-rpms    208 k
-#10 0.977  libbrotli         x86_64 1.1.0-8.el10_2            ubi-10-baseos-rpms    351 k
-#10 0.977  libtalloc         x86_64 2.4.3-100.el10            ubi-10-baseos-rpms     34 k
-#10 0.977  lmdb-libs         x86_64 0.9.32-4.el10             ubi-10-baseos-rpms     64 k
-#10 0.977  mailcap           noarch 2.1.54-8.el10             ubi-10-baseos-rpms     37 k
-#10 0.977  oniguruma         x86_64 6.9.9-7.el10              ubi-10-baseos-rpms    219 k
-#10 0.977  openldap          x86_64 2.6.10-1.el10             ubi-10-baseos-rpms    239 k
-#10 0.977  redhat-logos-httpd
-#10 0.977                    noarch 100.3-2.el10              ubi-10-appstream-rpms  22 k
-#10 0.977  sscg              x86_64 4.0.3-2.el10              ubi-10-appstream-rpms  58 k
-#10 0.977 Installing weak dependencies:
-#10 0.977  apr-util-openssl  x86_64 1.6.3-23.el10_2.1         ubi-10-appstream-rpms  21 k
-#10 0.977  mod_http2         x86_64 2.0.29-4.el10_2.2         ubi-10-appstream-rpms 171 k
-#10 0.977  mod_lua           x86_64 2.4.63-13.el10_2.6        ubi-10-appstream-rpms  66 k
-#10 0.977 
-#10 0.977 Transaction Summary
-#10 0.977 ================================================================================
-#10 0.977 Install  32 Packages
-#10 0.977 
-#10 0.979 Total download size: 5.4 M
-#10 0.979 Installed size: 15 M
-#10 0.979 Downloading Packages:
-#10 1.120 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://ryamer.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 121.127.34.66)
-#10 1.162 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://ryamer.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.208 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://fdix-ind.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.240 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://fdix-ind.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 207.174.80.58)
-#10 1.259 (1/32): hostname-3.23-14.el10.x86_64.rpm        176 kB/s |  33 kB     00:00    
-#10 1.272 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://volico.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 208.68.237.5)
-#10 1.278 (2/32): cyrus-sasl-lib-2.1.28-30.el10_2.x86_64. 535 kB/s | 112 kB     00:00    
-#10 1.302 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://volico.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.308 (3/32): jansson-2.14-3.el10.x86_64.rpm          987 kB/s |  48 kB     00:00    
-#10 1.345 (4/32): jq-1.7.1-11.el10_2.2.x86_64.rpm         3.1 MB/s | 208 kB     00:00    
-#10 1.400 (5/32): less-661-3.el10.x86_64.rpm              2.1 MB/s | 195 kB     00:00    
-#10 1.406 (6/32): libbrotli-1.1.0-8.el10_2.x86_64.rpm     5.7 MB/s | 351 kB     00:00    
-#10 1.412 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://epel.mirror.shastacoe.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.438 (7/32): libtalloc-2.4.3-100.el10.x86_64.rpm     907 kB/s |  34 kB     00:00    
-#10 1.445 (8/32): lmdb-libs-0.9.32-4.el10.x86_64.rpm      1.6 MB/s |  64 kB     00:00    
-#10 1.487 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://epel.mirror.shastacoe.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 66.244.16.51)
-#10 1.515 (9/32): net-tools-2.0-0.73.20160912git.el10.x86 4.3 MB/s | 310 kB     00:00    
-#10 1.518 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://mirrors.iu13.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.534 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://mirrors.iu13.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 206.82.17.213)
-#10 1.557 (10/32): oniguruma-6.9.9-7.el10.x86_64.rpm      5.2 MB/s | 219 kB     00:00    
-#10 1.570 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://forksystems.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 23.147.64.7)
-#10 1.580 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://forksystems.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.593 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://cofractal-ewr.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.598 (11/32): openldap-2.6.10-1.el10.x86_64.rpm      5.7 MB/s | 239 kB     00:00    
-#10 1.610 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://cofractal-ewr.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 199.255.19.134)
-#10 1.645 (12/32): procps-ng-4.0.4-11.el10.x86_64.rpm     8.0 MB/s | 381 kB     00:00    
-#10 1.678 (13/32): which-2.21-44.el10_0.x86_64.rpm        1.3 MB/s |  42 kB     00:00    
-#10 1.681 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://mirror.cs.princeton.edu/pub/mirrors/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 128.112.136.56)
-#10 1.691 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://us.mirrors.cicku.me/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.768 (14/32): apr-1.7.5-3.el10.x86_64.rpm            1.4 MB/s | 127 kB     00:00    
-#10 1.770 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://mirrors.sonic.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 157.131.224.201)
-#10 1.787 (15/32): mailcap-2.1.54-8.el10.noarch.rpm       106 kB/s |  37 kB     00:00    
-#10 1.808 (16/32): apr-util-1.6.3-23.el10_2.1.x86_64.rpm  2.6 MB/s | 104 kB     00:00    
-#10 1.834 (17/32): apr-util-lmdb-1.6.3-23.el10_2.1.x86_64 415 kB/s |  19 kB     00:00    
-#10 1.850 (18/32): apr-util-openssl-1.6.3-23.el10_2.1.x86 499 kB/s |  21 kB     00:00    
-#10 1.853 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://mirrors.sonic.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.868 (19/32): httpd-2.4.63-13.el10_2.6.x86_64.rpm    1.6 MB/s |  56 kB     00:00    
-#10 1.906 (20/32): httpd-filesystem-2.4.63-13.el10_2.6.no 532 kB/s |  20 kB     00:00    
-#10 1.937 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://ziply.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 1.950 (21/32): httpd-tools-2.4.63-13.el10_2.6.x86_64. 2.0 MB/s |  90 kB     00:00    
-#10 1.972 (22/32): httpd-core-2.4.63-13.el10_2.6.x86_64.r  13 MB/s | 1.5 MB     00:00    
-#10 2.006 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://ziply.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 50.47.0.53)
-#10 2.011 (23/32): mod_lua-2.4.63-13.el10_2.6.x86_64.rpm  1.7 MB/s |  66 kB     00:00    
-#10 2.081 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Status code: 503 for http://solidrock.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm (IP: 23.191.104.35)
-#10 2.132 (24/32): mod_http2-2.0.29-4.el10_2.2.x86_64.rpm 945 kB/s | 171 kB     00:00    
-#10 2.142 [MIRROR] mod_security-2.9.9-1.el10_1.x86_64.rpm: Curl error (35): SSL connect error for https://solidrock.mm.fcix.net/epel/10.2/Everything/x86_64/Packages/m/mod_security-2.9.9-1.el10_1.x86_64.rpm [Recv failure: Connection reset by peer]
-#10 2.399 (25/32): mod_proxy_html-2.4.63-13.el10_2.6.x86_ 108 kB/s |  42 kB     00:00    
-#10 2.434 (26/32): mod_ssl-2.4.63-13.el10_2.6.x86_64.rpm  3.3 MB/s | 116 kB     00:00    
-#10 2.481 (27/32): redhat-logos-httpd-100.3-2.el10.noarch 478 kB/s |  22 kB     00:00    
-#10 2.514 (28/32): sscg-4.0.3-2.el10.x86_64.rpm           1.7 MB/s |  58 kB     00:00    
-#10 2.568 (29/32): mod_session-2.4.63-13.el10_2.6.x86_64. 122 kB/s |  53 kB     00:00    
-#10 2.617 (30/32): mod_auth_openidc-2.4.16.11-1.el10_2.1. 5.4 MB/s | 268 kB     00:00    
-#10 2.842 (31/32): mod_security-2.9.9-1.el10_1.x86_64.rpm 143 kB/s | 253 kB     00:01    
-#10 3.207 (32/32): cjose-0.6.2.2-7.el10_2.2.x86_64.rpm    323 kB/s | 224 kB     00:00    
-#10 3.209 --------------------------------------------------------------------------------
-#10 3.210 Total                                           2.4 MB/s | 5.4 MB     00:02     
-#10 3.223 Extra Packages for Enterprise Linux 10 - x86_64 1.6 MB/s | 1.6 kB     00:00    
-#10 3.225 Importing GPG key 0xE37ED158:
-#10 3.225  Userid     : "Fedora (epel10) <epel@fedoraproject.org>"
-#10 3.225  Fingerprint: 7D8D 15CB FC4E 6268 8591 FB26 33D9 8517 E37E D158
-#10 3.225  From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-10
-#10 3.246 Key imported successfully
-#10 3.599 Running transaction check
-#10 3.705 Transaction check succeeded.
-#10 3.705 Running transaction test
-#10 3.962 Transaction test succeeded.
-#10 3.962 Running transaction
-#10 4.339   Preparing        :                                                        1/1 
-#10 4.385   Installing       : apr-1.7.5-3.el10.x86_64                               1/32 
-#10 4.394   Running scriptlet: httpd-filesystem-2.4.63-13.el10_2.6.noarch            2/32 
-#10 4.455   Installing       : httpd-filesystem-2.4.63-13.el10_2.6.noarch            2/32 
-#10 4.465   Installing       : jansson-2.14-3.el10.x86_64                            3/32 
-#10 4.517   Installing       : cjose-0.6.2.2-7.el10_2.2.x86_64                       4/32 
-#10 4.531   Installing       : redhat-logos-httpd-100.3-2.el10.noarch                5/32 
-#10 4.541   Installing       : oniguruma-6.9.9-7.el10.x86_64                         6/32 
-#10 4.554   Installing       : jq-1.7.1-11.el10_2.2.x86_64                           7/32 
-#10 4.564   Installing       : mailcap-2.1.54-8.el10.noarch                          8/32 
-#10 4.571   Installing       : lmdb-libs-0.9.32-4.el10.x86_64                        9/32 
-#10 4.578   Installing       : apr-util-openssl-1.6.3-23.el10_2.1.x86_64            10/32 
-#10 4.586   Installing       : apr-util-1.6.3-23.el10_2.1.x86_64                    11/32 
-#10 4.593   Installing       : apr-util-lmdb-1.6.3-23.el10_2.1.x86_64               12/32 
-#10 4.607   Installing       : httpd-tools-2.4.63-13.el10_2.6.x86_64                13/32 
-#10 4.820   Installing       : httpd-core-2.4.63-13.el10_2.6.x86_64                 14/32 
-#10 4.844   Installing       : mod_http2-2.0.29-4.el10_2.2.x86_64                   15/32 
-#10 4.853   Installing       : mod_lua-2.4.63-13.el10_2.6.x86_64                    16/32 
-#10 4.860   Installing       : libtalloc-2.4.3-100.el10.x86_64                      17/32 
-#10 4.869   Installing       : sscg-4.0.3-2.el10.x86_64                             18/32 
-#10 4.882   Installing       : libbrotli-1.1.0-8.el10_2.x86_64                      19/32 
-#10 4.895   Installing       : httpd-2.4.63-13.el10_2.6.x86_64                      20/32 
-#10 4.902   Running scriptlet: httpd-2.4.63-13.el10_2.6.x86_64                      20/32 
-#10 4.932   Installing       : hostname-3.23-14.el10.x86_64                         21/32 
-#10 4.938   Running scriptlet: hostname-3.23-14.el10.x86_64                         21/32 
-#10 4.969   Installing       : cyrus-sasl-lib-2.1.28-30.el10_2.x86_64               22/32 
-#10 5.007   Installing       : openldap-2.6.10-1.el10.x86_64                        23/32 
-#10 5.024   Installing       : mod_auth_openidc-2.4.16.11-1.el10_2.1.x86_64         24/32 
-#10 5.038   Installing       : mod_ssl-1:2.4.63-13.el10_2.6.x86_64                  25/32 
-#10 5.053   Installing       : mod_security-2.9.9-1.el10_1.x86_64                   26/32 
-#10 5.062   Installing       : mod_proxy_html-1:2.4.63-13.el10_2.6.x86_64           27/32 
-#10 5.071   Installing       : mod_session-2.4.63-13.el10_2.6.x86_64                28/32 
-#10 5.083   Installing       : which-2.21-44.el10_0.x86_64                          29/32 
-#10 5.119   Installing       : procps-ng-4.0.4-11.el10.x86_64                       30/32 
-#10 5.148   Installing       : net-tools-2.0-0.73.20160912git.el10.x86_64           31/32 
-#10 5.157   Running scriptlet: net-tools-2.0-0.73.20160912git.el10.x86_64           31/32 
-#10 5.186   Installing       : less-661-3.el10.x86_64                               32/32 
-#10 5.194   Running scriptlet: httpd-2.4.63-13.el10_2.6.x86_64                      32/32 
-#10 5.215   Running scriptlet: less-661-3.el10.x86_64                               32/32 
-#10 5.447 
-#10 5.447 Installed:
-#10 5.447   apr-1.7.5-3.el10.x86_64                                                       
-#10 5.447   apr-util-1.6.3-23.el10_2.1.x86_64                                             
-#10 5.447   apr-util-lmdb-1.6.3-23.el10_2.1.x86_64                                        
-#10 5.447   apr-util-openssl-1.6.3-23.el10_2.1.x86_64                                     
-#10 5.447   cjose-0.6.2.2-7.el10_2.2.x86_64                                               
-#10 5.447   cyrus-sasl-lib-2.1.28-30.el10_2.x86_64                                        
-#10 5.447   hostname-3.23-14.el10.x86_64                                                  
-#10 5.447   httpd-2.4.63-13.el10_2.6.x86_64                                               
-#10 5.447   httpd-core-2.4.63-13.el10_2.6.x86_64                                          
-#10 5.447   httpd-filesystem-2.4.63-13.el10_2.6.noarch                                    
-#10 5.447   httpd-tools-2.4.63-13.el10_2.6.x86_64                                         
-#10 5.447   jansson-2.14-3.el10.x86_64                                                    
-#10 5.447   jq-1.7.1-11.el10_2.2.x86_64                                                   
-#10 5.447   less-661-3.el10.x86_64                                                        
-#10 5.447   libbrotli-1.1.0-8.el10_2.x86_64                                               
-#10 5.447   libtalloc-2.4.3-100.el10.x86_64                                               
-#10 5.447   lmdb-libs-0.9.32-4.el10.x86_64                                                
-#10 5.447   mailcap-2.1.54-8.el10.noarch                                                  
-#10 5.447   mod_auth_openidc-2.4.16.11-1.el10_2.1.x86_64                                  
-#10 5.447   mod_http2-2.0.29-4.el10_2.2.x86_64                                            
-#10 5.447   mod_lua-2.4.63-13.el10_2.6.x86_64                                             
-#10 5.447   mod_proxy_html-1:2.4.63-13.el10_2.6.x86_64                                    
-#10 5.447   mod_security-2.9.9-1.el10_1.x86_64                                            
-#10 5.447   mod_session-2.4.63-13.el10_2.6.x86_64                                         
-#10 5.447   mod_ssl-1:2.4.63-13.el10_2.6.x86_64                                           
-#10 5.447   net-tools-2.0-0.73.20160912git.el10.x86_64                                    
-#10 5.447   oniguruma-6.9.9-7.el10.x86_64                                                 
-#10 5.447   openldap-2.6.10-1.el10.x86_64                                                 
-#10 5.447   procps-ng-4.0.4-11.el10.x86_64                                                
-#10 5.447   redhat-logos-httpd-100.3-2.el10.noarch                                        
-#10 5.447   sscg-4.0.3-2.el10.x86_64                                                      
-#10 5.447   which-2.21-44.el10_0.x86_64                                                   
-#10 5.447 
-#10 5.447 Complete!
-#10 DONE 5.5s
-
-#11 [ 6/22] RUN dnf remove -y --setopt protected_packages=systemd-pam
-#11 0.666 No packages marked for removal.
-#11 0.678 Dependencies resolved.
-#11 0.679 Nothing to do.
-#11 0.679 Complete!
-#11 DONE 0.7s
-
-#12 [ 7/22] RUN dnf clean all
-#12 0.590 25 files removed
-#12 DONE 0.6s
-
-#13 [ 8/22] RUN mkdir -p /app/conexus-ui-public /app/conexus-help
-#13 DONE 0.5s
-
-#14 [ 9/22] COPY --chmod=0644 ./conexus_vhost.conf /etc/httpd/conf.d/conexus_vhost.conf
-#14 DONE 0.1s
-
-#15 [10/22] COPY --chmod=0644 ./10-auth_openidc.conf /etc/httpd/conf.modules.d/10-auth_openidc.conf
-#15 DONE 0.1s
-
-#16 [11/22] COPY --chmod=0644 ./httpd.conf /etc/httpd/conf/httpd.conf
-#16 DONE 0.1s
-
-#17 [12/22] COPY --chmod=0644 ./00-optional.conf /etc/httpd/conf.modules.d/00-optional.conf
-#17 DONE 0.0s
-
-#18 [13/22] COPY --chmod=0644 ./ssl.conf /etc/httpd/conf.d/ssl.conf
-#18 DONE 0.0s
-
-#19 [14/22] COPY --chmod=0644 --chown=apache:apache ./maintenance.html /var/www/html/errors/maintenance.html
-#19 DONE 0.1s
-
-#20 [15/22] RUN touch /var/log/httpd/modsec_debug.log /var/log/httpd/modsec_audit.log && chown -R apache:apache /run/httpd /var/log/httpd && chmod 0755 /var/log/httpd && chmod -R 0755 /run/httpd
-#20 DONE 0.4s
-
-#21 [16/22] RUN rm -f /etc/httpd/conf.d/mod_security.conf
-#21 DONE 0.4s
-
-#22 [17/22] RUN chmod 0644 /etc/httpd/conf.d/*
-#22 DONE 0.5s
-
-#23 [18/22] ADD html /var/www/html/
-#23 DONE 0.1s
-
-#24 [19/22] ADD ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz /app/
-#24 DONE 0.1s
-
-#25 [20/22] ADD conexus-help.tar.gz /app/
-#25 DONE 7.6s
-
-#26 [21/22] RUN chown -R apache:apache /app
-#26 DONE 1.3s
-
-#27 [22/22] RUN chmod -R u=rwX,go=rX /app/conexus-help
-#27 DONE 1.4s
-
-#28 exporting to image
-#28 exporting layers
-#28 exporting layers 13.8s done
-#28 writing image sha256:5bba23c9134d4a764159c4b334d4f63355947ba8a3347b1e9c36af0c71c49c36 done
-#28 naming to 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1.4-2.0.60-20260629.173245-2 done
-#28 DONE 13.8s
-[sikaj01@ip-10-56-128-81 apache]$ 
+[sikaj01@ip-10-56-128-81 apache]$ git -C ~/scripts status -s
 
 
 
-[sikaj01@ip-10-56-128-81 apache]$ grep -n "CACHED" /tmp/build.log
-19:#5 CACHED
-[sikaj01@ip-10-56-128-81 apache]$ docker run --rm --entrypoint rpm $OLD -qa | sort > /tmp/old.txt
-Unable to find image '339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2' locally
-60-20260629.173245-2: Pulling from conexus-apache-oidc
-f5f800d6f241: Already exists 
-84d462260781: Already exists 
-3945fdb41a21: Already exists 
-a4b0e7e452f3: Already exists 
-895eda92f29b: Already exists 
-a98e685b6800: Already exists 
-3d9a4e406c63: Already exists 
-26e5537bc8a0: Already exists 
-e3009513ba98: Pull complete 
-39a24cb61bc2: Pull complete 
-e368a3990e61: Pull complete 
-9b86c2846ebf: Pull complete 
-318c524e886b: Pull complete 
-16a4db9739c6: Pull complete 
-ff124b48b0d8: Pull complete 
-132d4a71f986: Pull complete 
-df653495230e: Pull complete 
-9407745a4378: Pull complete 
-8c7491459459: Pull complete 
-ee00db9b04ee: Pull complete 
-46f9d3811ce2: Pull complete 
-67da64c445b8: Pull complete 
-0a35d85e0355: Pull complete 
-5e70419de2a5: Pull complete 
-c2b8bc39b272: Pull complete 
-0723e8815d4b: Pull complete 
-6f1e11715afe: Pull complete 
-34db86b04896: Pull complete 
-00abe13278d8: Pull complete 
-Digest: sha256:17c2e09467bc6f936d9efd5e4e65068ff21e2f2406aff4c34fc80692c55725b8
-Status: Downloaded newer image for 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-[sikaj01@ip-10-56-128-81 apache]$ docker run --rm --entrypoint rpm $IMG -qa | sort > /tmp/new.txt
-[sikaj01@ip-10-56-128-81 apache]$ diff /tmp/old.txt /tmp/new.txt
-12c12
-< cjose-0.6.2.2-7.el10.x86_64
----
-> cjose-0.6.2.2-7.el10_2.2.x86_64
-19c19
-< curl-8.12.1-4.el10_2.6.x86_64
----
-> curl-8.12.1-4.el10_2.7.x86_64
-46,48c46,49
-< glibc-2.39-128.el10_2.x86_64
-< glibc-common-2.39-128.el10_2.x86_64
-< glibc-minimal-langpack-2.39-128.el10_2.x86_64
----
-> glibc-2.39-145.el10_2.x86_64
-> glibc-common-2.39-145.el10_2.x86_64
-> glibc-langpack-en-2.39-145.el10_2.x86_64
-> glibc-minimal-langpack-2.39-145.el10_2.x86_64
-50,52c51,53
-< gnutls-3.8.10-4.el10_2.x86_64
-< gnutls-dane-3.8.10-4.el10_2.x86_64
-< gnutls-utils-3.8.10-4.el10_2.x86_64
----
-> gnutls-3.8.10-5.el10_2.x86_64
-> gnutls-dane-3.8.10-5.el10_2.x86_64
-> gnutls-utils-3.8.10-5.el10_2.x86_64
-87c88
-< libbrotli-1.1.0-7.el10_1.x86_64
----
-> libbrotli-1.1.0-8.el10_2.x86_64
-92c93
-< libcurl-minimal-8.12.1-4.el10_2.6.x86_64
----
-> libcurl-minimal-8.12.1-4.el10_2.7.x86_64
-131c132
-< mod_auth_openidc-2.4.16.11-1.el10.x86_64
----
-> mod_auth_openidc-2.4.16.11-1.el10_2.1.x86_64
-147c148
-< openssl-libs-3.5.8-1.el10_2.x86_64
----
-> openssl-libs-3.5.8-2.el10_2.x86_64
-151,152c152,153
-< pcre2-10.44-1.el10.3.x86_64
-< pcre2-syntax-10.44-1.el10.3.noarch
----
-> pcre2-10.44-1.5.el10_2.x86_64
-> pcre2-syntax-10.44-1.5.el10_2.noarch
-156,157c157,158
-< python-unversioned-command-3.12.14-1.el10_2.noarch
-< python3-3.12.14-1.el10_2.x86_64
----
-> python-unversioned-command-3.12.15-1.el10_2.noarch
-> python3-3.12.15-1.el10_2.x86_64
-165c166
-< python3-libs-3.12.14-1.el10_2.x86_64
----
-> python3-libs-3.12.15-1.el10_2.x86_64
-180c181
-< rpm-sequoia-1.10.1.1-2.el10.x86_64
----
-> rpm-sequoia-1.10.2.1-1.el10_2.x86_64
-191c192
-< tzdata-2026c-1.el10_2.noarch
----
-> tzdata-2026e-1.el10_2.noarch
-[sikaj01@ip-10-56-128-81 apache]$ for i in $OLD $IMG; do docker run --rm --entrypoint sh $i -c "find /app -type f -printf '%s %p\n' | sort | sha256sum"; done
-bda430c0c570a272fda137baac38901fd5949a93b527d2f52f040a315ff8b471  -
-bda430c0c570a272fda137baac38901fd5949a93b527d2f52f040a315ff8b471  -
-[sikaj01@ip-10-56-128-81 apache]$ docker push $IMG
-The push refers to repository [339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc]
-880b1424e8cd: Pushing [=============================>                     ]    545MB/932MB
-180bcdf63c37: Pushing [============================>                      ]  539.9MB/940.1MB
-97a9ab58c80b: Pushing [===========================>                       ]    521MB/932MB
-6c18cc9ba839: Pushed 
-263eab6cd4e6: Pushed 
-ea7248d8d466: Pushed 
-7d5046a4ff0e: Pushed 
-a274c86e9297: Pushed 
-6530801d1d6c: Pushed 
-68993a8c57a1: Pushed 
-85898e17edcc: Pushed 
-242af707f0b1: Pushed 
-328ca5484db1: Pushed 
-6aaf248d7ae6: Pushed 
-90a8ea1b0796: Pushed 
-ed98c03c7aca: Pushed 
-47b3b2f8d24f: Pushed 
-671d7c5769fb: Pushed 
-e763b1ef4608: Pushed 
-e2886baef3e1: Pushed 
-294ccf72b946: Pushed 
-fa1e61e1db2a: Layer already exists 
-97d857c425da: Layer already exists 
-b9637aafef7b: Layer already exists 
-6fa8618b97c1: Layer already exists 
-f8db2a780752: Layer already exists 
-6dfdc04e9f2a: Layer already exists 
-caf930dfa730: Layer already exists 
-7495ded8c569: Layer already exists 
+
+[sikaj01@ip-10-56-112-33 scripts]$ aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 \
+    --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2 \
+    --query 'imageDetails[0].[imageTags,imageSizeInBytes,imagePushedAt]'
+[
+    [
+        "1.1.4-2.0.60-20260629.173245-2"
+    ],
+    2247126715,
+    "2026-10-22T18:24:24.744000+00:00"
+]
+[sikaj01@ip-10-56-112-33 scripts]$ git pull
+Already up to date.
+[sikaj01@ip-10-56-112-33 scripts]$ cd devvpc/k8s/apache/dev
+[sikaj01@ip-10-56-112-33 dev]$ sed -i "s#conexus-apache-oidc:60-20260629.173245-2#conexus-apache-oidc:$TAG#" run-httpd.yaml
+[sikaj01@ip-10-56-112-33 dev]$ git diff 
+diff --git a/devvpc/k8s/apache/dev/run-httpd.yaml b/devvpc/k8s/apache/dev/run-httpd.yaml
+index 9212290..e0a51de 100644
+--- a/devvpc/k8s/apache/dev/run-httpd.yaml
++++ b/devvpc/k8s/apache/dev/run-httpd.yaml
+@@ -20,7 +20,7 @@ spec:
+           type: RuntimeDefault
+       initContainers:
+       - name: initdatacopy
+-        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
++        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1.4-2.0.60-20260629.173245-2
+         imagePullPolicy: Always
+         args: ["/bin/sh", "-c", "cp -a /app/. /mnt/app/; cp -a /usr/. /mnt/usr/; cp -a /var/. /mnt/var/; cp -a /etc/. /mnt/etc/; cp -a /tmp/. /mnt/tmp/; ls -al /run; cp -a /run/. /mnt/run/ 2>&1"]
+         securityContext:
+@@ -43,7 +43,7 @@ spec:
+             mountPath: /mnt/run
+       containers:
+       - name: conexus-httpd
+-        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
++        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1.4-2.0.60-20260629.173245-2
+[sikaj01@ip-10-56-112-33 dev]$ kud
+bash: kud: command not found
+[sikaj01@ip-10-56-112-33 dev]$ kubectl config current-context
+arn:aws:eks:us-east-1:471112718870:cluster/cnxsdev-selfmanaged
+[sikaj01@ip-10-56-112-33 dev]$ kubectl apply -f run-httpd.yaml
+deployment.apps/conexus-httpd configured
+[sikaj01@ip-10-56-112-33 dev]$ 
+
+
+
+sikaj01@ip-10-56-112-33 dev]$ kubectl config current-context
+arn:aws:eks:us-east-1:471112718870:cluster/cnxsdev-selfmanaged
+[sikaj01@ip-10-56-112-33 dev]$ kubectl apply -f run-httpd.yaml
+deployment.apps/conexus-httpd configured
+[sikaj01@ip-10-56-112-33 dev]$ kubectl rollout status deploy/conexus-httpd -n ingress-nginx --timeout=300s
+deployment "conexus-httpd" successfully rolled out
+[sikaj01@ip-10-56-112-33 dev]$ kubectl get pods -n ingress-nginx | grep httpd
+conexus-brms-httpd-59bcb44d95-gv4ct                   1/1     Running   0             27d
+conexus-httpd-646f875c69-scz6v                        1/1     Running   0             17d
+conexus-swagger-httpd-66b797c8b4-7srfj                1/1     Running   0             27d
+[sikaj01@ip-10-56-112-33 dev]$ kubectl logs -n ingress-nginx deploy/conexus-httpd --tail=30
+Defaulted container "conexus-httpd" out of: conexus-httpd, initdatacopy (init)
+time=[22/Oct/2026:18:38:16 +0000], bytes_in=379, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=366, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYGDd1gjQKMA8h8zRN-wAAAMU"
+time=[22/Oct/2026:18:38:20 +0000], bytes_in=381, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=412, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYHDd1gjQKMA8h8zRN_AAAANY"
+time=[22/Oct/2026:18:38:28 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=424, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYJDd1gjQKMA8h8zRN_QAAANA"
+time=[22/Oct/2026:18:38:31 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=464, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYJzd1gjQKMA8h8zRN_gAAAM4"
+time=[22/Oct/2026:18:38:43 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=525, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYM73zl7Kg4MTKlQ0PWgAAAIo"
+time=[22/Oct/2026:18:38:46 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=459, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYNr3zl7Kg4MTKlQ0PWwAAAJA"
+time=[22/Oct/2026:18:38:50 +0000], bytes_in=382, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=401, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYOtK8apUAqgTfQJ4q3AAAAAQ"
+time=[22/Oct/2026:18:38:58 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=413, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYQr3zl7Kg4MTKlQ0PXAAAAI0"
+time=[22/Oct/2026:18:39:01 +0000], bytes_in=379, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=389, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYRTd1gjQKMA8h8zRN_wAAAMI"
+time=[22/Oct/2026:18:39:05 +0000], bytes_in=381, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=524, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYSTd1gjQKMA8h8zROAAAAANU"
+time=[22/Oct/2026:18:39:13 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=423, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYUTd1gjQKMA8h8zROAQAAAMw"
+time=[22/Oct/2026:18:39:16 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=421, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYVL3zl7Kg4MTKlQ0PXQAAAII"
+time=[22/Oct/2026:18:39:20 +0000], bytes_in=383, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=456, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYWDd1gjQKMA8h8zROAgAAANc"
+time=[22/Oct/2026:18:39:28 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=441, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYYDd1gjQKMA8h8zROAwAAAMs"
+time=[22/Oct/2026:18:39:31 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=510, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYYzd1gjQKMA8h8zROBAAAANQ"
+time=[22/Oct/2026:18:39:35 +0000], bytes_in=380, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=607, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYZzd1gjQKMA8h8zROBQAAANg"
+time=[22/Oct/2026:18:39:43 +0000], bytes_in=379, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=446, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYbzd1gjQKMA8h8zROBgAAAMY"
+time=[22/Oct/2026:18:39:46 +0000], bytes_in=380, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=423, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYcjd1gjQKMA8h8zROBwAAANE"
+time=[22/Oct/2026:18:39:50 +0000], bytes_in=382, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=488, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYdtK8apUAqgTfQJ4q3QAAAAs"
+time=[22/Oct/2026:18:39:58 +0000], bytes_in=380, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=538, client=192.168.3.137, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYfjd1gjQKMA8h8zROCAAAAMA"
+time=[22/Oct/2026:18:40:01 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=457, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYgdK8apUAqgTfQJ4q3gAAAAo"
+time=[22/Oct/2026:18:40:05 +0000], bytes_in=383, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=408, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYhdK8apUAqgTfQJ4q3wAAAA0"
+time=[22/Oct/2026:18:40:13 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=503, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYjTd1gjQKMA8h8zROCQAAAM8"
+time=[22/Oct/2026:18:40:16 +0000], bytes_in=379, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=494, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYkNK8apUAqgTfQJ4q4AAAAAw"
+time=[22/Oct/2026:18:40:20 +0000], bytes_in=381, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=403, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYlNK8apUAqgTfQJ4q4QAAAAg"
+time=[22/Oct/2026:18:40:28 +0000], bytes_in=381, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=478, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYnDd1gjQKMA8h8zROCgAAAM4"
+time=[22/Oct/2026:18:40:31 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=524, client=192.168.13.153, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-",ssl_protocol="-", ssl_cipher="-", x-request-id="atpYnzd1gjQKMA8h8zROCwAAANI"
+time=[22/Oct/2026:18:40:35 +0000], bytes_in=382, bytes_out=31568, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=458, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYo9K8apUAqgTfQJ4q4gAAABE"
+time=[22/Oct/2026:18:40:43 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=495, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYq9K8apUAqgTfQJ4q4wAAABM"
+time=[22/Oct/2026:18:40:46 +0000], bytes_in=382, bytes_out=31534, server=ui.dev.cnxs.vpcaas.fcs.gsa.gov, dest_port=443, http_content_type="-", http_method="GET", http_referrer="-",http_user_agent="Datadog Agent/7.83.3", ident="-", response_time_microseconds=502, client=192.168.0.156, status=200, uri_path="/index.html", uri_query="", user="-", USEREMAIL="-", ssl_protocol="-", ssl_cipher="-", x-request-id="atpYrtK8apUAqgTfQJ4q5AAAABU"
+[sikaj01@ip-10-56-112-33 dev]$ kubectl exec -n ingress-nginx deploy/conexus-httpd -- rpm -q openssl-libs glibc curl
+Defaulted container "conexus-httpd" out of: conexus-httpd, initdatacopy (init)
+error: sqlite failure: CREATE TABLE IF NOT EXISTS 'Packages' (hnum INTEGER PRIMARY KEY AUTOINCREMENT,blob BLOB NOT NULL): attempt to write a readonly database
+error: cannot open Packages index using sqlite - No such file or directory (2)
+error: cannot open Packages database in /usr/lib/sysimage/rpm
+package openssl-libs is not installed
+package glibc is not installed
+error: sqlite failure: CREATE TABLE IF NOT EXISTS 'Packages' (hnum INTEGER PRIMARY KEY AUTOINCREMENT,blob BLOB NOT NULL): attempt to write a readonly database
+error: cannot open Packages index using sqlite - No such file or directory (2)
+error: cannot open Packages database in /usr/lib/sysimage/rpm
+error: sqlite failure: CREATE TABLE IF NOT EXISTS 'Packages' (hnum INTEGER PRIMARY KEY AUTOINCREMENT,blob BLOB NOT NULL): attempt to write a readonly database
+error: cannot open Packages index using sqlite - No such file or directory (2)
+error: cannot open Packages database in /usr/lib/sysimage/rpm
+package curl is not installed
+command terminated with exit code 3
+[sikaj01@ip-10-56-112-33 dev]$ 
