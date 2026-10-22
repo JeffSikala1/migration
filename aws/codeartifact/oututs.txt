@@ -1,139 +1,136 @@
-[sikaj01@ip-10-56-112-33 scripts]$ cd ~/scripts/devvpc/dockers/apache
-[sikaj01@ip-10-56-112-33 apache]$ cat Dockerfile
-FROM 339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi-minimal:10.1
-
-ARG UIPUBLICTAR
-USER root
-RUN microdnf install dnf -y
-RUN dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm -y
-RUN dnf update -y
-RUN dnf install -y httpd mod_auth_openidc mod_ssl less which net-tools procps-ng mod_session mod_proxy_html mod_security curl-minimal
-RUN dnf remove -y --setopt protected_packages=systemd-pam
-RUN dnf clean all
-
-RUN mkdir -p /app/conexus-ui-public /app/conexus-help
-
-COPY --chmod=0644 ./conexus_vhost.conf /etc/httpd/conf.d/conexus_vhost.conf
-COPY --chmod=0644 ./10-auth_openidc.conf /etc/httpd/conf.modules.d/10-auth_openidc.conf
-COPY --chmod=0644 ./httpd.conf /etc/httpd/conf/httpd.conf
-COPY --chmod=0644 ./00-optional.conf /etc/httpd/conf.modules.d/00-optional.conf
-COPY --chmod=0644 ./ssl.conf /etc/httpd/conf.d/ssl.conf
-COPY --chmod=0644 --chown=apache:apache ./maintenance.html /var/www/html/errors/maintenance.html
-#COPY --chmod=0644 --chown=apache:apache ./httpdstart.sh /usr/bin/httpdstart.sh
-RUN touch /var/log/httpd/modsec_debug.log /var/log/httpd/modsec_audit.log && \
-chown -R apache:apache /run/httpd /var/log/httpd && \
-chmod 0755 /var/log/httpd && \
-chmod -R 0755 /run/httpd 
-
-RUN rm -f /etc/httpd/conf.d/mod_security.conf
-RUN chmod 0644 /etc/httpd/conf.d/*
-
-#RUN touch /var/www/html/maintenance/maintenance.enable
-
-
-ADD html /var/www/html/
-#ADD conexus-ui-public /app/conexus-ui-public
-ADD ${UIPUBLICTAR} /app/
-#ADD conexus-help /app/conexus-help
-ADD conexus-help.tar.gz /app/
-RUN chown -R apache:apache /app
-RUN chmod -R u=rwX,go=rX /app/conexus-help
-
-EXPOSE 8080
-USER apache
-CMD ["/bin/bash"]
-#CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
-[sikaj01@ip-10-56-112-33 apache]$ cat ../../deploy/updatemanifest.sh
+[sikaj01@ip-10-56-112-33 apache]$ cd ~/scripts/devvpc/dockers/apache
+[sikaj01@ip-10-56-112-33 apache]$ git -C ~/scripts status -sb
+## feature/cicdsplit...origin/feature/cicdsplit
+[sikaj01@ip-10-56-112-33 apache]$ docker --version && docker images | head -5
+Docker version 25.0.14, build 0bab007
+REPOSITORY                                                                                                        TAG                                                                                      IMAGE ID       CREATED        SIZE
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss                                                        ib10.2_8.1.8                                                                             818c9eb84fdc   22 hours ago   2.44GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss                                                        <none>                                                                                   b7cca812299b   25 hours ago   2.44GB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi-minimal                                                        10.2                                                                                     3bfa7a03b695   25 hours ago   161MB
+339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss                                                        ib10.1_8.1.8                                                                             d338bc37e694   25 hours ago   2.59GB
+[sikaj01@ip-10-56-112-33 apache]$ ls -la *.tar.gz 2>/dev/null
+[sikaj01@ip-10-56-112-33 apache]$ cat targzdownloader.sh cleantargz.sh uipublic_ui-public_url_text uipublic_conexus-help_url_text
 #!/usr/bin/env bash
 
 # Debugging
-set -x
+#set -x
 # Quit on any error
 set -e
 
+yum install -y jq
+
+# Set the correct Artifactory path
+# '${bamboo.maven.version}' 01.00.000.42-SNAPSHOT
+# '${bamboo.deploy.version}' 01.00.000.41-RC
+# '${bamboo.deploy.environment}' Test
+# '${bamboo.deploy.project}' Conexus BillingSFTP
+# '${bamboo.planRepository.name}' Conexus BillingSFTP
+# '${bamboo.saltApiPassword}'  ********
+# '${bamboo.saltApiUser}' salt-api
+# '${bamboo.buildKey}' ${bamboo.buildKey}
 
 
-usage() { echo "Usage: $0 -s <uipublic|portal|jms|webservice|brms|reporting> " 1>&2; exit 1; }
+# Bamboo converts it's period seperated varibales to underscores in Bash
+# https://confluence.atlassian.com/bamboo/bamboo-variables-289277087.html
 
-while getopts ":s:" opt; do
-    case "${opt}" in
-        s)
-            s=${OPTARG}
-            ((s == uipublic || s == portal || s == jms || s == webservice || s == brms || s == reporting )) || usage
-            ;;
-        :)
-            echo "Error: Missing argument for -${OPTARG} "
-            usage
-            ;;
-        *)
-            usage
-            ;;
-    esac
-done
-shift $((OPTIND-1))
-
-if [ -z "${s}" ] ; then
-    usage
+if [[ -z $bamboo_deploy_version ]]; then
+    bamboo_deploy_version="01.00.000.108-20201028.192357-48"
 fi
 
-echo "s = ${s}"
-module_group="${s}"
+if [[ -z $bamboo_deploy_release ]]; then
+    bamboo_deploy_release="01.00.000.108-20201028.192357-48"
+fi
 
+#if [[ -z $bamboo_maven_version ]]; then
+#    bamboo_maven_version="01.00.000.108-SNAPSHOT"
+#fi
+
+if [[ -z $bamboo_deploy_environment ]]; then
+    bamboo_deploy_environment="Test"
+fi
+
+if [[ -z $bamboo_deploy_project ]]; then
+    bamboo_deploy_project="Rest"
+fi
+
+
+if [[ -z $bamboo_artifactory_sa_conexus_password ]]; then
+    echo "Artifactory Auth Key artifactory_sa_conexus_password not defined"
+    exit 1
+fi
+
+
+module_group="uipublic"
+
+
+PROGDIR=$(dirname ${BASH_SOURCE})
+echo "${PROGDIR}"
+cd ${PROGDIR}
 
 echo "bamboo_deploy_version = $bamboo_deploy_version"
 echo "bamboo_deploy_release = $bamboo_deploy_release"
 echo "bamboo_deploy_project = $bamboo_deploy_project"
 
+
+
+for filei in `ls -1 ${module_group}_*_url_text`
+do
+    urli=$(cat $filei);
+    theurl=$(echo $urli|sed "s/^\"//;s/\"$//");
+    echo $theurl;
+    curl -O ${theurl};
+done
+
+#./builder.sh -s ${module_group}
+
+
+
+
+#!/bin/bash
+
+
 PROGDIR=$(dirname ${BASH_SOURCE})
 echo "${PROGDIR}"
 cd ${PROGDIR}
-k8sfolder="../k8s"
 
-cd $k8sfolder
+function checkReturnCode() {
+    local returncode="$1";
+    echo "$2";
+    if [ "$returncode" -ne "0" ]
+    then
+        exit $returncode
+    fi
+}
 
-e="${bamboo_deploy_environment}"
-source ${k8sfolder}/jboss${e}.bashenv    
+uipubtargz=$(rm -f ui-public-*tar.gz 2>&1)
+checkReturnCode "$?" "$uipubtargz"
 
-case "$s" in
-    uipublic)
-        export uipublic_image="${bamboo_deploy_release}"
-        envsubst '$uipublic_image'  <${k8sfolder}/apache/run-httpd.yaml > ${k8sfolder}/apache/${e}/run-httpd.yaml
-        ;;
-    brms)
-        export brms_image="${bamboo_deploy_release}"
-        #sed -i -E "s~(brms_image=).*$~\1\"${val}\"~" $k8sfolder/jboss${e}.bashenv
-        envsubst '$brms_image $brms_pod_mem $brms_pod_mem_limit $brms_jboss_xmx'  <${k8sfolder}/jboss/run-brms.yaml > ${k8sfolder}/jboss/${e}/run-brms.yaml
-        ;;
-    jms)
-        export jms_image="${bamboo_deploy_release}"
-        envsubst '$jms_image $jms_pod_mem $jms_pod_mem_limit $jms_jboss_xmx'  <${k8sfolder}/jboss/run-jms.yaml > ${k8sfolder}/jboss/${e}/run-jms.yaml
-        ;;
-    portal)
-        export portal_image="${bamboo_deploy_release}"
-        envsubst '$portal_image $portal_pod_mem $portal_pod_mem_limit $portal_jboss_xmx'  <${k8sfolder}/jboss/run-portal.yaml > ${k8sfolder}/jboss/${e}/run-portal.yaml
-        ;;
-    webservice)
-        export webservice_image="${bamboo_deploy_release}"
-        envsubst '$webservice_image $webservice_pod_mem $webservice_pod_mem_limit $webservice_jboss_xmx'  <${k8sfolder}/jboss/run-ws.yaml > ${k8sfolder}/jboss/${e}/run-ws.yaml
-        ;;
-    reporting)
-        export reporting_image="${bamboo_deploy_release}"
-        envsubst '$reporting_image $reporting_pod_mem $reporting_pod_mem_limit $reporting_jboss_xmx'  <${k8sfolder}/jboss/run-reporting.yaml > ${k8sfolder}/jboss/${e}/run-reporting.yaml
-        ;;
-    *)
-        echo "Failed to get jboss module type ${s} "
-        ;;
-esac
+"https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory/conexus-snapshot-local/gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT/ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz"
+[sikaj01@ip-10-56-112-33 apache]$ kubectl get deploy -n ingress-nginx -o custom-columns=NAME:.metadata.name,IMAGE:.spec.template.spec.containers[*].image
+NAME                                 IMAGE
+apicilium                            cr.kgateway.dev/kgateway-dev/envoy-wrapper:v2.4.5
+avapache                             339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-avapache:1.4.2
+brms                                 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-brms:8.1.8-recon158-RC-cmod58-RC-swag150-RC
+conexus-brms-httpd                   339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-swagger-proxy:brmsauth-2.0.4
+conexus-httpd                        339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
+conexus-nginx                        nginx:1.31.8-otel
+conexus-sftp                         339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-sftp:1.9.3
+conexus-swagger-httpd                339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-swagger-proxy:2.0.3
+conexus-wso2mi                       339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-wso2mi:4.6.0-rocky-0.23
+devvpc-datadog-agent-cluster-agent   public.ecr.aws/datadog/cluster-agent:7.83.3-fips
+devvpc-datadog-agent-operator        registry.datadoghq.com/operator:1.31.0
+jms                                  339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-jms:8.1.8-task224-RC
+portal                               339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-portal:8.1.8-ui118.1-RC-rest184-RC
+reporting                            339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-reporting:8.1.8-repo126-20261019.201741-5-vend151-20261019.201207-5
+webservice                           339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-jboss-webservice:8.1.8-ws162-RC-cnxs183-RC
+[sikaj01@ip-10-56-112-33 apache]$ awsm
+bash: awsm: command not found
+[sikaj01@ip-10-56-112-33 apache]$ aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+WARNING! Your password will be stored unencrypted in /home/sikaj01/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 
-[sikaj01@ip-10-56-112-33 apache]$ ls ../../k8s/apache/dev
-apache-config.yaml  run-httpd.yaml
-[sikaj01@ip-10-56-112-33 apache]$ grep -n image ../../k8s/apache/dev/run-httpd.yaml
-23:        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-24:        imagePullPolicy: Always
-46:        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-47:        imagePullPolicy: Always
-[sikaj01@ip-10-56-112-33 apache]$ grep -n image ../../k8s/apache/run-httpd.yaml
-23:        image: ${uipublic_image}
-24:        imagePullPolicy: Always
-46:        image: ${uipublic_image}
-47:        imagePullPolicy: Always
+Login Succeeded
+[sikaj01@ip-10-56-112-33 apache]$ kubectl describe deploy/conexus-httpd -n ingress-nginx | grep Image
+    Image:      339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
+    Image:      339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
