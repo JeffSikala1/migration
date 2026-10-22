@@ -41,3 +41,10 @@ aws ssm send-command --region us-gov-west-1 \
   --document-name AWS-RunShellScript \
   --targets "Key=instanceids,Values=i-0123456789abcdef0" \
   --parameters 'commands=["rpm -qa | grep -i php; command -v php php-fpm php-cgi; ps -eo comm | grep -i [p]hp"]'
+
+
+for i in $(docker images -q | sort -u); do
+  cid=$(docker create --entrypoint x $i 2>/dev/null) || { echo "could not inspect $i"; continue; }
+  docker export $cid | tar -t 2>/dev/null | grep -Eiq '(^|/)(php[0-9.]*|php-fpm[0-9.]*|php-cgi)$' && echo "PHP in $i"
+  docker rm $cid >/dev/null
+done
