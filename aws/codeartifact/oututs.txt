@@ -1,3 +1,15 @@
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ aws ssm get-inventory --region us-gov-west-1 \
+  --filters "Key=AWS:Application.Name,Values=php,Type=BeginWith" \
+  --query 'Entities[].{id:Id,pkgs:Data."AWS:Application".Content[].Name}'
+
+aws: [ERROR]: An error occurred (UnrecognizedClientException) when calling the GetInventory operation: The security token included in the request is invalid.
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ rpm -qa | grep -i php
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ command -v php php-fpm php-cgi
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ ps -eo pid,comm,args | grep -i '[p]hp'
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ systemctl list-unit-files | grep -i php
+[sikaj01@ip-10-56-112-33 bamboo-specs]$ 
+
+
 [sikaj01@ip-10-56-112-243 docker-mgmt-startup]$ ll
 total 36
 -rw-r--r--. 1 sikaj01 sikaj01 4893 Oct 21 21:38 README.md
@@ -10,34 +22,30 @@ total 36
 -rw-r--r--. 1 sikaj01 sikaj01  921 Oct 21 21:38 start-bitbucket.sh
 [sikaj01@ip-10-56-112-243 docker-mgmt-startup]$ pwd
 /home/sikaj01/docker-mgmt-startup
-[sikaj01@ip-10-56-112-243 docker-mgmt-startup]$ cat artifactory.service 
-# Install to /etc/systemd/system/artifactory.service on ip-10-56-112-243
-#   sudo mkdir -p /app/artifactory-startup
-#   sudo cp start-artifactory.sh lib-common.sh /app/artifactory-startup/
-#   sudo chmod +x /app/artifactory-startup/start-artifactory.sh
-#   sudo cp artifactory.service /etc/systemd/system/
-#   sudo systemctl daemon-reload
-#   sudo systemctl enable artifactory.service
-#
-# `systemctl restart artifactory.service` only re-runs start-artifactory.sh, it does
-# NOT touch bamboo.service or bitbucket.service, and does not restart prod-postgres if it's
-# already running.
+[sikaj01@ip-10-56-112-243 docker-mgmt-startup]$ docker images --format '{{.Repository}}:{{.Tag}}' | grep -i php
+for c in $(docker ps -q); do
+  echo "== $c"; docker exec $c sh -c 'command -v php php-fpm php-cgi' 2>/dev/null
+done
+== 859a4f2683f2
+== 7c25ec7ae10e
+== 6b40766d0dc5
+[sikaj01@ip-10-56-112-243 docker-mgmt-startup]$ for i in $(docker images -q | sort -u); do
+  docker run --rm --entrypoint sh $i -c 'command -v php' 2>/dev/null && echo "PHP in $i"
+done
+[sikaj01@ip-10-56-112-243 docker-mgmt-startup]$ rpm -qa | grep -i php
+[sikaj01@ip-10-56-112-243 docker-mgmt-startup]$ 
 
-[Unit]
-Description=Artifactory startup (postgres + artifactory + nginx)
-Requires=docker.service
-After=docker.service network-online.target
-Wants=network-online.target
-# If /app on this host is confirmed to be its own mount (see TODO in
-# start-artifactory.sh), add "app.mount" to the After= line above, same as
-# the other host's units.
 
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-WorkingDirectory=/app/artifactory-startup
-ExecStart=/app/artifactory-startup/start-artifactory.sh
-TimeoutStartSec=180
 
-[Install]
-WantedBy=multi-user.target[sikaj01@ip-10-56-112-243 docker-mgmt-startup]$ 
+[sikaj01@ip-10-56-112-34 ~]$ docker images --format '{{.Repository}}:{{.Tag}}' | grep -i php
+for c in $(docker ps -q); do
+  echo "== $c"; docker exec $c sh -c 'command -v php php-fpm php-cgi' 2>/dev/null
+done
+== f989498245ad
+== 3d7c479b3814
+== 704e46755f36
+== 5ae53572e094
+[sikaj01@ip-10-56-112-34 ~]$ for i in $(docker images -q | sort -u); do
+  docker run --rm --entrypoint sh $i -c 'command -v php' 2>/dev/null && echo "PHP in $i"
+done
+[sikaj01@ip-10-56-112-34 ~]$ 
