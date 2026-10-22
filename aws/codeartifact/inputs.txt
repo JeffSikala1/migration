@@ -1,50 +1,26 @@
-aws ssm get-inventory --region us-gov-west-1 \
-  --filters "Key=AWS:Application.Name,Values=php,Type=BeginWith" \
-  --query 'Entities[].{id:Id,pkgs:Data."AWS:Application".Content[].Name}'
+aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 \
+  --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2
 
 
-aws ssm send-command --document-name AWS-RunShellScript \
-  --targets "Key=instanceids,Values=<ids>" \
-  --parameters 'commands=["command -v php php-fpm php-cgi; (rpm -qa 2>/dev/null; dpkg -l 2>/dev/null) | grep -i php; ps -eo comm | grep -i php; systemctl list-unit-files | grep -i php"]'
+aws ecr describe-repositories --repository-names conexus-apache-oidc --region us-east-1 \
+  --query 'repositories[0].imageTagMutability'
 
 
-
-
-docker images --format '{{.Repository}}:{{.Tag}}' | grep -i php
-for c in $(docker ps -q); do
-  echo "== $c"; docker exec $c sh -c 'command -v php php-fpm php-cgi' 2>/dev/null
-done
+kubectl get deploy conexus-httpd -n ingress-nginx \
+  -o jsonpath='{range .spec.template.spec.initContainers[*]}{.name}{"  "}{.image}{"\n"}{end}{range .spec.template.spec.containers[*]}{.name}{"  "}{.image}{"\n"}{end}'
 
 
 
-
-for i in $(docker images -q | sort -u); do
-  docker run --rm --entrypoint sh $i -c 'command -v php' 2>/dev/null && echo "PHP in $i"
-done
+cd ~/scripts/devvpc
+grep -rn "uipublic_image" . | grep -v "^./dockers/apache/html"
+cat dockers/apache/uipublic_image_name_txt
 
 
 
 
-# Installed packages (Amazon Linux 2 and 2023)
-rpm -qa | grep -i php
-
-# Any php binaries on the PATH
-command -v php php-fpm php-cgi
-
-# Running processes and services
-ps -eo pid,comm,args | grep -i '[p]hp'
-systemctl list-unit-files | grep -i php
+cd ~/scripts
+git log --since=2026-09-20 --date=short --format='%h %ad %an %s' -- devvpc/dockers/apache devvpc/k8s/apache
 
 
 
-aws ssm send-command --region us-gov-west-1 \
-  --document-name AWS-RunShellScript \
-  --targets "Key=instanceids,Values=i-0123456789abcdef0" \
-  --parameters 'commands=["rpm -qa | grep -i php; command -v php php-fpm php-cgi; ps -eo comm | grep -i [p]hp"]'
-
-
-for i in $(docker images -q | sort -u); do
-  cid=$(docker create --entrypoint x $i 2>/dev/null) || { echo "could not inspect $i"; continue; }
-  docker export $cid | tar -t 2>/dev/null | grep -Eiq '(^|/)(php[0-9.]*|php-fpm[0-9.]*|php-cgi)$' && echo "PHP in $i"
-  docker rm $cid >/dev/null
-done
+cat ~/scripts/devvpc/dockers/apache/builder.sh
