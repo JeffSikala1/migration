@@ -1,116 +1,139 @@
-[sikaj01@ip-10-56-112-33 apache]$ aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 \
-  --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2
+[sikaj01@ip-10-56-112-33 scripts]$ cd ~/scripts/devvpc/dockers/apache
+[sikaj01@ip-10-56-112-33 apache]$ cat Dockerfile
+FROM 339713019047.dkr.ecr.us-east-1.amazonaws.com/ibubi-minimal:10.1
 
-aws: [ERROR]: An error occurred (ImageNotFoundException) when calling the DescribeImages operation: The image with imageId {imageDigest:'null', imageTag:'1.1.4-2.0.60-20260629.173245-2'} does not exist within the repository with name 'conexus-apache-oidc' in the registry with id '339713019047'
-[sikaj01@ip-10-56-112-33 apache]$ kubectl get deploy conexus-httpd -n ingress-nginx \
-  -o jsonpath='{range .spec.template.spec.initContainers[*]}{.name}{"  "}{.image}{"\n"}{end}{range .spec.template.spec.containers[*]}{.name}{"  "}{.image}{"\n"}{end}'
-initdatacopy  339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-conexus-httpd  339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-[sikaj01@ip-10-56-112-33 apache]$ cd ..
-[sikaj01@ip-10-56-112-33 k8s]$ cd ..
-[sikaj01@ip-10-56-112-33 devvpc]$ grep -rn "uipublic_image" . | grep -v "^./dockers/apache/html"
-./k8s/apache/run-httpd.yaml:23:        image: ${uipublic_image}
-./k8s/apache/run-httpd.yaml:46:        image: ${uipublic_image}
-./deploy/builder.sh:54:     echo "${tagname}" > uipublic_image_name_txt;
-./deploy/builder.sh:56:     echo "failed" > uipublic_image_name_txt;
-./deploy/updatemanifest.sh:53:        export uipublic_image="${bamboo_deploy_release}"
-./deploy/updatemanifest.sh:54:        envsubst '$uipublic_image'  <${k8sfolder}/apache/run-httpd.yaml > ${k8sfolder}/apache/${e}/run-httpd.yaml
-[sikaj01@ip-10-56-112-33 devvpc]$ 
+ARG UIPUBLICTAR
+USER root
+RUN microdnf install dnf -y
+RUN dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm -y
+RUN dnf update -y
+RUN dnf install -y httpd mod_auth_openidc mod_ssl less which net-tools procps-ng mod_session mod_proxy_html mod_security curl-minimal
+RUN dnf remove -y --setopt protected_packages=systemd-pam
+RUN dnf clean all
 
-[sikaj01@ip-10-56-128-81 ~]$ aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
-WARNING! Your password will be stored unencrypted in /home/sikaj01/.docker/config.json.
-Configure a credential helper to remove this warning. See
-https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+RUN mkdir -p /app/conexus-ui-public /app/conexus-help
 
-Login Succeeded
-[sikaj01@ip-10-56-128-81 ~]$ aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 \
-  --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2
+COPY --chmod=0644 ./conexus_vhost.conf /etc/httpd/conf.d/conexus_vhost.conf
+COPY --chmod=0644 ./10-auth_openidc.conf /etc/httpd/conf.modules.d/10-auth_openidc.conf
+COPY --chmod=0644 ./httpd.conf /etc/httpd/conf/httpd.conf
+COPY --chmod=0644 ./00-optional.conf /etc/httpd/conf.modules.d/00-optional.conf
+COPY --chmod=0644 ./ssl.conf /etc/httpd/conf.d/ssl.conf
+COPY --chmod=0644 --chown=apache:apache ./maintenance.html /var/www/html/errors/maintenance.html
+#COPY --chmod=0644 --chown=apache:apache ./httpdstart.sh /usr/bin/httpdstart.sh
+RUN touch /var/log/httpd/modsec_debug.log /var/log/httpd/modsec_audit.log && \
+chown -R apache:apache /run/httpd /var/log/httpd && \
+chmod 0755 /var/log/httpd && \
+chmod -R 0755 /run/httpd 
 
-aws: [ERROR]: An error occurred (ImageNotFoundException) when calling the DescribeImages operation: The image with imageId {imageDigest:'null', imageTag:'1.1.4-2.0.60-20260629.173245-2'} does not exist within the repository with name 'conexus-apache-oidc' in the registry with id '471112718870'
-[sikaj01@ip-10-56-128-81 ~]$ aws ecr describe-repositories --repository-names conexus-apache-oidc --region us-east-1 \
-  --query 'repositories[0].imageTagMutability'
-"MUTABLE"
+RUN rm -f /etc/httpd/conf.d/mod_security.conf
+RUN chmod 0644 /etc/httpd/conf.d/*
 
-
-[sikaj01@ip-10-56-112-33 devvpc]$ cat dockers/apache/uipublic_image_name_txt
-339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
+#RUN touch /var/www/html/maintenance/maintenance.enable
 
 
-[sikaj01@ip-10-56-112-33 apache]$ cd ..
-[sikaj01@ip-10-56-112-33 k8s]$ cd ..
-[sikaj01@ip-10-56-112-33 devvpc]$ grep -rn "uipublic_image" . | grep -v "^./dockers/apache/html"
-./k8s/apache/run-httpd.yaml:23:        image: ${uipublic_image}
-./k8s/apache/run-httpd.yaml:46:        image: ${uipublic_image}
-./deploy/builder.sh:54:     echo "${tagname}" > uipublic_image_name_txt;
-./deploy/builder.sh:56:     echo "failed" > uipublic_image_name_txt;
-./deploy/updatemanifest.sh:53:        export uipublic_image="${bamboo_deploy_release}"
-./deploy/updatemanifest.sh:54:        envsubst '$uipublic_image'  <${k8sfolder}/apache/run-httpd.yaml > ${k8sfolder}/apache/${e}/run-httpd.yaml
-[sikaj01@ip-10-56-112-33 devvpc]$ cat dockers/apache/uipublic_image_name_txt
-339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-[sikaj01@ip-10-56-112-33 devvpc]$ git pull
-Updating b53419c..858e886
-Fast-forward
- devvpc/k8s/jboss/cert/run-brms.yaml   | 4 ++--
- devvpc/k8s/jboss/cert/run-jms.yaml    | 4 ++--
- devvpc/k8s/jboss/cert/run-portal.yaml | 4 ++--
- devvpc/k8s/jboss/cert/run-ws.yaml     | 4 ++--
- 4 files changed, 8 insertions(+), 8 deletions(-)
-[sikaj01@ip-10-56-112-33 devvpc]$ cat dockers/apache/uipublic_image_name_txt
-339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-[sikaj01@ip-10-56-112-33 devvpc]$ cd ~/scripts
-[sikaj01@ip-10-56-112-33 scripts]$ git log --since=2026-09-20 --date=short --format='%h %ad %an %s' -- devvpc/dockers/apache devvpc/k8s/apache
-81ff612 2026-10-21 Atlassian Bamboo Manifest updated for UI Public Cert
-364aff5 2026-10-05 Atlassian Bamboo Manifest updated for UI Public Prod
-5222f80 2026-10-04 Atlassian Bamboo Manifest updated for UI Public Dev
-67ba5a8 2026-10-04 Madhav Kundala env folders added for docker/apache
-a5ca037 2026-10-03 Atlassian Bamboo Commit from Atlassian Bamboo UI Public Deployment and post Docker image upload to ECR
-1008064 2026-10-04 Madhav Kundala apache docker file updated for uipublictar arg
-b070ed7 2026-10-04 Madhav Kundala Conexus help tar file added to artifactory and url to the _text file
-b61a8cd 2026-10-04 Madhav Kundala Updated dockerfile for apache
-4c51897 2026-10-03 Atlassian Bamboo Commit from Atlassian Bamboo UI Public Deployment and post Docker image upload to ECR
-2bbf047 2026-10-04 Madhav Kundala bad url files removed
-a0e3776 2026-10-04 Madhav Kundala Scripts relocated and updated for UI Public
-1e0a409 2026-10-02 Atlassian Bamboo Added UI Public module version info
-2976c31 2026-10-02 Atlassian Bamboo Added UI Public module version info
-f4564f2 2026-10-03 Madhav Kundala Update for UI public deploy
-a66dff2 2026-10-02 Atlassian Bamboo Added UI Public module version info
-32090e7 2026-10-02 Madhav Kundala iconective added
-f3fa9bf 2026-09-23 Madhav Kundala Next release files added as run-httpd-next.yaml
-769c793 2026-09-22 Bon Ezeh updated apache OIDC image to 1.1.2
-32af45c 2026-09-21 Bon Ezeh apache 10-auth loglevel mod
+ADD html /var/www/html/
+#ADD conexus-ui-public /app/conexus-ui-public
+ADD ${UIPUBLICTAR} /app/
+#ADD conexus-help /app/conexus-help
+ADD conexus-help.tar.gz /app/
+RUN chown -R apache:apache /app
+RUN chmod -R u=rwX,go=rX /app/conexus-help
+
+EXPOSE 8080
+USER apache
+CMD ["/bin/bash"]
+#CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
+[sikaj01@ip-10-56-112-33 apache]$ cat ../../deploy/updatemanifest.sh
+#!/usr/bin/env bash
+
+# Debugging
+set -x
+# Quit on any error
+set -e
 
 
 
-[sikaj01@ip-10-56-112-33 scripts]$ cat ~/scripts/devvpc/dockers/apache/builder.sh
-#!/bin/bash
+usage() { echo "Usage: $0 -s <uipublic|portal|jms|webservice|brms|reporting> " 1>&2; exit 1; }
 
+while getopts ":s:" opt; do
+    case "${opt}" in
+        s)
+            s=${OPTARG}
+            ((s == uipublic || s == portal || s == jms || s == webservice || s == brms || s == reporting )) || usage
+            ;;
+        :)
+            echo "Error: Missing argument for -${OPTARG} "
+            usage
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "${s}" ] ; then
+    usage
+fi
+
+echo "s = ${s}"
+module_group="${s}"
+
+
+echo "bamboo_deploy_version = $bamboo_deploy_version"
+echo "bamboo_deploy_release = $bamboo_deploy_release"
+echo "bamboo_deploy_project = $bamboo_deploy_project"
 
 PROGDIR=$(dirname ${BASH_SOURCE})
 echo "${PROGDIR}"
 cd ${PROGDIR}
-export AWS_ACCESS_KEY_ID="${bamboo_sa_bambooecr_key}"
-export AWS_SECRET_ACCESS_KEY="${bamboo_sa_bambooecr_secret}"
-export AWS_DEFAULT_REGION="us-east-1"
+k8sfolder="../k8s"
 
-REGISTRYURL="339713019047.dkr.ecr.us-east-1.amazonaws.com"
+cd $k8sfolder
 
-aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${REGISTRYURL}
+e="${bamboo_deploy_environment}"
+source ${k8sfolder}/jboss${e}.bashenv    
 
-baseimagename="339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc"
-tagname=""
-uipubtargz=$(ls -t ui-public-*gz|head -n 1)
-uipubtargzver=$(echo "${uipubtargz}" | sed -nE 's/^ui-war-0[1-2].00.000.(.*).\w{3}/\1/p')
-if [[ ! -z "${uipubtargz}" && ! -z "${uipubtargzver}" ]]
-then
-    tagname=${baseimagename}-portal:${basejbossversion}-ui${uipubtargzver}-rest${restearver}
-    docker build --no-cache -t ${tagname} --build-arg=UIPUBTARGZ=${uipubtargz} --build-arg=RESTEAR=${restear} -f PortalDockerfile .
-    if [ "$?" -eq 0 ]
-    then
-        echo "${tagname}" > portal_image_name_txt;
-    else
-        echo "failed" > portal_image_name_txt;
-    fi
-else
-    echo "Check file names ${uipubtargz} ${uipubtargzver}"
-    echo "                 ${restear} ${restearver}"
-fi
+case "$s" in
+    uipublic)
+        export uipublic_image="${bamboo_deploy_release}"
+        envsubst '$uipublic_image'  <${k8sfolder}/apache/run-httpd.yaml > ${k8sfolder}/apache/${e}/run-httpd.yaml
+        ;;
+    brms)
+        export brms_image="${bamboo_deploy_release}"
+        #sed -i -E "s~(brms_image=).*$~\1\"${val}\"~" $k8sfolder/jboss${e}.bashenv
+        envsubst '$brms_image $brms_pod_mem $brms_pod_mem_limit $brms_jboss_xmx'  <${k8sfolder}/jboss/run-brms.yaml > ${k8sfolder}/jboss/${e}/run-brms.yaml
+        ;;
+    jms)
+        export jms_image="${bamboo_deploy_release}"
+        envsubst '$jms_image $jms_pod_mem $jms_pod_mem_limit $jms_jboss_xmx'  <${k8sfolder}/jboss/run-jms.yaml > ${k8sfolder}/jboss/${e}/run-jms.yaml
+        ;;
+    portal)
+        export portal_image="${bamboo_deploy_release}"
+        envsubst '$portal_image $portal_pod_mem $portal_pod_mem_limit $portal_jboss_xmx'  <${k8sfolder}/jboss/run-portal.yaml > ${k8sfolder}/jboss/${e}/run-portal.yaml
+        ;;
+    webservice)
+        export webservice_image="${bamboo_deploy_release}"
+        envsubst '$webservice_image $webservice_pod_mem $webservice_pod_mem_limit $webservice_jboss_xmx'  <${k8sfolder}/jboss/run-ws.yaml > ${k8sfolder}/jboss/${e}/run-ws.yaml
+        ;;
+    reporting)
+        export reporting_image="${bamboo_deploy_release}"
+        envsubst '$reporting_image $reporting_pod_mem $reporting_pod_mem_limit $reporting_jboss_xmx'  <${k8sfolder}/jboss/run-reporting.yaml > ${k8sfolder}/jboss/${e}/run-reporting.yaml
+        ;;
+    *)
+        echo "Failed to get jboss module type ${s} "
+        ;;
+esac
+
+[sikaj01@ip-10-56-112-33 apache]$ ls ../../k8s/apache/dev
+apache-config.yaml  run-httpd.yaml
+[sikaj01@ip-10-56-112-33 apache]$ grep -n image ../../k8s/apache/dev/run-httpd.yaml
+23:        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
+24:        imagePullPolicy: Always
+46:        image: 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
+47:        imagePullPolicy: Always
+[sikaj01@ip-10-56-112-33 apache]$ grep -n image ../../k8s/apache/run-httpd.yaml
+23:        image: ${uipublic_image}
+24:        imagePullPolicy: Always
+46:        image: ${uipublic_image}
+47:        imagePullPolicy: Always
