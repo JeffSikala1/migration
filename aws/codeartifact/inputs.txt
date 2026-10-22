@@ -1,73 +1,44 @@
-git -C ~/scripts status -s
+cd ~/scripts/devvpc/dockers/apache
+df -h . /var/lib/docker | cat     # need several GB free
+curl -fO  -H "Authorization: Bearer $ART_TOKEN" "$BASE/conexus-snapshot-local/gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT/ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz"
+curl -fo conexus-help.tar.gz -H "Authorization: Bearer $ART_TOKEN" "$BASE/file-local/conexus-help/conexus-help.tar.gz"
+unset ART_TOKEN
+ls -l *.tar.gz                    # expect 7475748 and 684762917 bytes
+tar -tzf conexus-help.tar.gz | head -3   # top-level folder should be conexus-help/
 
 
-git -C ~/scripts diff --stat.
 
 
-git checkout -- devvpc/dockers/apache/uipublic_conexus-help_url_text
-
-
-
-mkdir -p /tmp/apache-patch && cd /tmp/apache-patch
 OLD=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
-cat > Dockerfile <<EOF
-FROM $OLD
-USER root
-RUN dnf update -y && dnf clean all
-RUN chown -R apache:apache /run/httpd /var/log/httpd && \\
-    chmod 0755 /var/log/httpd && chmod -R 0755 /run/httpd
-USER apache
-EOF
-cat Dockerfile
-
-
-
-
-
 TAG=1.1.4-2.0.60-20260629.173245-2
 IMG=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:$TAG
-docker pull $OLD
-docker build --no-cache -t 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:1.1.4-2.0.60-20260629.173245-2
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 339713019047.dkr.ecr.us-east-1.amazonaws.com
+docker build --no-cache --pull \
+  --build-arg UIPUBLICTAR=ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz \
+  -t $IMG . 2>&1 | tee /tmp/build.log
+grep -n "CACHED" /tmp/build.log
 
 
 
 
 
-cd ~/scripts/devvpc/dockers/apache
-git show HEAD:devvpc/dockers/apache/uipublic_conexus-help_url_text
-
-
-
-
-read -rsp "Artifactory token: " ART_TOKEN; echo
-BASE=https://artifactory.mgmt.cnxs.vpcaas.fcs.gsa.gov/artifactory
-
-
-
-curl -s -X POST "$BASE/api/search/aql" -H "Authorization: Bearer $ART_TOKEN" -H "Content-Type: text/plain" \
-  -d 'items.find({"repo":"conexus-snapshot-local","path":{"$match":"gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT*"}}).include("repo","path","name","size","modified")'
-
-curl -s -X POST "$BASE/api/search/aql" -H "Authorization: Bearer $ART_TOKEN" -H "Content-Type: text/plain" \
-  -d 'items.find({"name":{"$match":"conexus-help*.tar.gz"}}).include("repo","path","name","size","modified").sort({"$desc":["modified"]}).limit(5)'
-
-
-
-
-cd ~/scripts/devvpc/dockers/apache
-curl -fO -H "Authorization: Bearer $ART_TOKEN" "$BASE/conexus-snapshot-local/gov/gsa/cnxs/ui-public/ui-public/02.00.000.60-SNAPSHOT/ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz"
-curl -fo conexus-help.tar.gz -H "Authorization: Bearer $ART_TOKEN" "<help URL from step 1 or AQL>"
-ls -la *.tar.gz
-
-
-
-
-TAG=1.1.4-2.0.60-20260629.173245-2
-IMG=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:$TAG
-docker build --no-cache --pull --build-arg UIPUBLICTAR=ui-public-02.00.000.60-20260629.173245-2-bin.tar.gz -t $IMG .
-
-
-
-
-docker run --rm --entrypoint rpm 339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2 -qa | sort > /tmp/old.txt
+docker run --rm --entrypoint rpm $OLD -qa | sort > /tmp/old.txt
 docker run --rm --entrypoint rpm $IMG -qa | sort > /tmp/new.txt
 diff /tmp/old.txt /tmp/new.txt
+
+for i in $OLD $IMG; do docker run --rm --entrypoint sh $i -c "find /app -type f -printf '%s %p\n' | sort | sha256sum"; done
+
+
+
+
+
+TAG=1.1.4-2.0.60-20260629.173245-2
+cd ~/scripts/devvpc/k8s/apache/dev
+sed -i "s#conexus-apache-oidc:60-20260629.173245-2#conexus-apache-oidc:$TAG#" run-httpd.yaml
+git diff                          # exactly 2 image lines changed
+kud
+kubectl config current-context    # expect cnxsdev-selfmanaged
+kubectl apply -f run-httpd.yaml
+kubectl rollout status deploy/conexus-httpd -n ingress-nginx --timeout=300s
+kubectl get pods -n ingress-nginx | grep httpd
+kubectl logs -n ingress-nginx deploy/conexus-httpd --tail=30
