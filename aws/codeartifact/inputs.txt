@@ -1,27 +1,7 @@
-aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 \
-    --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2 \
-    --query 'imageDetails[0].[imageTags,imageSizeInBytes,imagePushedAt]'
-
-
-
-unset ART_TOKEN
-rm -f ~/scripts/devvpc/dockers/apache/*.tar.gz
-git -C ~/scripts status -s     # should print nothing
-
-
-
-
-cd ~/scripts && git pull
-cd devvpc/k8s/apache/dev
-TAG=1.1.4-2.0.60-20260629.173245-2
-sed -i "s#conexus-apache-oidc:60-20260629.173245-2#conexus-apache-oidc:$TAG#" run-httpd.yaml
-git diff                         # exactly 2 image lines changed
-kud
-kubectl config current-context   # expect cnxsdev-selfmanaged
-kubectl apply -f run-httpd.yaml
-kubectl rollout status deploy/conexus-httpd -n ingress-nginx --timeout=300s
-kubectl get pods -n ingress-nginx | grep httpd
-kubectl logs -n ingress-nginx deploy/conexus-httpd --tail=30
-
-
-kubectl exec -n ingress-nginx deploy/conexus-httpd -- rpm -q openssl-libs glibc curl
+kubectl get deploy conexus-httpd -n ingress-nginx -o jsonpath='{range .spec.template.spec.containers[*]}{.image}{"\n"}{end}'
+kubectl get rs -n ingress-nginx -l app.kubernetes.io/name=conexus-httpd
+kubectl rollout history deploy/conexus-httpd -n ingress-nginx
+kubectl get pods -n ingress-nginx -l app.kubernetes.io/name=conexus-httpd
+kubectl get pods -n ingress-nginx -l app.kubernetes.io/name=conexus-httpd -o jsonpath='{range .items[*]}{.metadata.name}{"  "}{.status.containerStatuses[*].imageID}{"\n"}{end}'
+kubectl get applications.argoproj.io -A
+aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2 --query 'imageDetails[0].imageDigest' --output text
