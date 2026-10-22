@@ -1,7 +1,30 @@
-cd ~/scripts/devvpc/dockers/apache
-ls -la uipublic_*
-cat uipublic_conexus-help_url_text
-curl -fO "$(tr -d '"' < uipublic_ui-public_url_text)"
-ls -la *.tar.gz
+git -C ~/scripts status -s
 
 
+git -C ~/scripts diff --stat.
+
+
+git checkout -- devvpc/dockers/apache/uipublic_conexus-help_url_text
+
+
+
+mkdir -p /tmp/apache-patch && cd /tmp/apache-patch
+OLD=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:60-20260629.173245-2
+cat > Dockerfile <<EOF
+FROM $OLD
+USER root
+RUN dnf update -y && dnf clean all
+RUN chown -R apache:apache /run/httpd /var/log/httpd && \\
+    chmod 0755 /var/log/httpd && chmod -R 0755 /run/httpd
+USER apache
+EOF
+cat Dockerfile
+
+
+
+
+
+TAG=1.1.4-2.0.60-20260629.173245-2
+IMG=339713019047.dkr.ecr.us-east-1.amazonaws.com/conexus-apache-oidc:$TAG
+docker pull $OLD
+docker build --no-cache -t $IMG .
