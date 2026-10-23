@@ -1,19 +1,17 @@
-journalctl -b -1 -k --since "2026-10-23 02:25" --until "2026-10-23 03:45" --no-pager \
- | sed -E 's/^.*kernel: +//' \
- | awk '/uid +tgid +total_vm/ {t++; next}
-        /^\[ *[0-9]+\] +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+/ {gsub(/[][]/," "); r[t" "$2]+=$5; n[t" "$2]++}
-        END {for (k in r) {split(k,a," "); printf "%d %8.0f MB %5d procs uid %s\n", a[1], r[k]*4/1024, n[k], a[2]}}' \
- | sort -k1,1n -k2,2nr | awk '{c[$1]++} c[$1]<=6'
+# Process count per user: the culprit will keep growing
+ps -eo user= | sort | uniq -c | sort -rn | head -5
 
+# What the processes are, and what spawns them
+ps -u pkundm01 -o comm= | sort | uniq -c | sort -rn | head
+ps -u pkundm01 -o ppid= | sort | uniq -c | sort -rn | head -5
+ps -u pkundm01 -o stat= | cut -c1 | sort | uniq -c
 
-ps -u 10802 -o pid,ppid,rss,etime,args | cut -c1-200
-sudo docker ps 2>/dev/null; sudo podman ps 2>/dev/null
+# Look up the busiest parent from the output above
+ps -o pid,ppid,etime,args -p <ppid-from-above> | cut -c1-200
 
+# Anything scheduled or lingering under that account
+sudo crontab -l -u pkundm01
+sudo systemd-cgls /user.slice/user-1015.slice --no-pager | head -60
 
-sar -q -f /var/log/sa/sa22 | awk 'NR<4 || $1 >= "20:00:00"'
-sar -r -f /var/log/sa/sa22 | awk 'NR<4 || $1 >= "20:00:00"'
-
-
-
-ps -eo user=,rss=,args= | grep -E 'vscode-server|server-main' | grep -v grep \
- | awk '{m[$1]+=$2; n[$1]++} END {for (u in m) printf "%6.0f MB %3d procs %s\n", m[u]/1024, n[u], u}' | sort -rn
+# Log the count every minute so you have a growth curve
+while true; do echo "$(date +%T) $(ps -u pkundm01 --no-headers | wc -l)"; sleep 60; done
