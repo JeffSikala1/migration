@@ -1,12 +1,126 @@
-aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2 --query 'imageDetails[0].imageDigest' --output text
+{
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.terraform/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/target/**": true
+  },
+  "search.exclude": {
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/.terraform": true,
+    "**/.venv": true
+  },
+  "search.followSymlinks": false,
+  "files.exclude": {
+    "**/.git": false
+  },
+  "git.autorefresh": false,
+  "git.autofetch": false,
+  "git.repositoryScanMaxDepth": 1,
+  "git.untrackedChanges": "hidden",
+  "extensions.autoUpdate": false,
+  "extensions.autoCheckUpdates": false,
+  "typescript.disableAutomaticTypeAcquisition": true,
+  "terminal.integrated.enablePersistentSessions": false,
+  "terminal.integrated.persistentSessionReviveProcess": "never",
+  "telemetry.telemetryLevel": "off"
+}
 
-kubectl get application app-argo-jboss -n argocd -o yaml | grep -nE "repoURL|targetRevision|path:|selfHeal|prune|automated"
-
-kubectl get deploy conexus-httpd -n ingress-nginx -o jsonpath='{.metadata.labels}{"\n"}{.metadata.annotations}{"\n"}{.metadata.managedFields[*].manager}{"\n"}'
-
-kubectl rollout history deploy/conexus-httpd -n ingress-nginx
 
 
-aws ecr describe-images --repository-name conexus-apache-oidc --region us-east-1 \
-  --image-ids imageTag=1.1.4-2.0.60-20260629.173245-2 \
-  --query 'imageDetails[0].imageDigest' --output text
+
+
+
+
+
+
+------------------
+
+
+#!/usr/bin/env bash
+# vscode-cleanup.sh - show and clean up YOUR VS Code Server processes on the jump box.
+# Only touches processes owned by you. Never touches other users or your current shell.
+#
+# Usage:
+#   ./vscode-cleanup.sh            # report only (safe)
+#   ./vscode-cleanup.sh --kill     # stop your VS Code server processes
+#   ./vscode-cleanup.sh --kill --purge   # also delete old server versions + logs/cache
+
+set -u
+ME="$(id -un)"
+KILL=0; PURGE=0
+for a in "$@"; do
+  case "$a" in
+    --kill)  KILL=1 ;;
+    --purge) PURGE=1 ;;
+    *) echo "Unknown option: $a"; exit 1 ;;
+  esac
+done
+
+# Match only VS Code server pieces owned by me; exclude this script and its grep.
+PATTERN='\.vscode-server|vscode-server/cli|server-main\.js|code-[0-9a-f]{10}'
+mine() { pgrep -u "$ME" -af "$PATTERN" | grep -v -e "$0" -e pgrep || true; }
+
+echo "== Host load =="
+uptime
+free -m | awk 'NR==1 || /Mem|Swap/'
+echo
+
+echo "== Your VS Code server processes =="
+PROCS="$(mine)"
+if [ -z "$PROCS" ]; then
+  echo "None running."
+else
+  echo "$PROCS" | cut -c1-160
+  echo
+  echo "Count: $(echo "$PROCS" | wc -l)"
+  echo "Memory (RSS, MB) for your node/code processes:"
+  ps -u "$ME" -o rss=,comm= | awk '/node|code/ {s+=$1} END {printf "  %.0f MB\n", s/1024}'
+fi
+echo
+
+echo "== Defunct (zombie) processes owned by you =="
+ps -u "$ME" -o pid=,ppid=,stat=,comm= | awk '$3 ~ /^Z/' || true
+echo
+
+echo "== Server installs =="
+du -sh "$HOME/.vscode-server" 2>/dev/null || echo "No ~/.vscode-server"
+ls -1d "$HOME"/.vscode-server/cli/servers/Stable-* 2>/dev/null || true
+echo
+
+if [ "$KILL" -eq 0 ]; then
+  echo "Report only. Re-run with --kill to stop these processes."
+  exit 0
+fi
+
+echo "== Stopping your VS Code server processes =="
+PIDS="$(pgrep -u "$ME" -f "$PATTERN" | grep -vx "$$" || true)"
+if [ -n "$PIDS" ]; then
+  # polite first, then force after 5s
+  echo "$PIDS" | xargs -r kill -TERM 2>/dev/null || true
+  sleep 5
+  LEFT="$(pgrep -u "$ME" -f "$PATTERN" | grep -vx "$$" || true)"
+  [ -n "$LEFT" ] && echo "$LEFT" | xargs -r kill -KILL 2>/dev/null || true
+fi
+
+# Clean sockets/temp files the server leaves behind
+rm -f /tmp/code-* 2>/dev/null || true
+
+if [ "$PURGE" -eq 1 ]; then
+  echo "== Purging old server versions and logs =="
+  # keep the newest server version, remove older ones
+  ls -1dt "$HOME"/.vscode-server/cli/servers/Stable-* 2>/dev/null | tail -n +2 | xargs -r rm -rf
+  ls -1dt "$HOME"/.vscode-server/bin/* 2>/dev/null | tail -n +2 | xargs -r rm -rf
+  rm -rf "$HOME"/.vscode-server/data/logs/* 2>/dev/null || true
+  rm -rf "$HOME"/.vscode-server/.cli.*.log 2>/dev/null || true
+fi
+
+echo
+echo "Done. Remaining:"
+mine | cut -c1-160 || true
+echo
+uptime
