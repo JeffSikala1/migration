@@ -1,165 +1,124 @@
-[sikaj01@ip-10-56-112-33 ~]$ journalctl -b -1 -k --since "2026-10-23 02:30:00" --until "2026-10-23 02:45:00" --no-pager \
- | sed -E 's/.*kernel: +//; s/[][]/ /g' \
- | awk '$1 ~ /^[0-9]+$/ && NF>=9 {rss[$2]+=$5; n[$2]++} END {for (u in rss) printf "%8.0f MB %5d procs uid %s\n", rss[u]*4/1024, n[u], u}' \
- | sort -rn | head -10
-     577 MB    30 procs uid 0
-     562 MB     4 procs uid 10802
-     184 MB     6 procs uid 1021
-     113 MB    53 procs uid 1015
-     101 MB     3 procs uid 987
-       4 MB     1 procs uid 193
-       2 MB     2 procs uid 81
-       2 MB     1 procs uid 51
-       1 MB     1 procs uid 994
-       1 MB     1 procs uid 192
-[sikaj01@ip-10-56-112-33 ~]$ getent passwd 0 10802 1021 1015 987 193 81 51
-root:x:0:0:root:/root:/bin/bash
-sikaj01:x:1021:100:Jeff Sikala:/home/sikaj01:/bin/bash
-pkundm01:x:1015:100:Madhav Kundala:/home/pkundm01:/bin/bash
-dd-agent:x:987:987::/opt/datadog-agent:/usr/sbin/nologin
-systemd-resolve:x:193:193:systemd Resolver:/:/usr/sbin/nologin
-dbus:x:81:81:System message bus:/:/usr/sbin/nologin
-smmsp:x:51:51::/var/spool/mqueue:/sbin/nologin
+[sikaj01@ip-10-56-112-33 ~]$ ps -u 10802 -o pid,ppid,rss,etime,args and systemd-cgls
+error: unsupported option (BSD syntax)
+
+Usage:
+ ps [options]
+
+ Try 'ps --help <simple|list|output|threads|misc|all>'
+  or 'ps --help <s|l|o|t|m|a>'
+ for additional help text.
+
+For more details see ps(1).
+[sikaj01@ip-10-56-112-33 ~]$ ps -eo pid,user,rss,nlwp,etime,time,args | grep -iE 'falcon|nessus|xagt|fireeye' | grep -v grep | cut -c1-150
+
+   1879 root       136    1       40:56 00:00:00 /opt/CrowdStrike/falcond
+   1880 root     229040  60       40:56 00:01:07 falcon-sensor-bpf
+   2050 root      2104    1       40:55 00:00:00 /opt/nessus_agent/sbin/nessus-service -q
+   2064 root      5252    1       40:55 00:00:00 nessusd -q
+   2093 root     106536  11       40:55 00:05:01 /opt/nessus_agent/sbin/nessus-agent-module -q
+[sikaj01@ip-10-56-112-33 ~]$ journalctl -b -1 --since "2026-10-23 02:25" --until "2026-10-23 02:50" | grep -iE 'suppress|rate-limit'
+[sikaj01@ip-10-56-112-33 ~]$ systemctl list-units --all --no-pager | grep -iE 'falcon|nessus|xagt|fireeye|trellix'
+  falcon-sensor.service                                                                                          loaded    active   running   CrowdStrike Falcon Sensor
+  nessusagent.service                                                                                            loaded    active   running   The Nessus Client Agent
+[sikaj01@ip-10-56-112-33 ~]$ sudo journalctl -b -1 --since "2026-10-22 23:00" --until "2026-10-23 05:00" --no-pager | grep -iE 'falcon|nessus|xagt|fireeye' | head -40
+Oct 22 23:28:54 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SslConnect: lfodown01-laggar-gcw.cloudsink.net:443
+Oct 22 23:28:56 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Could not retrieve DisableProxy value: c0000225
+Oct 22 23:28:56 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): ConnectWithProxy: Unable to get application proxy host from CsConfig: c0000225
+Oct 22 23:28:56 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SslConnect: Unable to connect to lfodown01-laggar-gcw.cloudsink.net:443 via Application Proxy: c0000225
+Oct 22 23:28:56 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Trying to resolve lfodown01-laggar-gcw.cloudsink.net:443
+Oct 22 23:29:02 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): trying to connect to lfodown01-laggar-gcw.cloudsink.net:443
+Oct 22 23:29:03 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Connect to IPv4 15.200.136.15
+Oct 22 23:29:03 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Connected directly to lfodown01-laggar-gcw.cloudsink.net:443
+Oct 22 23:29:20 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SslConnect: SSL error during Connect: error:0A000126:SSL routines::unexpected eof while reading
+Oct 22 23:29:20 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SSLSocket Disconnected from Cloud.
+Oct 22 23:29:28 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Connect to IPv4 15.200.217.77
+Oct 22 23:30:12 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Connect to IPv4 15.200.211.137
+Oct 22 23:32:00 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Connect to IPv4 15.200.169.255
+Oct 22 23:32:09 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): ValidateCertificate: Certificate verified!
+Oct 22 23:32:09 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SSLSocket connected successfully to lfodown01-laggar-gcw.cloudsink.net:443
+Oct 23 00:02:00 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(6): AFLAGS updated to 0. error_log is now OFF
+Oct 23 00:02:01 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: No traceLevel set via falconctl defaulting to none
+Oct 23 00:02:01 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: LogLevelUpdate: none = trace level 0.
+Oct 23 02:07:52 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SSLSocket Disconnected from Cloud.
+Oct 23 02:38:04 ip-10-56-112-33.ec2.internal kernel: [   1883]     0  1883      731       35    45056        0             0 falcond
+Oct 23 02:38:07 ip-10-56-112-33.ec2.internal kernel: [   1884]     0  1884   622268    73431  1540096        0             0 falcon-sensor-b
+Oct 23 02:40:19 ip-10-56-112-33.ec2.internal kernel: [   2058]     0  2058     1563       73    65536        0             0 nessus-service
+Oct 23 03:14:27 ip-10-56-112-33.ec2.internal kernel: [3851034]     0 3851034     5032      141    73728        0             0 nessusd
+Oct 23 03:14:27 ip-10-56-112-33.ec2.internal kernel: [3851036]     0 3851036   165554    37506  1167360        0             0 nessus-agent-mo
+Oct 23 03:17:26 ip-10-56-112-33.ec2.internal kernel: [   1883]     0  1883      731       35    45056        0             0 falcond
+Oct 23 03:17:26 ip-10-56-112-33.ec2.internal kernel: [   1884]     0  1884   622268    73427  1540096        0             0 falcon-sensor-b
+Oct 23 03:17:27 ip-10-56-112-33.ec2.internal kernel: [   2058]     0  2058     1563       73    65536        0             0 nessus-service
+Oct 23 03:25:32 ip-10-56-112-33.ec2.internal kernel: [3851034]     0 3851034     5032      141    73728        0             0 nessusd
+Oct 23 03:25:32 ip-10-56-112-33.ec2.internal kernel: [3851036]     0 3851036   165554    37506  1167360        0             0 nessus-agent-mo
+Oct 23 02:25:24 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SslConnect: ts01-laggar-gcw.cloudsink.net:443
+Oct 23 02:26:06 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Could not retrieve DisableProxy value: c0000225
+Oct 23 02:26:06 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): ConnectWithProxy: Unable to get application proxy host from CsConfig: c0000225
+Oct 23 02:26:06 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SslConnect: Unable to connect to ts01-laggar-gcw.cloudsink.net:443 via Application Proxy: c0000225
+Oct 23 02:26:06 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Trying to resolve ts01-laggar-gcw.cloudsink.net:443
+Oct 23 03:25:42 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Connect: Unable to resolve ts01-laggar-gcw.cloudsink.net, Name or service not known
+Oct 23 03:25:55 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Could not connect directly: c0000001
+Oct 23 03:26:27 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SslConnect: 96.127.84.6:443
+Oct 23 03:26:41 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Trying to resolve 96.127.84.6:443
+Oct 23 03:26:51 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): trying to connect to 96.127.84.6:443
+Oct 23 03:26:54 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): Connect to IPv4 96.127.84.6
+[sikaj01@ip-10-56-112-33 ~]$ sudo journalctl -b -1 --since "2026-10-23 13:00" --until "2026-10-23 14:30" --no-pager | grep -iE 'falcon|nessus|xagt|fireeye' | head -40
+[sikaj01@ip-10-56-112-33 ~]$ sudo journalctl -b -1 --since "2026-10-23 17:00" --until "2026-10-23 18:50" --no-pager | grep -iE 'falcon|nessus|xagt|fireeye' | head -40
+Oct 23 18:47:00 ip-10-56-112-33.ec2.internal audit[1]: SERVICE_STOP pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=nessusagent comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+Oct 23 18:46:59 ip-10-56-112-33.ec2.internal systemd[1]: Stopping nessusagent.service - The Nessus Client Agent...
+Oct 23 18:47:00 ip-10-56-112-33.ec2.internal systemd[1]: nessusagent.service: Deactivated successfully.
+Oct 23 18:47:00 ip-10-56-112-33.ec2.internal systemd[1]: Stopped nessusagent.service - The Nessus Client Agent.
+Oct 23 18:47:00 ip-10-56-112-33.ec2.internal systemd[1]: nessusagent.service: Consumed 1h 50min 59.516s CPU time.
+Oct 23 18:49:59 ip-10-56-112-33.ec2.internal systemd[1]: Stopping falcon-sensor.service - CrowdStrike Falcon Sensor...
+Oct 23 18:49:59 ip-10-56-112-33.ec2.internal falcond[1883]: forwarding signal 15 Terminated to falcon-sensor[1884]
+Oct 23 18:49:59 ip-10-56-112-33.ec2.internal falcond[1883]: sending SIGCONT to falcon-sensor[1884]
+Oct 23 18:49:59 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): calling SSL_shutdown
+Oct 23 18:49:59 ip-10-56-112-33.ec2.internal falcon-sensor-bpf[1884]: CrowdStrike(4): SSLSocket Disconnected from Cloud.
+[sikaj01@ip-10-56-112-33 ~]$ sudo ls -lt /opt/nessus_agent/var/nessus/logs/
+total 5484
+-rw-------. 1 root root 2623899 Oct 23 19:00 backend.log
+-rw-r--r--. 1 root root  588050 Oct 23 18:54 module_host.log
+-rw-------. 1 root root 1165691 Oct 23 18:54 nessusd.messages
+-rw-------. 1 root root 1149633 Oct 23 18:54 nessusd.dump
+-rw-------. 1 root root   62503 Oct 23 18:51 nessuscli.log
+[sikaj01@ip-10-56-112-33 ~]$ sudo grep -iE 'scan|launch|start|finish|complete' /opt/nessus_agent/var/nessus/logs/nessusd.messages 2>/dev/null | tail -40
+[Tue Oct 20 13:22:17 2026 +0000][2101.0][scan=c89d6e62-42d2-0180-b7da-fc93da5be802d788954933446dd4][target=localhost] : Target localhost resolves to address 127.0.0.1
+[Tue Oct 20 13:27:17 2026 +0000][2101.0][scan=c89d6e62-42d2-0180-b7da-fc93da5be802d788954933446dd4][target=localhost][duration=299.83] : Finished
+[Tue Oct 20 13:27:17 2026 +0000][2101.0][scan=c89d6e62-42d2-0180-b7da-fc93da5be802d788954933446dd4] : Collecting report info
+[Tue Oct 20 13:27:17 2026 +0000][2101.0][scan=c89d6e62-42d2-0180-b7da-fc93da5be802d788954933446dd4] : Finishing report
+[Tue Oct 20 13:27:17 2026 +0000][2101.0][scan=c89d6e62-42d2-0180-b7da-fc93da5be802d788954933446dd4][duration=300.00] : Finished: 1 of 1 hosts up, 0 unscanned, 0 rejected, 0 dead, 0 timeout, 0 aborted
+[Tue Oct 20 21:14:12 2026 +0000][2101.15] Nessus Agent is shutting down: Restarting when idle: plugin or core update activity
+[Tue Oct 20 21:14:14 2026 +0000][80234.1] Continuing nessusd startup in 173 seconds
+[Tue Oct 20 21:17:07 2026 +0000][80234.1] nessusd 10.7.3 (build R20013) started
+[Tue Oct 20 21:17:07 2026 +0000][80234.1] Setting Scanner:  engine.min=1 engine.max=1  global.max_scans=1  global.max_hosts=1  engine.max_hosts=16  engine.optimal_hosts=2 (scan)max_hosts=1  (scan)max_checks=5
+[Wed Oct 21 09:06:51 2026 +0000][80234.19739][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825] : max_hosts: 1, max_checks: 5
+[Wed Oct 21 09:06:51 2026 +0000][80234.19739][user=nessus_ms_agent][name=Adhoc Agent][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825][policy=e785b26c-5b4d-5da8-6643-007ea1f8ee1c8f23937a4bd45a1d] : starting with Target(s): 127.0.0.1
+[Wed Oct 21 09:06:51 2026 +0000][80234.0][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825] : Partial audit trail enabled (per configuration)
+[Wed Oct 21 09:06:51 2026 +0000][80234.0][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825] : Scan localhost has a no_target policy, do not run validation rules.
+[Wed Oct 21 09:06:51 2026 +0000][80234.0][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825][target=localhost] : Started with 75228 plugins
+[Wed Oct 21 09:06:51 2026 +0000][80234.0][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825][target=localhost] : Target localhost resolves to address 127.0.0.1
+[Wed Oct 21 09:11:47 2026 +0000][80234.0][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825][target=localhost][duration=296.15] : Finished
+[Wed Oct 21 09:11:47 2026 +0000][80234.0][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825] : Collecting report info
+[Wed Oct 21 09:11:47 2026 +0000][80234.0][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825] : Finishing report
+[Wed Oct 21 09:11:48 2026 +0000][80234.0][scan=2e76fc8c-dd98-adc5-0a88-b9e332e84c9043b595527d1ca825][duration=297.00] : Finished: 1 of 1 hosts up, 0 unscanned, 0 rejected, 0 dead, 0 timeout, 0 aborted
+[Wed Oct 21 21:20:04 2026 +0000][80234.15] Nessus Agent is shutting down: Restarting when idle: plugin or core update activity
+[Wed Oct 21 21:20:11 2026 +0000][305391.1] Continuing nessusd startup in 89 seconds
+[Wed Oct 21 21:21:40 2026 +0000][305391.1] nessusd 10.7.3 (build R20013) started
+[Wed Oct 21 21:21:40 2026 +0000][305391.1] Setting Scanner:  engine.min=1 engine.max=1  global.max_scans=1  global.max_hosts=1  engine.max_hosts=16  engine.optimal_hosts=2 (scan)max_hosts=1  (scan)max_checks=5
+[Thu Oct 22 21:29:07 2026 +0000][305391.15] Nessus Agent is shutting down: Restarting when idle: plugin or core update activity
+[Thu Oct 22 21:29:13 2026 +0000][3851036.1] Continuing nessusd startup in 181 seconds
+[Thu Oct 22 21:32:14 2026 +0000][3851036.1] nessusd 10.7.3 (build R20013) started
+[Thu Oct 22 21:32:15 2026 +0000][3851036.1] Setting Scanner:  engine.min=1 engine.max=1  global.max_scans=1  global.max_hosts=1  engine.max_hosts=16  engine.optimal_hosts=2 (scan)max_hosts=1  (scan)max_checks=5
+[Fri Oct 23 09:02:59 2026 +0000][3851036.193527][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51] : max_hosts: 1, max_checks: 5
+[Fri Oct 23 09:02:59 2026 +0000][3851036.193527][user=nessus_ms_agent][name=Adhoc Agent][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51][policy=e785b26c-5b4d-5da8-6643-007ea1f8ee1c8f23937a4bd45a1d] : starting with Target(s): 127.0.0.1
+[Fri Oct 23 09:03:00 2026 +0000][3851036.0][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51] : Partial audit trail enabled (per configuration)
+[Fri Oct 23 09:03:00 2026 +0000][3851036.0][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51] : Scan localhost has a no_target policy, do not run validation rules.
+[Fri Oct 23 09:03:00 2026 +0000][3851036.0][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51][target=localhost] : Started with 76042 plugins
+[Fri Oct 23 09:03:00 2026 +0000][3851036.0][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51][target=localhost] : Target localhost resolves to address 127.0.0.1
+[Fri Oct 23 09:09:02 2026 +0000][3851036.0][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51][target=localhost][duration=361.88] : Finished
+[Fri Oct 23 09:09:02 2026 +0000][3851036.0][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51] : Collecting report info
+[Fri Oct 23 09:09:02 2026 +0000][3851036.0][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51] : Finishing report
+[Fri Oct 23 09:09:02 2026 +0000][3851036.0][scan=9fbd8173-542a-66e8-53e2-4264ade38230ee06b6452ebbcf51][duration=362.00] : Finished: 1 of 1 hosts up, 0 unscanned, 0 rejected, 0 dead, 0 timeout, 0 aborted
+[Fri Oct 23 18:50:44 2026 +0000][2093.1] Continuing nessusd startup in 209 seconds
+[Fri Oct 23 18:54:13 2026 +0000][2093.1] nessusd 10.7.3 (build R20013) started
+[Fri Oct 23 18:54:14 2026 +0000][2093.1] Setting Scanner:  engine.min=1 engine.max=1  global.max_scans=1  global.max_hosts=1  engine.max_hosts=16  engine.optimal_hosts=2 (scan)max_hosts=1  (scan)max_checks=5
 [sikaj01@ip-10-56-112-33 ~]$
-
-
-
-[sikaj01@ip-10-56-112-33 ~]$ journalctl -b -1 -k --since "2026-10-23 02:30:00" --until "2026-10-23 02:45:00" --no-pager \
- | sed -E 's/.*kernel: +//; s/[][]/ /g' \
- | awk '$1 ~ /^[0-9]+$/ && NF>=9 {rss[$2]+=$5; n[$2]++} END {for (u in rss) printf "%8.0f MB %5d procs uid %s\n", rss[u]*4/1024, n[u], u}' \
- | sort -rn | head -10
-     577 MB    30 procs uid 0
-     562 MB     4 procs uid 10802
-     184 MB     6 procs uid 1021
-     113 MB    53 procs uid 1015
-     101 MB     3 procs uid 987
-       4 MB     1 procs uid 193
-       2 MB     2 procs uid 81
-       2 MB     1 procs uid 51
-       1 MB     1 procs uid 994
-       1 MB     1 procs uid 192
-[sikaj01@ip-10-56-112-33 ~]$ getent passwd 0 10802 1021 1015 987 193 81 51
-root:x:0:0:root:/root:/bin/bash
-sikaj01:x:1021:100:Jeff Sikala:/home/sikaj01:/bin/bash
-pkundm01:x:1015:100:Madhav Kundala:/home/pkundm01:/bin/bash
-dd-agent:x:987:987::/opt/datadog-agent:/usr/sbin/nologin
-systemd-resolve:x:193:193:systemd Resolver:/:/usr/sbin/nologin
-dbus:x:81:81:System message bus:/:/usr/sbin/nologin
-smmsp:x:51:51::/var/spool/mqueue:/sbin/nologin
-[sikaj01@ip-10-56-112-33 ~]$ journalctl -b -1 -k --since "2026-10-23 02:30:00" --until "2026-10-23 02:45:00" --no-pager \
- | grep -E 'active_anon|slab_reclaimable|slab_unreclaimable|shmem|pagetables|free:' | head -12
-Oct 23 02:34:59 ip-10-56-112-33.ec2.internal kernel: active_anon:65239 inactive_anon:1598746 isolated_anon:0
-                                                      slab_reclaimable:39475 slab_unreclaimable:97791
-                                                      mapped:16843 shmem:64044 pagetables:43465
-                                                      sec_pagetables:0 bounce:0
-                                                      free:25023 free_pcp:1 free_cma:0
-Oct 23 02:35:11 ip-10-56-112-33.ec2.internal kernel: Node 0 active_anon:260956kB inactive_anon:6394984kB active_file:8kB inactive_file:37508kB unevictable:0kB isolated(anon):0kB isolated(file):896kB mapped:67372kB dirty:0kB writeback:0kB shmem:256176kB shmem_thp: 0kB shmem_pmdmapped: 0kB anon_thp: 0kB writeback_tmp:0kB kernel_stack:55920kB pagetables:173860kB sec_pagetables:0kB all_unreclaimable? yes
-Oct 23 02:35:25 ip-10-56-112-33.ec2.internal kernel: Node 0 DMA free:14336kB boost:0kB min:128kB low:160kB high:192kB reserved_highatomic:0KB active_anon:0kB inactive_anon:0kB active_file:0kB inactive_file:0kB unevictable:0kB writepending:0kB present:15996kB managed:15360kB mlocked:0kB bounce:0kB free_pcp:0kB local_pcp:0kB free_cma:0kB
-Oct 23 02:35:35 ip-10-56-112-33.ec2.internal kernel: Node 0 DMA32 free:44492kB boost:0kB min:25560kB low:31948kB high:38336kB reserved_highatomic:0KB active_anon:71664kB inactive_anon:2630444kB active_file:0kB inactive_file:15432kB unevictable:0kB writepending:0kB present:3125680kB managed:3018836kB mlocked:0kB bounce:0kB free_pcp:0kB local_pcp:0kB free_cma:0kB
-Oct 23 02:35:42 ip-10-56-112-33.ec2.internal kernel: Node 0 Normal free:41264kB boost:0kB min:41888kB low:52360kB high:62832kB reserved_highatomic:0KB active_anon:189292kB inactive_anon:3764540kB active_file:8kB inactive_file:22036kB unevictable:0kB writepending:0kB present:5033984kB managed:4891188kB mlocked:0kB bounce:0kB free_pcp:4kB local_pcp:0kB free_cma:0kB
-[sikaj01@ip-10-56-112-33 ~]$ journalctl -b -1 --since "2026-10-22 23:30" --until "2026-10-23 00:15" --no-pager | grep -iE 'session|Accepted|cron|Started' | head -40
-Oct 22 23:28:31 ip-10-56-112-33.ec2.internal sshd-session[3875577]: Connection closed by 10.56.82.102 port 25970
-Oct 22 23:28:31 ip-10-56-112-33.ec2.internal sshd-session[3875585]: Connection closed by 172.27.225.29 port 58176
-Oct 22 23:29:15 ip-10-56-112-33.ec2.internal sshd-session[3875596]: Connection closed by 10.56.119.8 port 16140
-Oct 22 23:29:18 ip-10-56-112-33.ec2.internal sshd-session[3875627]: Connection closed by 10.56.119.8 port 46265
-Oct 22 23:29:18 ip-10-56-112-33.ec2.internal sshd-session[3875620]: Connection closed by 10.56.119.26 port 65187
-Oct 22 23:29:28 ip-10-56-112-33.ec2.internal sshd-session[3875669]: Connection closed by 10.56.119.26 port 5040
-Oct 22 23:29:33 ip-10-56-112-33.ec2.internal sshd-session[3875636]: Connection closed by 10.56.82.102 port 41200
-Oct 22 23:29:34 ip-10-56-112-33.ec2.internal sshd-session[3875661]: Connection closed by 172.27.225.30 port 52096
-Oct 22 23:29:34 ip-10-56-112-33.ec2.internal sshd-session[3875655]: Connection closed by 10.56.82.234 port 27141
-Oct 22 23:29:44 ip-10-56-112-33.ec2.internal sshd-session[3875681]: Connection closed by 10.56.119.8 port 13052
-Oct 22 23:29:51 ip-10-56-112-33.ec2.internal sshd-session[3875720]: Connection closed by 10.56.82.234 port 64070
-Oct 22 23:29:51 ip-10-56-112-33.ec2.internal sshd-session[3875719]: Connection closed by 10.56.82.102 port 50957
-Oct 22 23:31:07 ip-10-56-112-33.ec2.internal sshd-session[3875749]: Connection closed by 10.56.119.8 port 48698
-Oct 22 23:31:07 ip-10-56-112-33.ec2.internal sshd-session[3875727]: Connection closed by 10.56.119.26 port 61727
-Oct 22 23:31:09 ip-10-56-112-33.ec2.internal sshd-session[3875750]: Connection closed by 10.56.82.102 port 45580
-Oct 22 23:31:13 ip-10-56-112-33.ec2.internal sshd-session[3875751]: Connection closed by 10.56.82.234 port 28850
-Oct 22 23:31:26 ip-10-56-112-33.ec2.internal sshd-session[3875757]: Connection closed by 172.27.225.29 port 37384
-Oct 22 23:31:29 ip-10-56-112-33.ec2.internal sshd-session[3875752]: Connection closed by 172.27.225.155 port 49930
-Oct 22 23:32:04 ip-10-56-112-33.ec2.internal sshd-session[3875771]: Connection closed by 10.56.119.26 port 47103
-Oct 22 23:32:24 ip-10-56-112-33.ec2.internal sshd-session[3875782]: Connection closed by 10.56.119.8 port 35794
-Oct 22 23:32:51 ip-10-56-112-33.ec2.internal sshd-session[3875864]: Connection closed by 10.56.82.102 port 33143
-Oct 22 23:32:53 ip-10-56-112-33.ec2.internal sshd-session[3875833]: Connection closed by 172.27.225.30 port 56710
-Oct 22 23:33:04 ip-10-56-112-33.ec2.internal sshd-session[3875886]: Connection closed by 172.27.225.156 port 51016
-Oct 22 23:33:36 ip-10-56-112-33.ec2.internal sshd-session[3875875]: Connection closed by 10.56.82.234 port 41543
-Oct 22 23:33:51 ip-10-56-112-33.ec2.internal sshd-session[3875954]: Connection closed by 10.56.82.102 port 29882
-Oct 22 23:33:54 ip-10-56-112-33.ec2.internal sshd-session[3875927]: Connection closed by 10.56.119.26 port 34570
-Oct 22 23:33:54 ip-10-56-112-33.ec2.internal sshd-session[3875934]: Connection closed by 10.56.119.8 port 38449
-Oct 22 23:35:08 ip-10-56-112-33.ec2.internal sshd-session[3875961]: Connection closed by 10.56.82.234 port 16110
-Oct 22 23:35:09 ip-10-56-112-33.ec2.internal sshd-session[3876027]: Connection closed by 10.56.119.8 port 28124
-Oct 22 23:35:35 ip-10-56-112-33.ec2.internal sshd-session[3876006]: Connection closed by 10.56.119.26 port 46438
-Oct 22 23:36:03 ip-10-56-112-33.ec2.internal sshd-session[3876057]: Connection closed by 10.56.82.102 port 11577
-Oct 22 23:36:03 ip-10-56-112-33.ec2.internal sshd-session[3876062]: Connection closed by 10.56.82.234 port 4793
-Oct 22 23:36:04 ip-10-56-112-33.ec2.internal sshd-session[3876040]: Connection closed by 172.27.225.155 port 48594
-Oct 22 23:36:06 ip-10-56-112-33.ec2.internal sshd-session[3876050]: Connection closed by 172.27.225.156 port 54926
-Oct 22 23:36:26 ip-10-56-112-33.ec2.internal sshd-session[3876092]: Connection closed by 10.56.119.8 port 8625
-Oct 22 23:36:28 ip-10-56-112-33.ec2.internal sshd-session[3876138]: Connection closed by 10.56.82.102 port 28909
-Oct 22 23:36:29 ip-10-56-112-33.ec2.internal sshd-session[3876071]: Connection closed by 10.56.119.26 port 29510
-Oct 22 23:36:30 ip-10-56-112-33.ec2.internal sshd-session[3876145]: Connection closed by 10.56.82.234 port 17385
-Oct 22 23:36:30 ip-10-56-112-33.ec2.internal sshd-session[3876147]: Connection closed by 10.56.119.26 port 2025
-Oct 22 23:36:30 ip-10-56-112-33.ec2.internal sshd-session[3876185]: Connection closed by 10.56.119.8 port 46349
-[sikaj01@ip-10-56-112-33 ~]$ journalctl -b -1 --since "2026-10-23 04:35" --until "2026-10-23 04:46" --no-pager | grep -iE 'killed|stopp|logout|oom|Removed' | head -30
-Oct 23 04:40:11 ip-10-56-112-33.ec2.internal agent[2045]: 2026-10-23 04:40:11 UTC | CORE | WARN | (pkg/config/nodetreemodel/config.go:644 in checkKnownKey) | config key system_probe_config.enable_oom_kill is unknown
-[sikaj01@ip-10-56-112-33 ~]$
-
-
-
-[sikaj01@ip-10-56-112-33 ~]$ sar -r -f /var/log/sa/sa23 | awk 'NR<4 || NR%6==0'
-Linux 6.1.188-233.393.amzn2023.x86_64 (ip-10-56-112-33.ec2.internal)    10/23/26        _x86_64_        (2 CPU)
-
-00:00:31    kbmemfree   kbavail kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
-00:30:35       110552     89232   7157300     90.31        16    108608  11782736    148.67     58328   6623816         0
-01:30:00       125288    186952   7010264     88.45        16    240716  11323596    142.88    125392   6538632      2100
-02:33:58       103160     68844   6971420     87.96        16    301660  11712344    147.78    262168   6426804         0
-03:30:13       100644     79672   6946644     87.65        16    327792  11609992    146.49    273948   6417028         0
-04:30:27       122440    125420   7095448     89.53        16    157336  11343316    143.13     98508   6567136      2528
-05:30:27       210104    973428   6224628     78.54        24    923336  10135396    127.89    446588   6061120      5872
-06:30:27       146896    969636   6228400     78.59        24    982720  10135396    127.89    480584   6082116      6916
-07:30:27       142224   1005992   6192268     78.13        24   1024776  10098736    127.42    504716   6099508      7040
-08:30:27       168368    975512   6222552     78.51        24    968216  10145904    128.02    542072   6017084      7124
-09:30:27       127544    881540   6315812     79.69        20    712384  10140016    127.94    336112   5996548      6176
-10:30:27       205804    896944   6300444     79.50        20    710744  10140004    127.94    413196   5905368      2692
-11:30:27       322680    856092   6206548     78.31        20    771052  10103344    127.48    398820   5972576      1712
-12:30:27       253828    981440   6216412     78.44        20    830048  10161016    128.21    427092   6009424      4548
-13:30:03       111492    113096   7103044     89.62        24    154660  11888508    150.01    101776   6561000       120
-14:30:06       133568    546776   6634380     83.71        24    584472  10692300    134.91    302884   6321916      2408
-15:30:00       255936    627640   6529028     82.38        20    538584  10176792    128.41    218108   6183968      2484
-16:30:08       128028    166676   6971492     87.96        24    220572  10781840    136.04    131788   6413720      2696
-17:30:15       102636     62784   7132460     90.00        20     78836  10797436    136.24     67080   6490436        32
-18:30:13       103044     93252   7070384     89.21        20    139588  10897764    137.50     91196   6460176       188
-19:00:03    kbmemfree   kbavail kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
-[sikaj01@ip-10-56-112-33 ~]$ sar -B -f /var/log/sa/sa23 | awk 'NR<4 || NR%6==0'
-Linux 6.1.188-233.393.amzn2023.x86_64 (ip-10-56-112-33.ec2.internal)    10/23/26        _x86_64_        (2 CPU)
-
-00:00:31     pgpgin/s pgpgout/s   fault/s  majflt/s  pgfree/s pgscank/s pgscand/s pgsteal/s    %vmeff
-00:30:35     46406.76    377.39   1903.07    427.14  77155.33  42280.35  10861.10  82040.13    154.38
-01:30:00     45043.60    412.07   2790.61    427.06  65134.42  33224.28  10050.83  70126.74    162.05
-02:33:58     28518.56     38.09    633.01    249.18  44388.39 199883.25 304985.52  48319.11      9.57
-03:30:13     56781.47    483.27   1461.42    511.12  98434.85 109961.07  23244.35 105532.32     79.23
-04:30:27     44744.01    234.50   2142.92    412.11  56812.75  55746.25  16703.55  62727.97     86.58
-05:30:27         3.29    209.35    629.78      0.04    627.97      0.00      0.00      0.00      0.00
-06:30:27         0.94    268.39    688.21      0.01    684.00      0.00      0.00      0.00      0.00
-07:30:27         1.45    330.66    649.78      0.03    627.40      1.00      0.00      1.77    177.63
-08:30:27         0.21    330.04    700.38      0.00    720.97      0.00      0.00      0.00      0.00
-09:30:27        46.29    224.23    725.55      0.44    769.01     11.87      0.00     18.95    159.65
-10:30:27        10.79    342.73    758.42      0.10    781.35      0.00      0.00      0.00      0.00
-11:30:27         2.15    155.33    649.80      0.03    655.61      0.00      0.00      0.00      0.00
-12:30:27         0.50    204.79    638.65      0.03    677.13      0.11      0.00      0.20    171.01
-13:30:03     43261.23    330.65   1909.08    416.76  70473.48  34740.27  12177.41  75350.96    160.60
-14:30:06      3844.17   1819.59   4216.05     20.72   5324.46   1623.64     17.09   2746.31    167.38
-15:30:00     19139.82    496.34   2841.74    182.61  11239.60   8328.67    508.04  11693.82    132.33
-16:30:08      2161.58    531.47   2219.66     27.90   3585.66   1140.32      8.31   1503.36    130.88
-17:30:15     53845.61    584.94   2624.51    486.66  16096.79  16610.96   5684.83  27346.71    122.65
-18:30:13     22605.83    126.66    740.55    222.72  55662.29  24146.39   9034.68  57035.30    171.89
-19:00:03     pgpgin/s pgpgout/s   fault/s  majflt/s  pgfree/s pgscank/s pgscand/s pgsteal/s    %vmeff
-[sikaj01@ip-10-56-112-33 ~]$ journalctl -b -1 -t rsyslogd --since "2026-10-23 18:20" --no-pager | grep -v 'suspended' | head -10
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
-Oct 23 18:22:48 ip-10-56-112-33.ec2.internal rsyslogd[1952]: action 'action-13-builtin:omfile' resumed (module 'builtin:omfile') [v8.2204.0-3.amzn2023.0.8 try https://www.rsyslog.com/e/2359 ]
