@@ -1,38 +1,19 @@
-ps -u 10802 -o pid,ppid,rss,etime,args and systemd-cgls
-
-journalctl -b -1 --since "2026-10-23 02:25" --until "2026-10-23 02:50" | grep -iE 'suppress|rate-limit'
-
-
-
-# Are they installed, and what are they holding right now?
-systemctl list-units --all --no-pager | grep -iE 'falcon|nessus|xagt|fireeye|trellix'
-ps -eo pid,user,rss,nlwp,etime,time,args | grep -iE 'falcon|nessus|xagt|fireeye' | grep -v grep | cut -c1-150
-
-# Did they log activity during the three bad windows (UTC)?
-sudo journalctl -b -1 --since "2026-10-22 23:00" --until "2026-10-23 05:00" --no-pager | grep -iE 'falcon|nessus|xagt|fireeye' | head -40
-sudo journalctl -b -1 --since "2026-10-23 13:00" --until "2026-10-23 14:30" --no-pager | grep -iE 'falcon|nessus|xagt|fireeye' | head -40
-sudo journalctl -b -1 --since "2026-10-23 17:00" --until "2026-10-23 18:50" --no-pager | grep -iE 'falcon|nessus|xagt|fireeye' | head -40
-
-# Nessus Agent scan start/stop times (default path; run `ls /opt` if it's elsewhere)
-sudo ls -lt /opt/nessus_agent/var/nessus/logs/ 2>/dev/null
-sudo grep -iE 'scan|launch|start|finish|complete' /opt/nessus_agent/var/nessus/logs/nessusd.messages 2>/dev/null | tail -40
-
-# FireEye agent logs
-sudo ls -lt /var/log/xagt/ 2>/dev/null | head
+journalctl -b -1 -k --since "2026-10-23 02:25" --until "2026-10-23 03:45" --no-pager \
+ | sed -E 's/^.*kernel: +//' \
+ | awk '/uid +tgid +total_vm/ {t++; next}
+        /^\[ *[0-9]+\] +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+/ {gsub(/[][]/," "); r[t" "$2]+=$5; n[t" "$2]++}
+        END {for (k in r) {split(k,a," "); printf "%d %8.0f MB %5d procs uid %s\n", a[1], r[k]*4/1024, n[k], a[2]}}' \
+ | sort -k1,1n -k2,2nr | awk '{c[$1]++} c[$1]<=6'
 
 
-[sikaj01@ip-10-56-112-33 ~]$ sudo ls -lt /var/log/xagt/ 2>/dev/null | head
-[sikaj01@ip-10-56-112-33 ~]$ ls -al /opt/
-total 48
-drwxr-xr-x. 11 root     root       173 Jul 17 15:04 .
-dr-xr-xr-x. 22 root     root     16384 Jun 12 19:27 ..
-drwxr-xr-x.  4 root     root        30 Jan 28  2025 BESClient
-drwxr-x---.  9 root     root     16384 Oct 23 18:51 CrowdStrike
-drwxr-x---.  3 root     root        19 May  1  2025 Elastic
-drwxr-xr-x.  5 root     root        64 Dec 28  2024 aws
-drwx--x--x.  4 root     root        28 Jan 23  2025 containerd
-drwxr-xr-x. 10 dd-agent dd-agent 16384 Oct 16 15:56 datadog-agent
-drwxr-xr-x.  5 root     root        68 Jun  2 14:41 datadog-packages
-drwxr-x---.  5 ezehb01  users       67 Jul 24 14:44 health-checker
-drwxrwxr-x.  8 root     root        73 Dec 28  2024 nessus_agent
-[sikaj01@ip-10-56-112-33 ~]$
+ps -u 10802 -o pid,ppid,rss,etime,args | cut -c1-200
+sudo docker ps 2>/dev/null; sudo podman ps 2>/dev/null
+
+
+sar -q -f /var/log/sa/sa22 | awk 'NR<4 || $1 >= "20:00:00"'
+sar -r -f /var/log/sa/sa22 | awk 'NR<4 || $1 >= "20:00:00"'
+
+
+
+ps -eo user=,rss=,args= | grep -E 'vscode-server|server-main' | grep -v grep \
+ | awk '{m[$1]+=$2; n[$1]++} END {for (u in m) printf "%6.0f MB %3d procs %s\n", m[u]/1024, n[u], u}' | sort -rn
