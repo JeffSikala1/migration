@@ -124,3 +124,120 @@ echo "Done. Remaining:"
 mine | cut -c1-160 || true
 echo
 uptime
+
+
+-------------------------
+
+
+
+
+# Did the journal survive? (needs /var/log/journal to exist)
+journalctl --list-boots
+ls -ld /var/log/journal
+
+# OOM kills, hangs, NFS stalls in the previous boot
+journalctl -b -1 -k --no-pager | grep -iE 'out of memory|oom|killed process|hung task|blocked for more than|soft lockup|rcu.*stall|nfs.*(not responding|timed out)'
+
+# Last 200 warnings or worse before it went down
+journalctl -b -1 -p warning --no-pager | tail -200
+
+# Reboot/shutdown history, and who was logged in
+last -x reboot shutdown | head
+journalctl -b -1 -u sshd --no-pager | grep -E 'Accepted|session opened|session closed' | tail -50
+
+# If there's no persistent journal, fall back to the classic logs
+sudo grep -iE 'oom|killed process|hung task|nfs' /var/log/messages* | tail -50
+
+
+
+
+sar -q -f /var/log/sa/sa23     # load average, run queue, total tasks
+sar -r -f /var/log/sa/sa23     # memory
+sar -B -f /var/log/sa/sa23     # paging and kswapd activity
+sar -u -f /var/log/sa/sa23     # CPU user/system split
+
+
+
+
+
+
+# Process and thread counts per user (Tasks was 3139 earlier)
+ps -eo user= | sort | uniq -c | sort -rn | head
+ps -eLo user= | sort | uniq -c | sort -rn | head
+
+# Memory per user, in MB
+ps -eo user=,rss= | awk '{m[$1]+=$2} END {for (u in m) printf "%8.0f MB  %s\n", m[u]/1024, u}' | sort -rn | head
+
+# Top memory processes, and top thread counts
+ps -eo pid,user,rss,nlwp,pcpu,etime,args --sort=-rss | cut -c1-170 | head -25
+ps -eo pid,user,nlwp,args --sort=-nlwp | cut -c1-170 | head -15
+
+# How many VS Code servers, and whose
+ps -eo user=,args= | grep -E 'server-main\.js' | grep -v grep | awk '{print $1}' | sort | uniq -c
+
+# Per-user cgroup view (systemd boxes)
+systemd-cgtop -m -n 1 --order=memory | head -20
+loginctl list-sessions
+
+
+
+
+free -m
+grep -E 'MemAvailable|Slab|SReclaimable|SUnreclaim|Shmem|PageTables|Dirty|Writeback|Mapped' /proc/meminfo
+
+# Pressure stall info: shows whether the box is stalling on memory, CPU, or I/O
+cat /proc/pressure/memory /proc/pressure/cpu /proc/pressure/io
+
+# Kernel memory hogs (NFS inode and dentry caches are common on EFS)
+slabtop -o -s c | head -15
+
+# Live view of reclaim: watch the 'si/so' and 'free' columns
+vmstat 2 10
+
+
+
+
+
+
+sysctl fs.inotify.max_user_watches fs.inotify.max_user_instances
+
+# Inotify instances per user
+for p in /proc/[0-9]*; do
+  n=$(ls -l $p/fd 2>/dev/null | grep -c 'anon_inode:inotify')
+  [ "$n" -gt 0 ] && echo "$n $(stat -c %U $p) $(tr '\0' ' ' < $p/cmdline | cut -c1-80)"
+done | sort -rn | head -15
+
+
+
+
+
+
+mount | grep -E 'nfs|efs'
+df -h /efs
+nfsstat -c | head -30
+dmesg -T | grep -i nfs | tail -20
+
+
+
+
+
+journalctl --disk-usage
+journalctl --since '-1h' -o short | awk '{print $5}' | sed 's/\[.*//' | sort | uniq -c | sort -rn | head
+
+
+
+
+
+TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')
+IID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+aws ec2 describe-instance-status --instance-ids $IID --include-all-instances
+
+
+
+
+
+sudo mkdir -p /var/log/jumpmon
+sudo nohup bash -c 'while true; do {
+  date; uptime; free -m; cat /proc/pressure/memory
+  ps -eo pid,user,rss,nlwp,pcpu,etime,args --sort=-rss | cut -c1-170 | head -15
+  echo ---; } >> /var/log/jumpmon/snap.log; sleep 30; done' >/dev/null 2>&1 &
