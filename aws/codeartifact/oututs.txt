@@ -1,96 +1,93 @@
-[sikaj01@ip-10-56-112-33 ~]$ sudo ls -lt /var/log/xagt/ 2>/dev/null | head
-[sikaj01@ip-10-56-112-33 ~]$ ls -al /opt/
-total 48
-drwxr-xr-x. 11 root     root       173 Jul 17 15:04 .
-dr-xr-xr-x. 22 root     root     16384 Jun 12 19:27 ..
-drwxr-xr-x.  4 root     root        30 Jan 28  2025 BESClient
-drwxr-x---.  9 root     root     16384 Oct 23 18:51 CrowdStrike
-drwxr-x---.  3 root     root        19 May  1  2025 Elastic
-drwxr-xr-x.  5 root     root        64 Dec 28  2024 aws
-drwx--x--x.  4 root     root        28 Jan 23  2025 containerd
-drwxr-xr-x. 10 dd-agent dd-agent 16384 Oct 16 15:56 datadog-agent
-drwxr-xr-x.  5 root     root        68 Jun  2 14:41 datadog-packages
-drwxr-x---.  5 ezehb01  users       67 Jul 24 14:44 health-checker
-drwxrwxr-x.  8 root     root        73 Dec 28  2024 nessus_agent
-[sikaj01@ip-10-56-112-33 ~]$ journalctl -b -1 -k --since "2026-10-23 02:25" --until "2026-10-23 03:45" --no-pager \
- | sed -E 's/^.*kernel: +//' \
- | awk '/uid +tgid +total_vm/ {t++; next}
-        /^\[ *[0-9]+\] +[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+/ {gsub(/[][]/," "); r[t" "$2]+=$5; n[t" "$2]++}
-        END {for (k in r) {split(k,a," "); printf "%d %8.0f MB %5d procs uid %s\n", a[1], r[k]*4/1024, n[k], a[2]}}' \
- | sort -k1,1n -k2,2nr | awk '{c[$1]++} c[$1]<=6'
-1     3673 MB  2883 procs uid 1015
-1     1185 MB    61 procs uid 0
-1      795 MB    12 procs uid 1021
-1      562 MB     4 procs uid 10802
-1      101 MB     3 procs uid 987
-1       26 MB     3 procs uid 1038
-2     3673 MB  2883 procs uid 1015
-2     1185 MB    61 procs uid 0
-2      795 MB    12 procs uid 1021
-2      562 MB     4 procs uid 10802
-2      101 MB     3 procs uid 987
-2        7 MB     2 procs uid 1038
-[sikaj01@ip-10-56-112-33 ~]$ ps -u 10802 -o pid,ppid,rss,etime,args | cut -c1-200
-    PID    PPID   RSS     ELAPSED COMMAND
-[sikaj01@ip-10-56-112-33 ~]$ sudo docker ps 2>/dev/null; sudo podman ps 2>/dev/null
-CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
-[sikaj01@ip-10-56-112-33 ~]$ sar -q -f /var/log/sa/sa22 | awk 'NR<4 || $1 >= "20:00:00"'
-Linux 6.1.188-233.393.amzn2023.x86_64 (ip-10-56-112-33.ec2.internal)    10/22/26        _x86_64_        (2 CPU)
-
-00:00:27      runq-sz  plist-sz   ldavg-1   ldavg-5  ldavg-15   blocked
-20:00:06            9      2613      1.80      0.66      0.44         0
-20:10:01            4      2668      0.63      0.58      0.48         0
-20:20:06            6      2733      0.10      0.49      0.54         0
-20:30:04            3      2786      0.46      0.37      0.43         0
-20:40:07           11      2848      0.49      0.39      0.40         0
-20:50:01            2      2892      0.19      0.35      0.43         0
-21:00:06            5      2929      0.60      0.77      0.62         0
-21:10:01            5      2964      0.40      0.37      0.44         0
-21:20:06            7      3043      0.28      0.42      0.44         0
-21:30:01           14      3094      0.72      1.52      1.15         0
-21:40:07           12      3155      3.24      2.69      1.86         0
-21:50:07           16      3223      1.90      2.09      1.98         0
-22:00:02            8      3276      2.74      2.55      2.29         0
-22:10:05            3      3332      0.34      0.99      1.64         0
-22:20:09            2      3386      2.43      2.02      1.81         0
-22:30:04           60      3446     15.21      8.01      4.39         2
-22:40:01            4      3441      7.29     17.25     12.50         1
-22:50:06           85      3494     72.21     39.07     23.45         3
-23:00:01           52      3481     83.10     80.38     54.17         1
-23:10:17           55      3487     78.12     71.30     59.89         4
-23:20:14           85      3481     90.62     86.27     72.98         2
-23:30:07           60      3493    101.50     94.52     81.25         2
-23:40:05           89      3490     78.73     74.44     77.67         0
-23:50:07           74      3481     90.23     94.78     87.87         1
-Average:            9      1287      4.95      4.61      3.95         0
-[sikaj01@ip-10-56-112-33 ~]$ sar -r -f /var/log/sa/sa22 | awk 'NR<4 || $1 >= "20:00:00"'
-Linux 6.1.188-233.393.amzn2023.x86_64 (ip-10-56-112-33.ec2.internal)    10/22/26        _x86_64_        (2 CPU)
-
-00:00:27    kbmemfree   kbavail kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
-20:00:06       343136   1182024   5970364     75.33        32    510628  10740696    135.52    289644   5656976      3828
-20:10:01       227980   1047316   6075768     76.66        32    516508  10799332    136.26    291132   5747952      2740
-20:20:06       227196   1000920   6146628     77.56        32    482448  10908328    137.64    282480   5806576      1796
-20:30:04       224632    949704   6225908     78.56        32    602968  11150856    140.70    290896   5983864      2932
-20:40:07       208568    876192   6295720     79.44        32    546144  11032228    139.20    307048   5971368      4396
-20:50:01       189076    817328   6352708     80.16        32    517372  11113752    140.23    316120   6005124      4364
-21:00:06       180008    782356   6391724     80.65        32    533564  11036536    139.26    325240   6041844      4484
-21:10:01       192080    768764   6409736     80.88        32    515764  10950084    138.16    292324   6061432      6124
-21:20:06       161896    628044   6550544     82.65        32    431028  11219056    141.56    240544   6164340      2552
-21:30:01       163680    677976   6516944     82.23        32    697928  11237564    141.79    297800   6333748      3884
-21:40:07       177860    434716   6780964     85.56        16    428488  11340956    143.10    231524   6406840      4128
-21:50:07       136100    246184   6967840     87.92        16    285792  11477512    144.82    144796   6533980      3092
-22:00:02       124856    242352   6963480     87.86        16    298100  11562488    145.89    132796   6540140      2704
-22:10:05       133580    230268   6974260     88.00        16    272632  11640572    146.88    132608   6540312      1812
-22:20:09       124220    161832   7040472     88.83        16    215360  11732104    148.03    126648   6550336      1368
-22:30:04       107668    119536   7097364     89.55        16    173312  11883088    149.94    113912   6576560        84
-22:40:01       124424    136556   7079164     89.32        16    174428  11740684    148.14     84724   6587776       780
-22:50:06       105552     98940   7134320     90.02        16    137412  11901024    150.16     82448   6607572         4
-23:00:01       107832    104440   7125524     89.91        16    143944  11801708    148.91    104216   6582584        52
-23:10:17       105844     98448   7135016     90.03        16    135912  11811044    149.03     84956   6602532         0
-23:20:14       104904     96576   7137584     90.06        16    134148  11785816    148.71     90808   6597764         0
-23:30:07       119552    104476   7136256     90.04        16    120748  11846488    149.48     78752   6593416        56
-23:40:05       103600     91008   7147556     90.19        16    125600  11859260    149.64     75332   6614748        56
-23:50:07       104752    102020   7126468     89.92        16    145484  11803376    148.93    102744   6586852        64
-Average:       517407   2655783   4525095     57.10        30   1075220   8499662    107.25    618106   3986572      3463
-[sikaj01@ip-10-56-112-33 ~]$ ps -eo user=,rss=,args= | grep -E 'vscode-server|server-main' | grep -v grep \
- | awk '{m[$1]+=$2; n[$1]++} END {for (u in m) printf "%6.0f MB %3d procs %s\n", m[u]/1024, n[u], u}' | sort -rn
+[sikaj01@ip-10-56-112-33 ~]$ ps -eo user= | sort | uniq -c | sort -rn | head -5
+    308 pkundm01
+    134 root
+      9 sikaj01
+      6 wernb01
+      5 vaswr01
+[sikaj01@ip-10-56-112-33 ~]$ ps -u pkundm01 -o comm= | sort | uniq -c | sort -rn | head
+    310 ssh-agent
+      2 node
+      1 tmux: server
+      1 tmux: client
+      1 systemd
+      1 sshd-session
+      1 bash
+      1 (sd-pam)
+[sikaj01@ip-10-56-112-33 ~]$ ps -u pkundm01 -o ppid= | sort | uniq -c | sort -rn | head -5
+    315       1
+      1   19212
+      1   19172
+      1   19071
+      1    2785
+[sikaj01@ip-10-56-112-33 ~]$ ps -u pkundm01 -o stat= | cut -c1 | sort | uniq -c
+    322 S
+[sikaj01@ip-10-56-112-33 ~]$ ps -o pid,ppid,etime,args -p 322 | cut -c1-200
+    PID    PPID     ELAPSED COMMAND
+[sikaj01@ip-10-56-112-33 ~]$ ps -o pid,ppid,etime,args -p 315 | cut -c1-200
+    PID    PPID     ELAPSED COMMAND
+[sikaj01@ip-10-56-112-33 ~]$ ps -o pid,ppid,etime,args -p 1 | cut -c1-200
+    PID    PPID     ELAPSED COMMAND
+      1       0       55:10 /usr/lib/systemd/systemd --switched-root --system --deserialize=32
+[sikaj01@ip-10-56-112-33 ~]$ sudo crontab -l -u pkundm01
+no crontab for pkundm01
+[sikaj01@ip-10-56-112-33 ~]$ sudo systemd-cgls /user.slice/user-1015.slice --no-pager | head -60
+Control group /user.slice/user-1015.slice:
+├─session-66.scope (#12612)
+│ └─5619 ssh-agent -s
+├─session-175.scope (#20461)
+│ └─10479 ssh-agent -s
+├─session-159.scope (#19640)
+│ └─9683 ssh-agent -s
+├─session-273.scope (#26092)
+│ └─15060 ssh-agent -s
+├─session-142.scope (#18189)
+│ └─9001 ssh-agent -s
+├─session-257.scope (#24696)
+│ └─14443 ssh-agent -s
+├─session-17.scope (#8948)
+│ └─3464 ssh-agent -s
+├─session-126.scope (#17061)
+│ └─8356 ssh-agent -s
+├─session-240.scope (#23817)
+│ └─13655 ssh-agent -s
+├─session-355.scope (#30894)
+│ └─19475 ssh-agent -s
+├─session-224.scope (#22996)
+│ └─12838 ssh-agent -s
+├─session-339.scope (#29976)
+│ └─18585 ssh-agent -s
+├─session-208.scope (#22214)
+│ └─12087 ssh-agent -s
+├─session-322.scope (#29019)
+│ └─17620 ssh-agent -s
+├─session-92.scope (#15020)
+│ └─6628 ssh-agent -s
+├─session-306.scope (#27983)
+│ └─16853 ssh-agent -s
+├─session-76.scope (#13183)
+│ └─6154 ssh-agent -s
+├─session-185.scope (#20993)
+│ └─10941 ssh-agent -s
+├─session-169.scope (#20158)
+│ └─10186 ssh-agent -s
+├─session-283.scope (#26610)
+│ └─15636 ssh-agent -s
+├─session-43.scope (#10951)
+│ └─4441 ssh-agent -s
+├─session-152.scope (#19254)
+│ └─9350 ssh-agent -s
+├─session-136.scope (#17794)
+│ └─8708 ssh-agent -s
+├─session-250.scope (#24296)
+│ └─14119 ssh-agent -s
+├─session-234.scope (#23514)
+│ └─13357 ssh-agent -s
+├─session-103.scope (#15674)
+│ └─7210 ssh-agent -s
+├─session-349.scope (#30455)
+│ └─19058 ssh-agent -s
+├─session-218.scope (#22693)
+│ └─12545 ssh-agent -s
+├─session-332.scope (#29590)
+│ └─18208 ssh-agent -s
+├─session-201.scope (#21814)
