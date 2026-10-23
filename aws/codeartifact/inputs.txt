@@ -1,17 +1,9 @@
-# Process count per user: the culprit will keep growing
-ps -eo user= | sort | uniq -c | sort -rn | head -5
+# Which dotfile starts the agent?
+sudo grep -n 'ssh-agent' /home/pkundm01/.bashrc /home/pkundm01/.bash_profile /home/pkundm01/.profile /etc/profile.d/* /etc/bashrc 2>/dev/null
 
-# What the processes are, and what spawns them
-ps -u pkundm01 -o comm= | sort | uniq -c | sort -rn | head
-ps -u pkundm01 -o ppid= | sort | uniq -c | sort -rn | head -5
-ps -u pkundm01 -o stat= | cut -c1 | sort | uniq -c
+# Is it only this account?
+ps -eo user=,comm= | awk '$2=="ssh-agent" {n[$1]++} END {for (u in n) print n[u], u}'
 
-# Look up the busiest parent from the output above
-ps -o pid,ppid,etime,args -p 315 | cut -c1-200
-
-# Anything scheduled or lingering under that account
-sudo crontab -l -u pkundm01
-sudo systemd-cgls /user.slice/user-1015.slice --no-pager | head -60
-
-# Log the count every minute so you have a growth curve
-while true; do echo "$(date +%T) $(ps -u pkundm01 --no-headers | wc -l)"; sleep 60; done
+# Where are the logins coming from, and how many sessions per user?
+sudo journalctl -u sshd --since "-15min" --no-pager | grep -oE 'Accepted publickey for [a-z0-9]+ from [0-9.]+' | sort | uniq -c | sort -rn
+loginctl list-sessions --no-legend | awk '{print $3}' | sort | uniq -c
