@@ -1,93 +1,18 @@
-[sikaj01@ip-10-56-112-33 ~]$ ps -eo user= | sort | uniq -c | sort -rn | head -5
-    308 pkundm01
-    134 root
-      9 sikaj01
-      6 wernb01
-      5 vaswr01
-[sikaj01@ip-10-56-112-33 ~]$ ps -u pkundm01 -o comm= | sort | uniq -c | sort -rn | head
-    310 ssh-agent
-      2 node
-      1 tmux: server
-      1 tmux: client
-      1 systemd
-      1 sshd-session
-      1 bash
-      1 (sd-pam)
-[sikaj01@ip-10-56-112-33 ~]$ ps -u pkundm01 -o ppid= | sort | uniq -c | sort -rn | head -5
-    315       1
-      1   19212
-      1   19172
-      1   19071
-      1    2785
-[sikaj01@ip-10-56-112-33 ~]$ ps -u pkundm01 -o stat= | cut -c1 | sort | uniq -c
-    322 S
-[sikaj01@ip-10-56-112-33 ~]$ ps -o pid,ppid,etime,args -p 322 | cut -c1-200
-    PID    PPID     ELAPSED COMMAND
-[sikaj01@ip-10-56-112-33 ~]$ ps -o pid,ppid,etime,args -p 315 | cut -c1-200
-    PID    PPID     ELAPSED COMMAND
-[sikaj01@ip-10-56-112-33 ~]$ ps -o pid,ppid,etime,args -p 1 | cut -c1-200
-    PID    PPID     ELAPSED COMMAND
-      1       0       55:10 /usr/lib/systemd/systemd --switched-root --system --deserialize=32
-[sikaj01@ip-10-56-112-33 ~]$ sudo crontab -l -u pkundm01
-no crontab for pkundm01
-[sikaj01@ip-10-56-112-33 ~]$ sudo systemd-cgls /user.slice/user-1015.slice --no-pager | head -60
-Control group /user.slice/user-1015.slice:
-├─session-66.scope (#12612)
-│ └─5619 ssh-agent -s
-├─session-175.scope (#20461)
-│ └─10479 ssh-agent -s
-├─session-159.scope (#19640)
-│ └─9683 ssh-agent -s
-├─session-273.scope (#26092)
-│ └─15060 ssh-agent -s
-├─session-142.scope (#18189)
-│ └─9001 ssh-agent -s
-├─session-257.scope (#24696)
-│ └─14443 ssh-agent -s
-├─session-17.scope (#8948)
-│ └─3464 ssh-agent -s
-├─session-126.scope (#17061)
-│ └─8356 ssh-agent -s
-├─session-240.scope (#23817)
-│ └─13655 ssh-agent -s
-├─session-355.scope (#30894)
-│ └─19475 ssh-agent -s
-├─session-224.scope (#22996)
-│ └─12838 ssh-agent -s
-├─session-339.scope (#29976)
-│ └─18585 ssh-agent -s
-├─session-208.scope (#22214)
-│ └─12087 ssh-agent -s
-├─session-322.scope (#29019)
-│ └─17620 ssh-agent -s
-├─session-92.scope (#15020)
-│ └─6628 ssh-agent -s
-├─session-306.scope (#27983)
-│ └─16853 ssh-agent -s
-├─session-76.scope (#13183)
-│ └─6154 ssh-agent -s
-├─session-185.scope (#20993)
-│ └─10941 ssh-agent -s
-├─session-169.scope (#20158)
-│ └─10186 ssh-agent -s
-├─session-283.scope (#26610)
-│ └─15636 ssh-agent -s
-├─session-43.scope (#10951)
-│ └─4441 ssh-agent -s
-├─session-152.scope (#19254)
-│ └─9350 ssh-agent -s
-├─session-136.scope (#17794)
-│ └─8708 ssh-agent -s
-├─session-250.scope (#24296)
-│ └─14119 ssh-agent -s
-├─session-234.scope (#23514)
-│ └─13357 ssh-agent -s
-├─session-103.scope (#15674)
-│ └─7210 ssh-agent -s
-├─session-349.scope (#30455)
-│ └─19058 ssh-agent -s
-├─session-218.scope (#22693)
-│ └─12545 ssh-agent -s
-├─session-332.scope (#29590)
-│ └─18208 ssh-agent -s
-├─session-201.scope (#21814)
+[sikaj01@ip-10-56-112-33 ~]$ sudo grep -n 'ssh-agent' /home/pkundm01/.bashrc /home/pkundm01/.bash_profile /home/pkundm01/.profile /etc/profile.d/* /etc/bashrc
+/home/pkundm01/.bashrc:117:eval $(ssh-agent -s)
+grep: /home/pkundm01/.profile: No such file or directory
+[sikaj01@ip-10-56-112-33 ~]$ ps -eo user=,comm= | awk '$2=="ssh-agent" {n[$1]++} END {for (u in n) print n[u], u}'
+375 pkundm01
+[sikaj01@ip-10-56-112-33 ~]$ sudo journalctl -u sshd --since "-15min" --no-pager | grep -oE 'Accepted publickey for [a-z0-9]+ from [0-9.]+' | sort | uniq -c | sort -rn
+     88 Accepted publickey for pkundm01 from 172.27.225.30
+      1 Accepted publickey for sikaj01 from 172.27.225.30
+      1 Accepted publickey for nelsd01 from 172.27.225.156
+[sikaj01@ip-10-56-112-33 ~]$ loginctl list-sessions --no-legend | awk '{print $3}' | sort | uniq -c
+      1 hiltl01
+      1 hotrm01
+      1 nelsd01
+      1 pamas01
+    378 pkundm01
+      2 sikaj01
+      2 vaswr01
+      2 wernb01
